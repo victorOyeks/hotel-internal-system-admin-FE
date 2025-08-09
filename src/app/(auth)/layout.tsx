@@ -1,7 +1,7 @@
+import type { PropsWithChildren } from "react";
 import { HomeIcon } from "@/components/svgs/home";
-import type { AppLayoutProps } from "@/lib/types";
 
-function AuthLayout({ children }: AppLayoutProps) {
+function AuthLayout({ children }: PropsWithChildren) {
 	return (
 		<main className="flex min-h-screen bg-primary text-primary-foreground">
 			<div className="min-h-full w-full flex flex-col items-center justify-center space-y-6">

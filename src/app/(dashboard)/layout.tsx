@@ -1,12 +1,9 @@
+import type { PropsWithChildren } from "react";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
-import {
-    SidebarInset,
-    SidebarProvider
-} from "@/components/ui/sidebar";
-import type { AppLayoutProps } from "@/lib/types";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-export default function DashboardLayout({ children }: AppLayoutProps) {
+export default function DashboardLayout({ children }: PropsWithChildren) {
 	return (
 		<SidebarProvider>
 			<AppSidebar collapsible="icon" />
