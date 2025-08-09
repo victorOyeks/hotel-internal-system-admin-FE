@@ -39,7 +39,7 @@ function ForgotPassword() {
     <Card className="min-w-[450px]">
       <CardHeader>
         <CardTitle>
-          <h1 className="text-2xl font-bold font-inter">Forgot Password</h1>
+          <h1 className="text-2xl font-bold font-inter leading-tight">Forgot Password</h1>
         </CardTitle>
         <CardDescription>
           Provide a registered email address, we’ll send you a link to reset
@@ -59,7 +59,7 @@ function ForgotPassword() {
                     control={form.control}
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-base font-semibold text-dark-2 mb-1">
+                            <FormLabel className="text-base font-semibold text-dark-2">
                                 Email
                             </FormLabel>
                             <FormControl>
@@ -67,7 +67,7 @@ function ForgotPassword() {
                                     type="email"
                                     placeholder="Enter your email"
                                     {...field}
-                                    className="py-5"
+                                  
                                 />
                             </FormControl>
                             <FormMessage />
@@ -79,10 +79,10 @@ function ForgotPassword() {
       </CardContent>
 
       <CardFooter className="flex-col gap-y-2">
-        <Button type="submit" form="forgot-password-form" className="w-full py-5 font-bold">
+        <Button type="submit" form="forgot-password-form" className="w-full font-bold">
           Submit
         </Button>
-        <Button variant="link" className="py-5" asChild>
+        <Button variant="link" asChild>
           <Link href="/auth">Back to Login</Link>
         </Button>
       </CardFooter>

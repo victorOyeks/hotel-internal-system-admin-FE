@@ -59,7 +59,7 @@ function ResetPassword() {
     <Card className="min-w-[450px]">
       <CardHeader>
         <CardTitle>
-          <h1 className="text-2xl font-bold font-inter">Reset Password</h1>
+          <h1 className="text-2xl font-bold font-inter leading-tight">Reset Password</h1>
         </CardTitle>
         <CardDescription>
           Enter a safe and secure password you will remember.
@@ -83,12 +83,12 @@ function ResetPassword() {
                     <Input
                       type="password"
                       {...field}
-                      className="w-full py-5"
+                      className="w-full"
                       placeholder="Enter new password"
                     />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="link"
                       size={"icon"}
                       className="absolute right-1 top-1/2 -translate-y-1/2"
                       onClick={() =>
@@ -112,12 +112,12 @@ function ResetPassword() {
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
                       {...field}
-                      className="w-full py-5"
+                      className="w-full"
                       placeholder="Confirm new password"
                     />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="link"
                       size={"icon"}
                       className="absolute right-1 top-1/2 -translate-y-1/2"
                       onClick={() =>
@@ -139,11 +139,11 @@ function ResetPassword() {
         <Button
           type="submit"
           form="reset-password-form"
-          className="w-full py-5 font-bold"
+          className="w-full font-bold"
         >
           Reset Password
         </Button>
-        <Button variant="link" className="py-5" asChild>
+        <Button variant="link" asChild>
           <Link href="/auth">Back to Login</Link>
         </Button>
       </CardFooter>

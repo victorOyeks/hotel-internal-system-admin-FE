@@ -53,19 +53,19 @@ function AuthPage() {
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-1">
           <Form {...form}>
             <form
               id="auth-form"
               onSubmit={form.handleSubmit(handleSubmit)}
-              className="space-y-4"
+              className="space-y-2"
             >
               <FormField
                 name="email"
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-semibold text-dark-2 mb-1">
+                    <FormLabel className="text-base font-semibold text-dark-2">
                       Email
                     </FormLabel>
                     <FormControl>
@@ -73,7 +73,6 @@ function AuthPage() {
                         type="email"
                         placeholder="Enter your email"
                         {...field}
-                        className="py-5"
                       />
                     </FormControl>
                     <FormMessage />
@@ -85,7 +84,7 @@ function AuthPage() {
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-semibold text-dark-2 mb-1">
+                    <FormLabel className="text-base font-semibold text-dark-2">
                       Password
                     </FormLabel>
                     <div className="relative">
@@ -93,14 +92,14 @@ function AuthPage() {
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="Enter your password"
-                          className="py-5 pr-10"
+                          className="pr-10"
                           {...field}
                         />
                       </FormControl>
                       <Button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        variant="ghost"
+                        variant="link"
                         size="icon"
                         className="absolute right-1 top-1/2 -translate-y-1/2"
                       >
@@ -126,7 +125,7 @@ function AuthPage() {
         </CardContent>
 
         <CardFooter>
-          <Button type="submit" form="auth-form" className="w-full py-5 font-bold">
+          <Button type="submit" form="auth-form" className="w-full font-bold">
             Login
           </Button>
         </CardFooter>
