@@ -1,23 +1,113 @@
 "use client";
 
-import React, { useMemo } from "react";
 import { formatDate } from "date-fns";
-import { BellIcon, SearchIcon } from "lucide-react";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
+import {
+  BellIcon,
+  FileIcon,
+  ImageIcon,
+  Link2,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
+// import { Separator } from "@/components/ui/separator";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+// import { Input } from "../ui/input";
+import { Button } from "@/components/ui/button";
+import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
-  BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbLink,
-  BreadcrumbSeparator,
+  BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "../ui/breadcrumb";
-import { SidebarTrigger } from "../ui/sidebar";
-import { usePathname } from "next/navigation";
-import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+
+function ProfilePopover() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="icon" variant="ghost" className="rounded-full p-2">
+          <Avatar>
+            <AvatarFallback className="bg-primary-1 text-white">
+              <span className="text-xs">A</span>
+            </AvatarFallback>
+            <AvatarImage
+              src="https://i.pravatar.cc/150?img=3"
+              alt="User Avatar"
+            />
+          </Avatar>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={16}
+        className="rounded-4xl bg-white border border-popover w-xs space-y-2 py-2 px-3"
+      >
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-lg">Profile</p>
+
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <XIcon />
+          </Button>
+        </div>
+
+        <div className="max-w-[content] mx-auto flex flex-col items-center justify-center space-y-3">
+          <Avatar className="size-21 rounded-full">
+            <AvatarFallback className="bg-primary-1 text-white">
+              <span className="text-2xl">A</span>
+            </AvatarFallback>
+            <AvatarImage
+              src="https://i.pravatar.cc/150?img=3"
+              alt="User Avatar"
+            />
+          </Avatar>
+
+          <div className="text-center space-y-0.5">
+            <p className="text-2xl font-medium leading-tight">John Doe</p>
+            <p className="text-sm text-gray-600">johndoe@example.com</p>
+          </div>
+        </div>
+
+        <div className="space-y-2 [&_svg]:text-gray-400">
+          <Button
+            variant={"ghost"}
+            className="w-full rounded-full bg-background-blue justify-baseline font-medium"
+          >
+            <ImageIcon />
+            <span>Media</span>
+          </Button>
+          <Button
+            variant={"ghost"}
+            className="w-full rounded-full bg-background-blue justify-baseline font-medium"
+          >
+            <FileIcon />
+            <span>Files</span>
+          </Button>
+          <Button
+            variant={"ghost"}
+            className="w-full rounded-full bg-background-blue justify-baseline font-medium"
+          >
+            <Link2 />
+            <span>Links</span>
+          </Button>
+
+          <Button
+            variant={"destructive"}
+            className="w-full rounded-full justify-baseline font-medium [&_svg]:text-primary-3"
+          >
+            <Trash2Icon />
+            <span>Clear chats</span>
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function Header() {
   const pathname = usePathname();
@@ -52,19 +142,19 @@ export function Header() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          <h1 className="text-xl font-semibold hidden md:block">
+          <h1 className="text-xl font-medium hidden md:block">
             {resolveBreadcrumb || "Dashboard"}
           </h1>
         </div>
       </div>
 
       <div>
-        <div className="bg-white shadow-xl rounded-full p-2 flex items-center space-x-2">
+        <div className="bg-white shadow rounded-full p-1 flex items-center space-x-2">
           <div className="bg-gray-100 py-2 px-3 rounded-full text-sm">
             {formatDate(new Date(), "PPP")}
           </div>
 
-          {/* <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40">
+           <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40">
             <SearchIcon
               size={16}
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
@@ -74,21 +164,13 @@ export function Header() {
               placeholder="Search"
               type="text"
             />
-          </div> */}
+          </div>
 
           <Button size={"icon"} variant={"ghost"} className="rounded-full">
             <BellIcon size={20} className="text-primary-1" />
           </Button>
 
-          <Avatar>
-            <AvatarFallback className="bg-primary-1 text-white">
-              <span className="text-xs">A</span>
-            </AvatarFallback>
-            <AvatarImage
-              src="https://i.pravatar.cc/150?img=3"
-              alt="User Avatar"
-            />
-          </Avatar>
+          <ProfilePopover />
         </div>
       </div>
     </header>
