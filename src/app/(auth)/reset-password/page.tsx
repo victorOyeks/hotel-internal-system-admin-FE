@@ -1,5 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useState } from "react";
+import { useForm } from "react-hook-form";
+import z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,12 +23,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useState } from "react";
-import { useForm } from "react-hook-form";
-import z from "zod";
 
 const formSchema = z
   .object({
@@ -56,7 +56,7 @@ function ResetPassword() {
   }, []);
 
   return (
-    <Card className="min-w-[450px]">
+    <Card className="w-full h-full md:h-auto md:max-w-[450px]">
       <CardHeader>
         <CardTitle>
           <h1 className="text-2xl font-bold font-inter leading-tight">Reset Password</h1>

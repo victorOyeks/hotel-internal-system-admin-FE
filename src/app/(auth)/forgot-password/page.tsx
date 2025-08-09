@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 
@@ -36,7 +36,7 @@ function ForgotPassword() {
   }, []);
 
   return (
-    <Card className="min-w-[450px]">
+    <Card className="w-full h-full md:h-auto md:max-w-[450px]">
       <CardHeader>
         <CardTitle>
           <h1 className="text-2xl font-bold font-inter leading-tight">Forgot Password</h1>
@@ -67,7 +67,7 @@ function ForgotPassword() {
                                     type="email"
                                     placeholder="Enter your email"
                                     {...field}
-                                  
+
                                 />
                             </FormControl>
                             <FormMessage />
