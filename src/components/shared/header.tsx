@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 // import { Separator } from "@/components/ui/separator";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 // import { Input } from "../ui/input";
 import { Button } from "@/components/ui/button";
 import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
@@ -27,9 +27,15 @@ import {
 } from "../ui/breadcrumb";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
-function ProfilePopover() {
+function ProfilePopover({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button size="icon" variant="ghost" className="rounded-full p-2">
           <Avatar>
@@ -51,7 +57,12 @@ function ProfilePopover() {
         <div className="flex items-center justify-between">
           <p className="font-medium text-lg">Profile</p>
 
-          <Button variant="ghost" size="icon" className="rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            onClick={() => onOpenChange(false)}
+          >
             <XIcon />
           </Button>
         </div>
@@ -111,6 +122,7 @@ function ProfilePopover() {
 
 export function Header() {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
 
   const resolveBreadcrumb = useMemo(() => {
     const title = hotelOwnerLinks.find((link) => link.url === pathname)?.title;
@@ -154,23 +166,28 @@ export function Header() {
             {formatDate(new Date(), "PPP")}
           </div>
 
-           <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40">
-            <SearchIcon
-              size={16}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
-            />
-            <input
-              className="pl-5 appearance-none bg-transparent focus:outline-none"
-              placeholder="Search"
-              type="text"
-            />
-          </div>
+          {resolveBreadcrumb === null ? (
+            <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40">
+              <SearchIcon
+                size={16}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
+              />
+              <input
+                className="pl-5 appearance-none bg-transparent focus:outline-none"
+                placeholder="Search"
+                type="text"
+              />
+            </div>
+          ) : null}
 
           <Button size={"icon"} variant={"ghost"} className="rounded-full">
             <BellIcon size={20} className="text-primary-1" />
           </Button>
 
-          <ProfilePopover />
+          <ProfilePopover
+            onOpenChange={(value) => setIsOpen(value)}
+            open={isOpen}
+          />
         </div>
       </div>
     </header>
