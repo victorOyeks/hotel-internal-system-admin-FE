@@ -1,9 +1,14 @@
-import React from 'react'
+import { HotelOwnerDashboard } from "@/components/roles/hotel-owner/dashboard";
 
 function HomePage() {
-  return (
-    <div>HomePage</div>
-  )
+  const role = "hotel-owner";
+
+  switch (role) {
+    case "hotel-owner":
+      return <HotelOwnerDashboard />;
+    default:
+      return <div>Unauthorized</div>;
+  }
 }
 
-export default HomePage
+export default HomePage;
