@@ -319,7 +319,7 @@ function HotelSuits() {
 
 	return (
 		<div
-			className="grid grid-cols-2 md:grid-cols-4 gap-4"
+			className="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-3 md:gap-4"
 			style={{
 				scrollbarWidth: "none",
 				scrollbarColor: "var(--primary-5) transparent",
