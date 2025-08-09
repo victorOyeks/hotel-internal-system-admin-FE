@@ -26,6 +26,8 @@ import {
   BreadcrumbSeparator,
 } from "../ui/breadcrumb";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { SidebarTrigger } from "../ui/sidebar";
+import { Separator } from "../ui/separator";
 
 function ProfilePopover({
   open,
@@ -131,14 +133,11 @@ export function Header() {
 
   return (
     <header className="flex shrink-0 items-center justify-between py-2 px-2">
-      <div className="flex items-center space-x-2">
-        {/* <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4 rotate-20"
-        /> */}
-        <div className="self-baseline-last">
-          <Breadcrumb className="mx-auto w-fit">
+      <div className="flex items-center space-x-1 md:space-x-2">
+        <SidebarTrigger className="-ml-1 md:hidden" />
+        <Separator orientation="vertical" className="md:hidden data-[orientation=vertical]:h-4" />
+        <div className="md:self-baseline-last">
+          <Breadcrumb className="mx-auto w-fit hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/home">Dashboard</BreadcrumbLink>
@@ -154,7 +153,7 @@ export function Header() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          <h1 className="text-xl font-medium hidden md:block">
+          <h1 className="text-xl font-medium block">
             {resolveBreadcrumb || "Dashboard"}
           </h1>
         </div>
@@ -162,12 +161,12 @@ export function Header() {
 
       <div>
         <div className="bg-white shadow rounded-full p-1 flex items-center space-x-2">
-          <div className="bg-gray-100 py-2 px-3 rounded-full text-sm">
+          <div className="bg-gray-100 py-2 px-3 rounded-full text-sm hidden md:block">
             {formatDate(new Date(), "PPP")}
           </div>
 
           {resolveBreadcrumb === null ? (
-            <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40">
+            <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40 hidden md:block">
               <SearchIcon
                 size={16}
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
