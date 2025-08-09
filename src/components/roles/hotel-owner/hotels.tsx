@@ -45,12 +45,12 @@ import { formatCurrency } from "@/lib/utils";
 
 function HotelListToolbar() {
 	return (
-		<div className="flex items-center justify-between border border-primary-5/20 p-2 rounded-3xl">
+		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
 			<div className="relative">
 				<input
 					type="text"
 					placeholder="Search Hotels"
-					className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-xl"
+					className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
 				/>
 				<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
 			</div>
@@ -59,18 +59,18 @@ function HotelListToolbar() {
 				<Button
 					size={"sm"}
 					variant={"ghost"}
-					className="rounded-xl bg-gray-100"
+					className="rounded-md md:rounded-xl bg-gray-100"
 				>
 					<FilterIcon />
-					Filter
+					<span className="hidden md:inline">Filter</span>
 				</Button>
 
-				<Button size={"sm"} variant={"secondary"} className="rounded-xl">
+				<Button size={"sm"} variant={"secondary"} className="rounded-md md:rounded-xl">
 					<PlusCircleIcon />
-					Add New Hotel
+					<span className="hidden md:inline">Add New Hotel</span>
 				</Button>
 
-				<Button size={"sm"} className="rounded-xl">
+				<Button size={"sm"} className="rounded-md md:rounded-xl">
 					Export
 				</Button>
 			</div>
