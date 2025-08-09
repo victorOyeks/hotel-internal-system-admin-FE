@@ -1,0 +1,11 @@
+// Folder-specific settings
+//
+// For a full list of overridable settings, and general information on folder-specific settings,
+// see the documentation: https://zed.dev/docs/configuring-zed#settings-files
+{
+  "cursor_shape": "block",
+  "tab_size": 2,
+  "format_on_save": "off",
+  "ui_font_size": 18,
+  "ui_font_family": "DejaVu Sans Mono"
+}
