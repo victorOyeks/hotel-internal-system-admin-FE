@@ -40,7 +40,7 @@ export function NavMain({
       <SidebarMenu>
         {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}  className="py-6 px-3 gap-x-3 text-base rounded-2xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" asChild isActive={isActive(item.url)}>
+              <SidebarMenuButton tooltip={item.title}  className="py-3 gap-x-3 text-base rounded-2xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" asChild isActive={isActive(item.url)}>
                 <Link href={item.url}>
                     {item.icon}
                 {item.title}

@@ -22,7 +22,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="py-8 px-4" asChild>
+            <SidebarMenuButton size="lg" className="p-4" asChild>
               <Link href="/">
                 <div className="flex items-center justify-center gap-x-2">
                     <div className="size-8 flex items-center justify-center group-data-[state=collapsed]:p-1">
