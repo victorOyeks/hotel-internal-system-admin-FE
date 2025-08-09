@@ -1,6 +1,6 @@
-export interface PageProps extends LayoutProps {}
+export interface PageProps extends AppLayoutProps {}
 
-export interface LayoutProps {
+export interface AppLayoutProps {
   params: Promise<Record<string, string>>;
   searchParams: Promise<Record<string, string>>;
   children: React.ReactNode;
