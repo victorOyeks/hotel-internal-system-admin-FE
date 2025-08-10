@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
-import { Inter, DM_Sans } from "next/font/google";
-import "./globals.css";
+import Providers from "@/components/react-query";
 import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
+import { DM_Sans, Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -41,10 +43,11 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased",
           inter.variable,
           dmSans.variable,
-          "text-foreground"
+          "text-foreground",
         )}
       >
-        {children}
+        <Providers>{children}</Providers>
+        <Toaster richColors duration={5000} />
       </body>
     </html>
   );
