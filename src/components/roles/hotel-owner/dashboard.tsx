@@ -23,6 +23,9 @@ import {
 import type { ActiveShape } from "recharts/types/util/types";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { Breadcrumb, breadcrumbAtom } from "@/lib/store";
+import { useSetAtom } from "jotai";
+import { useLayoutEffect } from "react";
 
 function EarningsSideA() {
 	const earnings = [
@@ -347,7 +350,19 @@ function HotelSuits() {
 	);
 }
 
-export function HotelOwnerDashboard() {
+export function HotelOwnerDashboard({
+	breadcrumbs = [],
+}: {breadcrumbs: Breadcrumb[];
+}) {
+	const setBreadCrumb = useSetAtom(breadcrumbAtom);
+
+	useLayoutEffect(() => {
+		setBreadCrumb({
+			title: "Dashboard",
+			breadcrumbs
+		});
+	}, [breadcrumbs, setBreadCrumb]);
+
 	return (
 		<div className="p-4 md:p-6 space-y-2 md:space-y-4">
 			<DashboardHero />

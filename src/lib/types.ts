@@ -23,3 +23,12 @@ export type HotelRole =
   | "INVENTORY"
   | "BAR"
   | "KITCHEN";
+
+export type RoomDetails = {
+  roomNumber: string;
+  roomType: string;
+  roomName: string;
+  roomPrice: number;
+  roomStatus: "available" | "dirty" | "reserved" | "booked" | "blocked";
+  roomFacilities: string[];
+}

@@ -41,7 +41,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
+import { useSetAtom } from "jotai";
+import { useLayoutEffect } from "react";
+import { DataTablePagination } from "@/components/shared/pagination";
 
 function HotelListToolbar() {
 	return (
@@ -65,7 +69,11 @@ function HotelListToolbar() {
 					<span className="hidden md:inline">Filter</span>
 				</Button>
 
-				<Button size={"sm"} variant={"secondary"} className="rounded-md md:rounded-xl">
+				<Button
+					size={"sm"}
+					variant={"secondary"}
+					className="rounded-md md:rounded-xl"
+				>
 					<PlusCircleIcon />
 					<span className="hidden md:inline">Add New Hotel</span>
 				</Button>
@@ -87,16 +95,6 @@ type HotelItem = {
 	grossRevenue: number;
 	expenses: number;
 };
-
-const hotels: HotelItem[] = Array.from({ length: 15 }, () => ({
-	id: faker.helpers.rangeToNumber({ min: 1000, max: 10000 }),
-	branchName: faker.company.name(),
-	location: faker.location.streetAddress(),
-	totalRooms: faker.helpers.rangeToNumber({ min: 10, max: 100 }),
-	occupancyRate: faker.helpers.rangeToNumber({ min: 0, max: 100 }),
-	grossRevenue: faker.helpers.rangeToNumber({ min: 100000, max: 1000000 }),
-	expenses: faker.helpers.rangeToNumber({ min: 5000, max: 500000 }),
-}));
 
 const columnHelper = createColumnHelper<HotelItem>();
 
@@ -169,7 +167,11 @@ const columns = [
 	}),
 ];
 
-function HotelList() {
+function HotelList({
+	hotels
+}: {
+	hotels: HotelItem[];
+}) {
 	const table = useReactTable({
 		data: hotels,
 		columns: columns,
@@ -232,39 +234,7 @@ function HotelList() {
 									{table.getFilteredRowModel().rows.length} row(s) selected.
 								</p>
 
-								<div className="flex items-center space-x-2">
-									<Button
-										variant="outline"
-										size="icon"
-										className="size-6"
-										disabled={!table.getCanPreviousPage()}
-										onClick={() => table.previousPage()}
-									>
-										<ChevronLeftIcon className="w-4 h-4" />
-									</Button>
-
-									{Array.from({ length: table.getPageCount() }, (_, index) => (
-										<Button
-											key={index + 1}
-											size="icon"
-											className="size-6"
-											disabled={index === table.getState().pagination.pageIndex}
-											onClick={() => table.setPageIndex(index)}
-										>
-											{index + 1}
-										</Button>
-									))}
-
-									<Button
-										variant="outline"
-										size="icon"
-										className="size-6"
-										disabled={!table.getCanNextPage()}
-										onClick={() => table.nextPage()}
-									>
-										<ChevronRightIcon className="w-4 h-4" />
-									</Button>
-								</div>
+								<DataTablePagination table={table} />
 							</div>
 						</TableCell>
 					</TableRow>
@@ -274,11 +244,30 @@ function HotelList() {
 	);
 }
 
-export function HotelOwnerHotels() {
+export function HotelOwnerHotels({
+	breadcrumb,
+	hotels
+}: {
+	breadcrumb: {
+		title: string;
+		breadcrumbs: Breadcrumb[];
+	};
+	hotels: HotelItem[];
+}) {
+  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+
+  useLayoutEffect(
+    () => {
+      setBreadcrumb(breadcrumb)
+      return () => setBreadcrumb(null)
+    },
+    [setBreadcrumb, breadcrumb]
+  )
+
 	return (
 		<div className="p-4 space-y-2 md:space-y-4">
 			<HotelListToolbar />
-			<HotelList />
+			<HotelList hotels={hotels} />
 		</div>
 	);
 }

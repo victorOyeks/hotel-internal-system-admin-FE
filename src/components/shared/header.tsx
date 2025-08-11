@@ -11,23 +11,25 @@ import {
   XIcon,
 } from "lucide-react";
 // import { Separator } from "@/components/ui/separator";
-import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 // import { Input } from "../ui/input";
 import { Button } from "@/components/ui/button";
-import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
+import { breadcrumbAtom } from "@/lib/store";
+import { useAtomValue } from "jotai";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
+  BreadcrumbLink,
+  BreadcrumbPage,
 } from "../ui/breadcrumb";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { SidebarTrigger } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
+import { SidebarTrigger } from "../ui/sidebar";
+import { Skeleton } from "../ui/skeleton";
 
 function ProfilePopover({
   open,
@@ -123,39 +125,46 @@ function ProfilePopover({
 }
 
 export function Header() {
-  const pathname = usePathname();
+  const breadcrumb = useAtomValue(breadcrumbAtom);
   const [isOpen, setIsOpen] = useState(false);
-
-  const resolveBreadcrumb = useMemo(() => {
-    const title = hotelOwnerLinks.find((link) => link.url === pathname)?.title;
-    return title === "Dashboard" ? null : title;
-  }, [pathname]);
 
   return (
     <header className="flex shrink-0 items-center justify-between py-2 px-2">
       <div className="flex items-center space-x-1 md:space-x-2">
         <SidebarTrigger className="-ml-1 md:hidden" />
-        <Separator orientation="vertical" className="md:hidden data-[orientation=vertical]:h-4" />
+        <Separator
+          orientation="vertical"
+          className="md:hidden data-[orientation=vertical]:h-4"
+        />
         <div className="md:self-baseline-last">
-          <Breadcrumb className="mx-auto w-fit hidden md:flex">
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/home">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              {resolveBreadcrumb && (
-                <>
-                  <BreadcrumbSeparator className="hidden md:block" />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{resolveBreadcrumb}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
-              )}
-            </BreadcrumbList>
-          </Breadcrumb>
+          {breadcrumb ? (
+            <>
+              <Breadcrumb className="mx-auto w-fit hidden md:flex">
+                <BreadcrumbList>
+                  {breadcrumb.breadcrumbs.map((b, i) => (
+                    <Fragment key={b.label}>
+                      {i < breadcrumb.breadcrumbs.length - 1 ? (
+                        <>
+                          <BreadcrumbItem>
+                            <BreadcrumbLink asChild>
+                              <Link href={b.href}>{b.label}</Link>
+                            </BreadcrumbLink>
+                          </BreadcrumbItem>
+                          <BreadcrumbSeparator />
+                        </>
+                      ) : (
+                        <BreadcrumbPage>{b.label}</BreadcrumbPage>
+                      )}
+                    </Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
 
-          <h1 className="text-xl font-medium block">
-            {resolveBreadcrumb || "Dashboard"}
-          </h1>
+              <h1 className="text-xl font-medium block">{breadcrumb.title}</h1>
+            </>
+          ) : (
+            <Skeleton className="bg-primary-5/20 w-[200px] p-6" />
+          )}
         </div>
       </div>
 
@@ -165,19 +174,17 @@ export function Header() {
             {formatDate(new Date(), "PPP")}
           </div>
 
-          {resolveBreadcrumb === null ? (
-            <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40 hidden md:block">
-              <SearchIcon
-                size={16}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
-              />
-              <input
-                className="pl-5 appearance-none bg-transparent focus:outline-none"
-                placeholder="Search"
-                type="text"
-              />
-            </div>
-          ) : null}
+          <div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40 hidden lg:block">
+            <SearchIcon
+              size={16}
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
+            />
+            <input
+              className="pl-5 appearance-none bg-transparent focus:outline-none"
+              placeholder="Search"
+              type="text"
+            />
+          </div>
 
           <Button size={"icon"} variant={"ghost"} className="rounded-full">
             <BellIcon size={20} className="text-primary-1" />
