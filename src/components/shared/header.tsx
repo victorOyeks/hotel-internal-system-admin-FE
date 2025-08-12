@@ -30,16 +30,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Skeleton } from "../ui/skeleton";
+import { PopoverClose } from "@radix-ui/react-popover";
 
-function ProfilePopover({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+function ProfilePopover() {
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover>
       <PopoverTrigger asChild>
         <Button size="icon" variant="ghost" className="rounded-full p-2">
           <Avatar>
@@ -61,14 +56,15 @@ function ProfilePopover({
         <div className="flex items-center justify-between">
           <p className="font-medium text-lg">Profile</p>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={() => onOpenChange(false)}
-          >
-            <XIcon />
-          </Button>
+          <PopoverClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+            >
+              <XIcon />
+            </Button>
+          </PopoverClose>
         </div>
 
         <div className="max-w-[content] mx-auto flex flex-col items-center justify-center space-y-3">
@@ -126,7 +122,6 @@ function ProfilePopover({
 
 export function Header() {
   const breadcrumb = useAtomValue(breadcrumbAtom);
-  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <header className="flex shrink-0 items-center justify-between py-2 px-2">
@@ -190,10 +185,7 @@ export function Header() {
             <BellIcon size={20} className="text-primary-1" />
           </Button>
 
-          <ProfilePopover
-            onOpenChange={(value) => setIsOpen(value)}
-            open={isOpen}
-          />
+          <ProfilePopover />
         </div>
       </div>
     </header>

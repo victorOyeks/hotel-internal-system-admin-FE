@@ -2,8 +2,6 @@ import { Table } from "@tanstack/react-table";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useMemo } from "react";
@@ -76,6 +74,10 @@ export function DataTablePagination<T>({ table }: { table: Table<T> }) {
     () => generatePagination(pageIndex, pageCount),
     [pageIndex, pageCount]
   );
+
+  if (pageCount <= 1) {
+    return null;
+  }
 
   return (
     <div className="flex items-center space-x-2">
