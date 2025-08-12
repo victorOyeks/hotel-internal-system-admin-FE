@@ -20,6 +20,7 @@ import {
   PlusCircleIcon,
   SearchIcon,
   TrashIcon,
+  AlertTriangleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ import {
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import { atom, useAtom, useSetAtom } from "jotai";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import {
@@ -73,7 +74,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
-import { title } from "process";
 import { Textarea } from "@/components/ui/textarea";
 
 type HotelItem = {
@@ -87,7 +87,10 @@ type HotelItem = {
 };
 
 const columnHelper = createColumnHelper<HotelItem>();
-const successDialogAtom = atom(false);
+const successDialogAtom = atom({
+  show: false,
+  message: "",
+});
 
 function HotelListToolbar({ table }: { table: TableType<HotelItem> }) {
   return (
@@ -130,7 +133,7 @@ function AddNewHotelDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="p-4 rounded-2xl max-w-3">
+      <DialogContent className="p-4 rounded-2xl">
         <DialogTitle>New Hotel</DialogTitle>
         <DialogDescription className="sr-only">
           Fill in the details below to add a new hotel branch.
@@ -205,7 +208,10 @@ function SingleHotelForm({ setOpen }: { setOpen: (open: boolean) => void }) {
       setIsPending(false);
       setOpen(false);
       form.reset();
-      setShowSuccessDialog(true);
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel Added successfully",
+      });
     }, 3000);
   }, []);
 
@@ -293,12 +299,139 @@ function SingleHotelForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   );
 }
 
+const editHotelFormSchema = hotelFormSchema;
+
+function EditHotelForm({
+  initialValues,
+  setOpen,
+}: {
+  initialValues: z.infer<typeof editHotelFormSchema>;
+  setOpen: (open: boolean) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(editHotelFormSchema),
+    defaultValues: initialValues,
+    progressive: true,
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+  });
+
+  const handleSubmit = useCallback((data: z.infer<typeof hotelFormSchema>) => {
+    console.log("Form submitted with data:", data);
+    setIsPending(true);
+    setTimeout(() => {
+      setIsPending(false);
+      setOpen(false);
+      form.reset();
+      setShowSuccessDialog({
+        show: true,
+        message: "Changes saved successfully",
+      });
+    }, 3000);
+  }, []);
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle>Edit hotel</DialogTitle>
+      <DialogDescription className="sr-only">
+        Edit hotel details
+      </DialogDescription>
+      <Form {...form}>
+        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+          <FormField
+            name="hotelName"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Branch Hotel Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g Gibson Hotel Ajah" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Branch Hotel Location</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g Ajah, Lagos" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="totalRooms"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Total Room Count</FormLabel>
+                <FormControl>
+                  <Input placeholder="100" min={1} type="number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="branchManager"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assign Branch Manager</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Branch Manager" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="manager1">Manager 1</SelectItem>
+                    <SelectItem value="manager2">Manager 2</SelectItem>
+                    <SelectItem value="manager3">Manager 3</SelectItem>
+                    <SelectItem value="manager4">Manager 4</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button
+            type="submit"
+            className="mt-4 w-full font-semibold"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" />
+                <span>Creating, please wait...</span>
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
 const contactManagerFormSchema = z.object({
   title: z.string().nonempty("Title is required"),
   message: z.string().nonempty("Message is required"),
 });
 
 function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(contactManagerFormSchema),
     defaultValues: {
@@ -310,11 +443,15 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
     console.log("Message sent:", data.message);
     setOpen(false);
+    setShowSuccessDialog({
+      show: true,
+      message: "Message delivered",
+    });
     form.reset();
   };
 
   return (
-    <DialogContent className="p-4 rounded-2xl max-w-3">
+    <DialogContent className="p-4 rounded-2xl">
       <DialogTitle>Contact Branch Manager</DialogTitle>
       <DialogDescription className="sr-only">
         Fill in the details below to send a message to the branch manager.
@@ -361,6 +498,76 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   );
 }
 
+const deleteHotelSchema = z.object({
+  confirmationText: z.string().nonempty("Confirmation text is required").refine((s) => s === "DELETE", {error: "Type \"DELETE\" to confirm."}),
+});
+
+  function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
+    const form = useForm({
+      resolver: zodResolver(deleteHotelSchema),
+      defaultValues: {
+        confirmationText: ""
+      },
+      reValidateMode: "onSubmit",
+      mode: "onSubmit"
+    });
+
+    const handleDelete = useCallback(async () => {
+    const isValid = await form.trigger();
+
+    if (!isValid) return;
+
+    // API Call will be done here.
+  }, [form]);
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle className="sr-only">Delete Hotel</DialogTitle>
+      <DialogDescription className="sr-only">
+        Type "DELETE" to confirm
+      </DialogDescription>
+
+      <div className="flex flex-col items-center justify-center">
+        <AlertTriangleIcon className="text-destructive-2 size-12" />
+        <h2 className="text-destructive-2">Warning!</h2>
+        <p className="text-gray-600 text-center">
+          This action Cannot be Undone, to confirm this action is
+          deliberate “type delete below”
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleDelete)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="confirmationText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmation Text</FormLabel>
+                <FormControl>
+                  <Input placeholder="Type DELETE to confirm" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full font-semibold">
+            Delete Hotel
+          </Button>
+          <Button
+            type="button"
+            className="w-full font-semibold bg-gray-100"
+            variant={"ghost"}
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
 const columns = [
   columnHelper.accessor("id", {
     header: "Hotel ID",
@@ -394,8 +601,45 @@ const columns = [
     id: "actions",
     cell: (info) => {
       const [open, setOpen] = useState<
-        "contact-manager" | "delete-hotel" | "configure-hotel" | false
+        "contact-manager" | "delete-hotel" | "edit-hotel" | false
       >(false);
+
+      const dialog = useMemo(() => {
+        switch (open) {
+          case "contact-manager":
+            return (
+              <ContactManagerForm
+                setOpen={(isOpen) =>
+                  setOpen(isOpen ? "contact-manager" : false)
+                }
+              />
+            );
+          case "edit-hotel": {
+            return (
+              <EditHotelForm
+                initialValues={{
+                  branchManager: "manager2",
+                  hotelName: "Gibson Hotel, Ajah",
+                  location: "Lekki, Ajah",
+                  totalRooms: "194",
+                }}
+                setOpen={(isOpen) =>
+                  setOpen(isOpen ? "contact-manager" : false)
+                }
+              />
+            );
+          }
+          case "delete-hotel":
+            return (
+              <DeleteHotel
+                setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
+              />
+            );
+          default:
+            return null;
+        }
+      }, [open]);
+
       return (
         <Dialog
           open={typeof open === "string"}
@@ -418,30 +662,42 @@ const columns = [
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <DoorOpenIcon />
-                Configure Hotel
+              <DropdownMenuItem asChild>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("edit-hotel")}
+                >
+                  <DoorOpenIcon />
+                  Configure Hotel
+                </DialogTrigger>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <DialogTrigger onClick={() => setOpen("contact-manager")}>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("contact-manager")}
+                >
                   <MessageCircleMoreIcon />
                   Contact Branch Manager
                 </DialogTrigger>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
-                <TrashIcon className="text-red-500" />
-                Delete Hotel
+              <DropdownMenuItem
+                className="hover:bg-red-500/10 text-red-500 focus:text-red-500"
+                asChild
+              >
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("delete-hotel")}
+                >
+                  <TrashIcon className="text-red-500" />
+                  Delete Hotel
+                </DialogTrigger>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {open === "contact-manager" && (
-            <ContactManagerForm
-              setOpen={(isOpen) => setOpen(isOpen ? "contact-manager" : false)}
-            />
-          )}
+          {dialog}
         </Dialog>
       );
     },
@@ -543,7 +799,11 @@ export function HotelOwnerHotels({
     <div className="p-4 space-y-2 md:space-y-4">
       <HotelListToolbar table={table} />
       <HotelList table={table} />
-      <SuccessDialog open={successDialogOpen} setOpen={setSuccessDialogOpen} />
+      <SuccessDialog
+        open={successDialogOpen.show}
+        setOpen={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        message={successDialogOpen.message}
+      />
     </div>
   );
 }
