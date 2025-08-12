@@ -293,31 +293,7 @@ function HotelSuits() {
 		{
 			name: "Budget Suite",
 			pricePerNight: 50000,
-		},
-		{
-			name: "Presidential Suite",
-			pricePerNight: 300000,
-		},
-		{
-			name: "Family Suite",
-			pricePerNight: 200000,
-		},
-		{
-			name: "Honeymoon Suite",
-			pricePerNight: 250000,
-		},
-		{
-			name: "Business Suite",
-			pricePerNight: 180000,
-		},
-		{
-			name: "Royal Suite",
-			pricePerNight: 350000,
-		},
-		{
-			name: "Penthouse Suite",
-			pricePerNight: 400000,
-		},
+		}
 	];
 
 	return (

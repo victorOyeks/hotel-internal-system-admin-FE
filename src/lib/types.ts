@@ -32,3 +32,13 @@ export type RoomDetails = {
   roomStatus: "available" | "dirty" | "reserved" | "booked" | "blocked";
   roomFacilities: string[];
 }
+export type RoomBooking = {
+  id: string;
+  guestName: string;
+  roomType: string;
+  roomNumber: string;
+  branchName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  status: "checked-in" | "pending" | "available" | "checked-out" | "cancelled";
+};

@@ -56,7 +56,6 @@ import { DialogTrigger } from "@radix-ui/react-dialog";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -499,20 +498,23 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 }
 
 const deleteHotelSchema = z.object({
-  confirmationText: z.string().nonempty("Confirmation text is required").refine((s) => s === "DELETE", {error: "Type \"DELETE\" to confirm."}),
+  confirmationText: z
+    .string()
+    .nonempty("Confirmation text is required")
+    .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-  function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
-    const form = useForm({
-      resolver: zodResolver(deleteHotelSchema),
-      defaultValues: {
-        confirmationText: ""
-      },
-      reValidateMode: "onSubmit",
-      mode: "onSubmit"
-    });
+function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
+  const form = useForm({
+    resolver: zodResolver(deleteHotelSchema),
+    defaultValues: {
+      confirmationText: "",
+    },
+    reValidateMode: "onSubmit",
+    mode: "onSubmit",
+  });
 
-    const handleDelete = useCallback(async () => {
+  const handleDelete = useCallback(async () => {
     const isValid = await form.trigger();
 
     if (!isValid) return;
@@ -531,8 +533,8 @@ const deleteHotelSchema = z.object({
         <AlertTriangleIcon className="text-destructive-2 size-12" />
         <h2 className="text-destructive-2">Warning!</h2>
         <p className="text-gray-600 text-center">
-          This action Cannot be Undone, to confirm this action is
-          deliberate “type delete below”
+          This action Cannot be Undone, to confirm this action is deliberate
+          “type delete below”
         </p>
       </div>
 
@@ -624,9 +626,7 @@ const columns = [
                   location: rowData.location,
                   totalRooms: rowData.totalRooms.toString(),
                 }}
-                setOpen={(isOpen) =>
-                  setOpen(isOpen ? "edit-hotel" : false)
-                }
+                setOpen={(isOpen) => setOpen(isOpen ? "edit-hotel" : false)}
               />
             );
           }
