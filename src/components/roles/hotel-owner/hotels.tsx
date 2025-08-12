@@ -615,16 +615,17 @@ const columns = [
               />
             );
           case "edit-hotel": {
+            const rowData = info.row.original;
             return (
               <EditHotelForm
                 initialValues={{
                   branchManager: "manager2",
-                  hotelName: "Gibson Hotel, Ajah",
-                  location: "Lekki, Ajah",
-                  totalRooms: "194",
+                  hotelName: rowData.branchName,
+                  location: rowData.location,
+                  totalRooms: rowData.totalRooms.toString(),
                 }}
                 setOpen={(isOpen) =>
-                  setOpen(isOpen ? "contact-manager" : false)
+                  setOpen(isOpen ? "edit-hotel" : false)
                 }
               />
             );
