@@ -4,22 +4,25 @@ import { type PropsWithChildren, use } from "react";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Provider as JotaiProvider } from "jotai";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
-	const cookieStore = use(cookies());
-	const tok = cookieStore.get("hms.jwt.session_token");
+  const cookieStore = use(cookies());
+  const tok = cookieStore.get("hms.jwt.session_token");
 
-	if (!tok) {
-		redirect("/auth");
-	}
+  if (!tok) {
+    redirect("/auth");
+  }
 
-	return (
-		<SidebarProvider>
-			<AppSidebar collapsible="icon" />
-			<SidebarInset className="bg-background-blue">
-				<Header />
-				{children}
-			</SidebarInset>
-		</SidebarProvider>
-	);
+  return (
+    <JotaiProvider>
+      <SidebarProvider>
+        <AppSidebar collapsible="icon" />
+        <SidebarInset className="bg-background-blue">
+          <Header />
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </JotaiProvider>
+  );
 }
