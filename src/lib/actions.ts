@@ -3,8 +3,7 @@
 import { cookies } from "next/headers";
 import { $fetch } from "./fetch";
 import type { ApiResponse } from "./types";
-
-const tokenKey = "hms.jwt.session_token";
+import { tokenKey } from "./server-fns";
 
 export async function login(payload: {
   email: string;
@@ -37,7 +36,7 @@ export async function login(payload: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    domain: process.env.NODE_ENV === "production" ? "netlify.app" : undefined,
+    domain: process.env.NODE_ENV === "production" ? "apex-hms.netlify.app" : undefined,
     maxAge: 60 * 60 * 24 * 7,
   });
 
