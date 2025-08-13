@@ -259,17 +259,20 @@ function BookingsListToolbar({ table }: { table: TableType<RoomBooking> }) {
   const [tableSection, setTableSection] = useAtom(tableSectionAtom);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
-  const handleExport = useCallback(async (data: ExportData) => {
-    // Handle the export logic here, e.g., sending data to an API
-    console.log("Exporting data with the following details:", data);
+  const handleExport = useCallback(
+    async (data: ExportData) => {
+      // Handle the export logic here, e.g., sending data to an API
+      console.log("Exporting data with the following details:", data);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setExportDialogOpen(false);
-    setSuccessDialogOpen({
-      show: true,
-      message: "Data exported successfully!",
-    });
-  }, []);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setExportDialogOpen(false);
+      setSuccessDialogOpen({
+        show: true,
+        message: "Data exported successfully!",
+      });
+    },
+    [setExportDialogOpen, setSuccessDialogOpen]
+  );
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">

@@ -72,7 +72,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SuccessDialog } from "@/components/shared/shared-dialogs";
+import { ExportData, ExportDialog, SuccessDialog } from "@/components/shared/shared-dialogs";
 import { Textarea } from "@/components/ui/textarea";
 
 type HotelItem = {
@@ -92,6 +92,23 @@ const successDialogAtom = atom({
 });
 
 function HotelListToolbar({ table }: { table: TableType<HotelItem> }) {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+
+
+  const handleExport = useCallback(
+    async (data: ExportData) => {
+      // Handle the export logic here, e.g., sending data to an API
+      console.log("Exporting data with the following details:", data);
+      setExportDialogOpen(false);
+      setSuccessDialogOpen({
+        show: true,
+        message: "Data exported successfully!",
+      });
+    },
+    [setExportDialogOpen, setSuccessDialogOpen]
+  );
+
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div className="relative">
@@ -108,9 +125,11 @@ function HotelListToolbar({ table }: { table: TableType<HotelItem> }) {
 
         <AddNewHotelDialog />
 
-        <Button size={"sm"} className="rounded-md md:rounded-xl">
-          Export
-        </Button>
+        <ExportDialog
+          open={exportDialogOpen}
+          setOpen={setExportDialogOpen}
+          onSubmit={handleExport}
+        />
       </div>
     </div>
   );
