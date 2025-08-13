@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { HotelOwnerHotels } from "@/components/roles/hotel-owner/hotels";
 import { faker } from "@faker-js/faker";
 
@@ -18,7 +17,6 @@ const hotels = (() => {
 })();
 
 function HotelsPage() {
-	const role = "hotel-owner";
 
 	const breadcrumb = {
 		title: "Hotels",
@@ -34,12 +32,7 @@ function HotelsPage() {
 		],
 	};
 
-	switch (role) {
-		case "hotel-owner":
 			return <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels} />;
-		default:
-			return notFound();
-	}
 }
 
 export default HotelsPage;

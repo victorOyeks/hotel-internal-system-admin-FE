@@ -12,8 +12,22 @@ import {
 import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
+import type { HotelRole } from "@/lib/types";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ role, ...props }: React.ComponentProps<typeof Sidebar> & {
+	role: HotelRole
+}) {
+
+	const links: Record<HotelRole, React.ComponentProps<typeof NavMain>['items']> = {
+		HOTEL_OWNER: hotelOwnerLinks.map(l => ({...l, url: `/owner/${l.url}`})),
+		BAR: [],
+		FRONT_DESK: [],
+		MAINTENANCE: [],
+		INVENTORY: [],
+		KITCHEN: [],
+		MANAGER: []
+	}
+
 	return (
 		<Sidebar {...props}>
 			<SidebarHeader>
@@ -35,7 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={hotelOwnerLinks} />
+				<NavMain items={links[role]} />
 			</SidebarContent>
 			<SidebarRail />
 		</Sidebar>

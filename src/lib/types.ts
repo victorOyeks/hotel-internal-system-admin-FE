@@ -41,4 +41,4 @@ export type RoomBooking = {
 	checkInDate: string;
 	checkOutDate: string;
 	status: "checked-in" | "pending" | "available" | "checked-out" | "cancelled";
-};
+}

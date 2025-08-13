@@ -18,11 +18,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { login } from "@/lib/actions";
+import { paths } from "@/lib/shared";
+import type { HotelRole } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -35,13 +37,16 @@ const formSchema = z.object({
 
 function AuthPage() {
 	const router = useRouter();
+	const searchParam = useSearchParams();
+
 	const loginMutation = useMutation({
 		mutationFn: login,
 		onSettled: () => {
 			loginMutation.reset();
 		},
-		onSuccess: () => {
-			router.replace("/home");
+		onSuccess: (data) => {
+			const from = searchParam.get("from");
+			router.replace(from ? from : paths[data.role as HotelRole]);
 		},
 	});
 
