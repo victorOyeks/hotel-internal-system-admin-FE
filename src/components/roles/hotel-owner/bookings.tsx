@@ -12,7 +12,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { type Table as TableType } from "@tanstack/react-table";
 import {
   BanIcon,
@@ -44,7 +44,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge, BadgeVariant } from "@/components/ui/badge";
 import { RoomBooking } from "@/lib/types";
-import { ExportDialog } from "@/components/shared/shared-dialogs";
+import {
+  ExportData,
+  ExportDialog,
+  SuccessDialog,
+} from "@/components/shared/shared-dialogs";
 
 const successDialogAtom = atom({
   show: false,
@@ -251,7 +255,22 @@ function BookingList({ table }: { table: TableType<RoomBooking> }) {
 }
 
 function BookingsListToolbar({ table }: { table: TableType<RoomBooking> }) {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tableSection, setTableSection] = useAtom(tableSectionAtom);
+  const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+
+  const handleExport = useCallback(async (data: ExportData) => {
+    // Handle the export logic here, e.g., sending data to an API
+    console.log("Exporting data with the following details:", data);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setExportDialogOpen(false);
+    setSuccessDialogOpen({
+      show: true,
+      message: "Data exported successfully!",
+    });
+  }, []);
+
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div className="flex items-center gap-x-2">
@@ -299,7 +318,11 @@ function BookingsListToolbar({ table }: { table: TableType<RoomBooking> }) {
 
         {/* <AddNewHotelDialog /> */}
 
-        <ExportDialog />
+        <ExportDialog
+          open={exportDialogOpen}
+          setOpen={setExportDialogOpen}
+          onSubmit={handleExport}
+        />
       </div>
     </div>
   );
@@ -335,6 +358,11 @@ export function BookingsPage({
     <div className="p-4 space-y-2 md:space-y-4">
       <BookingsListToolbar table={table} />
       <BookingList table={table} />
+      <SuccessDialog
+        open={successDialogOpen.show}
+        setOpen={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        message={successDialogOpen.message}
+      />
     </div>
   );
 }
