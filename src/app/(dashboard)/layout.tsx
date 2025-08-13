@@ -8,22 +8,22 @@ import { Provider as JotaiProvider } from "jotai";
 import { tokenKey } from "@/lib/server-fns";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
-  const cookieStore = use(cookies());
-  const tok = cookieStore.get(tokenKey);
+	const cookieStore = use(cookies());
+	const tok = cookieStore.get(tokenKey);
 
-  if (!tok) {
-    redirect("/auth");
-  }
+	if (!tok) {
+		redirect("/auth");
+	}
 
-  return (
-    <JotaiProvider>
-      <SidebarProvider>
-        <AppSidebar collapsible="icon" />
-        <SidebarInset className="bg-background-blue">
-          <Header />
-          {children}
-        </SidebarInset>
-      </SidebarProvider>
-    </JotaiProvider>
-  );
+	return (
+		<JotaiProvider>
+			<SidebarProvider>
+				<AppSidebar collapsible="icon" />
+				<SidebarInset className="bg-background-blue">
+					<Header />
+					{children}
+				</SidebarInset>
+			</SidebarProvider>
+		</JotaiProvider>
+	);
 }

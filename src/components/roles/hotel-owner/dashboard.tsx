@@ -23,7 +23,7 @@ import {
 import type { ActiveShape } from "recharts/types/util/types";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
-import { Breadcrumb, breadcrumbAtom } from "@/lib/store";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
 import { useLayoutEffect } from "react";
 
@@ -293,7 +293,7 @@ function HotelSuits() {
 		{
 			name: "Budget Suite",
 			pricePerNight: 50000,
-		}
+		},
 	];
 
 	return (
@@ -328,14 +328,15 @@ function HotelSuits() {
 
 export function HotelOwnerDashboard({
 	breadcrumbs = [],
-}: {breadcrumbs: Breadcrumb[];
+}: {
+	breadcrumbs: Breadcrumb[];
 }) {
 	const setBreadCrumb = useSetAtom(breadcrumbAtom);
 
 	useLayoutEffect(() => {
 		setBreadCrumb({
 			title: "Dashboard",
-			breadcrumbs
+			breadcrumbs,
 		});
 	}, [breadcrumbs, setBreadCrumb]);
 
