@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge, BadgeVariant } from "@/components/ui/badge";
 import { RoomBooking } from "@/lib/types";
+import { ExportDialog } from "@/components/shared/shared-dialogs";
 
 const successDialogAtom = atom({
   show: false,
@@ -298,9 +299,7 @@ function BookingsListToolbar({ table }: { table: TableType<RoomBooking> }) {
 
         {/* <AddNewHotelDialog /> */}
 
-        <Button size={"sm"} className="rounded-md md:rounded-xl">
-          Export
-        </Button>
+        <ExportDialog />
       </div>
     </div>
   );
