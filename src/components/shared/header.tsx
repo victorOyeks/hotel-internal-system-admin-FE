@@ -11,7 +11,7 @@ import {
 	XIcon,
 } from "lucide-react";
 // import { Separator } from "@/components/ui/separator";
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 // import { Input } from "../ui/input";
 import { Button } from "@/components/ui/button";
 import { breadcrumbAtom } from "@/lib/store";
@@ -31,8 +31,11 @@ import { Separator } from "../ui/separator";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Skeleton } from "../ui/skeleton";
 import { PopoverClose } from "@radix-ui/react-popover";
+import type { UserInfoResponse } from "@/lib/fetch";
 
-function ProfilePopover() {
+function ProfilePopover({ user }: {
+	user: UserInfoResponse
+}) {
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
@@ -75,8 +78,8 @@ function ProfilePopover() {
 					</Avatar>
 
 					<div className="text-center space-y-0.5">
-						<p className="text-2xl font-medium leading-tight">John Doe</p>
-						<p className="text-sm text-gray-600">johndoe@example.com</p>
+						<p className="text-2xl font-medium leading-tight">{user.fullName}</p>
+						<p className="text-sm text-gray-600">{user.email}</p>
 					</div>
 				</div>
 
@@ -116,7 +119,9 @@ function ProfilePopover() {
 	);
 }
 
-export function Header() {
+export function Header({ user }: {
+	user: UserInfoResponse
+}) {
 	const breadcrumb = useAtomValue(breadcrumbAtom);
 
 	return (
@@ -181,7 +186,7 @@ export function Header() {
 						<BellIcon size={20} className="text-primary-1" />
 					</Button>
 
-					<ProfilePopover />
+					<ProfilePopover user={user} />
 				</div>
 			</div>
 		</header>
