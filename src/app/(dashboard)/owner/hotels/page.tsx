@@ -4,39 +4,54 @@ import { getQueryClient } from "@/lib/queries";
 import { getToken } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
+import { fromPromise } from "neverthrow";
 
 function HotelsPage() {
   const token = use(getToken()) as string;
 
   const queryClient = getQueryClient();
 
-  const hotels = use(queryClient.fetchQuery({
-    queryKey: ["hotels"],
-    queryFn: async () => {
-      const response = await $fetch("@get/api/hotel-owners/hotels", {
-        auth: {
-          type: "Bearer",
-          token,
-        },
-        throw: true,
-      });
-      return response.data;
-    },
-  }));
+  const hotels = use(
+    queryClient.fetchQuery({
+      queryKey: ["hotels"],
+      queryFn: async () => {
+        const response = await fromPromise(
+          $fetch("@get/api/hotel-owners/hotels", {
+            auth: {
+              type: "Bearer",
+              token,
+            },
+            throw: true,
+          }),
+          (error) => new Error("Failed to fetch hotels", { cause: error }));
+        if (response.isErr()) {
+          throw response.error;
+        }
+        return response.value.data;
+      },
+    }),
+  );
 
-  const managers = use(queryClient.fetchQuery({
-    queryKey: ['hotel-managers'],
-    queryFn: async () => {
-      const response = await $fetch("@get/api/hotel-owners/managers", {
-        auth: {
-          type: "Bearer",
-          token,
-        },
-        throw: true,
-      });
-      return response.data;
-    },
-  }))
+  const managers = use(
+    queryClient.fetchQuery({
+      queryKey: ["hotel-managers"],
+      queryFn: async () => {
+        const response = await fromPromise(
+          $fetch("@get/api/hotel-owners/managers", {
+            auth: {
+              type: "Bearer",
+              token,
+            },
+            throw: true,
+          }),
+          (error) => new Error("Failed to fetch hotel managers", { cause: error }));
+        if (response.isErr()) {
+          throw response.error;
+        }
+        return response.value.data;
+      },
+    }),
+  );
 
   const breadcrumb = {
     title: "Hotels",
