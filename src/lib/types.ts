@@ -23,22 +23,3 @@ export type HotelRole =
 	| "INVENTORY"
 	| "BAR"
 	| "KITCHEN";
-
-export type RoomDetails = {
-	roomNumber: string;
-	roomType: string;
-	roomName: string;
-	roomPrice: number;
-	roomStatus: "available" | "dirty" | "reserved" | "booked" | "blocked";
-	roomFacilities: string[];
-};
-export type RoomBooking = {
-	id: string;
-	guestName: string;
-	roomType: string;
-	roomNumber: string;
-	branchName: string;
-	checkInDate: string;
-	checkOutDate: string;
-	status: "checked-in" | "pending" | "available" | "checked-out" | "cancelled";
-}

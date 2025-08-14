@@ -39,6 +39,8 @@ const RoomResponse = z.object({
     roomFacility: z.array(z.string()),
 });
 
+export type RoomDetails = z.infer<typeof RoomResponse>;
+
 const ApiResponseRoomResponse = z.object({
     requestTime: z.coerce.date(),
     requestType: z.string(),
@@ -63,6 +65,8 @@ const GetHotelResponse = z.object({
     grossRevenue: z.string(),
     expenses: z.string(),
 });
+
+export type GetHotelResponse = z.infer<typeof GetHotelResponse>;
 
 const ApiResponseGetHotelResponse = z.object({
     requestTime: z.coerce.date(),
@@ -142,6 +146,8 @@ const HotelManager = z.object({
     phoneNumber: z.string(),
 });
 
+export type HotelManager = z.infer<typeof HotelManager>;
+
 const OnboardHotelResponse = z.object({
     hotelName: z.string(),
     hotelAddress: z.string(),
@@ -191,6 +197,8 @@ const UserInfoResponse = z.object({
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
 });
+
+export type UserInfoResponse = z.infer<typeof UserInfoResponse>;
 
 const ApiResponseUserInfoResponse = z.object({
     requestTime: z.coerce.date(),
