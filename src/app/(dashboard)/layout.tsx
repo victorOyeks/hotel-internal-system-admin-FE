@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 			<SidebarProvider>
 				<AppSidebar collapsible="icon" role={user.data.role as HotelRole} />
 				<SidebarInset className="bg-background-blue">
-					<Header />
+					<Header user={user.data} />
 					{children}
 				</SidebarInset>
 			</SidebarProvider>

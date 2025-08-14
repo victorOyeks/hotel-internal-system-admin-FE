@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { paths } from "@/lib/shared";
 import { $fetch } from "@/lib/fetch";
+import { fromPromise } from "neverthrow";
 
 const tokenKey = "hms.jwt.session_token";
 
@@ -30,16 +31,22 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isProtectedPage || isAuthPage) {
-    const { data, error } = await $fetch("@get/api/users/me", {
+    const response = await fromPromise($fetch("@get/api/users/me", {
       auth: { type: "Bearer", token },
-      cache: "force-cache"
-    });
+      cache: "force-cache",
+    }), (error) => new Error("Fetch failed", { cause: error }));
 
-    if (error) {
+    if (!response.isOk()) {
+      return NextResponse.error();
+    }
+
+    if (response.value.error) {
       const response = NextResponse.redirect(new URL("/auth", request.url));
       response.cookies.delete(tokenKey);
       return response;
     }
+
+    const data = response.value.data
 
     if (data && isAuthPage) {
       return NextResponse.redirect(new URL(paths[data.data.role], request.url));

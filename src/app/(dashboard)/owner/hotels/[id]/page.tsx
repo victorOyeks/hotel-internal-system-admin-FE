@@ -1,11 +1,9 @@
 import { ViewSingleHotelPage } from "@/components/roles/hotel-owner/view-single-hotel";
-import type { RoomDetails } from "@/lib/types";
+import { $fetch } from "@/lib/fetch";
+import { getQueryClient } from "@/lib/queries";
+import { getToken } from "@/lib/server-fns";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
-
-async function resolveHotelName(id: string): Promise<string> {
-  // Simulate fetching hotel name from an API or database
-  return `Hotel ${id}`;
-}
 
 export default function Page({
   params,
@@ -15,10 +13,33 @@ export default function Page({
   }>;
 }) {
   const { id } = use(params);
-  const title = use(resolveHotelName(id));
+  const token = use(getToken())!;
+  const queryClient = getQueryClient();
+  const rooms = use(
+    queryClient.ensureQueryData({
+      queryKey: ["hotel", id],
+      queryFn: async () => {
+        const response = await $fetch(
+          "@get/api/hotel-owners/hotels/:hotelCustomId/rooms",
+          {
+            params: {
+              hotelCustomId: id,
+            },
+            auth: {
+              type: "Bearer",
+              token: token,
+            },
+            throw: true,
+          }
+        );
+
+        return response.data;
+      },
+    })
+  );
 
   const breadcrumbs = {
-    title,
+    title: "Hotel Details",
     breadcrumbs: [
       {
         label: "Dashboard",
@@ -29,46 +50,14 @@ export default function Page({
         href: "/hotels",
       },
       {
-        label: `Hotel ${id}`,
-        href: `/hotels/${id}`,
+        label: `Room Detail`,
+        href: `/owner/hotels/${id}`,
       },
     ],
   };
-
-  const rooms: RoomDetails[] = [
-    {
-      roomNumber: "101",
-      roomType: "Deluxe",
-      roomName: "Deluxe Room 101",
-      roomPrice: 150,
-      roomStatus: "available",
-      roomFacilities: ["WiFi", "Air Conditioning", "TV"],
-    },
-    {
-      roomNumber: "102",
-      roomType: "Standard",
-      roomName: "Standard Room 102",
-      roomPrice: 100,
-      roomStatus: "booked",
-      roomFacilities: ["WiFi", "TV"],
-    },
-    {
-      roomNumber: "103",
-      roomType: "Suite",
-      roomName: "Suite Room 103",
-      roomPrice: 250,
-      roomStatus: "dirty",
-      roomFacilities: ["WiFi", "Air Conditioning", "TV", "Mini Bar"],
-    },
-    {
-      roomNumber: "104",
-      roomType: "Standard",
-      roomName: "Standard Room 104",
-      roomPrice: 100,
-      roomStatus: "blocked",
-      roomFacilities: ["WiFi", "TV"],
-    },
-  ];
-
-  return <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms} />;
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms} />
+    </HydrationBoundary>
+  );
 }

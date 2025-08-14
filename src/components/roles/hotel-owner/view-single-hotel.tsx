@@ -5,15 +5,11 @@ import { useSetAtom } from "jotai";
 import {
 	ArrowLeftIcon,
 	CheckIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	FilterIcon,
 	SearchIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { RoomDetails } from "@/lib/types";
 import {
 	type ColumnFiltersState,
 	createColumnHelper,
@@ -37,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
+import type { RoomDetails } from "@/lib/fetch";
 
 function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
 	const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
@@ -171,8 +168,7 @@ function ViewSingleHotelTable({ table }: { table: TableType<RoomDetails> }) {
 							<TableRow
 								key={row.id}
 								data-state={row.getIsSelected() && "selected"}
-								tabIndex={1}
-								role="checkbox"
+								tabIndex={-1}
 								onClick={() => {
 									// mark row as selected
 									row.toggleSelected();
@@ -216,7 +212,7 @@ function ViewSingleHotelTable({ table }: { table: TableType<RoomDetails> }) {
 const columnHelper = createColumnHelper<RoomDetails>();
 
 const columns = [
-	columnHelper.accessor("roomNumber", {
+	columnHelper.accessor("roomNo", {
 		header: "Room Number",
 		cell: (info) => `#${info.getValue()}`,
 	}),
@@ -257,7 +253,7 @@ const columns = [
 			);
 		},
 	}),
-	columnHelper.accessor("roomFacilities", {
+	columnHelper.accessor("roomFacility", {
 		header: "Room Description",
 		cell: (info) => info.getValue().join(", "),
 	}),
