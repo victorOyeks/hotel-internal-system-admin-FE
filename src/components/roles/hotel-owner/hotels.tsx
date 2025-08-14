@@ -79,6 +79,9 @@ import {
 } from "@/components/shared/shared-dialogs";
 import { Textarea } from "@/components/ui/textarea";
 import type { GetHotelResponse, HotelManager } from "@/lib/fetch";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createHotelBranch, deleteHotelBranch } from "@/lib/actions";
+import { toast } from "sonner";
 
 type HotelItem = GetHotelResponse;
 const columnHelper = createColumnHelper<HotelItem>();
@@ -87,7 +90,12 @@ const successDialogAtom = atom({
   message: "",
 });
 
-function HotelListToolbar({ managers }: { table: TableType<HotelItem>; managers: HotelManager[] }) {
+function HotelListToolbar({
+  managers,
+}: {
+  table: TableType<HotelItem>;
+  managers: HotelManager[];
+}) {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
@@ -198,8 +206,34 @@ const hotelFormSchema = z.object({
   branchManager: z.string().nonempty("Branch manager is required"),
 });
 
-function SingleHotelForm({ setOpen, managers }: { setOpen: (open: boolean) => void; managers: HotelManager[] }) {
-  const [isPending, setIsPending] = useState(false);
+function SingleHotelForm({
+  setOpen,
+  managers,
+}: {
+  setOpen: (open: boolean) => void;
+  managers: HotelManager[];
+}) {
+  const queryClient = useQueryClient();
+  const { mutate, isPending } = useMutation({
+    mutationFn: createHotelBranch,
+    onSuccess: async () => {
+      setOpen(false);
+      form.reset();
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel Added successfully",
+      });
+      await queryClient.invalidateQueries({
+        exact: true,
+        queryKey: ["hotels"],
+      });
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to add hotel",
+      });
+    },
+  });
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(hotelFormSchema),
@@ -214,26 +248,18 @@ function SingleHotelForm({ setOpen, managers }: { setOpen: (open: boolean) => vo
     reValidateMode: "onBlur",
   });
 
-  const handleSubmit = useCallback(
-    (data: z.infer<typeof hotelFormSchema>) => {
-      console.log("Form submitted with data:", data);
-      setIsPending(true);
-      setTimeout(() => {
-        setIsPending(false);
-        setOpen(false);
-        form.reset();
-        setShowSuccessDialog({
-          show: true,
-          message: "Hotel Added successfully",
-        });
-      }, 3000);
-    },
-    [form.reset, setOpen, setShowSuccessDialog]
-  );
-
   return (
     <Form {...form}>
-      <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+      <form
+        className="space-y-4"
+        onSubmit={form.handleSubmit((data) =>
+          mutate({
+            hotelAddress: data.location,
+            hotelName: data.hotelName,
+            managerCustomId: data.branchManager,
+          })
+        )}
+      >
         <FormField
           name="hotelName"
           control={form.control}
@@ -286,11 +312,11 @@ function SingleHotelForm({ setOpen, managers }: { setOpen: (open: boolean) => vo
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {
-					managers.map(h => (
-						<SelectItem key={h.id} value={h.customId}>{h.fullName}</SelectItem>
-					))
-				  }
+                  {managers.map((h) => (
+                    <SelectItem key={h.id} value={h.customId}>
+                      {h.fullName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -525,7 +551,28 @@ const deleteHotelSchema = z.object({
     .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
+function DeleteHotel({ setOpen, id }: { setOpen: (open: boolean) => void; id: string }) {
+  const queryClient = useQueryClient();
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: deleteHotelBranch,
+    onSuccess: () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel deleted successfully",
+      });
+      queryClient.invalidateQueries({
+        exact: true,
+        queryKey: ["hotels"],
+      });
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to delete hotel",
+      });
+    },
+  });
   const form = useForm({
     resolver: zodResolver(deleteHotelSchema),
     defaultValues: {
@@ -539,9 +586,8 @@ function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
     const isValid = await form.trigger();
 
     if (!isValid) return;
-
-    // API Call will be done here.
-  }, [form]);
+    await mutateAsync(id);
+  }, [form, mutateAsync, id]);
 
   return (
     <DialogContent className="p-4 rounded-2xl">
@@ -574,8 +620,15 @@ function DeleteHotel({ setOpen }: { setOpen: (open: boolean) => void }) {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full font-semibold">
-            Delete Hotel
+          <Button type="submit" className="w-full font-semibold" disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" />
+                <span>Deleting, please wait...</span>
+              </>
+            ) : (
+              "Delete Hotel"
+            )}
           </Button>
           <Button
             type="button"
@@ -657,6 +710,7 @@ const columns = [
             return (
               <DeleteHotel
                 setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
+                id={info.row.original.customId}
               />
             );
           default:
@@ -796,14 +850,14 @@ function HotelList({ table }: { table: TableType<HotelItem> }) {
 export function HotelOwnerHotels({
   breadcrumb,
   hotels,
-  managers
+  managers,
 }: {
   breadcrumb: {
     title: string;
     breadcrumbs: Breadcrumb[];
   };
   hotels: HotelItem[];
-  managers: HotelManager[]
+  managers: HotelManager[];
 }) {
   const table = useReactTable({
     data: hotels,

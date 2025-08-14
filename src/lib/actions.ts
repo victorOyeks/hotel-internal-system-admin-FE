@@ -1,8 +1,8 @@
 "use server";
 
-import { $fetch } from "./fetch";
+import { $fetch, type OnboardHotelRequest } from "./fetch";
 import type { ApiResponse } from "./types";
-import { getUser, tokenKey } from "./server-fns";
+import { getToken, getUser, tokenKey } from "./server-fns";
 import { cookies } from "next/headers";
 
 export async function login(payload: { email: string; password: string }) {
@@ -49,4 +49,35 @@ export async function login(payload: { email: string; password: string }) {
     referenceId,
     role,
   };
+}
+
+
+export async function createHotelBranch(payload: OnboardHotelRequest) {
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error("Unauthorized")
+  }
+
+  const response = await $fetch("@post/api/hotel-owners/hotels", {
+    body: payload,
+    throw: true
+  });
+
+
+  return response.data;
+}
+
+export async function deleteHotelBranch(id: string) {
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelCustomId", {
+    params: { hotelCustomId: id },
+    throw: true,
+  })
+
+  return response.data;
 }

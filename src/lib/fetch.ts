@@ -56,6 +56,8 @@ const OnboardHotelRequest = z.object({
     managerCustomId: z.string(),
 });
 
+export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>;
+
 const GetHotelResponse = z.object({
     customId: z.string(),
     name: z.string(),
