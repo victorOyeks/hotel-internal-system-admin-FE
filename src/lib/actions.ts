@@ -76,6 +76,7 @@ export async function deleteHotelBranch(id: string) {
 
   const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelCustomId", {
     params: { hotelCustomId: id },
+    auth: { type: "Bearer", token },
     throw: true,
   })
 

@@ -551,26 +551,23 @@ const deleteHotelSchema = z.object({
     .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-function DeleteHotel({ setOpen, id }: { setOpen: (open: boolean) => void; id: string }) {
-  const queryClient = useQueryClient();
+function DeleteHotel({ setOpen, id, revalidate }: { setOpen: (open: boolean) => void; id: string; revalidate: () => Promise<void> }) {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
     mutationFn: deleteHotelBranch,
-    onSuccess: () => {
+    onSuccess: async () => {
       setOpen(false);
       setShowSuccessDialog({
         show: true,
         message: "Hotel deleted successfully",
       });
-      queryClient.invalidateQueries({
-        exact: true,
-        queryKey: ["hotels"],
-      });
+      await revalidate();
     },
-    onError: () => {
+    onError: async () => {
       toast.error("Something went wrong", {
         description: "Failed to delete hotel",
       });
+      await revalidate();
     },
   });
   const form = useForm({
@@ -711,12 +708,15 @@ const columns = [
               <DeleteHotel
                 setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
                 id={info.row.original.customId}
+                // @ts-expect-error revalidate is a function
+                revalidate={info.table.options.meta?.revalidate || (() => Promise.resolve())}
               />
             );
           default:
             return null;
         }
-      }, [open, info.row.original]);
+        // @ts-expect-error revalidate is a function
+      }, [open, info.row.original, info.table.options.meta?.revalidate]);
 
       return (
         <Dialog
@@ -851,6 +851,7 @@ export function HotelOwnerHotels({
   breadcrumb,
   hotels,
   managers,
+  revalidate,
 }: {
   breadcrumb: {
     title: string;
@@ -858,6 +859,7 @@ export function HotelOwnerHotels({
   };
   hotels: HotelItem[];
   managers: HotelManager[];
+  revalidate: () => Promise<void>;
 }) {
   const table = useReactTable({
     data: hotels,
@@ -866,6 +868,9 @@ export function HotelOwnerHotels({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    meta: {
+      revalidate,
+    },
   });
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);

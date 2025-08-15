@@ -5,6 +5,17 @@ import { getToken } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
 import { fromPromise } from "neverthrow";
+import { revalidatePath } from "next/cache";
+
+async function invalidatePage() {
+  "use server";
+  const queryClient = getQueryClient();
+  await queryClient.invalidateQueries({
+    queryKey: ["hotels"],
+    exact: true,
+  });
+  revalidatePath("/owner/hotels");
+}
 
 function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] }> }) {
   const token = use(getToken()) as string;
@@ -79,7 +90,7 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels.content} managers={managers.content} />
+      <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels.content} managers={managers.content} revalidate={invalidatePage} />
     </HydrationBoundary>
   );
 }
