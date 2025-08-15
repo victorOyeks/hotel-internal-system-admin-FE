@@ -7,17 +7,26 @@ import { use } from "react";
 
 export default function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] }>;
 }) {
   const { id } = use(params);
+  const searchParamsObj = use(searchParams);
   const token = use(getToken())!;
   const queryClient = getQueryClient();
+
+  const query = {
+    page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
+    size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
+  }
+
   const rooms = use(
     queryClient.ensureQueryData({
-      queryKey: ["hotel", id],
+      queryKey: ["hotel", id, query],
       queryFn: async () => {
         const response = await $fetch(
           "@get/api/hotel-owners/hotels/:hotelCustomId/rooms",
@@ -29,6 +38,7 @@ export default function Page({
               type: "Bearer",
               token: token,
             },
+            query,
             throw: true,
           }
         );
@@ -57,7 +67,7 @@ export default function Page({
   };
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms} />
+      <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms.content} />
     </HydrationBoundary>
   );
 }

@@ -30,15 +30,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isProtectedPage || isAuthPage) {
-    const response = await fromPromise($fetch("@get/api/users/me", {
-      auth: { type: "Bearer", token },
-      cache: "force-cache",
-    }), (error) => new Error("Fetch failed", { cause: error }));
+  const response = await fromPromise($fetch("@get/api/users/me", {
+    auth: { type: "Bearer", token },
+    cache: "force-cache",
+  }), (error) => new Error("Fetch failed", { cause: error }));
 
-    if (!response.isOk()) {
-      return NextResponse.error();
-    }
+  if (!response.isOk()) {
+    return NextResponse.error();
+  }
+
+  if (isProtectedPage || isAuthPage) {
 
     if (response.value.error) {
       const response = NextResponse.redirect(new URL("/auth", request.url));
@@ -48,11 +49,17 @@ export async function middleware(request: NextRequest) {
 
     const data = response.value.data
 
-    if (data && isAuthPage) {
+    if (isAuthPage) {
       return NextResponse.redirect(new URL(paths[data.data.role], request.url));
     }
-
+    
     return NextResponse.next();
+  }
+
+  if (response.value.data) {
+    const data = response.value.data;
+
+    return NextResponse.rewrite(new URL(`${paths[data.data.role]}${pathname}`, request.url))
   }
 
   return NextResponse.next();

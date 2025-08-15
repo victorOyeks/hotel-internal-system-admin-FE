@@ -6,14 +6,19 @@ import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
 import { fromPromise } from "neverthrow";
 
-function HotelsPage() {
+function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] }> }) {
   const token = use(getToken()) as string;
+  const searchParamsObj = use(searchParams);
+  const query = {
+    page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
+    size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
+  }
 
   const queryClient = getQueryClient();
 
   const hotels = use(
     queryClient.fetchQuery({
-      queryKey: ["hotels"],
+      queryKey: ["hotels", query],
       queryFn: async () => {
         const response = await fromPromise(
           $fetch("@get/api/hotel-owners/hotels", {
@@ -21,6 +26,7 @@ function HotelsPage() {
               type: "Bearer",
               token,
             },
+            query,
             throw: true,
           }),
           (error) => new Error("Failed to fetch hotels", { cause: error }));
@@ -34,13 +40,17 @@ function HotelsPage() {
 
   const managers = use(
     queryClient.fetchQuery({
-      queryKey: ["hotel-managers"],
+      queryKey: ["hotel-managers", query],
       queryFn: async () => {
         const response = await fromPromise(
           $fetch("@get/api/hotel-owners/managers", {
             auth: {
               type: "Bearer",
               token,
+            },
+            query: {
+              page:0,
+              size: 1000
             },
             throw: true,
           }),
@@ -69,7 +79,7 @@ function HotelsPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels} managers={managers} />
+      <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels.content} managers={managers.content} />
     </HydrationBoundary>
   );
 }

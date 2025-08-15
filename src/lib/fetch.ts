@@ -217,7 +217,9 @@ const ApiResponseListRoomResponse = z.object({
     referenceId: z.string(),
     status: z.boolean(),
     message: z.string(),
-    data: z.array(RoomResponse),
+    data: z.object({
+        content: z.array(RoomResponse)
+    }),
 });
 
 const ApiResponseListHotelManager = z.object({
@@ -226,7 +228,9 @@ const ApiResponseListHotelManager = z.object({
     referenceId: z.string(),
     status: z.boolean(),
     message: z.string(),
-    data: z.array(HotelManager),
+    data: z.object({
+        content: z.array(HotelManager)
+    }),
 });
 
 const ApiResponseListGetHotelResponse = z.object({
@@ -235,7 +239,9 @@ const ApiResponseListGetHotelResponse = z.object({
     referenceId: z.string(),
     status: z.boolean(),
     message: z.string(),
-    data: z.array(GetHotelResponse),
+    data: z.object({
+        content: z.array(GetHotelResponse),
+    }),
 });
 
 const BookingViewResponse = z.object({
@@ -260,6 +266,9 @@ const ApiResponseListBookingViewResponse = z.object({
 });
 
 
+const BookingStatus = z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED"]);
+
+export type BookingStatus = z.infer<typeof BookingStatus>; 
 // --- Main Fetch Schema ---
 
 export const schema = createSchema({
@@ -310,10 +319,10 @@ export const schema = createSchema({
     },
     "@get/api/hotel-owners/hotels/bookings": {
         query: z.object({
-            status: z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED"]),
-            checkInDate: z.string().date(),
+            status: BookingStatus,
+            checkInDate: z.iso.date(),
             search: z.string(),
-        }),
+        }).partial(),
         output: ApiResponseListBookingViewResponse,
     },
 
@@ -339,5 +348,8 @@ export const schema = createSchema({
 export const $fetch = createFetch({
     baseURL: "https://hotel-internal-system-be.onrender.com",
     schema: schema,
-	errorSchema: AppExceptionResponseObject
+	errorSchema: AppExceptionResponseObject,
+    onRequest(context) {
+        console.log({url: context.url.toString()})
+    },
 });
