@@ -327,7 +327,7 @@ function AddStaffForm({
 
 const hotelOwnerStaffEditSchema = newStaffFormSchema;
 
-function EditHotelForm({
+function UpdateHotelStaffForm({
   initialValues,
   setOpen,
 }: {
@@ -445,7 +445,7 @@ const contactManagerFormSchema = z.object({
   message: z.string().nonempty("Message is required"),
 });
 
-function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ContactStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(contactManagerFormSchema),
@@ -467,9 +467,9 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Contact Branch Manager</DialogTitle>
+      <DialogTitle>Contact Staff</DialogTitle>
       <DialogDescription className="sr-only">
-        Fill in the details below to send a message to the branch manager.
+        Fill in the details below to send a message to the staff.
       </DialogDescription>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -513,14 +513,14 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   );
 }
 
-const deleteHotelSchema = z.object({
+const deleteStaffSchema = z.object({
   confirmationText: z
     .string()
     .nonempty("Confirmation text is required")
     .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-function DeleteHotel({
+function DeleteStaffDialog({
   setOpen,
   id,
 }: {
@@ -535,21 +535,21 @@ function DeleteHotel({
       setOpen(false);
       setShowSuccessDialog({
         show: true,
-        message: "Hotel deleted successfully",
+        message: "Staff deleted successfully",
       });
       queryClient.invalidateQueries({
         exact: true,
-        queryKey: ["hotels"],
+        queryKey: ["staffs"],
       });
     },
     onError: () => {
       toast.error("Something went wrong", {
-        description: "Failed to delete hotel",
+        description: "Failed to delete staff",
       });
     },
   });
   const form = useForm({
-    resolver: zodResolver(deleteHotelSchema),
+    resolver: zodResolver(deleteStaffSchema),
     defaultValues: {
       confirmationText: "",
     },
@@ -606,7 +606,7 @@ function DeleteHotel({
                 <span>Deleting, please wait...</span>
               </>
             ) : (
-              "Delete Hotel"
+              "Delete Staff"
             )}
           </Button>
           <Button
@@ -665,36 +665,36 @@ const columns = [
     id: "actions",
     cell: (info) => {
       const [open, setOpen] = useState<
-        "contact-manager" | "delete-hotel" | "edit-hotel" | false
+        "contact-staff" | "delete-staff" | "edit-staff" | false
       >(false);
 
       const dialog = useMemo(() => {
         switch (open) {
-          case "contact-manager":
+          case "contact-staff":
             return (
-              <ContactManagerForm
+              <ContactStaffForm
                 setOpen={(isOpen) =>
-                  setOpen(isOpen ? "contact-manager" : false)
+                  setOpen(isOpen ? "contact-staff" : false)
                 }
               />
             );
-          case "edit-hotel": {
+          case "edit-staff": {
             const rowData = info.row.original;
             return (
-              <EditHotelForm
+              <UpdateHotelStaffForm
                 initialValues={{
                     staffName: rowData.fullName,
                     email: rowData.email,
                     role: rowData.role,
                 }}
-                setOpen={(isOpen) => setOpen(isOpen ? "edit-hotel" : false)}
+                setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
               />
             );
           }
-          case "delete-hotel":
+          case "delete-staff":
             return (
-              <DeleteHotel
-                setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
+              <DeleteStaffDialog
+                setOpen={(isOpen) => setOpen(isOpen ? "delete-staff" : false)}
                 id={info.row.original.staffId}
               />
             );
@@ -728,20 +728,20 @@ const columns = [
               <DropdownMenuItem asChild>
                 <DialogTrigger
                   className="w-full"
-                  onClick={() => setOpen("edit-hotel")}
+                  onClick={() => setOpen("edit-staff")}
                 >
                   <DoorOpenIcon />
-                  Configure Hotel
+                  Configure Staff
                 </DialogTrigger>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <DialogTrigger
                   className="w-full"
-                  onClick={() => setOpen("contact-manager")}
+                  onClick={() => setOpen("contact-staff")}
                 >
                   <MessageCircleMoreIcon />
-                  Contact Branch Manager
+                  Contact Staff
                 </DialogTrigger>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -751,10 +751,10 @@ const columns = [
               >
                 <DialogTrigger
                   className="w-full"
-                  onClick={() => setOpen("delete-hotel")}
+                  onClick={() => setOpen("delete-staff")}
                 >
                   <TrashIcon className="text-red-500" />
-                  Delete Hotel
+                  Delete Staff
                 </DialogTrigger>
               </DropdownMenuItem>
             </DropdownMenuContent>
