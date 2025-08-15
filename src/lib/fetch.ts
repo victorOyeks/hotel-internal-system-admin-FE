@@ -349,8 +349,6 @@ export const schema = createSchema({
     },
 });
 
-// --- Example Fetch Instance ---
-
 export const $fetch = createFetch({
     baseURL: "https://hotel-internal-system-be.onrender.com",
     schema: schema,
