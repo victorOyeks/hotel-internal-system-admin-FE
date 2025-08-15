@@ -5,7 +5,7 @@ function HomePage() {
   const breadcrumbs: Breadcrumb[] = [
     {
       label: "Dashboard",
-      href: "/home",
+      href: "/owner",
     },
   ];
   return <HotelOwnerDashboard breadcrumbs={breadcrumbs} />;
