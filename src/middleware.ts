@@ -21,13 +21,9 @@ export async function middleware(request: NextRequest) {
   const isProtectedPage = protectedPages.some((p) => pathname.startsWith(p));
 
   if (!token) {
-    if (isProtectedPage) {
       const loginUrl = new URL("/auth", request.url);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
-    }
-
-    return NextResponse.next();
   }
 
   const response = await fromPromise($fetch("@get/api/users/me", {
