@@ -244,17 +244,21 @@ const ApiResponseListGetHotelResponse = z.object({
     }),
 });
 
+const BookingStatus = z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED"]);
+
 const BookingViewResponse = z.object({
     bookingId: z.string(),
     guestName: z.string(),
     roomNo: z.string(),
     branchName: z.string(),
     roomType: z.string(),
-    bookingStatus: z.string(),
-    expectedCheckInDate: z.string().date(),
-    checkInDate: z.string().date(),
-    checkOutDate: z.string().date(),
+    bookingStatus: BookingStatus,
+    expectedCheckInDate: z.iso.date(),
+    checkInDate: z.iso.date(),
+    checkOutDate: z.iso.date(),
 });
+
+export type BookingViewResponse = z.infer<typeof BookingViewResponse>;
 
 const ApiResponseListBookingViewResponse = z.object({
     requestTime: z.coerce.date(),
@@ -266,7 +270,6 @@ const ApiResponseListBookingViewResponse = z.object({
 });
 
 
-const BookingStatus = z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED"]);
 
 export type BookingStatus = z.infer<typeof BookingStatus>; 
 // --- Main Fetch Schema ---

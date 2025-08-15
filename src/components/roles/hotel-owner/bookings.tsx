@@ -43,12 +43,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import type { RoomBooking } from "@/lib/types";
 import {
   type ExportData,
   ExportDialog,
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
+import type { BookingStatus, BookingViewResponse } from "@/lib/fetch";
 
 const successDialogAtom = atom({
   show: false,
@@ -59,18 +59,18 @@ const tableSectionAtom = atom<"bookings" | "reservations" | "history">(
   "bookings"
 );
 
-const columnHelper = createColumnHelper<RoomBooking>();
+const columnHelper = createColumnHelper<BookingViewResponse>();
 
 const columns = [
-  columnHelper.accessor("id", {
-    header: "ID",
+  columnHelper.display({
+    header: "S/N",
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("guestName", {
     header: "Guest Name",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("roomNumber", {
+  columnHelper.accessor("roomNo", {
     header: "Room Number",
     cell: (info) => info.getValue(),
   }),
@@ -106,15 +106,14 @@ const columns = [
       return `${dateString} | ${timeString.toLowerCase()}`;
     },
   }),
-  columnHelper.accessor("status", {
+  columnHelper.accessor("bookingStatus", {
     header: "Status",
     cell: (info) => {
-      const statusToVariant: Record<RoomBooking["status"], BadgeVariant> = {
-        available: "green",
-        pending: "yellow",
-        "checked-in": "blue",
-        "checked-out": "gray",
-        cancelled: "red",
+      const statusToVariant: Record<BookingStatus, BadgeVariant> = {
+        CHECKED_IN: "green",
+        CHECKED_OUT: "blue",
+        RESERVED: "yellow",
+        CANCELLED: "destructive",
       };
       const status = info.getValue();
       return (
@@ -153,7 +152,7 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/reports/branch-id/${info.row.original.id}`}>
+                <Link href={`/reports/branch-id/${info.row.original.bookingId}`}>
                   <EyeIcon />
                   View branch report
                 </Link>
@@ -189,7 +188,7 @@ const columns = [
   }),
 ];
 
-function BookingList({ table }: { table: TableType<RoomBooking> }) {
+function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
@@ -254,7 +253,7 @@ function BookingList({ table }: { table: TableType<RoomBooking> }) {
   );
 }
 
-function BookingsListToolbar({ table }: { table: TableType<RoomBooking> }) {
+function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> }) {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tableSection, setTableSection] = useAtom(tableSectionAtom);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
@@ -335,7 +334,7 @@ export function BookingsPage({
   breadcrumb,
   bookings,
 }: {
-  bookings: RoomBooking[];
+  bookings: BookingViewResponse[];
   breadcrumb: {
     title: string;
     breadcrumbs: Breadcrumb[];
@@ -348,11 +347,11 @@ export function BookingsPage({
       case "bookings":
         return bookings;
       case "reservations":
-        return bookings.filter((booking) => booking.status === "pending");
+        return bookings.filter((booking) => booking.bookingStatus === "RESERVED");
       case "history":
         return bookings.filter(
           (booking) =>
-            booking.status === "checked-out" || booking.status === "cancelled"
+            booking.bookingStatus === "CHECKED_OUT" || booking.bookingStatus === "CANCELLED"
         );
       default:
         return bookings;
