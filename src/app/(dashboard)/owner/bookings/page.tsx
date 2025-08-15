@@ -2,6 +2,7 @@ import { BookingsPage } from "@/components/roles/hotel-owner/bookings";
 import { $fetch, type BookingStatus } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getToken } from "@/lib/server-fns";
+import { format } from "date-fns";
 import { use } from "react";
 
 function Page({
@@ -19,11 +20,14 @@ function Page({
       queryFn: async () => {
         const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {
           query: {
-            status: searchParamsObj.status as BookingStatus,
-            checkInDate: searchParamsObj.checkInDate ? new Date(searchParamsObj.checkInDate).toISOString() : undefined,
-            search: searchParamsObj.search,
-            page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
-            size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
+            status: (searchParamsObj.status || "CHECKED_IN") as BookingStatus,
+            // yyyy-mm-dd format
+            checkInDate: searchParamsObj.checkInDate
+              ? format(new Date(searchParamsObj.checkInDate), "yyyy-MM-dd")
+              : format(new Date(), "yyyy-MM-dd"),
+            search: searchParamsObj.search || undefined,
+            page: searchParamsObj.page || 1,
+            size: searchParamsObj.size || 100,
           },
           auth: {
             type: "Bearer",

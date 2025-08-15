@@ -1,7 +1,7 @@
 import { createSchema, createFetch } from "@better-fetch/fetch";
 import { z } from "zod";
 
-const Role = z.enum([
+export const Role = z.enum([
 	"HOTEL_OWNER",
 	"MANAGER",
 	"FRONT_DESK",
@@ -31,6 +31,7 @@ const UpdateRoomRequest = z.object({
 
 const RoomResponse = z.object({
     customId: z.string(),
+    hotelName: z.string(),
     roomNo: z.string(),
     roomType: z.string(),
     roomName: z.string(),
@@ -323,7 +324,9 @@ export const schema = createSchema({
     "@get/api/hotel-owners/hotels/bookings": {
         query: z.object({
             status: BookingStatus,
-            checkInDate: z.iso.date(),
+            checkInDate: z.string(), // yyyy-mm-dd format
+            page: z.coerce.number().default(1),
+            size: z.coerce.number().default(100),
             search: z.string(),
         }).partial(),
         output: ApiResponseListBookingViewResponse,
@@ -352,7 +355,10 @@ export const $fetch = createFetch({
     baseURL: "https://hotel-internal-system-be.onrender.com",
     schema: schema,
 	errorSchema: AppExceptionResponseObject,
-    onRequest(context) {
-        console.log({url: context.url.toString()})
+    onRequest({ url, query }) {
+        console.log({
+            url: url.toString(),
+            query: query,
+        })
     },
 });

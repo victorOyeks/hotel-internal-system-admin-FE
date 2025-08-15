@@ -60,7 +60,7 @@ export default function Page({
         href: "/hotels",
       },
       {
-        label: `Room Detail`,
+        label: rooms.content.length > 0 ? rooms.content[0].hotelName : "Hotel",
         href: `/owner/hotels/${id}`,
       },
     ],
