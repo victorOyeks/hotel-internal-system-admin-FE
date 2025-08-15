@@ -1,0 +1,872 @@
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: No array index key */
+"use client";
+
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type Table as TableType,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  DoorOpenIcon,
+  HotelIcon,
+  Loader2Icon,
+  MessageCircleMoreIcon,
+  MoreVerticalIcon,
+  PlusCircleIcon,
+  SearchIcon,
+  TrashIcon,
+  AlertTriangleIcon,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
+import { atom, useAtom, useSetAtom } from "jotai";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { DataTablePagination } from "@/components/shared/pagination";
+import { TableFilter } from "@/components/shared/table-filter";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DialogTrigger } from "@radix-ui/react-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  type ExportData,
+  ExportDialog,
+  SuccessDialog,
+} from "@/components/shared/shared-dialogs";
+import { Textarea } from "@/components/ui/textarea";
+import { Role } from "@/lib/fetch";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteHotelBranch } from "@/lib/actions";
+import { toast } from "sonner";
+import type { HotelRole } from "@/lib/types";
+
+type StaffResponse = {
+  staffId: string;
+  fullName: string;
+  role: HotelRole;
+  email: string;
+  status: "ACTIVE" | "SUSPENDED" | "ON_LEAVE";
+  currentShift: string;
+  profilePicture: string;
+};
+
+const columnHelper = createColumnHelper<StaffResponse>();
+const successDialogAtom = atom({
+  show: false,
+  message: "",
+});
+
+function HotelListToolbar({
+  table,
+}: {
+  table: TableType<StaffResponse>;
+}) {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+
+  const handleExport = useCallback(
+    async (data: ExportData) => {
+      // Handle the export logic here, e.g., sending data to an API
+      console.log("Exporting data with the following details:", data);
+      setExportDialogOpen(false);
+      setSuccessDialogOpen({
+        show: true,
+        message: "Data exported successfully!",
+      });
+    },
+    [setSuccessDialogOpen]
+  );
+
+  return (
+    <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+      <div>
+        <p>All staff({table.getRowCount()})</p>
+      </div>
+
+      <div className="flex items-center gap-x-2 ">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
+          />
+          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
+        </div>
+        <TableFilter></TableFilter>
+
+        <AddNewStaffDialog />
+
+        <ExportDialog
+          open={exportDialogOpen}
+          setOpen={setExportDialogOpen}
+          onSubmit={handleExport}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AddNewStaffDialog() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="rounded-md md:rounded-xl"
+        >
+          <PlusCircleIcon />
+          <span className="hidden md:inline">Add Staff</span>
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="p-4 rounded-2xl">
+        <DialogTitle>New Staff</DialogTitle>
+        <DialogDescription className="sr-only">
+          Fill in the details below to add a new staff member.
+        </DialogDescription>
+
+        <div className="mt-4">
+            <AddStaffForm setOpen={setOpen} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const newStaffFormSchema = z.object({
+    staffName: z.string().nonempty("Staff name is required"),
+    email: z.email("Invalid email address"),
+    role: z.string().refine((val) => Role.safeParse(val).success, {
+      message: "Invalid role",
+    }),
+});
+
+// mock add new staff function
+async function addNewStaff(data: z.infer<typeof newStaffFormSchema>) {
+  console.log("Adding new staff with data:", data);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        message: "Staff added successfully",
+        data: {
+          id: "new-staff-id",
+          fullName: data.staffName,
+          email: data.email,
+          role: data.role,
+          status: "ACTIVE",
+          currentShift: "Morning",
+          profilePicture: "/images/default-profile.png", // Placeholder image
+        },
+      });
+    }, 2000);
+  });
+}
+
+function AddStaffForm({
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { mutate, isPending } = useMutation({
+    mutationFn: addNewStaff,
+    onSuccess: async () => {
+      setOpen(false);
+      form.reset();
+      setShowSuccessDialog({
+        show: true,
+        message: "Staff added successfully",
+      });
+      await queryClient.invalidateQueries({
+        exact: true,
+        queryKey: ["staffs"],
+      });
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to add staff",
+      });
+    },
+  });
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(newStaffFormSchema),
+    defaultValues: {
+        staffName: "",
+        email: "",
+        role: "FRONT_DESK",
+    },
+    progressive: true,
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+  });
+
+  return (
+    <Form {...form}>
+      <form
+                className="space-y-4"
+                onSubmit={form.handleSubmit((data) =>
+                mutate(data)
+        )}
+      >
+        <FormField
+          name="staffName"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Staff Name</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g John Doe" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email address</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g john.doe@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="role"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Assign role</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+                    <SelectItem value="MANAGER">Manager</SelectItem>
+                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                    <SelectItem value="INVENTORY">Inventory</SelectItem>
+                    <SelectItem value="BAR">Bar</SelectItem>
+                    <SelectItem value="KITCHEN">Kitchen</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button
+          type="submit"
+          className="mt-4 w-full font-semibold"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="animate-spin" />
+              <span>Creating, please wait...</span>
+            </>
+          ) : (
+            "Add staff"
+          )}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+const hotelOwnerStaffEditSchema = newStaffFormSchema;
+
+function EditHotelForm({
+  initialValues,
+  setOpen,
+}: {
+  initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+  setOpen: (open: boolean) => void;
+}) {
+  const [isPending, setIsPending] = useState(false);
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(hotelOwnerStaffEditSchema),
+    defaultValues: initialValues,
+    progressive: true,
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+  });
+
+  const handleSubmit = useCallback(
+    (data: z.infer<typeof newStaffFormSchema>) => {
+      console.log("Form submitted with data:", data);
+      setIsPending(true);
+      setTimeout(() => {
+        setIsPending(false);
+        setOpen(false);
+        form.reset();
+        setShowSuccessDialog({
+          show: true,
+          message: "Changes saved successfully",
+        });
+      }, 3000);
+    },
+    [setShowSuccessDialog, setOpen, form]
+  );
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle>Edit hotel</DialogTitle>
+      <DialogDescription className="sr-only">
+        Edit hotel details
+      </DialogDescription>
+      <Form {...form}>
+        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+          <FormField
+            control={form.control}
+            name="staffName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Staff Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Email address</FormLabel>
+                <FormControl>
+                    <Input placeholder="e.g john.doe@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+            <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Assign role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                        <SelectItem value="INVENTORY">Inventory</SelectItem>
+                        <SelectItem value="BAR">Bar</SelectItem>
+                        <SelectItem value="KITCHEN">Kitchen</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+          <Button
+            type="submit"
+            className="mt-4 w-full font-semibold"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" />
+                <span>Updating, please wait...</span>
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
+const contactManagerFormSchema = z.object({
+  title: z.string().nonempty("Title is required"),
+  message: z.string().nonempty("Message is required"),
+});
+
+function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(contactManagerFormSchema),
+    defaultValues: {
+      title: "",
+      message: "",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
+    console.log("Message sent:", data.message);
+    setOpen(false);
+    setShowSuccessDialog({
+      show: true,
+      message: "Message delivered",
+    });
+    form.reset();
+  };
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle>Contact Branch Manager</DialogTitle>
+      <DialogDescription className="sr-only">
+        Fill in the details below to send a message to the branch manager.
+      </DialogDescription>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Message Title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="message"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Message</FormLabel>
+                <FormControl>
+                  <Textarea
+                    className="resize-none"
+                    placeholder="Type your message here..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full font-semibold">
+            Send Message
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
+const deleteHotelSchema = z.object({
+  confirmationText: z
+    .string()
+    .nonempty("Confirmation text is required")
+    .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
+});
+
+function DeleteHotel({
+  setOpen,
+  id,
+}: {
+  setOpen: (open: boolean) => void;
+  id: string;
+}) {
+  const queryClient = useQueryClient();
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: deleteHotelBranch,
+    onSuccess: () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel deleted successfully",
+      });
+      queryClient.invalidateQueries({
+        exact: true,
+        queryKey: ["hotels"],
+      });
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to delete hotel",
+      });
+    },
+  });
+  const form = useForm({
+    resolver: zodResolver(deleteHotelSchema),
+    defaultValues: {
+      confirmationText: "",
+    },
+    reValidateMode: "onSubmit",
+    mode: "onSubmit",
+  });
+
+  const handleDelete = useCallback(async () => {
+    const isValid = await form.trigger();
+
+    if (!isValid) return;
+    await mutateAsync(id);
+  }, [form, mutateAsync, id]);
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle className="sr-only">Delete Hotel</DialogTitle>
+      <DialogDescription className="sr-only">
+        Type "DELETE" to confirm
+      </DialogDescription>
+
+      <div className="flex flex-col items-center justify-center">
+        <AlertTriangleIcon className="text-destructive-2 size-12" />
+        <h2 className="text-destructive-2">Warning!</h2>
+        <p className="text-gray-600 text-center">
+          This action Cannot be Undone, to confirm this action is deliberate
+          “type delete below”
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleDelete)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="confirmationText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmation Text</FormLabel>
+                <FormControl>
+                  <Input placeholder="Type DELETE to confirm" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button
+            type="submit"
+            className="w-full font-semibold"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" />
+                <span>Deleting, please wait...</span>
+              </>
+            ) : (
+              "Delete Hotel"
+            )}
+          </Button>
+          <Button
+            type="button"
+            className="w-full font-semibold bg-gray-100"
+            variant={"ghost"}
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
+const columns = [
+  columnHelper.display({
+    header: "S/N",
+    cell: (info) => (
+      <span className="text-foreground">{info.row.index + 1}</span>
+    ),
+}),
+  columnHelper.accessor("fullName", {
+    header: "Staff Name",
+    cell: (info) => (
+      <div className="flex items-center gap-x-2">
+        <Image
+          src={info.row.original.profilePicture}
+          alt={info.row.original.fullName}
+          className="w-10 h-10 rounded-full"
+          width={40}
+          height={40}
+        />
+        <span className="font-semibold">{info.getValue()}</span>
+      </div>
+    ),
+  }),
+  columnHelper.accessor("role", {
+    header: "Role",
+    cell: (info) => <span>{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("email", {
+    header: "Email",
+    cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    cell: (info) => <span>{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("currentShift", {
+    header: "Current Shift",
+    cell: (info) => <span>{info.getValue()}</span>,
+  }),
+  columnHelper.display({
+    id: "actions",
+    cell: (info) => {
+      const [open, setOpen] = useState<
+        "contact-manager" | "delete-hotel" | "edit-hotel" | false
+      >(false);
+
+      const dialog = useMemo(() => {
+        switch (open) {
+          case "contact-manager":
+            return (
+              <ContactManagerForm
+                setOpen={(isOpen) =>
+                  setOpen(isOpen ? "contact-manager" : false)
+                }
+              />
+            );
+          case "edit-hotel": {
+            const rowData = info.row.original;
+            return (
+              <EditHotelForm
+                initialValues={{
+                    staffName: rowData.fullName,
+                    email: rowData.email,
+                    role: rowData.role,
+                }}
+                setOpen={(isOpen) => setOpen(isOpen ? "edit-hotel" : false)}
+              />
+            );
+          }
+          case "delete-hotel":
+            return (
+              <DeleteHotel
+                setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
+                id={info.row.original.staffId}
+              />
+            );
+          default:
+            return null;
+        }
+      }, [open, info.row.original]);
+
+      return (
+        <Dialog
+          open={typeof open === "string"}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setOpen(false);
+          }}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreVerticalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white" align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/owner/hotels/${info.row.original.staffId}`}>
+                  <HotelIcon />
+                  View Branch Hotel
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("edit-hotel")}
+                >
+                  <DoorOpenIcon />
+                  Configure Hotel
+                </DialogTrigger>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("contact-manager")}
+                >
+                  <MessageCircleMoreIcon />
+                  Contact Branch Manager
+                </DialogTrigger>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="hover:bg-red-500/10 text-red-500 focus:text-red-500"
+                asChild
+              >
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("delete-hotel")}
+                >
+                  <TrashIcon className="text-red-500" />
+                  Delete Hotel
+                </DialogTrigger>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {dialog}
+        </Dialog>
+      );
+    },
+  }),
+];
+
+function HotelList({ table }: { table: TableType<StaffResponse> }) {
+  return (
+    <div className="overflow-hidden rounded-md border">
+      <Table>
+        <TableHeader className="bg-gray-100">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                return (
+                  <TableHead key={header.id} className="text-gray-500">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && "selected"}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id} className="text-gray-600">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                No results.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={columns.length}>
+              <div className="w-full flex items-center justify-between">
+                <p>
+                  {table.getFilteredSelectedRowModel().rows.length} of{" "}
+                  {table.getFilteredRowModel().rows.length} row(s) selected.
+                </p>
+
+                <DataTablePagination table={table} />
+              </div>
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    </div>
+  );
+}
+
+export function HotelOwnerStaff({
+  breadcrumb,
+  staffs,
+}: {
+  breadcrumb: {
+    title: string;
+    breadcrumbs: Breadcrumb[];
+  };
+  staffs: StaffResponse[];
+}) {
+  const table = useReactTable({
+    data: staffs,
+    columns: columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+  const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+
+  useLayoutEffect(() => {
+    setBreadcrumb(breadcrumb);
+    return () => setBreadcrumb(null);
+  }, [setBreadcrumb, breadcrumb]);
+
+  return (
+    <div className="p-4 space-y-2 md:space-y-4">
+      <HotelListToolbar table={table} />
+      <HotelList table={table} />
+      <SuccessDialog
+        open={successDialogOpen.show}
+        setOpen={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        message={successDialogOpen.message}
+      />
+    </div>
+  );
+}
