@@ -353,6 +353,24 @@ export const $fetch = createFetch({
     baseURL: "https://hotel-internal-system-be.onrender.com",
     schema: schema,
 	errorSchema: AppExceptionResponseObject,
+    retry: {
+        type: "exponential",
+        attempts: 3,
+        baseDelay: 1000, // 1 second
+        maxDelay: 5000, // 5 seconds
+        shouldRetry: (response) => {
+            // No response indicates a network error, so we should retry.
+            if (!response) {
+                return true;
+            }
+
+            const { status } = response;
+
+            // Retry on server errors (5xx) or rate-limiting (429).
+            // Do not retry on other client-side errors (4xx).
+            return status >= 500 || status === 429;
+        }
+    },
     onRequest({ url, query }) {
         console.log({
             url: url.toString(),
