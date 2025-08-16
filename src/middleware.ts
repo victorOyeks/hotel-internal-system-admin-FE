@@ -3,60 +3,74 @@ import { paths } from "@/lib/shared";
 import { $fetch } from "@/lib/fetch";
 import { fromPromise } from "neverthrow";
 
-const tokenKey = "hms.jwt.session_token";
+const TOKEN_KEY = "hms.jwt.session_token";
 
-// It's good practice to define your protected routes explicitly.
-// Assuming `paths` contains routes for authenticated users like '/owner', '/admin', etc.
+// Define protected routes explicitly for clarity.
+// This assumes `paths` contains role-based routes like: { owner: '/owner', admin: '/admin' }
 const protectedPages = Object.values(paths);
 
 export const config = {
+  // Run middleware on all paths except for static assets and API routes.
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get(tokenKey)?.value;
+  const token = request.cookies.get(TOKEN_KEY)?.value;
 
   const isAuthPage = pathname.startsWith("/auth");
-  const isProtectedPage = protectedPages.some((p) => pathname.startsWith(p));
 
-  if (!token) {
-      const loginUrl = new URL("/auth", request.url);
-      loginUrl.searchParams.set("from", pathname);
-      return NextResponse.redirect(loginUrl);
-  }
-
-  const response = await fromPromise($fetch("@get/api/users/me", {
-    auth: { type: "Bearer", token },
-    cache: "force-cache",
-  }), (error) => new Error("Fetch failed", { cause: error }));
-
-  if (!response.isOk()) {
-    return NextResponse.error();
-  }
-
-  if (isProtectedPage || isAuthPage) {
-
-    if (response.value.error) {
-      const response = NextResponse.redirect(new URL("/auth", request.url));
-      response.cookies.delete(tokenKey);
-      return response;
+  if (isAuthPage) {
+    if (!token) {
+      // User has no token and is on the auth page, let them proceed.
+      // This is the key fix to prevent the redirect loop.
+      return NextResponse.next();
     }
 
-    const data = response.value.data
+    // User has a token, let's verify it to see if we should redirect them.
+    const result = await fromPromise(
+      $fetch("@get/api/users/me", { auth: { type: "Bearer", token } }),
+      (e) => e as Error
+    );
 
-    if (isAuthPage) {
-      return NextResponse.redirect(new URL(paths[data.data.role], request.url));
+    if (result.isOk() && result.value.data) {
+      // Token is valid, redirect logged-in user to their dashboard.
+      const userRole = result.value.data.data.role;
+      const dashboardUrl = paths[userRole] || "/"; // Fallback to home
+      return NextResponse.redirect(new URL(dashboardUrl, request.url));
     }
     
-    return NextResponse.next();
+    // Token is invalid or expired. Clear the bad cookie and let them stay on the auth page.
+    const response = NextResponse.next();
+    response.cookies.delete(TOKEN_KEY);
+    return response;
   }
 
-  if (response.value.data) {
-    const data = response.value.data;
-
-    return NextResponse.rewrite(new URL(`${paths[data.data.role]}${pathname}`, request.url))
+  if (!token) {
+    // No token, redirect to the login page with a 'from' parameter.
+    const loginUrl = new URL("/auth", request.url);
+    loginUrl.searchParams.set("from", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.rewrite(new URL("/auth", request.url));
+  const result = await fromPromise(
+    $fetch("@get/api/users/me", { auth: { type: "Bearer", token } }),
+    (e) => e as Error
+  );
+
+  if (result.isErr() || result.value.error) {
+    const loginUrl = new URL("/auth", request.url);
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.delete(TOKEN_KEY);
+    return response;
+  }
+
+  const isCorrectlyRouted = protectedPages.some((p) => pathname.startsWith(p));
+  if (!isCorrectlyRouted && result.value.data) {
+      const userRole = result.value.data.data.role;
+      const correctPath = paths[userRole];
+      return NextResponse.rewrite(new URL(`${correctPath}${pathname}`, request.url));
+  }
+
+  return NextResponse.next();
 }
