@@ -6,7 +6,6 @@ import {
 	FileIcon,
 	ImageIcon,
 	Link2,
-	SearchIcon,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
@@ -168,18 +167,6 @@ export function Header({ user }: {
 				<div className="bg-white shadow rounded-full p-1 flex items-center space-x-2">
 					<div className="bg-gray-100 py-2 px-3 rounded-full text-sm hidden md:block">
 						{formatDate(new Date(), "PPP")}
-					</div>
-
-					<div className="bg-primary-5/15 py-2 px-3 rounded-full text-sm relative max-w-40 hidden lg:block">
-						<SearchIcon
-							size={16}
-							className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-1"
-						/>
-						<input
-							className="pl-5 appearance-none bg-transparent focus:outline-none"
-							placeholder="Search"
-							type="text"
-						/>
 					</div>
 
 					<Button size={"icon"} variant={"ghost"} className="rounded-full">
