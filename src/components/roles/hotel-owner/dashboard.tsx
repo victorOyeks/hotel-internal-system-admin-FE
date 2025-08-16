@@ -162,7 +162,7 @@ function CurvedLineChart() {
 	);
 }
 
-function EarningsSideB() {
+export function EarningsSideB() {
 	return (
 		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
 			<Button

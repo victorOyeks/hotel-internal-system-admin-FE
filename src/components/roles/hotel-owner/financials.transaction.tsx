@@ -51,18 +51,18 @@ function Earnings() {
     },
   ];
   return (
-    <div className="flex gap-x-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
       {earnings.map((earning) => (
         <div
           key={earning.title}
-          className="bg-white border border-primary-5/40 p-2 md:px-4 rounded-2xl md:rounded-3xl flex items-center space-x-2"
+          className="col-span-1 bg-white border border-primary-5/40 p-2 rounded-2xl md:rounded-3xl flex items-center space-x-2"
         >
           <div className="size-8 md:size-12 aspect-square bg-green-500/20 rounded-full flex items-center justify-center">
             <earning.icon className="text-secondary size-5" />
           </div>
           <div className="flex-1">
             <p className="text-xs md:text-sm text-gray-400">{earning.title}</p>
-            <p className="text-xl text-primary font-semibold font-inter tracking-[0.01em] ">
+            <p className="text-lg text-primary font-semibold font-inter tracking-[0.01em] ">
               {formatCurrency(earning.value)}
             </p>
           </div>

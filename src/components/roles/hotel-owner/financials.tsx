@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { type Transaction, TransactionSection } from "./financials.transaction";
+import { AnalyticsSection } from "./financials.analytics";
 
 const sectionAtom = atom<"analytics" | "transactions">("analytics");
 
@@ -47,7 +48,7 @@ export function Financials({
       <Toolbar />
       <div className="flex-1">
         {section === "analytics" ? (
-          <div>Analytics Section</div>
+          <AnalyticsSection />
         ) : (
           <TransactionSection transactions={transactions} revalidate={revalidate} />
         )}
