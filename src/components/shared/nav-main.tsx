@@ -1,9 +1,10 @@
 "use client";
 
 import * as sidebar from "@/components/ui/sidebar";
+import { createPathMatcher } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 export function NavMain({
   items,
@@ -16,10 +17,7 @@ export function NavMain({
   }[];
 }) {
   const pathname = usePathname();
-
-  const isActive = (url: string) => {
-    return pathname === url || pathname.startsWith(`${url}/`);
-  };
+  const pathMatcher = useMemo(() => createPathMatcher(items.map(item => item.url)), [items]);
 
   return (
     <sidebar.SidebarGroup>
@@ -30,7 +28,7 @@ export function NavMain({
               tooltip={item.title}
               className="py-3 gap-x-3 text-base rounded-2xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               asChild
-              isActive={isActive(item.url)}
+              isActive={pathMatcher.match(pathname)?.path === item.url}
             >
               <Link href={item.url}>
                 {item.icon}

@@ -19,7 +19,7 @@ export function AppSidebar({ role, ...props }: React.ComponentProps<typeof Sideb
 }) {
 
 	const links: Record<HotelRole, React.ComponentProps<typeof NavMain>['items']> = {
-		HOTEL_OWNER: hotelOwnerLinks.map(l => ({...l, url: `/owner/${l.url}`})),
+		HOTEL_OWNER: hotelOwnerLinks,
 		BAR: [],
 		FRONT_DESK: [],
 		MAINTENANCE: [],
