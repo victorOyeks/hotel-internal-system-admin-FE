@@ -58,5 +58,5 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(new URL(`${paths[data.data.role]}${pathname}`, request.url))
   }
 
-  return NextResponse.next();
+  return NextResponse.rewrite(new URL("/auth", request.url));
 }
