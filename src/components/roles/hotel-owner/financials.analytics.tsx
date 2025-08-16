@@ -198,7 +198,7 @@ function BranchPerformanceChart() {
         />
         <Bar
           dataKey="value"
-          fill="theme(color.green.50)"
+          fill="#DAFFE9"
           radius={[6, 6, 6, 6]}
           maxBarSize={20}
         />

@@ -267,7 +267,9 @@ const ApiResponseListBookingViewResponse = z.object({
     referenceId: z.string(),
     status: z.boolean(),
     message: z.string(),
-    data: z.array(BookingViewResponse),
+    data: z.object({
+        content: z.array(BookingViewResponse)
+    }),
 });
 
 

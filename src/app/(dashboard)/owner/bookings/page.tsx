@@ -43,7 +43,7 @@ function Page({
 
   return (
     <BookingsPage
-      bookings={bookings}
+      bookings={bookings.content}
       breadcrumb={{
         title: "Bookings",
         breadcrumbs: [

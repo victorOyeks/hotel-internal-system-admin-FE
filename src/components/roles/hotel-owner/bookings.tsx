@@ -88,6 +88,24 @@ const columns = [
       </div>
     ),
   }),
+  
+  columnHelper.accessor("bookingStatus", {
+    header: "Status",
+    cell: (info) => {
+      const statusToVariant: Record<BookingStatus, BadgeVariant> = {
+        CHECKED_IN: "green",
+        CHECKED_OUT: "blue",
+        RESERVED: "yellow",
+        CANCELLED: "destructive",
+      };
+      const status = info.getValue();
+      return (
+        <Badge className="capitalize" variant={statusToVariant[status]}>
+          {status}
+        </Badge>
+      );
+    },
+  }),
 
   columnHelper.accessor("checkInDate", {
     header: "Date",
@@ -104,23 +122,6 @@ const columns = [
         hour12: true,
       });
       return `${dateString} | ${timeString.toLowerCase()}`;
-    },
-  }),
-  columnHelper.accessor("bookingStatus", {
-    header: "Status",
-    cell: (info) => {
-      const statusToVariant: Record<BookingStatus, BadgeVariant> = {
-        CHECKED_IN: "green",
-        CHECKED_OUT: "blue",
-        RESERVED: "yellow",
-        CANCELLED: "destructive",
-      };
-      const status = info.getValue();
-      return (
-        <Badge className="capitalize" variant={statusToVariant[status]}>
-          {status}
-        </Badge>
-      );
     },
   }),
 

@@ -17,7 +17,7 @@ export const links = [
 	{ title: "Bookings", icon: <BookTextIcon />, url: "/owner/bookings" },
 	{ title: "Staff Management", icon: <IdCardIcon />, url: "/owner/staff-management" },
 	{ title: "Financials", icon: <ChartNoAxesCombined />, url: "/owner/financials" },
-	{ title: "Messaging", icon: <MessagesSquare />, url: "/owner/messaging" },
+	{ title: "Messages", icon: <MessagesSquare />, url: "/owner/messages" },
 	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/owner/inventory" },
 	{ title: "Reports", icon: <FolderIcon />, url: "/owner/reports" },
 	{ title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/owner/roles" },
