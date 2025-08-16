@@ -5,9 +5,9 @@ import {
 	HomeIcon,
 	HotelIcon,
 	IdCardIcon,
-	IdCardLanyardIcon,
+	// IdCardLanyardIcon,
 	MessagesSquare,
-	MonitorDot,
+	// MonitorDot,
 	ToolCaseIcon,
 } from "lucide-react";
 
@@ -20,6 +20,6 @@ export const links = [
 	{ title: "Messages", icon: <MessagesSquare />, url: "/owner/messages" },
 	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/owner/inventory" },
 	{ title: "Reports", icon: <FolderIcon />, url: "/owner/reports" },
-	{ title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/owner/roles" },
-	{ title: "Audit Log", icon: <MonitorDot />, url: "/owner/audit" },
+	// { title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/owner/roles" },
+	// { title: "Audit Log", icon: <MonitorDot />, url: "/owner/audit" },
 ];
