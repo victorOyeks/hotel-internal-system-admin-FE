@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { paths } from "@/lib/shared";
-import { $fetch } from "@/lib/fetch";
-import { fromPromise } from "neverthrow";
+import type { UserInfoResponse } from "@/lib/fetch";
 import { tokenKey } from "./lib/server-fns";
 
 const TOKEN_KEY = tokenKey;
@@ -18,26 +17,21 @@ export const config = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const c = request.cookies.get(TOKEN_KEY);
-  const token = c ? c.value : null;
+  const cookieData = c ? JSON.parse(c.value) as { token: string; user: UserInfoResponse }
+   : null;
 
   const isAuthPage = pathname.startsWith("/auth");
 
   if (isAuthPage) {
-    if (!token) {
+    if (!cookieData) {
       // User has no token and is on the auth page, let them proceed.
       // This is the key fix to prevent the redirect loop.
       return NextResponse.next();
     }
 
-    // User has a token, let's verify it to see if we should redirect them.
-    const result = await fromPromise(
-      $fetch("@get/api/users/me", { auth: { type: "Bearer", token } }),
-      (e) => e as Error
-    );
-
-    if (result.isOk() && result.value.data) {
+    if (cookieData.token) {
       // Token is valid, redirect logged-in user to their dashboard.
-      const userRole = result.value.data.data.role;
+      const userRole = cookieData.user.role;
       const dashboardUrl = paths[userRole] || "/"; // Fallback to home
       return NextResponse.redirect(new URL(dashboardUrl, request.url));
     }
@@ -48,19 +42,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (!token) {
-    // No token, redirect to the login page with a 'from' parameter.
+  if (!cookieData) {
+    // No cookieData, redirect to the login page with a 'from' parameter.
     const loginUrl = new URL("/auth", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const result = await fromPromise(
-    $fetch("@get/api/users/me", { auth: { type: "Bearer", token } }),
-    (e) => e as Error
-  );
-
-  if (result.isErr() || result.value.error) {
+  if (!cookieData.token) {
     const loginUrl = new URL("/auth", request.url);
     const response = NextResponse.redirect(loginUrl);
     response.cookies.delete(TOKEN_KEY);
@@ -68,8 +57,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const isCorrectlyRouted = protectedPages.some((p) => pathname.startsWith(p));
-  if (!isCorrectlyRouted && result.value.data) {
-      const userRole = result.value.data.data.role;
+  if (!isCorrectlyRouted) {
+      const userRole = cookieData.user.role;
       const correctPath = paths[userRole];
       return NextResponse.rewrite(new URL(`${correctPath}${pathname}`, request.url));
   }
