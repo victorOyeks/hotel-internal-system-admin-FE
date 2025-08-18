@@ -1,7 +1,7 @@
 import { BookingsPage } from "@/components/roles/hotel-owner/bookings";
 import { $fetch, type BookingStatus } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
-import { getToken } from "@/lib/server-fns";
+import { getCookieData } from "@/lib/server-fns";
 import { format } from "date-fns";
 import { use } from "react";
 
@@ -10,7 +10,7 @@ function Page({
 }: {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
-  const token = use(getToken())!;
+  const token = use(getCookieData())!;
   const searchParamsObj = use(searchParams);
   const queryClient = getQueryClient();
 

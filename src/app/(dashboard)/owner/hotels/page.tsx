@@ -1,7 +1,7 @@
 import { HotelOwnerHotels } from "@/components/roles/hotel-owner/hotels";
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
-import { getToken } from "@/lib/server-fns";
+import { getCookieData } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
 import { fromPromise } from "neverthrow";
@@ -18,14 +18,14 @@ async function invalidatePage() {
 }
 
 function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] }> }) {
-  const token = use(getToken()) as string;
+  const cookieData = use(getCookieData())!;
+  const queryClient = getQueryClient();
   const searchParamsObj = use(searchParams);
   const query = {
     page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
     size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
   }
 
-  const queryClient = getQueryClient();
 
   const hotels = use(
     queryClient.fetchQuery({
@@ -35,7 +35,7 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
           $fetch("@get/api/hotel-owners/hotels", {
             auth: {
               type: "Bearer",
-              token,
+              token: cookieData.token,
             },
             query,
             throw: true,
@@ -57,7 +57,7 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
           $fetch("@get/api/hotel-owners/managers", {
             auth: {
               type: "Bearer",
-              token,
+              token: cookieData.token,
             },
             query: {
               page:0,
