@@ -10,7 +10,7 @@ function Page({
 }: {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
-  const token = use(getCookieData())!;
+  const cookieData = use(getCookieData())!;
   const searchParamsObj = use(searchParams);
   const queryClient = getQueryClient();
 
@@ -31,7 +31,7 @@ function Page({
           },
           auth: {
             type: "Bearer",
-            token,
+            token: cookieData.token,
           },
           throw: true,
         });
