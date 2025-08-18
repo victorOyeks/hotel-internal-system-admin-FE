@@ -1,7 +1,7 @@
 import { ViewSingleHotelPage } from "@/components/roles/hotel-owner/view-single-hotel";
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
-import { getToken } from "@/lib/server-fns";
+import { getCookieData } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
 
@@ -16,7 +16,7 @@ export default function Page({
 }) {
   const { id } = use(params);
   const searchParamsObj = use(searchParams);
-  const token = use(getToken())!;
+  const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
 
   const query = {
@@ -36,7 +36,7 @@ export default function Page({
             },
             auth: {
               type: "Bearer",
-              token: token,
+              token: cookieData.token,
             },
             query,
             throw: true,
