@@ -2,8 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { paths } from "@/lib/shared";
 import { $fetch } from "@/lib/fetch";
 import { fromPromise } from "neverthrow";
+import { tokenKey } from "./lib/server-fns";
 
-const TOKEN_KEY = "hms.jwt.session_token";
+const TOKEN_KEY = tokenKey;
 
 // Define protected routes explicitly for clarity.
 // This assumes `paths` contains role-based routes like: { owner: '/owner', admin: '/admin' }
@@ -16,7 +17,8 @@ export const config = {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get(TOKEN_KEY)?.value;
+  const c = request.cookies.get(TOKEN_KEY);
+  const token = c ? c.value : null;
 
   const isAuthPage = pathname.startsWith("/auth");
 
