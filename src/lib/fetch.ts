@@ -60,7 +60,7 @@ const OnboardHotelRequest = z.object({
 export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>;
 
 const GetHotelResponse = z.object({
-    customId: z.string(),
+    customId: z.string().optional(),
     name: z.string(),
     address: z.string(),
     totalRoom: z.string(),

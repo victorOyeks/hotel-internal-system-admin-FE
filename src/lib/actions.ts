@@ -1,8 +1,7 @@
 "use server";
 
 import { $fetch, type OnboardHotelRequest } from "./fetch";
-import type { ApiResponse } from "./types";
-import { getToken, getUser, tokenKey } from "./server-fns";
+import { getCookieData, getUser, tokenKey } from "./server-fns";
 import { cookies } from "next/headers";
 
 export async function login(payload: { email: string; password: string }) {
@@ -14,24 +13,25 @@ export async function login(payload: { email: string; password: string }) {
     };
   }
 
-  const { data, error } = await $fetch<
-    ApiResponse<{
-      token: string;
-      role: string;
-    }>
-  >("@post/api/auth/sign-in", {
+  const { data, message, referenceId } = await $fetch("@post/api/auth/sign-in", {
     body: payload,
+    throw: true
   });
 
-  if (error) {
-    throw error;
-  }
-
   const cookieStore = await cookies();
-  const { token, role } = data.data;
-  const { message, referenceId } = data;
+  const { token, role } = data;
 
-  cookieStore.set(tokenKey, token, {
+  const { data: userData } = await $fetch("@get/api/users/me", {
+    auth: { type: "Bearer", token },
+    throw: true,
+  });
+
+  const cookieData = JSON.stringify({
+    user: userData,
+    token,
+  });
+
+  cookieStore.set(tokenKey, cookieData, {
     expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
     path: "/",
     httpOnly: true,
@@ -53,7 +53,7 @@ export async function login(payload: { email: string; password: string }) {
 
 
 export async function createHotelBranch(payload: OnboardHotelRequest) {
-  const token = await getToken();
+  const token = await getCookieData();
 
   if (!token) {
     throw new Error("Unauthorized")
@@ -69,14 +69,14 @@ export async function createHotelBranch(payload: OnboardHotelRequest) {
 }
 
 export async function deleteHotelBranch(id: string) {
-  const token = await getToken();
-  if (!token) {
+  const cookieData = await getCookieData();
+  if (!cookieData) {
     throw new Error("Unauthorized");
   }
 
   const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelCustomId", {
     params: { hotelCustomId: id },
-    auth: { type: "Bearer", token },
+    auth: { type: "Bearer", token: cookieData.token },
     throw: true,
   })
 

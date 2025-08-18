@@ -1,11 +1,11 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { $fetch } from "./fetch";
+import { $fetch, type UserInfoResponse } from "./fetch";
 
 export const tokenKey = "hms.jwt.session_token";
 
-export async function getToken() {
+export async function getCookieData() {
   const cookieStore = await cookies();
   const token = cookieStore.get(tokenKey)?.value;
 
@@ -13,20 +13,24 @@ export async function getToken() {
     return null;
   }
 
-  return token;
+  const cookieData = JSON.parse(token) as {
+    token: string;
+    user: UserInfoResponse
+  }
+  return cookieData;
 }
 
 export async function getUser() {
-  const token = await getToken();
+  const cookieData = await getCookieData();
 
-  if (!token) {
+  if (!cookieData) {
     return null;
   }
 
   const { data, error } = await $fetch("@get/api/users/me", {
     auth: {
       type: "Bearer",
-      token,
+      token: cookieData.token,
     },
   });
 
