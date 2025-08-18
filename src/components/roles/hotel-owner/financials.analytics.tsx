@@ -162,7 +162,7 @@ function Hero() {
   );
 }
 
-function BranchPerformanceChart() {
+function BranchPerformanceChart({ color = "#7bfcae" }) {
   const data = [
     { name: "Lekki", value: 400000, yLabel: "49K" },
     { name: "Ikoyi", value: 300000, yLabel: "30K" },
@@ -198,7 +198,7 @@ function BranchPerformanceChart() {
         />
         <Bar
           dataKey="value"
-          fill="#DAFFE9"
+          fill={color}
           radius={[6, 6, 6, 6]}
           maxBarSize={20}
         />
@@ -241,11 +241,28 @@ function IncomePerfByBranch() {
   )
 }
 
+function ExpensePerfByBranch() {
+  return (
+    <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0 px-0">
+      <CardHeader>
+        <CardTitle>
+          <h2 className="text-primary text-xl">Expense performance by branch</h2>
+        </CardTitle>
+
+        <CardContent className="w-full">
+          <BranchPerformanceChart color="#ff6f6f" />
+        </CardContent>
+      </CardHeader>
+    </Card>
+  )
+}
+
 export function AnalyticsSection() {
   return (
-    <div className="px-2 space-y-2 md:space-y-4">
+    <div className="px-2 space-y-2 md:space-y-4 pb-4 md:pb-6">
       <Hero />
       <IncomePerfByBranch />
+      <ExpensePerfByBranch />
     </div>
   );
 }

@@ -8,8 +8,15 @@ async function revalidate() {
 }
 
 function FinancesPage() {
+  const breadcrumb = {
+    title: "Financials",
+    breadcrumbs: [
+      { label: "Dashboard", href: "/owner/dashboard" },
+      { label: "Financials", href: "/owner/financials" },
+    ],
+  }
   return (
-    <Financials revalidate={revalidate} transactions={[]} />
+    <Financials revalidate={revalidate} transactions={[]} breadcrumbs={breadcrumb} />
   )
 }
 

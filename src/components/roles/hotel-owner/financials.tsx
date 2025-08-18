@@ -1,9 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { type Transaction, TransactionSection } from "./financials.transaction";
 import { AnalyticsSection } from "./financials.analytics";
+import { useLayoutEffect } from "react";
+import { breadcrumbAtom } from "@/lib/store";
 
 const sectionAtom = atom<"analytics" | "transactions">("analytics");
 
@@ -37,11 +39,21 @@ function Toolbar() {
 export function Financials({
     revalidate,
     transactions,
+    breadcrumbs,
     }: {
     revalidate: () => Promise<void>;
     transactions: Transaction[];
+    breadcrumbs: { title: string; breadcrumbs: { label: string; href: string }[] };
 }) {
   const section = useAtomValue(sectionAtom);
+
+    const setBreadcrumb = useSetAtom(breadcrumbAtom);
+  
+    useLayoutEffect(() => {
+      setBreadcrumb(breadcrumbs);
+      return () => setBreadcrumb(null);
+    }, [setBreadcrumb, breadcrumbs]);
+  
 
   return (
     <div className="flex flex-col space-y-4 px-2">
