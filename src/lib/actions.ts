@@ -53,14 +53,15 @@ export async function login(payload: { email: string; password: string }) {
 
 
 export async function createHotelBranch(payload: OnboardHotelRequest) {
-  const token = await getCookieData();
+  const cookieData = await getCookieData();
 
-  if (!token) {
+  if (!cookieData) {
     throw new Error("Unauthorized")
   }
 
   const response = await $fetch("@post/api/hotel-owners/hotels", {
     body: payload,
+    auth: { type: "Bearer", token: cookieData.token },
     throw: true
   });
 

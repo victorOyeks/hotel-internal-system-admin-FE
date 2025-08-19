@@ -52,16 +52,18 @@ const ApiResponseRoomResponse = z.object({
 });
 
 const OnboardHotelRequest = z.object({
-    hotelName: z.string(),
+    name: z.string(),
+    location: z.string(),
+    totalRooms: z.number().optional(),
     hotelAddress: z.string(),
-    managerCustomId: z.string(),
+    managerId: z.string(),
 });
 
 export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>;
 
 const GetHotelResponse = z.object({
-    customId: z.string().optional(),
-    name: z.string(),
+    customId: z.string().nullable(),
+    name: z.string().nullable(),
     address: z.string(),
     totalRoom: z.string(),
     occupancyRate: z.string(),
@@ -143,7 +145,7 @@ const CreateHotelManagerRequest = z.object({
 
 const HotelManager = z.object({
     id: z.string(),
-    customId: z.string(),
+    customId: z.string().nullable(),
     fullName: z.string(),
     email: z.string(),
     phoneNumber: z.string(),
@@ -154,7 +156,7 @@ export type HotelManager = z.infer<typeof HotelManager>;
 const OnboardHotelResponse = z.object({
     hotelName: z.string(),
     hotelAddress: z.string(),
-    manager: HotelManager,
+    managerId: HotelManager.partial().optional(),
 });
 
 const ApiResponseOnboardHotelResponse = z.object({
@@ -193,12 +195,12 @@ const UserInfoResponse = z.object({
     staffId: z.string(),
     userStatus: z.string().nullable().or(z.undefined()),
     role: Role,
-    customId: z.string().optional(),
+    customId: z.string().nullable().optional(),
     parentUserCustomId: z.string().nullable().or(z.undefined()),
     verified: z.boolean(),
     hotelCustomId: z.string().nullable().or(z.undefined()),
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
+    // createdAt: z.coerce.date(),
+    // updatedAt: z.coerce.date(),
 });
 
 export type UserInfoResponse = z.infer<typeof UserInfoResponse>;
