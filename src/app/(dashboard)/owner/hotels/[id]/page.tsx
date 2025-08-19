@@ -12,7 +12,7 @@ export default function Page({
   params: Promise<{
     id: string;
   }>;
-  searchParams: Promise<{ [key: string]: string | string[] }>;
+  searchParams: Promise<{ [key: string]: string }>;
 }) {
   const { id } = use(params);
   const searchParamsObj = use(searchParams);
@@ -20,8 +20,8 @@ export default function Page({
   const queryClient = getQueryClient();
 
   const query = {
-    page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
-    size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
+    page: searchParamsObj.page ? Number.parseInt(searchParamsObj.page) : 0,
+    size: searchParamsObj.size ? Number.parseInt(searchParamsObj.size) : 100,
   }
 
   const rooms = use(
