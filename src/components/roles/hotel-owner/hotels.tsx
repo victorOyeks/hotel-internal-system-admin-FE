@@ -192,18 +192,10 @@ function AddNewHotelDialog({ managers }: { managers: HotelManager[] }) {
 }
 
 const hotelFormSchema = z.object({
-  hotelName: z.string().nonempty("Hotel name is required"),
+  name: z.string().nonempty("Hotel name is required"),
+  hotelAddress: z.string().nonempty("Hotel address is required"),
   location: z.string().nonempty("Location is required"),
-  // totalRooms is going to come in as a string from the input, so we parse it to a number
-  totalRooms: z
-    .string()
-    .nonempty("Total rooms is required")
-    .transform((val) => parseInt(val, 10))
-    .refine(
-      (val) => val > 0,
-      "Total rooms must be greater than 0"
-    ) as unknown as z.ZodString,
-  branchManager: z.string().nonempty("Branch manager is required"),
+  managerId: z.string().nonempty("Branch manager is required"),
 });
 
 function SingleHotelForm({
@@ -224,7 +216,6 @@ function SingleHotelForm({
         message: "Hotel Added successfully",
       });
       await queryClient.invalidateQueries({
-        exact: true,
         queryKey: ["hotels"],
       });
     },
@@ -238,10 +229,10 @@ function SingleHotelForm({
   const form = useForm({
     resolver: zodResolver(hotelFormSchema),
     defaultValues: {
-      hotelName: "",
+      name: "",
       location: "",
-      totalRooms: "0",
-      branchManager: "",
+      hotelAddress: "",
+      managerId: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -254,14 +245,15 @@ function SingleHotelForm({
         className="space-y-4"
         onSubmit={form.handleSubmit((data) =>
           mutate({
-            hotelAddress: data.location,
-            hotelName: data.hotelName,
-            managerCustomId: data.branchManager,
+            hotelAddress: data.hotelAddress,
+            location: data.location,
+            name: data.name,
+            managerId: data.managerId,
           })
         )}
       >
         <FormField
-          name="hotelName"
+          name="name"
           control={form.control}
           render={({ field }) => (
             <FormItem>
@@ -275,12 +267,33 @@ function SingleHotelForm({
         />
         <FormField
           control={form.control}
+          name="hotelAddress"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hotel Address</FormLabel>
+              <FormControl>
+                <Input
+                  autoComplete="address-line1"
+                  placeholder="e.g 123 Main St, Lagos"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="location"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Location</FormLabel>
               <FormControl>
-                <Input placeholder="e.g Ajah, Lagos" {...field} />
+                <Input
+                  autoComplete="address-level2"
+                  placeholder="e.g Ajah, Lagos"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -288,20 +301,7 @@ function SingleHotelForm({
         />
         <FormField
           control={form.control}
-          name="totalRooms"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Total Rooms</FormLabel>
-              <FormControl>
-                <Input placeholder="100" min={1} type="number" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="branchManager"
+          name="managerId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Branch Manager</FormLabel>
@@ -312,9 +312,9 @@ function SingleHotelForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {managers.map((h) => (
-                    <SelectItem key={h.id} value={h.customId}>
-                      {h.fullName}
+                  {managers.map((manager) => (
+                    <SelectItem key={manager.id} value={manager.id}>
+                      {manager.fullName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -387,7 +387,7 @@ function EditHotelForm({
       <Form {...form}>
         <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
           <FormField
-            name="hotelName"
+            name="name"
             control={form.control}
             render={({ field }) => (
               <FormItem>
@@ -406,7 +406,11 @@ function EditHotelForm({
               <FormItem>
                 <FormLabel>Branch Hotel Location</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g Ajah, Lagos" {...field} />
+                  <Input
+                    autoComplete="address-level2"
+                    placeholder="e.g Ajah, Lagos"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -414,12 +418,16 @@ function EditHotelForm({
           />
           <FormField
             control={form.control}
-            name="totalRooms"
+            name="hotelAddress"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Total Room Count</FormLabel>
+                <FormLabel>Hotel Address</FormLabel>
                 <FormControl>
-                  <Input placeholder="100" min={1} type="number" {...field} />
+                  <Input
+                    autoComplete="address-line1"
+                    placeholder="e.g 123 Main St, Lagos"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -427,7 +435,7 @@ function EditHotelForm({
           />
           <FormField
             control={form.control}
-            name="branchManager"
+            name="managerId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Assign Branch Manager</FormLabel>
@@ -551,7 +559,15 @@ const deleteHotelSchema = z.object({
     .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-function DeleteHotel({ setOpen, id, revalidate }: { setOpen: (open: boolean) => void; id: string; revalidate: () => Promise<void> }) {
+function DeleteHotel({
+  setOpen,
+  id,
+  revalidate,
+}: {
+  setOpen: (open: boolean) => void;
+  id: string;
+  revalidate: () => Promise<void>;
+}) {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
     mutationFn: deleteHotelBranch,
@@ -617,7 +633,11 @@ function DeleteHotel({ setOpen, id, revalidate }: { setOpen: (open: boolean) => 
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full font-semibold" disabled={isPending}>
+          <Button
+            type="submit"
+            className="w-full font-semibold"
+            disabled={isPending}
+          >
             {isPending ? (
               <>
                 <Loader2Icon className="animate-spin" />
@@ -694,10 +714,10 @@ const columns = [
             return (
               <EditHotelForm
                 initialValues={{
-                  branchManager: "manager2",
-                  hotelName: rowData.name,
+                  managerId: "manager2",
+                  name: rowData.name!,
+                  hotelAddress: rowData.address!,
                   location: rowData.address,
-                  totalRooms: rowData.totalRoom.toString(),
                 }}
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-hotel" : false)}
               />
@@ -708,8 +728,11 @@ const columns = [
               <DeleteHotel
                 setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
                 id={info.row.original.customId!}
-                // @ts-expect-error revalidate is a function
-                revalidate={info.table.options.meta?.revalidate || (() => Promise.resolve())}
+                revalidate={
+                  // @ts-expect-error revalidate is a function
+                  info.table.options.meta?.revalidate ||
+                  (() => Promise.resolve())
+                }
               />
             );
           default:
@@ -861,6 +884,7 @@ export function HotelOwnerHotels({
   managers: HotelManager[];
   revalidate: () => Promise<void>;
 }) {
+  console.log("HotelOwnerHotels rendered with hotels:", hotels);
   const table = useReactTable({
     data: hotels,
     columns: columns,

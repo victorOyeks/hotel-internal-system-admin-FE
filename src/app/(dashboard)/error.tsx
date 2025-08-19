@@ -23,7 +23,7 @@ export default function ErrorPage({
           500 - Server Error
         </h1>
         <p className="mt-4 text-muted-foreground">
-          Oops, something went wrong on our end.
+          {error.message || "Oops, something went wrong on our end."}
         </p>
         <div className="mt-6">
           <Button onClick={() => reset()}>Try again</Button>

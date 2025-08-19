@@ -7,28 +7,36 @@ import { use } from "react";
 import { fromPromise } from "neverthrow";
 import { revalidatePath } from "next/cache";
 
-async function invalidatePage() {
-  "use server";
+async function invalidatePage(
+  query: Record<string, string | number | boolean>
+) {
   const queryClient = getQueryClient();
   await queryClient.invalidateQueries({
-    queryKey: ["hotels"],
+    queryKey: ["hotels", query],
+    exact: true,
+  });
+  await queryClient.invalidateQueries({
+    queryKey: ["hotel-managers", query],
     exact: true,
   });
   revalidatePath("/owner/hotels");
 }
 
-function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] }> }) {
+function HotelsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] }>;
+}) {
   const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
   const searchParamsObj = use(searchParams);
   const query = {
     page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
     size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
-  }
-
+  };
 
   const hotels = use(
-    queryClient.fetchQuery({
+    queryClient.ensureQueryData({
       queryKey: ["hotels", query],
       queryFn: async () => {
         const response = await fromPromise(
@@ -40,17 +48,18 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
             query,
             throw: true,
           }),
-          (error) => new Error("Failed to fetch hotels", { cause: error }));
+          (error) => new Error("Failed to fetch hotels", { cause: error })
+        );
         if (response.isErr()) {
           throw response.error;
         }
         return response.value.data;
       },
-    }),
+    })
   );
 
   const managers = use(
-    queryClient.fetchQuery({
+    queryClient.ensureQueryData({
       queryKey: ["hotel-managers", query],
       queryFn: async () => {
         const response = await fromPromise(
@@ -60,18 +69,20 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
               token: cookieData.token,
             },
             query: {
-              page:0,
-              size: 1000
+              page: 0,
+              size: 1000,
             },
             throw: true,
           }),
-          (error) => new Error("Failed to fetch hotel managers", { cause: error }));
+          (error) =>
+            new Error("Failed to fetch hotel managers", { cause: error })
+        );
         if (response.isErr()) {
           throw response.error;
         }
         return response.value.data;
       },
-    }),
+    })
   );
 
   const breadcrumb = {
@@ -88,9 +99,19 @@ function HotelsPage({ searchParams }: { searchParams: Promise<{ [key: string]: s
     ],
   };
 
+  async function revalidate() {
+    "use server";
+    return invalidatePage(query);
+  }
+
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <HotelOwnerHotels breadcrumb={breadcrumb} hotels={hotels.content} managers={managers.content} revalidate={invalidatePage} />
+      <HotelOwnerHotels
+        breadcrumb={breadcrumb}
+        hotels={hotels.content}
+        managers={managers.content}
+        revalidate={revalidate}
+      />
     </HydrationBoundary>
   );
 }
