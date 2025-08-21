@@ -1,9 +1,18 @@
 import { BookingsPage } from "@/components/roles/hotel-owner/bookings";
-import { $fetch, type BookingStatus } from "@/lib/fetch";
+import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { format } from "date-fns";
 import { use } from "react";
+import z from "zod";
+
+
+const ParamsSchema = z.object({
+  roomType: z.string(),
+  search: z.string(),
+  bookingStatus: z.string().default("CHECKED_IN"),
+  page: z.coerce.number().default(0),
+  size: z.coerce.number().default(10),
+}).partial();
 
 function Page({
   searchParams,
@@ -13,22 +22,14 @@ function Page({
   const cookieData = use(getCookieData())!;
   const searchParamsObj = use(searchParams);
   const queryClient = getQueryClient();
+  const validatedParams = ParamsSchema.parse(searchParamsObj);
 
   const bookings = use(
     queryClient.fetchQuery({
-      queryKey: ["hotel-owner-bookings", searchParamsObj],
+      queryKey: ["hotel-owner-bookings", validatedParams],
       queryFn: async () => {
         const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {
-          query: {
-            status: (searchParamsObj.status || "CHECKED_IN") as BookingStatus,
-            // yyyy-mm-dd format
-            checkInDate: searchParamsObj.checkInDate
-              ? format(new Date(searchParamsObj.checkInDate), "yyyy-MM-dd")
-              : format(new Date(), "yyyy-MM-dd"),
-            search: searchParamsObj.search || undefined,
-            page: searchParamsObj.page || 1,
-            size: searchParamsObj.size || 10,
-          },
+          query: validatedParams,
           auth: {
             type: "Bearer",
             token: cookieData.token,

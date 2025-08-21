@@ -329,13 +329,6 @@ export const schema = createSchema({
         output: ApiResponseListRoomResponse,
     },
     "@get/api/hotel-owners/hotels/bookings": {
-        query: z.object({
-            status: BookingStatus,
-            checkInDate: z.string(), // yyyy-mm-dd format
-            page: z.coerce.number().default(1),
-            size: z.coerce.number().default(100),
-            search: z.string(),
-        }).partial(),
         output: ApiResponseListBookingViewResponse,
     },
 
