@@ -30,13 +30,12 @@ const UpdateRoomRequest = z.object({
 });
 
 const RoomResponse = z.object({
-    customId: z.string(),
+    id: z.string(),
     hotelName: z.string(),
-    roomNo: z.string(),
+    roomIdentifier: z.string(),
     roomType: z.string(),
-    roomName: z.string(),
     roomPrice: z.number(),
-    roomStatus: z.string(),
+    checkInStatus: z.string(),
     roomFacility: z.array(z.string()),
 });
 
@@ -61,7 +60,20 @@ const OnboardHotelRequest = z.object({
 
 export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>;
 
+
+const HotelManager = z.object({
+    id: z.string(),
+    customId: z.string().nullable(),
+    fullName: z.string(),
+    email: z.string(),
+    phoneNumber: z.string(),
+});
+
+export type HotelManager = z.infer<typeof HotelManager>;
+
+
 const GetHotelResponse = z.object({
+    id: z.string(),
     customId: z.string().nullable(),
     name: z.string().nullable(),
     address: z.string(),
@@ -69,6 +81,7 @@ const GetHotelResponse = z.object({
     occupancyRate: z.string(),
     grossRevenue: z.string(),
     expenses: z.string(),
+    manager: HotelManager.partial().nullable().optional(),
 });
 
 export type GetHotelResponse = z.infer<typeof GetHotelResponse>;
@@ -142,16 +155,6 @@ const CreateHotelManagerRequest = z.object({
     phoneNumber: z.string(),
     staffId: z.string(),
 });
-
-const HotelManager = z.object({
-    id: z.string(),
-    customId: z.string().nullable(),
-    fullName: z.string(),
-    email: z.string(),
-    phoneNumber: z.string(),
-});
-
-export type HotelManager = z.infer<typeof HotelManager>;
 
 const OnboardHotelResponse = z.object({
     hotelName: z.string(),

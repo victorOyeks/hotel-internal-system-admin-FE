@@ -757,7 +757,7 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/owner/hotels/${info.row.original.customId}`}>
+                <Link href={`/owner/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
@@ -884,7 +884,6 @@ export function HotelOwnerHotels({
   managers: HotelManager[];
   revalidate: () => Promise<void>;
 }) {
-  console.log("HotelOwnerHotels rendered with hotels:", hotels);
   const table = useReactTable({
     data: hotels,
     columns: columns,

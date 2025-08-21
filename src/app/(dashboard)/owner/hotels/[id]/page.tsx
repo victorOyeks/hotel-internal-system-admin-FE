@@ -65,6 +65,7 @@ export default function Page({
       },
     ],
   };
+
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms.content} />
