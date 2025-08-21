@@ -277,6 +277,28 @@ const ApiResponseListBookingViewResponse = z.object({
     }),
 });
 
+const InventoryResponse = z.object({
+    id: z.string(),
+    customId: z.string(),
+    name: z.string(), 
+    category: z.string(),
+    unit: z.string(),
+    quantity: z.coerce.number().default(0),
+    availability: z.string(),
+});
+
+export type InventoryResponse = z.infer<typeof InventoryResponse>;
+
+const ApiResponseListInventoryResponse = z.object({
+    requestTime: z.coerce.date(),
+    requestType: z.string(),
+    referenceId: z.string(),
+    status: z.boolean(),
+    message: z.string(),
+    data: z.object({
+        content: z.array(InventoryResponse)
+    }),
+});
 
 
 export type BookingStatus = z.infer<typeof BookingStatus>; 
@@ -330,6 +352,19 @@ export const schema = createSchema({
     },
     "@get/api/hotel-owners/hotels/bookings": {
         output: ApiResponseListBookingViewResponse,
+    },
+    "@get/api/hotel-owners/:hotelId/inventories": {
+        params: z.object({ hotelId: z.string() }),
+        query: z.object({
+            searchName: z.string(),
+            customId: z.string(),
+            category: z.string(),
+            unit: z.string(),
+            availability: z.string(),
+            page: z.coerce.number().default(0),
+            size: z.coerce.number().default(10),
+        }).partial(),
+        output: ApiResponseListInventoryResponse,
     },
 
     // Manager APIs
