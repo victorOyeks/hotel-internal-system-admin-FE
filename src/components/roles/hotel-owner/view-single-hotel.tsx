@@ -34,7 +34,7 @@ import type { RoomDetails } from "@/lib/fetch";
 function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
   const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
   return (
-    <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+    <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
       <div>
         <p className="text-primary md:pl-2">
           All rooms ({table.getRowModel().rows.length})
@@ -137,7 +137,7 @@ function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
 
 function ViewSingleHotelTable({ table }: { table: TableType<RoomDetails> }) {
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="overflow-hidden rounded-md border bg-card">
       <Table>
         <TableHeader className="bg-gray-100">
           {table.getHeaderGroups().map((headerGroup) => (
