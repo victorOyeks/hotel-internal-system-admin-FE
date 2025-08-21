@@ -21,7 +21,7 @@ export default function Page({
 
   const query = {
     page: searchParamsObj.page ? Number.parseInt(searchParamsObj.page) : 0,
-    size: searchParamsObj.size ? Number.parseInt(searchParamsObj.size) : 100,
+    size: searchParamsObj.size ? Number.parseInt(searchParamsObj.size) : 10,
   }
 
   const rooms = use(

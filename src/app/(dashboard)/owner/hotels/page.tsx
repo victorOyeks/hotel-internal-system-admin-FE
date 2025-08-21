@@ -32,7 +32,7 @@ function HotelsPage({
   const searchParamsObj = use(searchParams);
   const query = {
     page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
-    size: searchParamsObj.size ? Number(searchParamsObj.size) : 100,
+    size: searchParamsObj.size ? Number(searchParamsObj.size) : 10,
   };
 
   const hotels = use(
@@ -70,7 +70,7 @@ function HotelsPage({
             },
             query: {
               page: 0,
-              size: 1000,
+              size: 10,
             },
             throw: true,
           }),

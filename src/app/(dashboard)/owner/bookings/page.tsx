@@ -27,7 +27,7 @@ function Page({
               : format(new Date(), "yyyy-MM-dd"),
             search: searchParamsObj.search || undefined,
             page: searchParamsObj.page || 1,
-            size: searchParamsObj.size || 100,
+            size: searchParamsObj.size || 10,
           },
           auth: {
             type: "Bearer",
