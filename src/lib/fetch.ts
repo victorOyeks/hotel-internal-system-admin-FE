@@ -140,7 +140,7 @@ const ApiResponseUserModelResponse = z.object({
 });
 
 const CreateRoomRequest = z.object({
-    hotelCustomId: z.string(),
+    hotelId: z.string(),
     roomNo: z.string(),
     roomType: z.string(),
     roomName: z.string(),
@@ -201,7 +201,7 @@ const UserInfoResponse = z.object({
     customId: z.string().nullable().optional(),
     parentUserCustomId: z.string().nullable().or(z.undefined()),
     verified: z.boolean(),
-    hotelCustomId: z.string().nullable().or(z.undefined()),
+    hotelId: z.string().nullable().or(z.undefined()),
     // createdAt: z.coerce.date(),
     // updatedAt: z.coerce.date(),
 });
@@ -330,13 +330,13 @@ export const schema = createSchema({
         input: OnboardHotelRequest,
         output: ApiResponseOnboardHotelResponse,
     },
-    "@put/api/hotel-owners/hotels/:hotelCustomId": {
-        params: z.object({ hotelCustomId: z.string() }),
+    "@put/api/hotel-owners/hotels/:hotelId": {
+        params: z.object({ hotelId: z.string() }),
         input: OnboardHotelRequest,
         output: ApiResponseGetHotelResponse,
     },
-    "@delete/api/hotel-owners/hotels/:hotelCustomId": {
-        params: z.object({ hotelCustomId: z.string() }),
+    "@delete/api/hotel-owners/hotels/:hotelId": {
+        params: z.object({ hotelId: z.string() }),
         output: ApiResponseDeleteHotelResponse,
     },
     "@get/api/hotel-owners/managers": {
@@ -346,8 +346,8 @@ export const schema = createSchema({
         input: CreateHotelManagerRequest,
         output: ApiResponseUserModelResponse,
     },
-    "@get/api/hotel-owners/hotels/:hotelCustomId/rooms": {
-        params: z.object({ hotelCustomId: z.string() }),
+    "@get/api/hotel-owners/hotels/:hotelId/rooms": {
+        params: z.object({ hotelId: z.string() }),
         output: ApiResponseListRoomResponse,
     },
     "@get/api/hotel-owners/hotels/bookings": {
@@ -368,12 +368,12 @@ export const schema = createSchema({
     },
 
     // Manager APIs
-    "@get/api/managers/hotels/:hotelCustomId/rooms": {
-        params: z.object({ hotelCustomId: z.string() }),
+    "@get/api/managers/hotels/:hotelId/rooms": {
+        params: z.object({ hotelId: z.string() }),
         output: ApiResponseListRoomResponse,
     },
-    "@post/api/managers/hotels/:hotelCustomId/rooms": {
-        params: z.object({ hotelCustomId: z.string() }),
+    "@post/api/managers/hotels/:hotelId/rooms": {
+        params: z.object({ hotelId: z.string() }),
         input: CreateRoomRequest,
         output: ApiResponseRoomResponse,
     },

@@ -29,10 +29,10 @@ export default function Page({
       queryKey: ["hotel", id, query],
       queryFn: async () => {
         const response = await $fetch(
-          "@get/api/hotel-owners/hotels/:hotelCustomId/rooms",
+          "@get/api/hotel-owners/hotels/:hotelId/rooms",
           {
             params: {
-              hotelCustomId: id,
+              hotelId: id,
             },
             auth: {
               type: "Bearer",

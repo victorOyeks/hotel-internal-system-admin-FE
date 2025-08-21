@@ -75,8 +75,8 @@ export async function deleteHotelBranch(id: string) {
     throw new Error("Unauthorized");
   }
 
-  const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelCustomId", {
-    params: { hotelCustomId: id },
+  const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelId", {
+    params: { hotelId: id },
     auth: { type: "Bearer", token: cookieData.token },
     throw: true,
   })
