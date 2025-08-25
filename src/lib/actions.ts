@@ -83,3 +83,19 @@ export async function deleteHotelBranch(id: string) {
 
   return response.data;
 }
+
+export async function editHotelBranch(id: string, payload: OnboardHotelRequest) {
+  const cookieData = await getCookieData();
+  if (!cookieData) {
+    throw new Error("Unauthorized");
+  }
+
+  const response = await $fetch("@put/api/hotel-owners/hotels/:hotelId", {
+    params: { hotelId: id },
+    body: payload,
+    auth: { type: "Bearer", token: cookieData.token },
+    throw: true,
+  });
+
+  return response.data;
+}

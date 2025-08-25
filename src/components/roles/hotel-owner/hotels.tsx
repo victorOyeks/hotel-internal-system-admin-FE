@@ -80,7 +80,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { GetHotelResponse, HotelManager } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createHotelBranch, deleteHotelBranch } from "@/lib/actions";
+import {
+  createHotelBranch,
+  deleteHotelBranch,
+  editHotelBranch,
+} from "@/lib/actions";
 import { toast } from "sonner";
 
 type HotelItem = GetHotelResponse;
@@ -347,11 +351,40 @@ const editHotelFormSchema = hotelFormSchema;
 function EditHotelForm({
   initialValues,
   setOpen,
+  hotelId,
+  managers,
+  revalidate
 }: {
   initialValues: z.infer<typeof editHotelFormSchema>;
+  hotelId: string;
+  managers: HotelManager[];
   setOpen: (open: boolean) => void;
+  revalidate: () => Promise<void>;
 }) {
-  const [isPending, setIsPending] = useState(false);
+  const { isPending, mutateAsync } = useMutation({
+    mutationKey: ["edit-hotel", hotelId],
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: z.infer<typeof hotelFormSchema>;
+    }) => editHotelBranch(id, payload),
+    onSuccess: async () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel updated successfully",
+      });
+      // Invalidate and refetch
+      await revalidate();
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to update hotel",
+      });
+    },
+  });
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(editHotelFormSchema),
@@ -362,20 +395,10 @@ function EditHotelForm({
   });
 
   const handleSubmit = useCallback(
-    (data: z.infer<typeof hotelFormSchema>) => {
-      console.log("Form submitted with data:", data);
-      setIsPending(true);
-      setTimeout(() => {
-        setIsPending(false);
-        setOpen(false);
-        form.reset();
-        setShowSuccessDialog({
-          show: true,
-          message: "Changes saved successfully",
-        });
-      }, 3000);
+    async (data: z.infer<typeof hotelFormSchema>) => {
+      await mutateAsync({ id: hotelId, payload: data });
     },
-    [setShowSuccessDialog, setOpen, form]
+    [mutateAsync, hotelId]
   );
 
   return (
@@ -449,10 +472,11 @@ function EditHotelForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="manager1">Manager 1</SelectItem>
-                    <SelectItem value="manager2">Manager 2</SelectItem>
-                    <SelectItem value="manager3">Manager 3</SelectItem>
-                    <SelectItem value="manager4">Manager 4</SelectItem>
+                    {managers.map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id}>
+                        {manager.fullName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -713,12 +737,20 @@ const columns = [
             const rowData = info.row.original;
             return (
               <EditHotelForm
+                hotelId={rowData.id!}
+                // @ts-expect-error managers is passed as meta
+                managers={info.table.options.meta?.managers || []}
                 initialValues={{
-                  managerId: "manager2",
+                  managerId: rowData.manager?.id || "",
                   name: rowData.name!,
                   hotelAddress: rowData.address!,
                   location: rowData.address,
                 }}
+                revalidate={
+                  // @ts-expect-error revalidate is a function
+                  info.table.options.meta?.revalidate ||
+                  (() => Promise.resolve())
+                }
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-hotel" : false)}
               />
             );
@@ -739,7 +771,7 @@ const columns = [
             return null;
         }
         // @ts-expect-error revalidate is a function
-      }, [open, info.row.original, info.table.options.meta?.revalidate]);
+      }, [open, info.row.original, info.table.options.meta?.revalidate, info.table.options.meta?.managers]);
 
       return (
         <Dialog
@@ -893,6 +925,7 @@ export function HotelOwnerHotels({
     getFilteredRowModel: getFilteredRowModel(),
     meta: {
       revalidate,
+      managers,
     },
   });
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
