@@ -250,7 +250,7 @@ const ApiResponseListGetHotelResponse = z.object({
     }),
 });
 
-const BookingStatus = z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED"]);
+const BookingStatus = z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED", "AVAILABLE"]);
 
 const BookingViewResponse = z.object({
     bookingId: z.string(),
@@ -406,6 +406,7 @@ export const $fetch = createFetch({
             return status >= 500 || status === 429;
         }
     },
+    disableValidation: true,
     onRequest({ url, query }) {
         console.log({
             url: url.toString(),
