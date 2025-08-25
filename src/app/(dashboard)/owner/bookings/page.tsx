@@ -9,7 +9,7 @@ import z from "zod";
 const ParamsSchema = z.object({
   roomType: z.string(),
   search: z.string(),
-  bookingStatus: z.string().default("CHECKED_IN"),
+  bookingStatus: z.string(),
   page: z.coerce.number().default(0),
   size: z.coerce.number().default(10),
 }).partial();
@@ -25,7 +25,7 @@ function Page({
   const validatedParams = ParamsSchema.parse(searchParamsObj);
 
   const bookings = use(
-    queryClient.fetchQuery({
+    queryClient.ensureQueryData({
       queryKey: ["hotel-owner-bookings", validatedParams],
       queryFn: async () => {
         const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {

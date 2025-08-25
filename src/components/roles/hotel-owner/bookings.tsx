@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import {
   useReactTable,
@@ -11,13 +11,20 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { useSetAtom, useAtom, atom, useAtomValue } from "jotai";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useSetAtom, useAtom, atom } from "jotai";
+import {
+  PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
   BanIcon,
   DoorOpenIcon,
   EyeIcon,
+  Loader2Icon,
   MessageCircleMoreIcon,
   MoreVerticalIcon,
   SearchIcon,
@@ -49,6 +56,7 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import type { BookingStatus, BookingViewResponse } from "@/lib/fetch";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const successDialogAtom = atom({
   show: false,
@@ -88,20 +96,22 @@ const columns = [
       </div>
     ),
   }),
-  
+
   columnHelper.accessor("bookingStatus", {
     header: "Status",
     cell: (info) => {
       const statusToVariant: Record<BookingStatus, BadgeVariant> = {
+        AVAILABLE: "outline",
         CHECKED_IN: "green",
         CHECKED_OUT: "blue",
         RESERVED: "yellow",
         CANCELLED: "destructive",
       };
       const status = info.getValue();
+      const normalizedStatus = status.replace(/_/g, " ").toLowerCase();
       return (
         <Badge className="capitalize" variant={statusToVariant[status]}>
-          {status}
+          {normalizedStatus}
         </Badge>
       );
     },
@@ -153,7 +163,9 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/reports/branch-id/${info.row.original.bookingId}`}>
+                <Link
+                  href={`/reports/branch-id/${info.row.original.bookingId}`}
+                >
                   <EyeIcon />
                   View branch report
                 </Link>
@@ -254,7 +266,20 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
   );
 }
 
-function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> }) {
+function LinkStatus({ children }: PropsWithChildren) {
+  const { pending } = useLinkStatus();
+
+  if (!pending) return children;
+
+  return <Loader2Icon className="animate-spin" />;
+}
+
+function BookingsListToolbar({
+  table,
+}: {
+  table: TableType<BookingViewResponse>;
+}) {
+  const searchParams = useSearchParams();
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [tableSection, setTableSection] = useAtom(tableSectionAtom);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
@@ -274,6 +299,30 @@ function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> 
     [setSuccessDialogOpen]
   );
 
+  const getLink = useCallback(
+    (section: "bookings" | "reservations" | "history") => {
+      const params = new URLSearchParams(searchParams);
+      switch (section) {
+        case "bookings": {
+          params.delete("bookingStatus");
+          break;
+        }
+        case "reservations": {
+          params.set("bookingStatus", "RESERVED");
+          break;
+        }
+        case "history": {
+          params.set("bookingStatus", "CHECKED_OUT");
+          break;
+        }
+      }
+
+      const stringParams = params.toString();
+      return `/owner/bookings${stringParams ? `?${stringParams}` : ""}`;
+    },
+    [searchParams]
+  );
+
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div className="flex items-center gap-x-2">
@@ -283,8 +332,15 @@ function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> 
           data-active={tableSection === "bookings"}
           onClick={() => setTableSection("bookings")}
           className="shadow-none text-xs hover:border-transparent rounded-full"
+          asChild
         >
-          All Bookings {tableSection === "bookings" && `(${table.getFilteredRowModel().rows.length})`}
+          <Link href={getLink("bookings")}>
+            All Bookings{" "}
+            <LinkStatus>
+              {tableSection === "bookings" &&
+                `(${table.getRowCount() * table.getPageCount()})`}
+            </LinkStatus>
+          </Link>
         </Button>
 
         <Button
@@ -293,8 +349,15 @@ function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> 
           data-active={tableSection === "reservations"}
           onClick={() => setTableSection("reservations")}
           className="shadow-none text-xs hover:border-transparent rounded-full"
+          asChild
         >
-          Reservations {tableSection === "reservations" && `(${table.getFilteredRowModel().rows.length})`}
+          <Link href={getLink("reservations")}>
+            Reservations{" "}
+            <LinkStatus>
+              {tableSection === "reservations" &&
+                `(${table.getFilteredRowModel().rows.length})`}
+            </LinkStatus>
+          </Link>
         </Button>
 
         <Button
@@ -303,8 +366,15 @@ function BookingsListToolbar({ table }: { table: TableType<BookingViewResponse> 
           data-active={tableSection === "history"}
           onClick={() => setTableSection("history")}
           className="shadow-none text-xs hover:border-transparent rounded-full"
+          asChild
         >
-          Booking history {tableSection === "history" && `(${table.getFilteredRowModel().rows.length})`}
+          <Link href={getLink("history")}>
+            Booking history{" "}
+            <LinkStatus>
+              {tableSection === "history" &&
+                `(${table.getFilteredRowModel().rows.length})`}
+            </LinkStatus>
+          </Link>
         </Button>
       </div>
 
@@ -341,26 +411,8 @@ export function BookingsPage({
     breadcrumbs: Breadcrumb[];
   };
 }) {
-  const tableSection = useAtomValue(tableSectionAtom);
-
-  const tableData = useMemo(() => {
-    switch (tableSection) {
-      case "bookings":
-        return bookings;
-      case "reservations":
-        return bookings.filter((booking) => booking.bookingStatus === "RESERVED");
-      case "history":
-        return bookings.filter(
-          (booking) =>
-            booking.bookingStatus === "CHECKED_OUT" || booking.bookingStatus === "CANCELLED"
-        );
-      default:
-        return bookings;
-    }
-  }, [bookings, tableSection]);
-
   const table = useReactTable({
-    data: tableData,
+    data: bookings,
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -370,7 +422,7 @@ export function BookingsPage({
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     setBreadcrumb(breadcrumb);
     return () => setBreadcrumb(null);
   }, [setBreadcrumb, breadcrumb]);
