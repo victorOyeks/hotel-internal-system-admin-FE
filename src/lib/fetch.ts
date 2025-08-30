@@ -280,7 +280,7 @@ const ApiResponseListBookingViewResponse = z.object({
 const InventoryResponse = z.object({
     id: z.string(),
     customId: z.string(),
-    name: z.string(), 
+    name: z.string(),
     category: z.string(),
     unit: z.string(),
     quantity: z.coerce.number().default(0),
@@ -301,7 +301,7 @@ const ApiResponseListInventoryResponse = z.object({
 });
 
 
-export type BookingStatus = z.infer<typeof BookingStatus>; 
+export type BookingStatus = z.infer<typeof BookingStatus>;
 // --- Main Fetch Schema ---
 
 export const schema = createSchema({
@@ -385,7 +385,7 @@ export const schema = createSchema({
 });
 
 export const $fetch = createFetch({
-    baseURL: "https://hotel-internal-system-be.onrender.com",
+    baseURL: "http://93.115.23.43:8277",
     schema: schema,
 	errorSchema: AppExceptionResponseObject,
     retry: {

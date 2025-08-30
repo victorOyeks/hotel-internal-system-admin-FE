@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { $fetch, type UserInfoResponse } from "./fetch";
+import { cache } from "react";
 
 export const tokenKey = "hms.jwt.session_token";
 
@@ -20,7 +21,7 @@ export async function getCookieData() {
   return cookieData;
 }
 
-export async function getUser() {
+export const getUser = cache(async () => {
   const cookieData = await getCookieData();
 
   if (!cookieData) {
@@ -39,4 +40,4 @@ export async function getUser() {
   }
 
   return data;
-}
+})
