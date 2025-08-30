@@ -78,7 +78,9 @@ function HotelsPage({
             new Error("Failed to fetch hotel managers", { cause: error })
         );
         if (response.isErr()) {
-          throw response.error;
+          return {
+            content: [],
+          }
         }
         return response.value.data;
       },
