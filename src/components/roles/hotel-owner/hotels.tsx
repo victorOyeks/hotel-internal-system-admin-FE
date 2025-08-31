@@ -1,6 +1,65 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: No array index key */
 "use client";
 
+import { DataTablePagination } from "@/components/shared/pagination";
+import {
+  type ExportData,
+  ExportDialog,
+  SuccessDialog,
+} from "@/components/shared/shared-dialogs";
+import { TableFilter } from "@/components/shared/table-filter";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  assignManagerToHotelBranch,
+  createHotelBranch,
+  deleteHotelBranch,
+  editHotelBranch,
+} from "@/lib/actions";
+import type { GetHotelResponse, HotelManager } from "@/lib/fetch";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
+import { formatCurrency } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { DialogTrigger } from "@radix-ui/react-dialog";
+import { useMutation } from "@tanstack/react-query";
 import {
   createColumnHelper,
   flexRender,
@@ -11,7 +70,9 @@ import {
   type Table as TableType,
   useReactTable,
 } from "@tanstack/react-table";
+import { atom, useAtom, useSetAtom } from "jotai";
 import {
+  AlertTriangleIcon,
   DoorOpenIcon,
   HotelIcon,
   Loader2Icon,
@@ -20,72 +81,13 @@ import {
   PlusCircleIcon,
   SearchIcon,
   TrashIcon,
-  AlertTriangleIcon,
+  UserPlus2Icon,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
-import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { DataTablePagination } from "@/components/shared/pagination";
-import { TableFilter } from "@/components/shared/table-filter";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Input } from "@/components/ui/input";
-import z from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  type ExportData,
-  ExportDialog,
-  SuccessDialog,
-} from "@/components/shared/shared-dialogs";
-import { Textarea } from "@/components/ui/textarea";
-import type { GetHotelResponse, HotelManager } from "@/lib/fetch";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  createHotelBranch,
-  deleteHotelBranch,
-  editHotelBranch,
-} from "@/lib/actions";
 import { toast } from "sonner";
+import z from "zod";
 
 type HotelItem = GetHotelResponse;
 const columnHelper = createColumnHelper<HotelItem>();
@@ -96,6 +98,7 @@ const successDialogAtom = atom({
 
 function HotelListToolbar({
   managers,
+  table,
 }: {
   table: TableType<HotelItem>;
   managers: HotelManager[];
@@ -113,7 +116,7 @@ function HotelListToolbar({
         message: "Data exported successfully!",
       });
     },
-    [setSuccessDialogOpen]
+    [setSuccessDialogOpen],
   );
 
   return (
@@ -130,7 +133,11 @@ function HotelListToolbar({
       <div className="flex items-center gap-x-2 ">
         <TableFilter></TableFilter>
 
-        <AddNewHotelDialog managers={managers} />
+        <AddNewHotelDialog
+          // @ts-expect-error revalidate is a function
+          revalidate={table.options.meta?.revalidate}
+          managers={managers}
+        />
 
         <ExportDialog
           open={exportDialogOpen}
@@ -142,7 +149,13 @@ function HotelListToolbar({
   );
 }
 
-function AddNewHotelDialog({ managers }: { managers: HotelManager[] }) {
+function AddNewHotelDialog({
+  managers,
+  revalidate,
+}: {
+  managers: HotelManager[];
+  revalidate: () => Promise<void>;
+}) {
   const [section, setSection] = useState<"single" | "multiple">("single");
   const [open, setOpen] = useState(false);
   return (
@@ -183,7 +196,11 @@ function AddNewHotelDialog({ managers }: { managers: HotelManager[] }) {
 
         <div className="mt-4">
           {section === "single" ? (
-            <SingleHotelForm setOpen={setOpen} managers={managers} />
+            <SingleHotelForm
+              revalidate={revalidate}
+              setOpen={setOpen}
+              managers={managers}
+            />
           ) : (
             <p className="text-gray-500">
               Bulk upload functionality is not yet implemented.
@@ -199,17 +216,18 @@ const hotelFormSchema = z.object({
   name: z.string().nonempty("Hotel name is required"),
   hotelAddress: z.string().nonempty("Hotel address is required"),
   location: z.string().nonempty("Location is required"),
-  managerId: z.string().nonempty("Branch manager is required"),
+  managerId: z.string().nonempty("Manager is required"),
 });
 
 function SingleHotelForm({
   setOpen,
   managers,
+  revalidate,
 }: {
   setOpen: (open: boolean) => void;
   managers: HotelManager[];
+  revalidate: () => Promise<void>;
 }) {
-  const queryClient = useQueryClient();
   const { mutate, isPending } = useMutation({
     mutationFn: createHotelBranch,
     onSuccess: async () => {
@@ -219,13 +237,11 @@ function SingleHotelForm({
         show: true,
         message: "Hotel Added successfully",
       });
-      await queryClient.invalidateQueries({
-        queryKey: ["hotels"],
-      });
+      await revalidate();
     },
-    onError: () => {
-      toast.error("Something went wrong", {
-        description: "Failed to add hotel",
+    onError: (e) => {
+      toast.error("Failed to add hotel", {
+        description: e.message,
       });
     },
   });
@@ -236,7 +252,6 @@ function SingleHotelForm({
       name: "",
       location: "",
       hotelAddress: "",
-      managerId: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -253,7 +268,7 @@ function SingleHotelForm({
             location: data.location,
             name: data.name,
             managerId: data.managerId,
-          })
+          }),
         )}
       >
         <FormField
@@ -346,18 +361,17 @@ function SingleHotelForm({
   );
 }
 
-const editHotelFormSchema = hotelFormSchema;
+const editHotelFormSchema = hotelFormSchema.omit({ managerId: true });
 
 function EditHotelForm({
   initialValues,
   setOpen,
   hotelId,
-  managers,
-  revalidate
+  // managers,
+  revalidate,
 }: {
   initialValues: z.infer<typeof editHotelFormSchema>;
   hotelId: string;
-  managers: HotelManager[];
   setOpen: (open: boolean) => void;
   revalidate: () => Promise<void>;
 }) {
@@ -368,7 +382,7 @@ function EditHotelForm({
       payload,
     }: {
       id: string;
-      payload: z.infer<typeof hotelFormSchema>;
+      payload: z.infer<typeof editHotelFormSchema>;
     }) => editHotelBranch(id, payload),
     onSuccess: async () => {
       setOpen(false);
@@ -379,9 +393,9 @@ function EditHotelForm({
       // Invalidate and refetch
       await revalidate();
     },
-    onError: () => {
-      toast.error("Something went wrong", {
-        description: "Failed to update hotel",
+    onError: (e) => {
+      toast.error("Failed to update hotel", {
+        description: e.message,
       });
     },
   });
@@ -395,10 +409,10 @@ function EditHotelForm({
   });
 
   const handleSubmit = useCallback(
-    async (data: z.infer<typeof hotelFormSchema>) => {
+    async (data: z.infer<typeof editHotelFormSchema>) => {
       await mutateAsync({ id: hotelId, payload: data });
     },
-    [mutateAsync, hotelId]
+    [mutateAsync, hotelId],
   );
 
   return (
@@ -456,12 +470,97 @@ function EditHotelForm({
               </FormItem>
             )}
           />
+
+          <Button
+            type="submit"
+            className="mt-4 w-full font-semibold"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2Icon className="animate-spin" />
+                <span>Creating, please wait...</span>
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
+const assignManagerFormSchema = z.object({
+  managerId: z.string().nonempty("Manager is required"),
+});
+
+function AssignManagerForm({
+  hotelId,
+  managers,
+  currentlyAssignedManagerId,
+  setOpen,
+  revalidate,
+}: {
+  hotelId: string;
+  currentlyAssignedManagerId: string;
+  managers: HotelManager[];
+  setOpen: (open: boolean) => void;
+  revalidate: () => Promise<void>;
+}) {
+  const { isPending, mutateAsync } = useMutation({
+    mutationKey: ["assign-manager-to-hotel", hotelId],
+    mutationFn: ({
+      managerId
+    }: z.infer<typeof assignManagerFormSchema>) => assignManagerToHotelBranch({ hotelId, managerId }, "ASSIGN"),
+    onSuccess: async () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Hotel updated successfully",
+      });
+      // Invalidate and refetch
+      await revalidate();
+    },
+    onError: (e) => {
+      toast.error("Failed to assign manger", {
+        description: e.message,
+      });
+    },
+  });
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(assignManagerFormSchema),
+    defaultValues: {
+      managerId: currentlyAssignedManagerId || "",
+    },
+    progressive: true,
+    mode: "onBlur",
+    reValidateMode: "onBlur",
+  });
+
+  const handleSubmit = useCallback(
+    async (data: z.infer<typeof assignManagerFormSchema>) => {
+      await mutateAsync(data);
+    },
+    [mutateAsync],
+  );
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle>Assign Manager</DialogTitle>
+      <DialogDescription className="sr-only">
+        Assign a manager to this hotel branch
+      </DialogDescription>
+
+      <Form {...form}>
+        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
           <FormField
             control={form.control}
             name="managerId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Assign Branch Manager</FormLabel>
+                <FormLabel>Select Branch Manager</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -483,18 +582,15 @@ function EditHotelForm({
               </FormItem>
             )}
           />
-          <Button
-            type="submit"
-            className="mt-4 w-full font-semibold"
-            disabled={isPending}
-          >
+
+          <Button type="submit" className="w-full font-semibold">
             {isPending ? (
               <>
                 <Loader2Icon className="animate-spin" />
                 <span>Creating, please wait...</span>
               </>
             ) : (
-              "Save Changes"
+              "Assign Manager"
             )}
           </Button>
         </form>
@@ -603,9 +699,9 @@ function DeleteHotel({
       });
       await revalidate();
     },
-    onError: async () => {
-      toast.error("Something went wrong", {
-        description: "Failed to delete hotel",
+    onError: async (e) => {
+      toast.error("Failed to delete hotel", {
+        description: e.message,
       });
       await revalidate();
     },
@@ -720,7 +816,11 @@ const columns = [
     id: "actions",
     cell: (info) => {
       const [open, setOpen] = useState<
-        "contact-manager" | "delete-hotel" | "edit-hotel" | false
+        | "contact-manager"
+        | "delete-hotel"
+        | "edit-hotel"
+        | "assign-manager"
+        | false
       >(false);
 
       const dialog = useMemo(() => {
@@ -741,7 +841,6 @@ const columns = [
                 // @ts-expect-error managers is passed as meta
                 managers={info.table.options.meta?.managers || []}
                 initialValues={{
-                  managerId: rowData.manager?.id || "",
                   name: rowData.name!,
                   hotelAddress: rowData.address!,
                   location: rowData.address,
@@ -755,6 +854,28 @@ const columns = [
               />
             );
           }
+
+          case "assign-manager": {
+            const rowData = info.row.original;
+
+            return (
+              <AssignManagerForm
+                hotelId={rowData.id!}
+                currentlyAssignedManagerId={rowData.manager?.id || ""}
+                managers={
+                  // @ts-expect-error managers is passed as meta
+                  info.table.options.meta?.managers || []
+                }
+                revalidate={
+                  // @ts-expect-error revalidate is a function
+                  info.table.options.meta?.revalidate ||
+                  (() => Promise.resolve())
+                }
+                setOpen={(isOpen) => setOpen(isOpen ? "assign-manager" : false)}
+              />
+            );
+          }
+
           case "delete-hotel":
             return (
               <DeleteHotel
@@ -770,8 +891,14 @@ const columns = [
           default:
             return null;
         }
+      }, [
+        open,
+        info.row.original,
         // @ts-expect-error revalidate is a function
-      }, [open, info.row.original, info.table.options.meta?.revalidate, info.table.options.meta?.managers]);
+        info.table.options.meta?.revalidate,
+        // @ts-expect-error managers is passed as meta
+        info.table.options.meta?.managers,
+      ]);
 
       return (
         <Dialog
@@ -804,6 +931,19 @@ const columns = [
                   Configure Hotel
                 </DialogTrigger>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("assign-manager")}
+                >
+                  <UserPlus2Icon />
+                  Assign Manger
+                </DialogTrigger>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <DialogTrigger
@@ -851,7 +991,7 @@ function HotelList({ table }: { table: TableType<HotelItem> }) {
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 );
@@ -906,7 +1046,7 @@ export function HotelOwnerHotels({
   breadcrumb,
   hotels,
   managers,
-  revalidate,
+  revalidateAction: revalidate,
 }: {
   breadcrumb: {
     title: string;
@@ -914,7 +1054,7 @@ export function HotelOwnerHotels({
   };
   hotels: HotelItem[];
   managers: HotelManager[];
-  revalidate: () => Promise<void>;
+  revalidateAction: () => Promise<void>;
 }) {
   const table = useReactTable({
     data: hotels,

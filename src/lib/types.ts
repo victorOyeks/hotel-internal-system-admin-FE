@@ -1,3 +1,6 @@
+import z from "zod";
+import { Role } from "./fetch";
+
 export interface PageProps extends AppLayoutProps {}
 
 export interface AppLayoutProps {
@@ -15,11 +18,18 @@ export interface ApiResponse<Data> {
 	data: Data;
 }
 
-export type HotelRole =
-	| "HOTEL_OWNER"
-	| "MANAGER"
-	| "FRONT_DESK"
-	| "MAINTENANCE"
-	| "INVENTORY"
-	| "BAR"
-	| "KITCHEN";
+export type HotelRole = z.infer<typeof Role>;
+
+export type UserPayload = {
+  userId: string;
+  userCustomId: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  staffId: string;
+  status: "ACTIVE" | "INACTIVE" | string & {};
+  role: HotelRole;
+  sub: string;
+  iat: number;
+  exp: number;
+};

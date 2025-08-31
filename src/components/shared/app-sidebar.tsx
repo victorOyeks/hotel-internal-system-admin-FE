@@ -25,7 +25,8 @@ export function AppSidebar({ role, ...props }: React.ComponentProps<typeof Sideb
 		MAINTENANCE: [],
 		INVENTORY: [],
 		KITCHEN: [],
-		MANAGER: []
+		MANAGER: [],
+		SUPER_ADMIN: []
 	}
 
 	return (

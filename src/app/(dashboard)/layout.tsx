@@ -4,8 +4,8 @@ import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
-import { getUser } from "@/lib/server-fns";
 import type { HotelRole } from "@/lib/types";
+import { getUser } from "@/lib/dal";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
 	const user = use(getUser());
@@ -17,9 +17,9 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 	return (
 		<JotaiProvider>
 			<SidebarProvider>
-				<AppSidebar collapsible="icon" role={user.data.role as HotelRole} />
+				<AppSidebar collapsible="icon" role={user.role as HotelRole} />
 				<SidebarInset className="bg-background-blue">
-					<Header user={user.data} />
+					<Header user={user} />
 					{children}
 				</SidebarInset>
 			</SidebarProvider>
