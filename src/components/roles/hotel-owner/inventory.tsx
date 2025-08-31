@@ -141,7 +141,7 @@ const columns = [
     cell: (info) => {
         return (
             <Button variant={"secondary"} size={"sm"} className="rounded-full text-blue-500 bg-blue-500/10 hover:bg-blue-500/20" asChild>
-                <Link href={`/owner/inventory/${info.row.original.id}`}>
+                <Link href={`/dashboard/inventory/${info.row.original.id}`}>
                     View Inventory
                 </Link>
             </Button>

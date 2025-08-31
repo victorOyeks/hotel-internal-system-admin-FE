@@ -4,15 +4,15 @@ import { revalidatePath } from "next/cache"
 
 async function revalidate() {
     "use server";
-    revalidatePath("/owner/financials")
+    revalidatePath("/dashboard/financials")
 }
 
 function FinancesPage() {
   const breadcrumb = {
     title: "Financials",
     breadcrumbs: [
-      { label: "Dashboard", href: "/owner/dashboard" },
-      { label: "Financials", href: "/owner/financials" },
+      { label: "Dashboard", href: "/dashboard/dashboard" },
+      { label: "Financials", href: "/dashboard/financials" },
     ],
   }
   return (

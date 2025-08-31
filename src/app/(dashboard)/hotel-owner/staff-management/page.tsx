@@ -7,8 +7,8 @@ function StaffManagementPage() {
   const breadcrumb = {
     title: "Staff Management",
     breadcrumbs: [
-      { label: "Dashboard", href: "/owner" },
-      { label: "Staff Management", href: "/owner/staff-management" },
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Staff Management", href: "/dashboard/staff-management" },
     ],
   };
   return (

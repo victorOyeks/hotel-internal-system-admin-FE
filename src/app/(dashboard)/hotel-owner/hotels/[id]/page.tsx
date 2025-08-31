@@ -61,7 +61,7 @@ export default function Page({
       },
       {
         label: rooms.content.length > 0 ? rooms.content[0].hotelName : "Hotel",
-        href: `/owner/hotels/${id}`,
+        href: `/dashboard/hotels/${id}`,
       },
     ],
   };

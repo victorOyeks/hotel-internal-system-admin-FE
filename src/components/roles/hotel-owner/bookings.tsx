@@ -318,7 +318,7 @@ function BookingsListToolbar({
       }
 
       const stringParams = params.toString();
-      return `/owner/bookings${stringParams ? `?${stringParams}` : ""}`;
+      return `/dashboard/bookings${stringParams ? `?${stringParams}` : ""}`;
     },
     [searchParams]
   );

@@ -916,7 +916,7 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/owner/hotels/${info.row.original.id}`}>
+                <Link href={`/dashboard/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>

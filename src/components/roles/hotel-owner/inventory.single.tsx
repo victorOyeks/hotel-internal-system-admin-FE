@@ -44,7 +44,7 @@ function ListToolbar() {
   const setSection = (section: "all" | "history") => {
     const params = new URLSearchParams(searchParams);
     params.set("section", section === "all" ? "all" : "history");
-    router.replace(`/owner/inventory/${pageParams.id}?${params.toString()}`);
+    router.replace(`/dashboard/inventory/${pageParams.id}?${params.toString()}`);
   };
 
   return (
@@ -442,7 +442,7 @@ export function SingleInventoryPage({ data }: { data: InventoryResponse[] }) {
   return (
     <div className="h-full w-full p-4 space-y-2 md:space-y-4">
       <Link
-        href={"/owner/inventory"}
+        href={"/dashboard/inventory"}
         className="inline-flex items-center gap-x-1 px-3 py-1.5 border-2 border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-100 transition-colors"
       >
         <ArrowLeftIcon className="size-4" />

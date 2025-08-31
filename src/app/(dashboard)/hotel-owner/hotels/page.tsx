@@ -19,7 +19,7 @@ async function invalidatePage(
     queryKey: ["hotel-managers", query],
     exact: true,
   });
-  revalidatePath("/owner/hotels");
+  revalidatePath("/dashboard/hotels");
 }
 
 function HotelsPage({
@@ -91,11 +91,11 @@ function HotelsPage({
     breadcrumbs: [
       {
         label: "Dashboard",
-        href: "/owner",
+        href: "/dashboard",
       },
       {
         label: "Hotels",
-        href: "/owner/hotels",
+        href: "/dashboard/hotels",
       },
     ],
   };

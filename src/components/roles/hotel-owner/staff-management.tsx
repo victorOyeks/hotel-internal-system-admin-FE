@@ -719,7 +719,7 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/owner/hotels/${info.row.original.staffId}`}>
+                <Link href={`/dashboard/hotels/${info.row.original.staffId}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
