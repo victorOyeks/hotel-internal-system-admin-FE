@@ -7,6 +7,7 @@ import { Provider as JotaiProvider } from "jotai";
 import type { HotelRole } from "@/lib/types";
 import { getUser } from "@/lib/dal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { throttle } from "nuqs/server";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
   const user = use(getUser());
@@ -16,7 +17,11 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <NuqsAdapter>
+    <NuqsAdapter defaultOptions={{
+      clearOnDefault: true,
+      limitUrlUpdates: throttle(500),
+      shallow: false,
+    }}>
       <JotaiProvider>
         <SidebarProvider>
           <AppSidebar collapsible="icon" role={user.role as HotelRole} />

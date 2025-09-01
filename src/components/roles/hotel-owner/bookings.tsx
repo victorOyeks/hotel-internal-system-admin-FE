@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
 import {
-  PropsWithChildren,
+  type PropsWithChildren,
   useCallback,
   useEffect,
   useMemo,
@@ -56,7 +56,7 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import type { BookingStatus, BookingViewResponse } from "@/lib/fetch";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 const successDialogAtom = atom({
   show: false,

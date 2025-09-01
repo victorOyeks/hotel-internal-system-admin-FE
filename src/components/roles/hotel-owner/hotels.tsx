@@ -54,7 +54,8 @@ import {
   deleteHotelBranch,
   editHotelBranch,
 } from "@/lib/actions";
-import type { GetHotelResponse, HotelManager } from "@/lib/fetch";
+import type { GetHotelResponse, HotelManager, Pagination } from "@/lib/fetch";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -84,6 +85,7 @@ import {
   UserPlus2Icon,
 } from "lucide-react";
 import Link from "next/link";
+import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -103,6 +105,7 @@ function HotelListToolbar({
   table: TableType<HotelItem>;
   managers: HotelManager[];
 }) {
+  const [searchText, setSearchText] = useQueryState("searchText", parseAsString.withDefault(""));
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
@@ -125,13 +128,16 @@ function HotelListToolbar({
         <input
           type="text"
           placeholder="Search Hotels"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
           className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
         />
         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
       </div>
 
       <div className="flex items-center gap-x-2 ">
-        <TableFilter></TableFilter>
+        <TableFilter>
+        </TableFilter>
 
         <AddNewHotelDialog
           // @ts-expect-error revalidate is a function
@@ -1044,7 +1050,8 @@ function HotelList({ table }: { table: TableType<HotelItem> }) {
 
 export function HotelOwnerHotels({
   breadcrumb,
-  hotels,
+  data,
+  paginationMeta,
   managers,
   revalidateAction: revalidate,
 }: {
@@ -1052,17 +1059,25 @@ export function HotelOwnerHotels({
     title: string;
     breadcrumbs: Breadcrumb[];
   };
-  hotels: HotelItem[];
+  data: HotelItem[];
+  paginationMeta: Pagination;
   managers: HotelManager[];
   revalidateAction: () => Promise<void>;
 }) {
+  const [pagination, setPagination] = usePaginationSearchParams()
   const table = useReactTable({
-    data: hotels,
+    data,
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    state: {
+      pagination,
+    },
     meta: {
       revalidate,
       managers,

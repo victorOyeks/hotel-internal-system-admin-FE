@@ -29,10 +29,15 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
-import type { RoomDetails } from "@/lib/fetch";
+import type { Pagination, RoomDetails } from "@/lib/fetch";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { parseAsString, useQueryStates } from "nuqs";
 
 function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
   const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
+  const [searchParam, setSearchParam] = useQueryStates({
+    search: parseAsString.withDefault(""),
+  });
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
       <div>
@@ -46,6 +51,10 @@ function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
           <input
             type="text"
             placeholder="Search Hotels"
+            value={searchParam.search}
+            onChange={(e) =>
+              setSearchParam((prev) => ({ ...prev, search: e.target.value }))
+            }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-sm md:placeholder:text-base placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
@@ -271,14 +280,17 @@ const columns = [
 export function ViewSingleHotelPage({
   breadcrumbs,
   rooms = [],
+  paginationMeta,
 }: {
   breadcrumbs: {
     title: string;
     breadcrumbs: Breadcrumb[];
   };
   rooms: RoomDetails[];
+  paginationMeta: Pagination;
 }) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
 
   const table = useReactTable({
     data: rooms,
@@ -288,8 +300,12 @@ export function ViewSingleHotelPage({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange,
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
     state: {
       columnFilters,
+      pagination,
     },
   });
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
@@ -301,7 +317,7 @@ export function ViewSingleHotelPage({
   return (
     <div className="h-full w-full p-4 space-y-2 md:space-y-4">
       <Link
-        href={"/hotels"}
+        href={"/dashboard/hotels"}
         className="inline-flex items-center gap-x-1 px-3 py-1.5 border-2 border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-100 transition-colors"
       >
         <ArrowLeftIcon className="size-4" />

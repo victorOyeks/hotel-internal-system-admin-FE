@@ -1,30 +1,44 @@
 import { ViewSingleHotelPage } from "@/components/roles/hotel-owner/view-single-hotel";
 import { $fetch } from "@/lib/fetch";
+import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import {
+  createLoader,
+  parseAsStringEnum,
+  parseAsString,
+  type SearchParams,
+} from "nuqs/server";
 import { use } from "react";
 
-export default function Page({
-  params,
-  searchParams,
-}: {
-  params: Promise<{
-    id: string;
-  }>;
-  searchParams: Promise<{ [key: string]: string }>;
-}) {
+type PageProps = {
+  searchParams: Promise<SearchParams>;
+  params: Promise<{ id: string }>;
+};
+
+enum RoomStatus {
+  CHECKED_IN = "CHECKED_IN",
+  CHECKED_OUT = "CHECKED_OUT",
+  RESERVED = "RESERVED",
+  CANCELLED = "CANCELLED",
+  AVAILABLE = "AVAILABLE",
+}
+
+const loadSearchParams = createLoader({
+  ...paginationSearchParams,
+  roomType: parseAsString.withDefault(""),
+  status: parseAsStringEnum(Object.values(RoomStatus)),
+  search: parseAsString.withDefault(""),
+});
+
+export default function Page({ params, searchParams }: PageProps) {
   const { id } = use(params);
-  const searchParamsObj = use(searchParams);
+  const query = use(loadSearchParams(searchParams));
   const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
 
-  const query = {
-    page: searchParamsObj.page ? Number.parseInt(searchParamsObj.page) : 0,
-    size: searchParamsObj.size ? Number.parseInt(searchParamsObj.size) : 10,
-  }
-
-  const rooms = use(
+  const { content, ...paginationMeta } = use(
     queryClient.ensureQueryData({
       queryKey: ["hotel", id, query],
       queryFn: async () => {
@@ -60,7 +74,7 @@ export default function Page({
         href: "/hotels",
       },
       {
-        label: rooms.content.length > 0 ? rooms.content[0].hotelName : "Hotel",
+        label: content.length > 0 ? content[0].hotelName : "Hotel",
         href: `/dashboard/hotels/${id}`,
       },
     ],
@@ -68,7 +82,11 @@ export default function Page({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <ViewSingleHotelPage breadcrumbs={breadcrumbs} rooms={rooms.content} />
+      <ViewSingleHotelPage
+        breadcrumbs={breadcrumbs}
+        rooms={content}
+        paginationMeta={paginationMeta}
+      />
     </HydrationBoundary>
   );
 }

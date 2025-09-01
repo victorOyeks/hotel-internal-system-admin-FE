@@ -38,7 +38,9 @@ const Pagination = z.object({
   totalPages: z.number(),
   last: z.boolean(),
   first: z.boolean(),
-})
+});
+
+export type Pagination = z.infer<typeof Pagination>;
 
 const UpdateRoomRequest = z.object({
   roomNo: z.string(),
@@ -235,34 +237,55 @@ const ApiResponseListRoomResponse = z.object({
   referenceId: z.string(),
   status: z.boolean(),
   message: z.string(),
-  data: z.object({
+  data: Pagination.extend({
     content: z.array(RoomResponse),
   }),
 });
 
-const CustomPageStaffResponse = Pagination.extend({
-  content: z.array(z.object({
-    id: z.string(),
-    customId: z.string(),
-    fullName: z.string(),
-    email: z.string(),
-    phoneNumber: z.string(),
-    role: Role,
-  }))
-})
+const ListRoomsQuery = z
+  .object({
+    roomType: z.string(),
+    search: z.string(),
+    status: z.enum([
+      "CHECKED_IN",
+      "CHECKED_OUT",
+      "RESERVED",
+      "CANCELLED",
+      "AVAILABLE",
+    ]),
+    page: z.coerce.number().default(0),
+    size: z.coerce.number().default(10),
+  })
+  .partial();
 
-const CustomPageStaffResponseQuery = z.object({
-  search: z.string(),
-  status: z.string(),
-  role: Role,
-  page: z.coerce.number().default(0),
-  size: z.coerce.number().default(10),
-}).partial();
+export type ListRoomsQuery = z.infer<typeof ListRoomsQuery>;
+
+const CustomPageStaffResponse = Pagination.extend({
+  content: z.array(
+    z.object({
+      id: z.string(),
+      customId: z.string(),
+      fullName: z.string(),
+      email: z.string(),
+      phoneNumber: z.string(),
+      role: Role,
+    })
+  ),
+});
+
+const CustomPageStaffResponseQuery = z
+  .object({
+    search: z.string(),
+    status: z.string(),
+    role: Role,
+    page: z.coerce.number().default(0),
+    size: z.coerce.number().default(10),
+  })
+  .partial();
 
 const ApiResponseCustomPageStaffResponse = ApiResponseObject.extend({
-  data: CustomPageStaffResponse
-})
-
+  data: CustomPageStaffResponse,
+});
 
 const ApiResponseListGetHotelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -270,7 +293,7 @@ const ApiResponseListGetHotelResponse = z.object({
   referenceId: z.string(),
   status: z.boolean(),
   message: z.string(),
-  data: z.object({
+  data: Pagination.extend({
     content: z.array(GetHotelResponse),
   }),
 });
@@ -355,6 +378,13 @@ export const schema = createSchema({
   // Hotel Owner APIs
   "@get/api/hotel-owners/hotels": {
     output: ApiResponseListGetHotelResponse,
+    query: z
+      .object({
+        searchText: z.string(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
   },
   "@post/api/hotel-owners/hotels": {
     input: OnboardHotelRequest,
@@ -371,7 +401,7 @@ export const schema = createSchema({
   },
   "@get/api/hotel-owners/staff": {
     output: ApiResponseCustomPageStaffResponse,
-    query: CustomPageStaffResponseQuery
+    query: CustomPageStaffResponseQuery,
   },
   "@post/api/hotel-owners/managers": {
     input: CreateHotelManagerRequest,
@@ -405,14 +435,16 @@ export const schema = createSchema({
       action: z.enum(["ASSIGN", "UNASSIGN"]),
     }),
     output: ApiResponseObject.extend({
-      data: z.string()
+      data: z.string(),
     }),
   },
+  "@get/api/hotel-owners/owner": {},
 
   // Manager APIs
   "@get/api/managers/hotels/:hotelId/rooms": {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseListRoomResponse,
+    query: ListRoomsQuery,
   },
   "@post/api/managers/hotels/:hotelId/rooms": {
     params: z.object({ hotelId: z.string() }),
@@ -431,7 +463,16 @@ export const $fetch = createFetch({
   schema: schema,
   errorSchema: ApiExceptionResponseObject,
   onError: ({ error }) => {
-    throw new Error(error.data.message || (error.cause as Error)?.message || String(error));
+    console.error("API Error:", error);
+    throw new Error(
+      "data" in error
+        ? typeof error.data === "string"
+          ? error.data
+          : error.data.message ||
+            (error.cause as Error)?.message ||
+            String(error)
+        : error.error
+    );
   },
   retry: {
     type: "exponential",

@@ -6,6 +6,8 @@ import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { use } from "react";
 import { fromPromise } from "neverthrow";
 import { revalidatePath } from "next/cache";
+import { paginationSearchParams } from "@/lib/nuqs.server";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 
 async function invalidatePage(
   query: Record<string, string | number | boolean>
@@ -15,27 +17,28 @@ async function invalidatePage(
     queryKey: ["hotels", query],
     exact: true,
   });
-  await queryClient.invalidateQueries({
-    queryKey: ["hotel-managers", query],
-    exact: true,
-  });
   revalidatePath("/dashboard/hotels");
 }
 
+type PageProps = {
+  searchParams: Promise<SearchParams>
+}
+
+const loadSearchParams = createLoader({
+  ...paginationSearchParams,
+  searchText: parseAsString.withDefault(""),
+});
+
+
 function HotelsPage({
   searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] }>;
-}) {
+}: PageProps) {
   const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
-  const searchParamsObj = use(searchParams);
-  const query = {
-    page: searchParamsObj.page ? Number(searchParamsObj.page) : 0,
-    size: searchParamsObj.size ? Number(searchParamsObj.size) : 10,
-  };
+  const query = use(loadSearchParams(searchParams));
 
-  const hotels = use(
+
+  const { content, ...paginationMeta } = use(
     queryClient.ensureQueryData({
       queryKey: ["hotels", query],
       queryFn: async () => {
@@ -109,7 +112,8 @@ function HotelsPage({
     <HydrationBoundary state={dehydrate(queryClient)}>
       <HotelOwnerHotels
         breadcrumb={breadcrumb}
-        hotels={hotels.content}
+        data={content}
+        paginationMeta={paginationMeta}
         managers={managers.content}
         revalidateAction={revalidate}
       />
