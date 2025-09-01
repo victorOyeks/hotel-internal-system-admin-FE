@@ -11,6 +11,7 @@ import {
   HardHatIcon
 } from "lucide-react";
 import Link from "next/link";
+import { Progress } from "@/components/ui/progress";
 
 function Page() {
   return (
@@ -84,11 +85,9 @@ function Page() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-primary-2">
               <span>Development Progress</span>
-              <span>65%</span>
+              <span>15%</span>
             </div>
-            <div className="w-full bg-primary-6/30 rounded-full h-2">
-              <div className="bg-gradient-to-r from-primary-4 to-primary-3 h-2 rounded-full transition-all duration-300" style={{ width: '5%' }}></div>
-            </div>
+            <Progress value={15} className="**:data-[slot=progress-indicator]:bg-gradient-to-r **:data-[slot=progress-indicator]:from-primary-2 **:data-[slot=progress-indicator]:to-primary-4 bg-primary-1/10" />
           </div>
 
           {/* Action Buttons */}
