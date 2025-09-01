@@ -273,11 +273,13 @@ const CustomPageStaffResponse = Pagination.extend({
   ),
 });
 
+export type CustomPageStaffResponse = z.infer<typeof CustomPageStaffResponse>['content'][number];
+
 const CustomPageStaffResponseQuery = z
   .object({
     search: z.string(),
     status: z.string(),
-    role: Role,
+    role: Role.nullable(),
     page: z.coerce.number().default(0),
     size: z.coerce.number().default(10),
   })

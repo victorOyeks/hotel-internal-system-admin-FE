@@ -22,7 +22,6 @@ import {
   TrashIcon,
   AlertTriangleIcon,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,23 +77,15 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import { Textarea } from "@/components/ui/textarea";
-import { Role } from "@/lib/fetch";
+import { type Pagination, Role, type CustomPageStaffResponse } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteHotelBranch } from "@/lib/actions";
 import { toast } from "sonner";
-import type { HotelRole } from "@/lib/types";
+import { parseAsString, useQueryStates } from "nuqs";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { Badge } from "@/components/ui/badge";
 
-type StaffResponse = {
-  staffId: string;
-  fullName: string;
-  role: HotelRole;
-  email: string;
-  status: "ACTIVE" | "SUSPENDED" | "ON_LEAVE";
-  currentShift: string;
-  profilePicture: string;
-};
-
-const columnHelper = createColumnHelper<StaffResponse>();
+const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
   show: false,
   message: "",
@@ -103,8 +94,11 @@ const successDialogAtom = atom({
 function HotelListToolbar({
   table,
 }: {
-  table: TableType<StaffResponse>;
+  table: TableType<CustomPageStaffResponse>;
 }) {
+  const [searchParam, setSearchParam] = useQueryStates({
+    search: parseAsString.withDefault(""),
+  });
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
@@ -132,6 +126,8 @@ function HotelListToolbar({
           <input
             type="text"
             placeholder="Search"
+            value={searchParam.search}
+            onChange={(e) => setSearchParam(prev => ({ ...prev, search: e.target.value }))}
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
@@ -634,31 +630,35 @@ const columns = [
     header: "Staff Name",
     cell: (info) => (
       <div className="flex items-center gap-x-2">
-        <Image
+        {/* <Image
           src={info.row.original.profilePicture}
           alt={info.row.original.fullName}
           className="w-10 h-10 rounded-full"
           width={40}
           height={40}
-        />
+        /> */}
         <span className="font-semibold">{info.getValue()}</span>
       </div>
     ),
   }),
   columnHelper.accessor("role", {
     header: "Role",
-    cell: (info) => <span>{info.getValue()}</span>,
+    cell: (info) => {
+      const role = info.getValue();
+      const refinedRole = role.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      return <Badge variant={"outline"}>{refinedRole}</Badge>;
+    },
   }),
   columnHelper.accessor("email", {
     header: "Email",
     cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
   }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: (info) => <span>{info.getValue()}</span>,
-  }),
-  columnHelper.accessor("currentShift", {
-    header: "Current Shift",
+  // columnHelper.accessor("status", {
+  //   header: "Status",
+  //   cell: (info) => <span>{info.getValue()}</span>,
+  // }),
+  columnHelper.accessor("phoneNumber", {
+    header: "Phone Number",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
   columnHelper.display({
@@ -695,7 +695,7 @@ const columns = [
             return (
               <DeleteStaffDialog
                 setOpen={(isOpen) => setOpen(isOpen ? "delete-staff" : false)}
-                id={info.row.original.staffId}
+                id={info.row.original.id}
               />
             );
           default:
@@ -719,7 +719,7 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/dashboard/hotels/${info.row.original.staffId}`}>
+                <Link href={`/dashboard/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
@@ -767,7 +767,7 @@ const columns = [
   }),
 ];
 
-function HotelList({ table }: { table: TableType<StaffResponse> }) {
+function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
@@ -835,13 +835,16 @@ function HotelList({ table }: { table: TableType<StaffResponse> }) {
 export function HotelOwnerStaff({
   breadcrumb,
   staffs,
+  paginationMeta
 }: {
   breadcrumb: {
     title: string;
     breadcrumbs: Breadcrumb[];
   };
-  staffs: StaffResponse[];
+  staffs: CustomPageStaffResponse[];
+  paginationMeta: Pagination;
 }) {
+  const [pagination, setPagination] = usePaginationSearchParams()
   const table = useReactTable({
     data: staffs,
     columns: columns,
@@ -849,6 +852,12 @@ export function HotelOwnerStaff({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    state: {
+      pagination
+    },
+    onPaginationChange: setPagination,
   });
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
