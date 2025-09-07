@@ -9,7 +9,7 @@ import {
 	SidebarMenuItem,
 	SidebarRail,
 } from "@/components/ui/sidebar";
-import { links as hotelOwnerLinks } from "../roles/hotel-owner/links";
+import { hotelOwnerLinks, managerOwnerLinks } from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
 import type { HotelRole } from "@/lib/types";
@@ -25,7 +25,7 @@ export function AppSidebar({ role, ...props }: React.ComponentProps<typeof Sideb
 		MAINTENANCE: [],
 		INVENTORY: [],
 		KITCHEN: [],
-		MANAGER: [],
+		MANAGER: managerOwnerLinks,
 		SUPER_ADMIN: []
 	}
 
