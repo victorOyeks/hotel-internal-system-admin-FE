@@ -32,17 +32,23 @@ import {
 	SelectValue,
 } from "../ui/select";
 import { Input } from "../ui/input";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function SuccessDialog({
 	open,
-	setOpen,
+	setOpenAction: setOpen,
 	message = "Changes saved.",
 }: {
 	open: boolean;
 	message?: string;
-	setOpen: (open: boolean) => void;
+	setOpenAction: (open: boolean) => void;
 }) {
+
+	useEffect(() => {
+		const t = setTimeout(() => setOpen(false), 3000);
+		return () => clearTimeout(t);
+	}, [setOpen]);
+
 	return (
 		<Dialog open={open} onOpenChange={setOpen} modal>
 			<DialogContent className="gap-0 !max-w-sm" showCloseButton={false}>
@@ -72,13 +78,13 @@ const exportSchema = z.object({
 export type ExportData = z.infer<typeof exportSchema>;
 
 export function ExportDialog({
-	onSubmit,
+	onSubmitAction: onSubmit,
 	open,
-	setOpen,
+	setOpenAction: setOpen,
 }: {
-	onSubmit: (data: ExportData) => void | Promise<void>;
+	onSubmitAction: (data: ExportData) => void | Promise<void>;
 	open: boolean;
-	setOpen: (open: boolean) => void;
+	setOpenAction: (open: boolean) => void;
 }) {
 	const [pending, setPending] = useState(false);
 	const form = useForm({

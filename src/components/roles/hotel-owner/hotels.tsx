@@ -147,8 +147,8 @@ function HotelListToolbar({
 
         <ExportDialog
           open={exportDialogOpen}
-          setOpen={setExportDialogOpen}
-          onSubmit={handleExport}
+          setOpenAction={setExportDialogOpen}
+          onSubmitAction={handleExport}
         />
       </div>
     </div>
@@ -1097,7 +1097,7 @@ export function HotelOwnerHotels({
       <HotelList table={table} />
       <SuccessDialog
         open={successDialogOpen.show}
-        setOpen={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        setOpenAction={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
         message={successDialogOpen.message}
       />
     </div>

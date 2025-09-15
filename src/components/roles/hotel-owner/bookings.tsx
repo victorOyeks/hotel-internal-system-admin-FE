@@ -56,16 +56,12 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import type { BookingStatus, BookingViewResponse } from "@/lib/fetch";
-import { useSearchParams } from "next/navigation";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 const successDialogAtom = atom({
   show: false,
   message: "",
 });
-
-const tableSectionAtom = atom<"bookings" | "reservations" | "history">(
-  "bookings"
-);
 
 const columnHelper = createColumnHelper<BookingViewResponse>();
 
@@ -266,23 +262,16 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
   );
 }
 
-function LinkStatus({ children }: PropsWithChildren) {
-  const { pending } = useLinkStatus();
-
-  if (!pending) return children;
-
-  return <Loader2Icon className="animate-spin" />;
-}
 
 function BookingsListToolbar({
   table,
 }: {
   table: TableType<BookingViewResponse>;
 }) {
-  const searchParams = useSearchParams();
+  const [bookingState, setBookingState] = useQueryState("bookingStatus", parseAsStringLiteral(["RESERVED", "CHECKED_OUT"]));
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [tableSection, setTableSection] = useAtom(tableSectionAtom);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+
 
   const handleExport = useCallback(
     async (data: ExportData) => {
@@ -299,82 +288,43 @@ function BookingsListToolbar({
     [setSuccessDialogOpen]
   );
 
-  const getLink = useCallback(
-    (section: "bookings" | "reservations" | "history") => {
-      const params = new URLSearchParams(searchParams);
-      switch (section) {
-        case "bookings": {
-          params.delete("bookingStatus");
-          break;
-        }
-        case "reservations": {
-          params.set("bookingStatus", "RESERVED");
-          break;
-        }
-        case "history": {
-          params.set("bookingStatus", "CHECKED_OUT");
-          break;
-        }
-      }
-
-      const stringParams = params.toString();
-      return `/dashboard/bookings${stringParams ? `?${stringParams}` : ""}`;
-    },
-    [searchParams]
-  );
-
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div className="flex items-center gap-x-2">
         <Button
           size="sm"
           variant="outline"
-          data-active={tableSection === "bookings"}
-          onClick={() => setTableSection("bookings")}
+          data-active={bookingState === null}
+          onClick={() => setBookingState(null)}
           className="shadow-none text-xs hover:border-transparent rounded-full"
-          asChild
         >
-          <Link href={getLink("bookings")}>
-            All Bookings{" "}
-            <LinkStatus>
-              {tableSection === "bookings" &&
-                `(${table.getRowCount() * table.getPageCount()})`}
-            </LinkStatus>
-          </Link>
+          All Bookings{" "}
+          {bookingState === null &&
+            `(${table.getRowCount() * table.getPageCount()})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={tableSection === "reservations"}
-          onClick={() => setTableSection("reservations")}
+          data-active={bookingState === "RESERVED"}
+          onClick={() => setBookingState("RESERVED")}
           className="shadow-none text-xs hover:border-transparent rounded-full"
-          asChild
         >
-          <Link href={getLink("reservations")}>
-            Reservations{" "}
-            <LinkStatus>
-              {tableSection === "reservations" &&
-                `(${table.getFilteredRowModel().rows.length})`}
-            </LinkStatus>
-          </Link>
+          Reservations{" "}
+          {bookingState === "RESERVED" &&
+            `(${table.getFilteredRowModel().rows.length})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={tableSection === "history"}
-          onClick={() => setTableSection("history")}
+          data-active={bookingState === "CHECKED_OUT"}
+          onClick={() => setBookingState("CHECKED_OUT")}
           className="shadow-none text-xs hover:border-transparent rounded-full"
-          asChild
         >
-          <Link href={getLink("history")}>
-            Booking history{" "}
-            <LinkStatus>
-              {tableSection === "history" &&
-                `(${table.getFilteredRowModel().rows.length})`}
-            </LinkStatus>
-          </Link>
+          Booking history{" "}
+          {bookingState === "CHECKED_OUT" &&
+            `(${table.getFilteredRowModel().rows.length})`}
         </Button>
       </div>
 
@@ -393,8 +343,8 @@ function BookingsListToolbar({
 
         <ExportDialog
           open={exportDialogOpen}
-          setOpen={setExportDialogOpen}
-          onSubmit={handleExport}
+          setOpenAction={setExportDialogOpen}
+          onSubmitAction={handleExport}
         />
       </div>
     </div>
@@ -433,7 +383,9 @@ export function BookingsPage({
       <BookingList table={table} />
       <SuccessDialog
         open={successDialogOpen.show}
-        setOpen={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        setOpenAction={(show) =>
+          setSuccessDialogOpen({ ...successDialogOpen, show })
+        }
         message={successDialogOpen.message}
       />
     </div>

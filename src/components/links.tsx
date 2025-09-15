@@ -6,10 +6,8 @@ import {
 	HotelIcon,
 	IdCardIcon,
 	IdCardLanyardIcon,
-	// IdCardLanyardIcon,
 	MessagesSquare,
 	MonitorCheckIcon,
-	// MonitorDot,
 	ToolCaseIcon,
 } from "lucide-react";
 

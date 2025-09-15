@@ -333,6 +333,26 @@ const ApiResponseListBookingViewResponse = z.object({
   }),
 });
 
+
+const ManagerBookingViewResponse = BookingViewResponse.extend({
+  customId: z.string(),
+  amountPaid: z.number(),
+});
+
+export type ManagerBookingViewResponse = z.infer<typeof ManagerBookingViewResponse>;
+
+const ApiResponseManagerBookingViewResponse = z.object({
+  requestTime: z.coerce.date(),
+  requestType: z.string(),
+  referenceId: z.string(),
+  status: z.boolean(),
+  message: z.string(),
+  data: z.object({
+    content: z.array(ManagerBookingViewResponse),
+  }),
+});
+
+
 const InventoryResponse = z.object({
   id: z.string(),
   customId: z.string(),
@@ -458,6 +478,18 @@ export const schema = createSchema({
     input: UpdateRoomRequest,
     output: ApiResponseRoomResponse,
   },
+  "@get/api/managers/hotels/:hotelId/bookings": {
+    params: z.object({ hotelId: z.string() }),
+    query: z
+      .object({
+        bookingStatus: BookingStatus,
+        search: z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "AVAILABLE"]),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+    output: ApiResponseManagerBookingViewResponse,
+  }
 });
 
 export const $fetch = createFetch({
