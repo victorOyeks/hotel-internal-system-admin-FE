@@ -5,7 +5,7 @@ import { Header } from "@/components/shared/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
 import type { HotelRole } from "@/lib/types";
-import { getUser } from "@/lib/dal";
+import { getManagerCurrentHotel, getUser } from "@/lib/dal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { throttle } from "nuqs/server";
 
@@ -16,6 +16,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     redirect("/auth");
   }
 
+  const activeHotel = use(getManagerCurrentHotel());
   return (
     <NuqsAdapter defaultOptions={{
       clearOnDefault: true,
@@ -24,7 +25,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     }}>
       <JotaiProvider>
         <SidebarProvider>
-          <AppSidebar collapsible="icon" role={user.role as HotelRole} />
+          <AppSidebar collapsible="icon" role={user.role as HotelRole} hotels={user.hotels} activeHotel={activeHotel ?? undefined} />
           <SidebarInset className="bg-background-blue">
             <Header user={user} />
             {children}
