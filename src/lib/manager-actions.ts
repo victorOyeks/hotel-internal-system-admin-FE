@@ -69,3 +69,24 @@ export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
 
     return data;     
 }
+
+export async function editStaffDetails(staffId: string, payload: Partial<Omit<OnboardStaffRequest, "role">>) {
+    const sessionData = await verifySession();
+    if (sessionData.role !== "MANAGER") {
+        throw new Error("Unauthorized");
+    }
+    const currentHotel = await getManagerCurrentHotel();
+
+    if (!currentHotel) {
+        throw new Error("No hotel found for the manager");
+    }
+
+    const { data } = await $fetch("@put/api/managers/:hotelId/:staffId", {
+        params: { hotelId: currentHotel.id, staffId },
+        auth: { type: "Bearer", token: sessionData.token },
+        body: payload,
+        throw: true
+    })
+
+    return data;
+}

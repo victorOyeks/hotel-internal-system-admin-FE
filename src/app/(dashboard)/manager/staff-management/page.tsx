@@ -1,5 +1,5 @@
 import { HotelManagerStaffsList } from "@/components/roles/manager/staff-management";
-import { verifySession } from "@/lib/dal";
+import { getManagerCurrentHotel, verifySession } from "@/lib/dal";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
@@ -31,11 +31,12 @@ const loadSearchParams = createLoader({
   ...paginationSearchParams,
   search: parseAsString.withDefault(""),
   role: parseAsStringLiteral(hotelRoles),
-  status: parseAsString.withDefault(""),
+  status: parseAsStringLiteral(["ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"]),
 });
 
 function StaffManagementPage({ searchParams }: PageProps) {
   const session = use(verifySession());
+  const currentHotel = use(getManagerCurrentHotel())!;
   const query = use(loadSearchParams(searchParams));
   const queryClient = getQueryClient();
   const breadcrumb = {
@@ -46,36 +47,32 @@ function StaffManagementPage({ searchParams }: PageProps) {
     ],
   };
 
-  // const { content, ...paginationMeta } = use(
-  //   queryClient.ensureQueryData({
-  //     queryKey: ["staffs", query],
-  //     queryFn: async () => {
-  //       const response = await $fetch("@get/api/hotel-owners/staff", {
-  //         query: query,
-  //         auth: {
-  //           type: "Bearer",
-  //           token: session.token,
-  //         },
-  //         throw: true,
-  //       });
-  //       return response.data;
-  //     },
-  //   })
-  // );
+  const { content, ...paginationMeta } = use(
+    queryClient.ensureQueryData({
+      queryKey: ["staffs", query],
+      queryFn: async () => {
+        const response = await $fetch("@get/api/managers/:hotelId/staff", {
+          params: {
+            hotelId: currentHotel.id,
+          },
+          query: query,
+          auth: {
+            type: "Bearer",
+            token: session.token,
+          },
+          throw: true,
+        });
+        return response.data;
+      },
+    })
+  );
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <HotelManagerStaffsList
         breadcrumb={breadcrumb}
-        staffs={[]}
-        paginationMeta={{
-          first: true,
-          last: true,
-          pageNumber: 0,
-          pageSize: 10,
-          totalElements: 0,
-          totalPages: 0,
-        }}
+        staffs={content}
+        paginationMeta={paginationMeta}
       />
     </HydrationBoundary>
   );

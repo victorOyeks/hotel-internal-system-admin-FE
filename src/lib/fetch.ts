@@ -271,16 +271,24 @@ const ListRoomsQuery = z
 
 export type ListRoomsQuery = z.infer<typeof ListRoomsQuery>;
 
+const StaffDetails = z.object({
+  id: z.string(),
+  customId: z.string(),
+  fullName: z.string(),
+  email: z.email(),
+  phoneNumber: z.string(),
+  staffId: z.string(),
+  userStatus: z.string(),
+  role: Role,
+  verified: z.boolean(),
+  lastLogin: z.string(),
+});
+
+export type StaffDetails = z.infer<typeof StaffDetails>;
+
 const CustomPageStaffResponse = Pagination.extend({
   content: z.array(
-    z.object({
-      id: z.string(),
-      customId: z.string(),
-      fullName: z.string(),
-      email: z.string(),
-      phoneNumber: z.string(),
-      role: Role,
-    })
+    StaffDetails
   ),
 });
 
@@ -397,20 +405,8 @@ const OnboardStaffRequest = z.object({
 
 export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>;
 
-const OnboardStaffResponse = z.object({
-  id: z.string(),
-  customId: z.string().nullable(),
-  fullName: z.string(),
-  email: z.email(),
-  phoneNumber: z.string(),
-  staffId: z.string(),
-  userStatus: z.string(),
-  role: Role,
-  verified: z.boolean(),
-});
-
 const ApiResponseOnboardStaffResponse = ApiResponseObject.extend({
-  data: OnboardStaffResponse,
+  data: StaffDetails,
 });
 
 export type BookingStatus = z.infer<typeof BookingStatus>;
@@ -527,9 +523,27 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseManagerBookingViewResponse,
   },
+  "@get/api/managers/:hotelId/staff": {
+    params: z.object({ hotelId: z.string() }),
+    query: z
+      .object({
+        search: z.string().nullable(),
+        status: z.enum(["ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"]).nullable(),
+        role: Role.nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+    output: ApiResponseCustomPageStaffResponse, 
+  },
   "@post/api/managers/hotels/:hotelId/onboard-staff": {
     params: z.object({ hotelId: z.string() }),
     input: OnboardStaffRequest,
+    output: ApiResponseOnboardStaffResponse,
+  },
+  "@put/api/managers/:hotelId/:staffId": {
+    params: z.object({ hotelId: z.string(), staffId: z.string() }),
+    input: OnboardStaffRequest.partial().omit({ role: true }),
     output: ApiResponseOnboardStaffResponse,
   },
 });

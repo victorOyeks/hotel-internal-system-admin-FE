@@ -13,16 +13,14 @@ import {
 } from "@tanstack/react-table";
 import {
   DoorOpenIcon,
-  HotelIcon,
   Loader2Icon,
-  MessageCircleMoreIcon,
   MoreVerticalIcon,
   PlusCircleIcon,
   SearchIcon,
-  TrashIcon,
   AlertTriangleIcon,
+  UserXIcon,
+  ReplaceIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -77,26 +75,19 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import { Textarea } from "@/components/ui/textarea";
-import { type Pagination, Role } from "@/lib/fetch";
+import {
+  type CustomPageStaffResponse,
+  type Pagination,
+  Role,
+} from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteHotelBranch } from "@/lib/actions";
 import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { Badge } from "@/components/ui/badge";
-
-type CustomPageStaffResponse = {
-  id: string;
-  customId: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  staffId: string;
-  userStatus: string;
-  role: string;
-  verified: true;
-  lastLogin: Date;
-};
+import { editStaffDetails, onboardStaffToHotel } from "@/lib/manager-actions";
+import type { HotelRole } from "@/lib/types";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
@@ -193,36 +184,16 @@ function AddNewStaffDialog() {
 const newStaffFormSchema = z.object({
   staffName: z.string().nonempty("Staff name is required"),
   email: z.email("Invalid email address"),
+  phoneNumber: z.string().nonempty("Phone number is required"),
   role: z.string().refine((val) => Role.safeParse(val).success, {
     message: "Invalid role",
   }),
 });
 
-// mock add new staff function
-async function addNewStaff(data: z.infer<typeof newStaffFormSchema>) {
-  console.log("Adding new staff with data:", data);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        message: "Staff added successfully",
-        data: {
-          id: "new-staff-id",
-          fullName: data.staffName,
-          email: data.email,
-          role: data.role,
-          status: "ACTIVE",
-          currentShift: "Morning",
-          profilePicture: "/images/default-profile.png", // Placeholder image
-        },
-      });
-    }, 2000);
-  });
-}
-
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const queryClient = useQueryClient();
   const { mutate, isPending } = useMutation({
-    mutationFn: addNewStaff,
+    mutationFn: onboardStaffToHotel,
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -258,7 +229,15 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     <Form {...form}>
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit((data) => mutate(data))}
+        onSubmit={form.handleSubmit((data) =>
+          mutate({
+            fullName: data.staffName,
+            email: data.email,
+            role: data.role as HotelRole,
+            phoneNumber: "",
+            staffId: "",
+          })
+        )}
       >
         <FormField
           name="staffName"
@@ -286,6 +265,25 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="phoneNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input
+                  type="tel"
+                  placeholder="e.g +234 801 234 5678"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="role"
@@ -331,15 +329,17 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 }
 
 const hotelOwnerStaffEditSchema = newStaffFormSchema;
+// .omit({ role: true });
 
 function UpdateHotelStaffForm({
   initialValues,
+  staffId,
   setOpen,
 }: {
   initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+  staffId: string;
   setOpen: (open: boolean) => void;
 }) {
-  const [isPending, setIsPending] = useState(false);
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(hotelOwnerStaffEditSchema),
@@ -349,28 +349,45 @@ function UpdateHotelStaffForm({
     reValidateMode: "onBlur",
   });
 
-  const handleSubmit = useCallback(
-    (data: z.infer<typeof newStaffFormSchema>) => {
-      console.log("Form submitted with data:", data);
-      setIsPending(true);
-      setTimeout(() => {
-        setIsPending(false);
-        setOpen(false);
-        form.reset();
-        setShowSuccessDialog({
-          show: true,
-          message: "Changes saved successfully",
-        });
-      }, 3000);
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+      const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
+
+      for (const key in data) {
+        if (
+          data[key as keyof typeof data] ===
+          initialValues[key as keyof typeof data]
+        )
+          continue;
+        changes[key as keyof typeof data] = data[key as keyof typeof data];
+      }
+      return editStaffDetails(staffId, changes);
     },
-    [setShowSuccessDialog, setOpen, form]
+    onSuccess: async () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Staff details updated successfully",
+      });
+      window.location.reload();
+    },
+  });
+  const handleSubmit = useCallback(
+    (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+      toast.promise(mutateAsync(data), {
+        loading: "Updating staff details...",
+        success: "Staff details updated successfully",
+        error: "Failed to update staff details",
+      });
+    },
+    [mutateAsync]
   );
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Edit hotel</DialogTitle>
+      <DialogTitle>Edit staff details</DialogTitle>
       <DialogDescription className="sr-only">
-        Edit hotel details
+        Edit staff details
       </DialogDescription>
       <Form {...form}>
         <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
@@ -400,6 +417,25 @@ function UpdateHotelStaffForm({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input
+                    type="tel"
+                    placeholder="e.g +234 801 234 5678"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="role"
@@ -409,6 +445,7 @@ function UpdateHotelStaffForm({
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  disabled
                 >
                   <FormControl>
                     <SelectTrigger className="w-full">
@@ -695,10 +732,12 @@ const columns = [
             const rowData = info.row.original;
             return (
               <UpdateHotelStaffForm
+                staffId={rowData.id}
                 initialValues={{
                   staffName: rowData.fullName,
                   email: rowData.email,
                   role: rowData.role,
+                  phoneNumber: rowData.phoneNumber,
                 }}
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
               />
@@ -717,13 +756,10 @@ const columns = [
       }, [open, info.row.original]);
 
       return (
-        <Dialog
-          open={typeof open === "string"}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setOpen(false);
-          }}
+        <Dialog open={typeof open === "string"}
+          onOpenChange={(isOpen) => isOpen || setOpen(false)}
         >
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
@@ -731,45 +767,45 @@ const columns = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href={`/dashboard/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <DialogTrigger
-                  className="w-full"
-                  onClick={() => setOpen("edit-staff")}
-                >
-                  <DoorOpenIcon />
-                  Configure Staff
-                </DialogTrigger>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <DialogTrigger
-                  className="w-full"
-                  onClick={() => setOpen("contact-staff")}
-                >
-                  <MessageCircleMoreIcon />
-                  Contact Staff
-                </DialogTrigger>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="hover:bg-red-500/10 text-red-500 focus:text-red-500"
+              <DropdownMenuSeparator /> */}
+              <DialogTrigger
+                className="w-full"
+                onClick={() => setOpen("edit-staff")}
                 asChild
               >
-                <DialogTrigger
-                  className="w-full"
-                  onClick={() => setOpen("delete-staff")}
-                >
-                  <TrashIcon className="text-red-500" />
-                  Delete Staff
-                </DialogTrigger>
-              </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <DoorOpenIcon />
+                  Edit Staff
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <DropdownMenuSeparator />
+              <DialogTrigger
+                className="w-full"
+                onClick={() => setOpen("contact-staff")}
+                asChild
+              >
+                <DropdownMenuItem>
+                  <ReplaceIcon />
+                  Reset password
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <DropdownMenuSeparator />
+              <DialogTrigger
+                className="w-full"
+                onClick={() => setOpen("delete-staff")}
+                asChild
+              >
+                <DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
+                  <UserXIcon className="text-red-500" />
+                  Suspend Staff
+                </DropdownMenuItem>
+              </DialogTrigger>
             </DropdownMenuContent>
           </DropdownMenu>
 
