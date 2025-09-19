@@ -1,8 +1,9 @@
 import { ViewRoomsInHotelPage } from "@/components/roles/manager/view-hotel-rooms";
-// import { $fetch } from "@/lib/fetch";
+import { getManagerCurrentHotel } from "@/lib/dal";
+import { $fetch, type ListRoomsQuery } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
-// import { getCookieData } from "@/lib/server-fns";
+import { getCookieData } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import {
   createLoader,
@@ -25,53 +26,56 @@ enum RoomStatus {
   AVAILABLE = "AVAILABLE",
 }
 
-const _loadSearchParams = createLoader({
+const loadSearchParams = createLoader({
   ...paginationSearchParams,
   roomType: parseAsString.withDefault(""),
   status: parseAsStringEnum(Object.values(RoomStatus)),
   search: parseAsString.withDefault(""),
 });
 
-export default function Page({ params }: PageProps) {
-  const { id } = use(params);
-  // const query = use(loadSearchParams(searchParams));
-  // const cookieData = use(getCookieData())!;
+export default function Page({ searchParams }: PageProps) {
+  const { id } = use(getManagerCurrentHotel())!;
+  const query = use(loadSearchParams(searchParams));
+  const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
 
-  // const { content, ...paginationMeta } = use(
-  //   queryClient.ensureQueryData({
-  //     queryKey: ["hotel", id, query],
-  //     queryFn: async () => {
-  //       const response = await $fetch(
-  //         "@get/api/hotel-owners/hotels/:hotelId/rooms",
-  //         {
-  //           params: {
-  //             hotelId: id,
-  //           },
-  //           auth: {
-  //             type: "Bearer",
-  //             token: cookieData.token,
-  //           },
-  //           query,
-  //           throw: true,
-  //         }
-  //       );
+  const { content, ...paginationMeta } = use(
+    queryClient.ensureQueryData({
+      queryKey: ["hotel", id, query],
+      queryFn: async () => {
+        const response = await $fetch(
+          "@get/api/managers/hotels/:hotelId/rooms",
+          {
+            params: {
+              hotelId: id,
+            },
+            auth: {
+              type: "Bearer",
+              token: cookieData.token,
+            },
+            query: {
+              ...query,
+              status: query.status as ListRoomsQuery["status"],
+            },
+            throw: true,
+          }
+        );
 
-  //       return response.data;
-  //     },
-  //   })
-  // );
+        return response.data;
+      },
+    })
+  );
 
   const breadcrumbs = {
     title: "Hotel Details",
     breadcrumbs: [
       {
         label: "Dashboard",
-        href: "/home",
+        href: "/dashboard",
       },
       {
-        label: "Hotels",
-        href: "/hotels",
+        label: "Rooms",
+        href: "/dashboard/rooms",
       },
       // {
       //   label: content.length > 0 ? content[0].hotelName : "Hotel",
@@ -84,15 +88,8 @@ export default function Page({ params }: PageProps) {
     <HydrationBoundary state={dehydrate(queryClient)}>
       <ViewRoomsInHotelPage
         breadcrumbs={breadcrumbs}
-        rooms={[]}
-        paginationMeta={{
-          first: true,
-          last: true,
-          pageNumber: 0,
-          pageSize: 10,
-          totalElements: 0,
-          totalPages: 0,
-        }}
+        rooms={content}
+        paginationMeta={paginationMeta}
       />
     </HydrationBoundary>
   );

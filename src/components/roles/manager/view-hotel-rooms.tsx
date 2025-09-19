@@ -61,6 +61,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { MultiInput, MultiInputTag } from "@/components/ui/multi-input";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
+import { addNewRoomToHotel } from "@/lib/manager-actions";
 
 const successDialogAtom = atom({
   show: false,
@@ -105,7 +106,7 @@ const RoomFormSchema = z.object({
 
 function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: async () => {},
+    mutationFn:  addNewRoomToHotel,
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -113,7 +114,7 @@ function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         show: true,
         message: "Room Added successfully",
       });
-      // await revalidate();
+      window.location.reload();
     },
     onError: (e) => {
       toast.error("Failed to add room", {
@@ -140,7 +141,14 @@ function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     <Form {...form}>
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit((data) => mutate())}
+        onSubmit={form.handleSubmit((data) => mutate({
+          roomFacility: data.roomFacilities,
+          roomIdentifier: data.roomName,
+          // roomPrice: Number(data.roomPrice),
+          roomType: data.roomType,
+          // roomNo: data.roomNumber,
+          roomStatus: "AVAILABLE"
+        }))}
       >
         <div className="grid grid-cols-2 gap-x-2">
           <FormField

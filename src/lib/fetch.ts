@@ -154,14 +154,16 @@ const ApiResponseUserModelResponse = z.object({
 });
 
 const CreateRoomRequest = z.object({
-  hotelId: z.string(),
-  roomNo: z.string(),
+  // hotelId: z.string(),
+  // roomNo: z.string(),
   roomType: z.string(),
-  roomName: z.string(),
-  roomPrice: z.number(),
+  roomIdentifier: z.string(),
+  // roomPrice: z.number(),
   roomStatus: z.string(),
   roomFacility: z.array(z.string()),
 });
+
+export type CreateRoomRequest = z.infer<typeof CreateRoomRequest>;
 
 const CreateHotelManagerRequest = z.object({
   fullName: z.string(),
@@ -253,15 +255,15 @@ const ApiResponseListRoomResponse = z.object({
 
 const ListRoomsQuery = z
   .object({
-    roomType: z.string(),
-    search: z.string(),
+    roomType: z.string().nullable(),
+    search: z.string().nullable(),
     status: z.enum([
       "CHECKED_IN",
       "CHECKED_OUT",
       "RESERVED",
       "CANCELLED",
       "AVAILABLE",
-    ]),
+    ]).nullable(),
     page: z.coerce.number().default(0),
     size: z.coerce.number().default(10),
   })
@@ -309,7 +311,7 @@ const ApiResponseListGetHotelResponse = z.object({
   }),
 });
 
-const BookingStatus = z.enum([
+export const BookingStatus = z.enum([
   "CHECKED_IN",
   "CHECKED_OUT",
   "RESERVED",
@@ -337,7 +339,7 @@ const ApiResponseListBookingViewResponse = z.object({
   referenceId: z.string(),
   status: z.boolean(),
   message: z.string(),
-  data: z.object({
+  data: Pagination.extend({
     content: z.array(BookingViewResponse),
   }),
 });
@@ -356,7 +358,7 @@ const ApiResponseManagerBookingViewResponse = z.object({
   referenceId: z.string(),
   status: z.boolean(),
   message: z.string(),
-  data: z.object({
+  data: Pagination.extend({
     content: z.array(ManagerBookingViewResponse),
   }),
 });
@@ -383,6 +385,32 @@ const ApiResponseListInventoryResponse = z.object({
   data: z.object({
     content: z.array(InventoryResponse),
   }),
+});
+
+const OnboardStaffRequest = z.object({
+  fullName: z.string(),
+  email: z.string(),
+  phoneNumber: z.string(),
+  staffId: z.string(),
+  role: Role,
+});
+
+export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>;
+
+const OnboardStaffResponse = z.object({
+  id: z.string(),
+  customId: z.string().nullable(),
+  fullName: z.string(),
+  email: z.email(),
+  phoneNumber: z.string(),
+  staffId: z.string(),
+  userStatus: z.string(),
+  role: Role,
+  verified: z.boolean(),
+});
+
+const ApiResponseOnboardStaffResponse = ApiResponseObject.extend({
+  data: OnboardStaffResponse,
 });
 
 export type BookingStatus = z.infer<typeof BookingStatus>;
@@ -498,7 +526,12 @@ export const schema = createSchema({
       })
       .partial(),
     output: ApiResponseManagerBookingViewResponse,
-  }
+  },
+  "@post/api/managers/hotels/:hotelId/onboard-staff": {
+    params: z.object({ hotelId: z.string() }),
+    input: OnboardStaffRequest,
+    output: ApiResponseOnboardStaffResponse,
+  },
 });
 
 export const $fetch = createFetch({

@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useMutation } from "@tanstack/react-query";
-import { switchManagerCurrentHotel } from "@/lib/actions";
+import { switchManagerCurrentHotel } from "@/lib/manager-actions";
 import { toast } from "sonner";
 
 export function HotelSwitcher({

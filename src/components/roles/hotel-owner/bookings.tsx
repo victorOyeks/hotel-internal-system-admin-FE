@@ -1,6 +1,6 @@
 "use client";
 
-import Link, { useLinkStatus } from "next/link";
+import Link from "next/link";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import {
   useReactTable,
@@ -13,7 +13,6 @@ import {
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
 import {
-  type PropsWithChildren,
   useCallback,
   useEffect,
   useMemo,
@@ -24,7 +23,6 @@ import {
   BanIcon,
   DoorOpenIcon,
   EyeIcon,
-  Loader2Icon,
   MessageCircleMoreIcon,
   MoreVerticalIcon,
   SearchIcon,
@@ -55,8 +53,13 @@ import {
   ExportDialog,
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
-import type { BookingStatus, BookingViewResponse } from "@/lib/fetch";
-import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import type {
+  BookingStatus,
+  BookingViewResponse,
+  Pagination,
+} from "@/lib/fetch";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 
 const successDialogAtom = atom({
   show: false,
@@ -262,16 +265,17 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
   );
 }
 
-
 function BookingsListToolbar({
   table,
 }: {
   table: TableType<BookingViewResponse>;
 }) {
-  const [bookingState, setBookingState] = useQueryState("bookingStatus", parseAsStringLiteral(["RESERVED", "CHECKED_OUT"]));
+  const [bookingState, setBookingState] = useQueryState(
+    "bookingStatus",
+    parseAsStringLiteral(["RESERVED", "CHECKED_OUT"])
+  );
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
-
 
   const handleExport = useCallback(
     async (data: ExportData) => {
@@ -353,14 +357,17 @@ function BookingsListToolbar({
 
 export function BookingsPage({
   breadcrumb,
+  paginationMeta,
   bookings,
 }: {
   bookings: BookingViewResponse[];
+  paginationMeta: Pagination;
   breadcrumb: {
     title: string;
     breadcrumbs: Breadcrumb[];
   };
 }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data: bookings,
     columns: columns,
@@ -368,6 +375,12 @@ export function BookingsPage({
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onPaginationChange,
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    state: {
+      pagination,
+    },
   });
   const setBreadcrumb = useSetAtom(breadcrumbAtom);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
