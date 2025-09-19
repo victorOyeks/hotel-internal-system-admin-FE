@@ -216,7 +216,16 @@ const UserInfoResponse = z.object({
   parentUserCustomId: z.string().nullable().or(z.undefined()),
   verified: z.boolean(),
   hotelId: z.string().nullable().or(z.undefined()),
-  // createdAt: z.coerce.date(),
+  createdAt: z.coerce.date(),
+  hotels: z.array(
+    z.object({
+      id: z.string(),
+      customId: z.string().nullable(),
+      name: z.string(),
+      location: z.string(),
+      address: z.string(),
+    })
+  ).optional(),
   // updatedAt: z.coerce.date(),
 });
 

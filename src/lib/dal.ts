@@ -47,3 +47,30 @@ export const getUser = cache(async () => {
 
   return data.data;
 })
+
+export const getManagerCurrentHotel = cache(async () => {
+  const user = await getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  if (user.role !== "MANAGER") {
+    throw new Error("Unauthorized");
+  }
+  
+    if (!user.hotels || user.hotels.length === 0) {
+      return null;
+    }
+
+  const jar = await cookies();
+  const hotelId = jar.get(`${user.id}:currentHotel`)?.value;
+
+  const currentHotel = user.hotels.find(hotel => hotel.id === hotelId);
+
+  if (!currentHotel) {
+    const firstHotel = user.hotels[0];
+    return firstHotel;
+  }
+  return currentHotel;
+})

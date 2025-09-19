@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { $fetch, type OnboardHotelRequest } from "./fetch";
 import { createSession, deleteSession } from "./session";
 import { getUser, verifySession } from "./dal";
+import { cookies } from "next/headers";
 
 export async function login(payload: { email: string; password: string }) {
   const user = await getUser();
@@ -84,4 +85,22 @@ export async function assignManagerToHotelBranch(payload: { hotelId: string; man
   });
 
   return response.data;
+}
+
+export async function switchManagerCurrentHotel(hotelId: string) {
+  const sessionData = await verifySession();
+
+  if (sessionData.role !== "MANAGER") {
+    throw new Error("Unauthorized");
+  }
+
+  const jar = await cookies();
+
+  jar.set(`${sessionData.userId}:currentHotel`, hotelId, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+  });
+
+  return { message: "Switched current hotel" };
 }
