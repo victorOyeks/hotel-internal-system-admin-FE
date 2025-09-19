@@ -5,7 +5,6 @@ import {
 	HomeIcon,
 	HotelIcon,
 	IdCardIcon,
-	IdCardLanyardIcon,
 	MessagesSquare,
 	MonitorCheckIcon,
 	ToolCaseIcon,
@@ -33,7 +32,7 @@ export const managerOwnerLinks = [
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
 	{ title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
-	{ title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/dashboard/settings/permissions" },
-	{ title: "Task Management", icon: <MonitorCheckIcon />, url: "/dashboard/tasks" },
+	// { title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/dashboard/settings/permissions" },
+	// { title: "Task Management", icon: <MonitorCheckIcon />, url: "/dashboard/tasks" },
 ];
 
