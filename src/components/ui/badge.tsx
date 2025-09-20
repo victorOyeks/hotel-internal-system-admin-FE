@@ -40,6 +40,7 @@ export interface BadgeProps
 	extends React.HTMLAttributes<HTMLDivElement>,
 		VariantProps<typeof badgeVariants> {
 	asChild?: boolean;
+	ref?: React.Ref<HTMLDivElement>;
 }
 
 export type BadgeVariant = NonNullable<

@@ -24,7 +24,7 @@ function Page({
   const queryClient = getQueryClient();
   const validatedParams = ParamsSchema.parse(searchParamsObj);
 
-  const bookings = use(
+  const { content, ...paginationProps } = use(
     queryClient.ensureQueryData({
       queryKey: ["hotel-owner-bookings", validatedParams],
       queryFn: async () => {
@@ -44,7 +44,8 @@ function Page({
 
   return (
     <BookingsPage
-      bookings={bookings.content}
+      bookings={content}
+      paginationMeta={paginationProps}
       breadcrumb={{
         title: "Bookings",
         breadcrumbs: [
