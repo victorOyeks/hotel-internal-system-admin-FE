@@ -642,7 +642,7 @@ const deleteStaffSchema = z.object({
     .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
 });
 
-function DeleteStaffDialog({
+function SuspendStaffDialog({
   setOpen,
   id,
 }: {
@@ -666,7 +666,7 @@ function DeleteStaffDialog({
     },
     onError: () => {
       toast.error("Something went wrong", {
-        description: "Failed to delete staff",
+        description: "Failed to suspend staff",
       });
     },
   });
@@ -688,9 +688,9 @@ function DeleteStaffDialog({
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle className="sr-only">Delete Hotel</DialogTitle>
+      <DialogTitle className="sr-only">Suspend Staff</DialogTitle>
       <DialogDescription className="sr-only">
-        Type "DELETE" to confirm
+        Type "SUSPEND" to confirm
       </DialogDescription>
 
       <div className="flex flex-col items-center justify-center">
@@ -698,7 +698,7 @@ function DeleteStaffDialog({
         <h2 className="text-destructive-2">Warning!</h2>
         <p className="text-gray-600 text-center">
           This action Cannot be Undone, to confirm this action is deliberate
-          “type delete below”
+          “type SUSPEND below”
         </p>
       </div>
 
@@ -711,7 +711,7 @@ function DeleteStaffDialog({
               <FormItem>
                 <FormLabel>Confirmation Text</FormLabel>
                 <FormControl>
-                  <Input placeholder="Type DELETE to confirm" {...field} />
+                  <Input placeholder="Type SUSPEND to confirm" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -725,10 +725,10 @@ function DeleteStaffDialog({
             {isPending ? (
               <>
                 <Loader2Icon className="animate-spin" />
-                <span>Deleting, please wait...</span>
+                <span>Suspending, please wait...</span>
               </>
             ) : (
-              "Delete Staff"
+              "Suspend Staff"
             )}
           </Button>
           <Button
@@ -814,7 +814,7 @@ const columns = [
     id: "actions",
     cell: (info) => {
       const [open, setOpen] = useState<
-        "reset-password" | "delete-staff" | "edit-staff" | false
+        "reset-password" | "suspend-staff" | "edit-staff" | false
       >(false);
 
       const dialog = useMemo(() => {
@@ -841,10 +841,10 @@ const columns = [
               />
             );
           }
-          case "delete-staff":
+          case "suspend-staff":
             return (
-              <DeleteStaffDialog
-                setOpen={(isOpen) => setOpen(isOpen ? "delete-staff" : false)}
+              <SuspendStaffDialog
+                setOpen={(isOpen) => setOpen(isOpen ? "suspend-staff" : false)}
                 id={info.row.original.id}
               />
             );
@@ -896,7 +896,7 @@ const columns = [
               <DropdownMenuSeparator />
               <DialogTrigger
                 className="w-full"
-                onClick={() => setOpen("delete-staff")}
+                onClick={() => setOpen("suspend-staff")}
                 asChild
               >
                 <DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
