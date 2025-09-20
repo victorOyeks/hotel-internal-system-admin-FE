@@ -707,7 +707,27 @@ const columns = [
   }),
   columnHelper.accessor("userStatus", {
     header: "Status",
-    cell: (info) => <span>{info.getValue()}</span>,
+    cell: (info) => {
+      const status = info.getValue() as "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING";
+
+      const refinedStatus = status
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      const variantMap = {
+        ACTIVE: "green",
+        INACTIVE: "yellow",
+        SUSPENDED: "destructive",
+        PENDING: "blue",
+      } as const;
+
+      return (
+        <Badge variant={variantMap[status] ?? "outline"}>
+          {refinedStatus}
+        </Badge>
+      )
+    },
   }),
   columnHelper.accessor("phoneNumber", {
     header: "Phone Number",
