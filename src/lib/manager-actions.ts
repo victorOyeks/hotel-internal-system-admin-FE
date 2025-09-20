@@ -90,3 +90,27 @@ export async function editStaffDetails(staffId: string, payload: Partial<Omit<On
 
     return data;
 }
+
+export async function resetPasswordForStaff(staffId: string, payload: {
+    newPassword: string;
+    confirmPassword: string;
+}) {
+    const sessionData = await verifySession();
+    if (sessionData.role !== "MANAGER") {
+        throw new Error("Unauthorized");
+    }
+    const currentHotel = await getManagerCurrentHotel();
+
+    if (!currentHotel) {
+        throw new Error("No hotel found for the manager");
+    }
+
+    const { data } = await $fetch("@patch/api/managers/:hotelId/:staffId/reset-password", {
+        params: { hotelId: currentHotel.id, staffId },
+        auth: { type: "Bearer", token: sessionData.token },
+        body: payload,
+        throw: true
+    })
+
+    return data;
+}

@@ -20,6 +20,8 @@ import {
   AlertTriangleIcon,
   UserXIcon,
   ReplaceIcon,
+  EyeOffIcon,
+  EyeIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +76,6 @@ import {
   ExportDialog,
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
-import { Textarea } from "@/components/ui/textarea";
 import {
   type CustomPageStaffResponse,
   type Pagination,
@@ -86,7 +87,7 @@ import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { Badge } from "@/components/ui/badge";
-import { editStaffDetails, onboardStaffToHotel } from "@/lib/manager-actions";
+import { editStaffDetails, onboardStaffToHotel, resetPasswordForStaff } from "@/lib/manager-actions";
 import type { HotelRole } from "@/lib/types";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
@@ -485,48 +486,99 @@ function UpdateHotelStaffForm({
   );
 }
 
-const contactManagerFormSchema = z.object({
-  title: z.string().nonempty("Title is required"),
-  message: z.string().nonempty("Message is required"),
+const resetPasswordFormSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
 });
 
-function ContactStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => void;
+  staffId: string;
+ }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
-    resolver: zodResolver(contactManagerFormSchema),
+    resolver: zodResolver(resetPasswordFormSchema),
     defaultValues: {
-      title: "",
-      message: "",
+      newPassword: "",
+      confirmPassword: "",
     },
+    progressive: true,
+    mode: "onBlur",
+    reValidateMode: "onBlur",
   });
 
-  const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
-    console.log("Message sent:", data.message);
-    setOpen(false);
-    setShowSuccessDialog({
-      show: true,
-      message: "Message delivered",
-    });
-    form.reset();
-  };
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: (payload: z.infer<typeof resetPasswordFormSchema>) => {
+
+      return resetPasswordForStaff(staffId, payload);
+    },
+    onError: async () => {
+      toast.error("Something went wrong", {
+        description: "Failed to reset password",
+      });
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      setShowSuccessDialog({
+        show: true,
+        message: "Password reset successfully",
+      })
+      form.reset();
+    }
+  }); 
+
+  const handleSubmit = useCallback(
+    (data: z.infer<typeof resetPasswordFormSchema>) => {
+      toast.promise(mutateAsync(data), {
+        loading: "Resetting password...",
+        success: "Password reset successfully",
+        error: "Failed to reset password",
+      });
+    },
+    [mutateAsync]
+  );
+
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Contact Staff</DialogTitle>
+      <DialogTitle>Reset password</DialogTitle>
       <DialogDescription className="sr-only">
-        Fill in the details below to send a message to the staff.
+        Fill in the details below to reset staff password.
       </DialogDescription>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="title"
+            name="newPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Title</FormLabel>
-                <FormControl>
-                  <Input placeholder="Message Title" {...field} />
-                </FormControl>
+                <FormLabel>New Password</FormLabel>
+                <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        className="pr-10"
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      variant="link"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                    >
+                      {showPassword ? (
+                        <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -534,23 +586,48 @@ function ContactStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
           <FormField
             control={form.control}
-            name="message"
+            name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Message</FormLabel>
-                <FormControl>
-                  <Textarea
-                    className="resize-none"
-                    placeholder="Type your message here..."
-                    {...field}
-                  />
-                </FormControl>
+                <FormLabel>Confirm New Password</FormLabel>
+                <div className="relative">
+                    <FormControl>
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        className="pr-10"
+                        {...field}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      variant="link"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full font-semibold">
-            Send Message
+
+          <Button type="submit" className="w-full font-semibold" disabled={isPending}>
+            {
+              isPending ? (
+                <>
+                <Loader2Icon className="animate-spin" />
+                <span>Resetting, please wait...</span>
+              </>
+            ) : (
+              "Reset Password"
+            ) }
           </Button>
         </form>
       </Form>
@@ -737,15 +814,16 @@ const columns = [
     id: "actions",
     cell: (info) => {
       const [open, setOpen] = useState<
-        "contact-staff" | "delete-staff" | "edit-staff" | false
+        "reset-password" | "delete-staff" | "edit-staff" | false
       >(false);
 
       const dialog = useMemo(() => {
         switch (open) {
-          case "contact-staff":
+          case "reset-password":
             return (
-              <ContactStaffForm
-                setOpen={(isOpen) => setOpen(isOpen ? "contact-staff" : false)}
+              <ResetPasswordForm
+                staffId={info.row.original.id}
+                setOpen={(isOpen) => setOpen(isOpen ? "reset-password" : false)}
               />
             );
           case "edit-staff": {
@@ -807,7 +885,7 @@ const columns = [
               <DropdownMenuSeparator />
               <DialogTrigger
                 className="w-full"
-                onClick={() => setOpen("contact-staff")}
+                onClick={() => setOpen("reset-password")}
                 asChild
               >
                 <DropdownMenuItem>

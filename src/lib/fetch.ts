@@ -546,6 +546,16 @@ export const schema = createSchema({
     input: OnboardStaffRequest.partial().omit({ role: true }),
     output: ApiResponseOnboardStaffResponse,
   },
+  "@patch/api/managers/:hotelId/:staffId/reset-password": {
+    params: z.object({ hotelId: z.string(), staffId: z.string() }),
+    input: z.object({
+      newPassword: z.string().min(8),
+      confirmPassword: z.string().min(8),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
+  },
 });
 
 export const $fetch = createFetch({
