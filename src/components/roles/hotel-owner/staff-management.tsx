@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import {
   DoorOpenIcon,
-  HotelIcon,
+  // HotelIcon,
   Loader2Icon,
   MessageCircleMoreIcon,
   MoreVerticalIcon,
@@ -22,7 +22,7 @@ import {
   TrashIcon,
   AlertTriangleIcon,
 } from "lucide-react";
-import Link from "next/link";
+// import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -718,13 +718,13 @@ const columns = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link href={`/dashboard/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator /> */}
               <DropdownMenuItem asChild>
                 <DialogTrigger
                   className="w-full"

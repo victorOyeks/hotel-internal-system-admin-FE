@@ -582,7 +582,10 @@ export const $fetch = createFetch({
           : error.data.message ||
             (error.cause as Error)?.message ||
             String(error)
-        : error.error
+        : error.error,
+        {
+          cause: error,
+        }
     );
   },
   retry: {
