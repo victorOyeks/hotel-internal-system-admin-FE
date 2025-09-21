@@ -56,7 +56,7 @@ export const getManagerCurrentHotel = cache(async () => {
   }
 
   if (user.role !== "MANAGER") {
-    throw new Error("Unauthorized");
+    return null;
   }
   
     if (!user.hotels || user.hotels.length === 0) {

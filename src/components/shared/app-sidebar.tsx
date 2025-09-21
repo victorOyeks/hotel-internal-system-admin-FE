@@ -46,8 +46,6 @@ export function AppSidebar({
     SUPER_ADMIN: [],
   };
 
-  console.log("Rendering AppSidebar with role:", role);
-
   return (
     <Sidebar {...props}>
       <SidebarHeader>
