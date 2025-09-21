@@ -22,6 +22,7 @@ import {
   ReplaceIcon,
   EyeOffIcon,
   EyeIcon,
+  CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,13 +83,25 @@ import {
   Role,
 } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteHotelBranch } from "@/lib/actions";
 import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { Badge } from "@/components/ui/badge";
-import { editStaffDetails, onboardStaffToHotel, resetPasswordForStaff } from "@/lib/manager-actions";
+import {
+  editStaffDetails,
+  onboardStaffToHotel,
+  resetPasswordForStaff,
+  suspendStaffAccount,
+} from "@/lib/manager-actions";
 import type { HotelRole } from "@/lib/types";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
@@ -486,16 +499,24 @@ function UpdateHotelStaffForm({
   );
 }
 
-const resetPasswordFormSchema = z.object({
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match",
-});
+const resetPasswordFormSchema = z
+  .object({
+    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+  });
 
-function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => void;
+function ResetPasswordForm({
+  setOpen,
+  staffId,
+}: {
+  setOpen: (open: boolean) => void;
   staffId: string;
- }) {
+}) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
@@ -512,7 +533,6 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (payload: z.infer<typeof resetPasswordFormSchema>) => {
-
       return resetPasswordForStaff(staffId, payload);
     },
     onError: async () => {
@@ -525,10 +545,10 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
       setShowSuccessDialog({
         show: true,
         message: "Password reset successfully",
-      })
+      });
       form.reset();
-    }
-  }); 
+    },
+  });
 
   const handleSubmit = useCallback(
     (data: z.infer<typeof resetPasswordFormSchema>) => {
@@ -540,7 +560,6 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
     },
     [mutateAsync]
   );
-
 
   return (
     <DialogContent className="p-4 rounded-2xl">
@@ -557,28 +576,28 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
               <FormItem>
                 <FormLabel>New Password</FormLabel>
                 <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        className="pr-10"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      variant="link"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                    >
-                      {showPassword ? (
-                        <EyeOffIcon className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5 text-gray-500" />
-                      )}
-                    </Button>
-                  </div>
+                  <FormControl>
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="pr-10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    variant="link"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? (
+                      <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5 text-gray-500" />
+                    )}
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -591,43 +610,46 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
               <FormItem>
                 <FormLabel>Confirm New Password</FormLabel>
                 <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        className="pr-10"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      variant="link"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOffIcon className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5 text-gray-500" />
-                      )}
-                    </Button>
-                  </div>
+                  <FormControl>
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="pr-10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    variant="link"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5 text-gray-500" />
+                    )}
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <Button type="submit" className="w-full font-semibold" disabled={isPending}>
-            {
-              isPending ? (
-                <>
+          <Button
+            type="submit"
+            className="w-full font-semibold"
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
                 <Loader2Icon className="animate-spin" />
                 <span>Resetting, please wait...</span>
               </>
             ) : (
               "Reset Password"
-            ) }
+            )}
           </Button>
         </form>
       </Form>
@@ -635,11 +657,14 @@ function ResetPasswordForm({ setOpen, staffId }: { setOpen: (open: boolean) => v
   );
 }
 
-const deleteStaffSchema = z.object({
-  confirmationText: z
-    .string()
-    .nonempty("Confirmation text is required")
-    .refine((s) => s === "DELETE", { error: 'Type "DELETE" to confirm.' }),
+const suspendStaffSchema = z.object({
+  reason: z.string().nonempty(),
+  fromDate: z.date().refine((date) => date <= new Date(), {
+    message: "From date cannot be in the past",
+  }),
+  toDate: z.date().refine((date) => date >= new Date(), {
+    message: "To date cannot be in the past",
+  }),
 });
 
 function SuspendStaffDialog({
@@ -652,17 +677,22 @@ function SuspendStaffDialog({
   const queryClient = useQueryClient();
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: deleteHotelBranch,
+    mutationFn: (data: {
+      reason: string;
+      fromDate: string;
+      toDate: string;
+    }) => suspendStaffAccount(id, data),
     onSuccess: () => {
       setOpen(false);
       setShowSuccessDialog({
         show: true,
-        message: "Staff deleted successfully",
+        message: "Staff suspended successfully",
       });
       queryClient.invalidateQueries({
         exact: true,
         queryKey: ["staffs"],
       });
+      window.location.reload();
     },
     onError: () => {
       toast.error("Something went wrong", {
@@ -671,20 +701,29 @@ function SuspendStaffDialog({
     },
   });
   const form = useForm({
-    resolver: zodResolver(deleteStaffSchema),
+    resolver: zodResolver(suspendStaffSchema),
     defaultValues: {
-      confirmationText: "",
+      fromDate: new Date(),
+      toDate: new Date(),
+      reason: "",
     },
     reValidateMode: "onSubmit",
     mode: "onSubmit",
   });
 
-  const handleDelete = useCallback(async () => {
-    const isValid = await form.trigger();
-
-    if (!isValid) return;
-    await mutateAsync(id);
-  }, [form, mutateAsync, id]);
+  const handleSubmit = useCallback(
+    async (data: z.infer<typeof suspendStaffSchema>) => {
+      const isValid = await form.trigger();
+      if (!isValid) return;
+      const newData = {
+        ...data,
+        fromDate: format(data.fromDate, "yyyy-MM-dd"),
+        toDate: format(data.toDate, "yyyy-MM-dd"),
+      };
+      await mutateAsync(newData);
+    },
+    [form, mutateAsync]
+  );
 
   return (
     <DialogContent className="p-4 rounded-2xl">
@@ -703,20 +742,111 @@ function SuspendStaffDialog({
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleDelete)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="confirmationText"
+            name="reason"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Confirmation Text</FormLabel>
+                <FormLabel>Reason for suspension</FormLabel>
                 <FormControl>
-                  <Input placeholder="Type SUSPEND to confirm" {...field} />
+                  <Input placeholder="Type reason for suspension" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-4">
+            <FormField
+              control={form.control}
+              name="fromDate"
+              render={({ field }) => (
+                <FormItem className="col-span-1">
+                  <FormLabel>From Date</FormLabel>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a starting date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          // Date must be today or later
+                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }
+                        captionLayout="dropdown-months"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="toDate"
+              render={({ field }) => (
+                <FormItem className="col-span-1">
+                  <FormLabel>To Date</FormLabel>
+                  <FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick an ending date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            // Date must be today or later
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          captionLayout="dropdown-months"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
           <Button
             type="submit"
             className="w-full font-semibold"
@@ -785,7 +915,11 @@ const columns = [
   columnHelper.accessor("userStatus", {
     header: "Status",
     cell: (info) => {
-      const status = info.getValue() as "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING";
+      const status = info.getValue() as
+        | "ACTIVE"
+        | "INACTIVE"
+        | "SUSPENDED"
+        | "PENDING";
 
       const refinedStatus = status
         .replaceAll("_", " ")
@@ -800,10 +934,8 @@ const columns = [
       } as const;
 
       return (
-        <Badge variant={variantMap[status] ?? "outline"}>
-          {refinedStatus}
-        </Badge>
-      )
+        <Badge variant={variantMap[status] ?? "outline"}>{refinedStatus}</Badge>
+      );
     },
   }),
   columnHelper.accessor("phoneNumber", {
@@ -854,7 +986,8 @@ const columns = [
       }, [open, info.row.original]);
 
       return (
-        <Dialog open={typeof open === "string"}
+        <Dialog
+          open={typeof open === "string"}
           onOpenChange={(isOpen) => isOpen || setOpen(false)}
         >
           <DropdownMenu modal={false}>
@@ -897,6 +1030,7 @@ const columns = [
               <DialogTrigger
                 className="w-full"
                 onClick={() => setOpen("suspend-staff")}
+                disabled={info.row.original.userStatus === "SUSPENDED"}
                 asChild
               >
                 <DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">

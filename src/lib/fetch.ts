@@ -556,6 +556,17 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
+  "@patch/api/managers/:hotelId/:staffId/suspend": {
+    params: z.object({ hotelId: z.string(), staffId: z.string() }),
+    input: z.object({
+      reason: z.string().nonempty(),
+      fromDate: z.coerce.date(), // yyyy-mm-dd
+      toDate: z.coerce.date(), // yyyy-mm-dd
+    }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
+  },
 });
 
 export const $fetch = createFetch({

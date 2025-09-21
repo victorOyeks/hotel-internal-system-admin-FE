@@ -114,3 +114,28 @@ export async function resetPasswordForStaff(staffId: string, payload: {
 
     return data;
 }
+
+export async function suspendStaffAccount(staffId: string, payload: {
+    reason: string;
+    fromDate: string; // yyyy-mm-dd
+    toDate: string; // yyyy-mm-dd
+}) {
+    const sessionData = await verifySession();
+    if (sessionData.role !== "MANAGER") {
+        throw new Error("Unauthorized");
+    }
+    const currentHotel = await getManagerCurrentHotel();
+    
+    if (!currentHotel) {
+        throw new Error("No hotel found for the manager");
+    }
+
+    const { data } = await $fetch("@patch/api/managers/:hotelId/:staffId/suspend", {
+        params: { hotelId: currentHotel.id, staffId },
+        auth: { type: "Bearer", token: sessionData.token },
+        body: payload,
+        throw: true
+    })
+
+    return data;
+}
