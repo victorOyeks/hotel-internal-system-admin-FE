@@ -31,7 +31,7 @@ export async function login(payload: { email: string; password: string }) {
 }
 export async function logout() {
   await deleteSession()
-  redirect('/login')
+  redirect('/auth')
 }
 
 

@@ -6,6 +6,8 @@ import {
 	FileIcon,
 	ImageIcon,
 	Link2,
+	LogOutIcon,
+	SettingsIcon,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
@@ -31,8 +33,89 @@ import { SidebarTrigger } from "../ui/sidebar";
 import { Skeleton } from "../ui/skeleton";
 import { PopoverClose } from "@radix-ui/react-popover";
 import type { UserInfoResponse } from "@/lib/fetch";
+import { logout } from "@/lib/actions";
+import { toast } from "sonner";
 
 function ProfilePopover({ user }: {
+	user: UserInfoResponse
+}) {
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button size="icon" variant="ghost" className="rounded-full p-2">
+					<Avatar>
+						<AvatarFallback className="bg-primary-1 text-white">
+							<span className="text-xs">A</span>
+						</AvatarFallback>
+						<AvatarImage
+							src="https://i.pravatar.cc/150?img=3"
+							alt="User Avatar"
+						/>
+					</Avatar>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent
+				align="end"
+				sideOffset={16}
+				className="rounded-4xl bg-white border border-popover w-xs space-y-2 py-2 px-3"
+			>
+				<div className="flex items-center justify-between">
+					<p className="font-medium text-lg">Profile</p>
+
+					<PopoverClose asChild>
+						<Button variant="ghost" size="icon" className="rounded-full">
+							<XIcon />
+						</Button>
+					</PopoverClose>
+				</div>
+
+				<div className="max-w-[content] mx-auto flex items-center space-x-3">
+					<Avatar className="size-12 rounded-full">
+						<AvatarFallback className="bg-primary-1 text-white">
+							<span className="text-2xl">A</span>
+						</AvatarFallback>
+						<AvatarImage
+							src="https://i.pravatar.cc/150?img=3"
+							alt="User Avatar"
+						/>
+					</Avatar>
+
+					<div className="">
+						<p className="text-lg font-medium leading-tight">{user.fullName}</p>
+						<p className="text-sm text-gray-600">{user.email}</p>
+					</div>
+				</div>
+
+				<div className="space-y-2 [&_svg]:text-gray-400">
+					<Button
+						variant={"ghost"}
+						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
+					>
+						<SettingsIcon />
+						<span>Profile settings</span>
+					</Button>
+
+					<Button
+						variant={"destructive"}
+						className="w-full rounded-full justify-baseline font-medium [&_svg]:text-primary-3"
+						onClick={() => {
+							toast.promise(logout(), {
+								loading: "Logging out...",
+								success: "Logged out successfully",
+							});
+						}}
+					>
+						<LogOutIcon />
+						<span>Log out</span>
+					</Button>
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+
+export function ChatProfilePopover({ user }: {
 	user: UserInfoResponse
 }) {
 	return (

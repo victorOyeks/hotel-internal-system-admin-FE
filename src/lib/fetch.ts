@@ -567,9 +567,24 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-});
+  "@get/api/managers/{hotelId}/inventories": {
+    params: z.object({ hotelId: z.string() }),
+    query: z.object({
+      searchName: z.string(),
+      customId: z.string(),
+      category: z.enum([ "BAR", "KITCHEN", "HOUSEKEEPING", "FRONT_DESK", "MAINTENANCE", "MANAGEMENT", "INVENTORY", "OTHER"]),
+      unit: z.string(),
+      availability: z.string(),
+      page: z.coerce.number().default(0),
+      size: z.coerce.number().default(10),
+    }).partial(),
+    output: ApiResponseListInventoryResponse,
+    },
+    "@get/api/managers/{hotelId}/inventories/summary": {
+    }
+  });
 
-export const $fetch = createFetch({
+  export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,
   schema: schema,
   errorSchema: ApiExceptionResponseObject,
