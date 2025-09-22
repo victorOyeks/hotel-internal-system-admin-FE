@@ -2,9 +2,30 @@
 
 import * as sidebar from "@/components/ui/sidebar";
 import { createPathMatcher } from "@/lib/utils";
-import Link from "next/link";
+import { Loader2Icon } from "lucide-react";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { toast } from "sonner";
+
+function IconLoader({ children }: { children: ReactNode }) {
+  const { pending } = useLinkStatus();
+
+  useEffect(() => {
+    let toastId: string | number;
+    if (pending) {
+      toastId = toast.loading("Loading, please wait...", { position: "top-center" });
+    }
+
+    return () => {
+      if (pending) {
+        toast.dismiss(toastId);
+      }
+    };
+  }, [pending]);
+
+  return pending ? <Loader2Icon className="animate-spin" /> : children;
+}
 
 export function NavMain({
   items,
@@ -17,7 +38,10 @@ export function NavMain({
   }[];
 }) {
   const pathname = usePathname();
-  const pathMatcher = useMemo(() => createPathMatcher(items.map(item => item.url)), [items]);
+  const pathMatcher = useMemo(
+    () => createPathMatcher(items.map((item) => item.url)),
+    [items]
+  );
 
   return (
     <sidebar.SidebarGroup>
@@ -31,7 +55,7 @@ export function NavMain({
               isActive={pathMatcher.match(pathname)?.path === item.url}
             >
               <Link href={item.url}>
-                {item.icon}
+                <IconLoader>{item.icon}</IconLoader>
                 {item.title}
               </Link>
             </sidebar.SidebarMenuButton>
