@@ -72,6 +72,18 @@ export async function editHotelBranch(id: string, payload: Omit<OnboardHotelRequ
 }
 
 
+export async function deleteStaffMember(id: string) {
+  const sessionData = await verifySession();
+
+  const response = await $fetch("@delete/api/hotel-owners/staff/:staffId", {
+    params: { staffId: id },
+    auth: { type: "Bearer", token: sessionData.token },
+    throw: true
+  });
+
+  return response;
+}
+
 export async function assignManagerToHotelBranch(payload: { hotelId: string; managerId: string }, action: "ASSIGN" | "UNASSIGN") {
   const sessionData = await verifySession();
 
