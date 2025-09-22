@@ -892,7 +892,7 @@ const columns = [
             return (
               <DeleteHotel
                 setOpen={(isOpen) => setOpen(isOpen ? "delete-hotel" : false)}
-                id={info.row.original.customId!}
+                id={info.row.original.id!}
                 revalidate={
                   // @ts-expect-error revalidate is a function
                   info.table.options.meta?.revalidate ||
