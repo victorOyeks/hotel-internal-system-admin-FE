@@ -20,8 +20,6 @@ import {
 } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
-  BanIcon,
-  DoorOpenIcon,
   EyeIcon,
   MessageCircleMoreIcon,
   MoreVerticalIcon,
@@ -39,7 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,11 +58,91 @@ import type {
 } from "@/lib/fetch";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const successDialogAtom = atom({
   show: false,
   message: "",
 });
+
+
+const contactManagerFormSchema = z.object({
+  title: z.string().nonempty("Title is required"),
+  message: z.string().nonempty("Message is required"),
+});
+
+function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+  const form = useForm({
+    resolver: zodResolver(contactManagerFormSchema),
+    defaultValues: {
+      title: "",
+      message: "",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
+    console.log("Message sent:", data.message);
+    setOpen(false);
+    setShowSuccessDialog({
+      show: true,
+      message: "Message delivered",
+    });
+    form.reset();
+  };
+
+  return (
+    <DialogContent className="p-4 rounded-2xl">
+      <DialogTitle>Contact Branch Manager</DialogTitle>
+      <DialogDescription className="sr-only">
+        Fill in the details below to send a message to the branch manager.
+      </DialogDescription>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Message Title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="message"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Message</FormLabel>
+                <FormControl>
+                  <Textarea
+                    className="resize-none"
+                    placeholder="Type your message here..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full font-semibold">
+            Send Message
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
 
 const columnHelper = createColumnHelper<BookingViewResponse>();
 
@@ -137,10 +215,12 @@ const columns = [
   columnHelper.display({
     id: "actions",
     cell: (info) => {
-      const [open, setOpen] = useState<"" | false>(false);
+      const [open, setOpen] = useState<"contact-manager" | false>(false);
 
       const dialog = useMemo(() => {
         switch (open) {
+          case "contact-manager":
+            return <ContactManagerForm setOpen={(open) => setOpen(open ? "contact-manager" : false)} />;
           default:
             return null;
         }
@@ -171,21 +251,7 @@ const columns = [
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <DialogTrigger className="w-full" onClick={() => setOpen("")}>
-                  <DoorOpenIcon />
-                  Edit room
-                </DialogTrigger>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <DialogTrigger className="w-full" onClick={() => setOpen("")}>
-                  <BanIcon />
-                  Block Room
-                </DialogTrigger>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <DialogTrigger className="w-full" onClick={() => setOpen("")}>
+                <DialogTrigger className="w-full" onClick={() => setOpen("contact-manager")}>
                   <MessageCircleMoreIcon />
                   Contact Branch Manager
                 </DialogTrigger>
