@@ -696,7 +696,13 @@ function DeleteHotel({
 }) {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: deleteHotelBranch,
+    mutationFn: async (id: string) => {
+        const { data, error } = await deleteHotelBranch(id);
+        if (error) {
+          throw new Error(error.message);
+        }
+        return data;
+    },
     onSuccess: async () => {
       setOpen(false);
       setShowSuccessDialog({

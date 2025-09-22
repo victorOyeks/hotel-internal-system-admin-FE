@@ -53,10 +53,9 @@ export async function deleteHotelBranch(id: string) {
   const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelId", {
     params: { hotelId: id },
     auth: { type: "Bearer", token: sessionData.token },
-    throw: true,
-  })
+  });
 
-  return response.data;
+  return response;
 }
 
 export async function editHotelBranch(id: string, payload: Omit<OnboardHotelRequest, "managerId">) {
