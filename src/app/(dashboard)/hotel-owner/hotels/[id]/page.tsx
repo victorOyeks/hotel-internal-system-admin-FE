@@ -52,7 +52,10 @@ export default function Page({ params, searchParams }: PageProps) {
               type: "Bearer",
               token: cookieData.token,
             },
-            query,
+            query: {
+              ...query,
+              page: query.page ? query.page - 1 : 0
+            },
             throw: true,
           }
         );

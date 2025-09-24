@@ -36,7 +36,10 @@ function Page({
             params: {
               hotelId: currentHotel.id,
             },
-            query: validatedParams,
+            query: {
+              ...validatedParams,
+              page: validatedParams.page ? validatedParams.page - 1 : 0
+            },
             auth: {
               type: "Bearer",
               token: cookieData.token,

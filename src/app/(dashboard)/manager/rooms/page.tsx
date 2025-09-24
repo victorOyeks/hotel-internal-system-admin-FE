@@ -56,6 +56,7 @@ export default function Page({ searchParams }: PageProps) {
             query: {
               ...query,
               status: query.status as ListRoomsQuery["status"],
+              page: query.page ? query.page - 1 : 0
             },
             throw: true,
           }

@@ -51,7 +51,10 @@ function StaffManagementPage({ searchParams }: PageProps) {
       queryKey: ["staffs", query],
       queryFn: async () => {
         const response = await $fetch("@get/api/hotel-owners/staff", {
-          query: query,
+          query: {
+            ...query,
+            page: query.page ? query.page - 1 : 0
+          },
           auth: {
             type: "Bearer",
             token: session.token,

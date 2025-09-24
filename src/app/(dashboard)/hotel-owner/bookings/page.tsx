@@ -29,7 +29,10 @@ function Page({
       queryKey: ["hotel-owner-bookings", validatedParams],
       queryFn: async () => {
         const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {
-          query: validatedParams,
+          query: {
+            ...validatedParams,
+            page: validatedParams.page ? validatedParams.page - 1 : 0
+          },
           auth: {
             type: "Bearer",
             token: cookieData.token,

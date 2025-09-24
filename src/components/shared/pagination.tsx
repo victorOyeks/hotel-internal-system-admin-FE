@@ -109,7 +109,9 @@ export function DataTablePagination<T>({ table }: { table: Table<T> }) {
 						size="icon"
 						className="h-6 w-6"
 						// `pageNumber` is 1-indexed, `setPageIndex` is 0-indexed
-						onClick={() => table.setPageIndex(pageNumber - 1)}
+						onClick={() => table.setPagination((old) => {
+							return { ...old, pageIndex: pageNumber - 1 };
+						})}
 					>
 						{pageNumber}
 					</Button>

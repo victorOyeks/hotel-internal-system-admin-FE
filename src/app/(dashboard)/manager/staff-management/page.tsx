@@ -55,7 +55,10 @@ function StaffManagementPage({ searchParams }: PageProps) {
           params: {
             hotelId: currentHotel.id,
           },
-          query: query,
+          query: {
+            ...query,
+            page: query.page ? query.page - 1 : 0
+          },
           auth: {
             type: "Bearer",
             token: session.token,

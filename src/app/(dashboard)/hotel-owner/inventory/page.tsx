@@ -32,7 +32,10 @@ function InventoryPage({
       queryFn: async () => {
         const data = await $fetch("@get/api/hotel-owners/hotels", {
           auth: { type: "Bearer", token: cookieData.token },
-          query: parsedQueryParams,
+          query: {
+            ...parsedQueryParams,
+            page: parsedQueryParams.page ? parsedQueryParams.page - 1 : 0
+          },
           throw: true,
         });
 

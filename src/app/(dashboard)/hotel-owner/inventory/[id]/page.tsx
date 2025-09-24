@@ -45,7 +45,7 @@ function InventoryPage({
         const data = await $fetch(
           "@get/api/hotel-owners/:hotelId/inventories",
           {
-            query: validatedSearchParams,
+            query: { ...validatedSearchParams, page: validatedSearchParams.page ? validatedSearchParams.page - 1 : 0 },
             params: { hotelId: validatedParams.id },
             auth: { type: "Bearer", token: cookieData.token },
             throw: true,
