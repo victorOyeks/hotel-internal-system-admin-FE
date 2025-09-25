@@ -1,5 +1,5 @@
-import z from "zod";
-import { Role } from "./fetch";
+import type z from "zod";
+import type { Role } from "./fetch";
 
 export interface PageProps extends AppLayoutProps {}
 

@@ -624,7 +624,8 @@ export const schema = createSchema({
         size: z.coerce.number().default(10),
       }).partial(),
       output: ApiResponseInventoryRestockRequestResponse,
-    }
+    },
+    "@post/api/managers/inventories/item": {}
   });
 
   export const $fetch = createFetch({
