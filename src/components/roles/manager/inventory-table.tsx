@@ -13,7 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { InventoryResponse } from "@/lib/fetch";
+import type {
+  InventoryResponse,
+  InventoryRestockRequest,
+  Pagination,
+} from "@/lib/fetch";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { cn } from "@/lib/utils";
 import {
   createColumnHelper,
@@ -290,7 +295,8 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
   );
 }
 
-function AllSupplySection({ data }: { data: InventoryResponse[] }) {
+function AllSupplySection({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
     columns: allSupplyColumns,
@@ -298,37 +304,34 @@ function AllSupplySection({ data }: { data: InventoryResponse[] }) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    onPaginationChange,
     state: {
       sorting: [],
       globalFilter: "",
       columnFilters: [],
-      pagination: { pageIndex: 0, pageSize: 10 },
+      pagination
     },
   });
 
   return <InventoryTable table={table} />;
 }
 
-type InventoryHistoryResponse = InventoryResponse & {
-  supplyDate: string;
-  supplier: string;
-  supplyQuantity: number;
-};
-
 const inventoryHistoryColumnHelper =
-  createColumnHelper<InventoryHistoryResponse>();
+  createColumnHelper<InventoryRestockRequest>();
 
 const inventoryHistoryColumns = [
   inventoryHistoryColumnHelper.display({
     header: "Item Code",
-    cell: (info) => <span>{info.row.original.customId}</span>,
+    cell: (info) => <span>{info.row.original.itemCustomId}</span>,
   }),
   inventoryHistoryColumnHelper.accessor("name", {
     header: "Item",
     cell: (info) => <span className="text-foreground">{info.getValue()}</span>,
   }),
-  inventoryHistoryColumnHelper.accessor("supplier", {
-    header: "Supplier",
+  inventoryHistoryColumnHelper.accessor("department", {
+    header: "Department",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
 
@@ -340,8 +343,30 @@ const inventoryHistoryColumns = [
     header: "Supply Quantity",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
-  inventoryHistoryColumnHelper.accessor("supplyDate", {
-    header: "Supply Date",
+  inventoryHistoryColumnHelper.accessor("approvalStatus", {
+    header: "Status",
+    cell: (info) => {
+      const status = info.getValue();
+
+      const variant: Record<string, BadgeVariant> = {
+        APPROVED: "green",
+        PENDING: "yellow",
+        REJECTED: "red",
+      };
+
+      return (
+        <Badge className="capitalize" variant={variant[status]}>
+          {status.toLowerCase().replaceAll("_", " ")}
+        </Badge>
+      );
+    },
+  }),
+  inventoryHistoryColumnHelper.accessor("supplied", {
+    header: "Supplied",
+    cell: (info) => <span>{info.getValue() ? "Yes" : "No"}</span>,
+  }),
+  inventoryHistoryColumnHelper.accessor("requestedAt", {
+    header: "Requested At",
     cell: (info) => (
       <span>{new Date(info.getValue()).toLocaleDateString()}</span>
     ),
@@ -351,7 +376,7 @@ const inventoryHistoryColumns = [
 function InventoryHistoryTable({
   table,
 }: {
-  table: TableType<InventoryHistoryResponse>;
+  table: TableType<InventoryRestockRequest>;
 }) {
   return (
     <div className="overflow-hidden rounded-md border bg-card">
@@ -425,7 +450,8 @@ function InventoryHistoryTable({
   );
 }
 
-function InventHistorySection({ data }: { data: InventoryHistoryResponse[] }) {
+function InventHistorySection({ data, paginationMeta }: { data: InventoryRestockRequest[]; paginationMeta: Pagination }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
     columns: inventoryHistoryColumns,
@@ -433,12 +459,27 @@ function InventHistorySection({ data }: { data: InventoryHistoryResponse[] }) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    onPaginationChange,
+    state: {
+      sorting: [],
+      globalFilter: "",
+      columnFilters: [],
+      pagination
+    },
   });
 
   return <InventoryHistoryTable table={table} />;
 }
 
-export function ManagerInventoryTable({ data }: { data: InventoryResponse[] }) {
+export function ManagerInventoryTable({
+  data,
+  paginationMeta,
+}: {
+  data: InventoryResponse[] | InventoryRestockRequest[];
+  paginationMeta: Pagination;
+}) {
   const [currentSection, setCurrentSection] = useQueryState(
     "section",
     parseAsStringLiteral(["inventory", "restock"]).withDefault("inventory")
@@ -451,9 +492,15 @@ export function ManagerInventoryTable({ data }: { data: InventoryResponse[] }) {
         setCurrentSection={setCurrentSection}
       />
       {currentSection === "inventory" ? (
-        <AllSupplySection data={data} />
+        <AllSupplySection
+          paginationMeta={paginationMeta}
+          data={data as InventoryResponse[]}
+        />
       ) : (
-        <InventHistorySection data={data as InventoryHistoryResponse[]} />
+        <InventHistorySection
+          paginationMeta={paginationMeta}
+          data={data as InventoryRestockRequest[]}
+        />
       )}
     </div>
   );
