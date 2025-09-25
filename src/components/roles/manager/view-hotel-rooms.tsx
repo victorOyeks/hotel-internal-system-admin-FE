@@ -62,6 +62,7 @@ import { Input } from "@/components/ui/input";
 import { MultiInput, MultiInputTag } from "@/components/ui/multi-input";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { addNewRoomToHotel } from "@/lib/manager-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 const successDialogAtom = atom({
   show: false,
@@ -114,7 +115,7 @@ function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         show: true,
         message: "Room Added successfully",
       });
-      window.location.reload();
+      revalidateRoute("/manager/rooms");
     },
     onError: (e) => {
       toast.error("Failed to add room", {

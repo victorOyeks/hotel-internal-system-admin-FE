@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { $fetch, type OnboardHotelRequest } from "./fetch";
 import { createSession, deleteSession } from "./session";
 import { getUser, verifySession } from "./dal";
+import { revalidatePath } from "next/cache";
+
+export async function revalidateRoute(path: string) {
+  return revalidatePath(path);
+}
 
 export async function login(payload: { email: string; password: string }) {
   const user = await getUser();

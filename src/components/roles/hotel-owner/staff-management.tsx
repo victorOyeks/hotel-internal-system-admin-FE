@@ -79,7 +79,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { type Pagination, Role, type CustomPageStaffResponse } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteStaffMember } from "@/lib/actions";
+import { deleteStaffMember, revalidateRoute } from "@/lib/actions";
 import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -537,7 +537,7 @@ function DeleteStaffDialog({
         exact: true,
         queryKey: ["staffs"],
       });
-      window.location.reload();
+      revalidateRoute("/hotel-owner/staff-management");
     },
     onError: () => {
       toast.error("Something went wrong", {

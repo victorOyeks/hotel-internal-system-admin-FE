@@ -102,6 +102,7 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
@@ -219,6 +220,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         exact: true,
         queryKey: ["staffs"],
       });
+      await revalidateRoute("/manager/staff-management");
     },
     onError: () => {
       toast.error("Something went wrong", {
@@ -233,6 +235,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
       staffName: "",
       email: "",
       role: "FRONT_DESK",
+      phoneNumber: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -383,7 +386,7 @@ function UpdateHotelStaffForm({
         show: true,
         message: "Staff details updated successfully",
       });
-      window.location.reload();
+      revalidateRoute("/manager/staff-management");
     },
   });
   const handleSubmit = useCallback(
@@ -692,7 +695,7 @@ function SuspendStaffDialog({
         exact: true,
         queryKey: ["staffs"],
       });
-      window.location.reload();
+      revalidateRoute("/manager/staff-management");
     },
     onError: () => {
       toast.error("Something went wrong", {
