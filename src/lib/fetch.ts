@@ -384,14 +384,44 @@ const InventoryResponse = z.object({
 
 export type InventoryResponse = z.infer<typeof InventoryResponse>;
 
-const ApiResponseListInventoryResponse = z.object({
-  requestTime: z.coerce.date(),
-  requestType: z.string(),
-  referenceId: z.string(),
-  status: z.boolean(),
-  message: z.string(),
-  data: z.object({
+const ApiResponseListInventoryResponse = ApiResponseObject.extend({
+  data: Pagination.extend({
     content: z.array(InventoryResponse),
+  }),
+});
+
+const InventorySummaryResponse = z.object({
+  totalItems: z.number(),
+  available: z.number(),
+  lowInStock: z.number(),
+  outOfStock: z.number(),
+});
+
+export type InventorySummaryResponse = z.infer<typeof InventorySummaryResponse>;
+
+const ApiResponseInventorySummaryResponse = ApiResponseObject.extend({
+  data: InventorySummaryResponse,
+});
+
+
+const InventoryRestockRequest = z.object({
+  id: z.string(),
+  itemCustomId: z.string(),
+  name: z.string(),
+  unit: z.string(),
+  department: z.string(),
+  quantity: z.number(),
+  remarks: z.string().nullable(),
+  approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]),
+  requestedAt: z.coerce.date(),
+  supplied: z.coerce.boolean(),
+});
+
+export type InventoryRestockRequest = z.infer<typeof InventoryRestockRequest>;
+
+const ApiResponseInventoryRestockRequestResponse = ApiResponseObject.extend({
+  data: Pagination.extend({
+    content: z.array(InventoryRestockRequest),
   }),
 });
 
@@ -473,11 +503,11 @@ export const schema = createSchema({
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
-        searchName: z.string(),
-        customId: z.string(),
-        category: z.string(),
-        unit: z.string(),
-        availability: z.string(),
+        searchName: z.string().nullable(),
+        customId: z.string().nullable(),
+        category: z.string().nullable(),
+        unit: z.string().nullable(),
+        availability: z.string().nullable(),
         page: z.coerce.number().default(0),
         size: z.coerce.number().default(10),
       })
@@ -567,20 +597,33 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@get/api/managers/{hotelId}/inventories": {
+  "@get/api/managers/:hotelId/inventories": {
     params: z.object({ hotelId: z.string() }),
     query: z.object({
-      searchName: z.string(),
-      customId: z.string(),
-      category: z.enum([ "BAR", "KITCHEN", "HOUSEKEEPING", "FRONT_DESK", "MAINTENANCE", "MANAGEMENT", "INVENTORY", "OTHER"]),
-      unit: z.string(),
-      availability: z.string(),
+      searchName: z.string().nullable(),
+      customId: z.string().nullable(),
+      category: z.enum([ "BAR", "KITCHEN", "HOUSEKEEPING", "FRONT_DESK", "MAINTENANCE", "MANAGEMENT", "INVENTORY", "OTHER"]).nullable(),
+      unit: z.string().nullable(),
+      availability: z.string().nullable(),
       page: z.coerce.number().default(0),
       size: z.coerce.number().default(10),
     }).partial(),
     output: ApiResponseListInventoryResponse,
     },
-    "@get/api/managers/{hotelId}/inventories/summary": {
+    "@get/api/managers/:hotelId/inventories/summary": {
+      params: z.object({ hotelId: z.string() }),
+      output: ApiResponseInventorySummaryResponse,
+    },
+    "@get/api/managers/:hotelId/inventories/restock-requests": {
+      params: z.object({ hotelId: z.string() }),
+      query: z.object({
+        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        searchName: z.string().nullable(),
+        itemCustomId: z.string().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseInventoryRestockRequestResponse,
     }
   });
 

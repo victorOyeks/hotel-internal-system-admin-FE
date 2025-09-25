@@ -61,7 +61,7 @@ export default function Page({ searchParams }: PageProps) {
             throw: true,
           }
         );
-
+        
         return response.data;
       },
     })

@@ -46,6 +46,8 @@ export async function addNewRoomToHotel(payload: Omit<CreateRoomRequest, "hotelI
         throw new Error(error.message || "Failed to add room");
     }
 
+    console.log(data);
+
     return data;    
 }
 
