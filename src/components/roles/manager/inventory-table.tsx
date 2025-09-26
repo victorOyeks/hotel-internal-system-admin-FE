@@ -57,7 +57,7 @@ const successDialogAtom = atom({
 });
 
 
-function AddNewItemDialog() {
+function _AddNewItemDialog() {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -275,9 +275,6 @@ function InventoryTableToolbar({
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-
-        <AddNewItemDialog />
-
         <TableFilter>
           <div className="flex flex-col gap-y-4">
             <div className="flex items-center justify-between gap-x-4">
