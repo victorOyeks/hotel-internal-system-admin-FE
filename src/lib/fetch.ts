@@ -545,7 +545,18 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@get/api/hotel-owners/owner": {},
+  "@get/api/hotel-owners/logs": {
+    output: ApiResponseManagerActivityLogResponse,
+    query: z
+      .object({
+        search: z.string().nullable(),
+        startDate: z.iso.date().nullable(),
+        endDate: z.iso.date().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+  },
 
   // Manager APIs
   "@get/api/managers/hotels/:hotelId/rooms": {
