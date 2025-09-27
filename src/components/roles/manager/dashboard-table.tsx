@@ -66,10 +66,6 @@ const columns = [
     header: "Guest Name",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("roomNo", {
-    header: "Room Number",
-    cell: (info) => info.getValue(),
-  }),
 
   // columnHelper.accessor("branchName", {
   //   header: "Branch Name",
@@ -166,7 +162,7 @@ const columns = [
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
                 <Link
-                  href={`/reports/branch-id/${info.row.original.bookingId}`}
+                  href={`/reports/branch-id/${info.row.original.id}`}
                 >
                   <EyeIcon />
                   View branch report
