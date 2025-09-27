@@ -4,7 +4,7 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import { SearchIcon, CheckIcon } from "lucide-react";
 import { useQueryStates, parseAsString } from "nuqs";
-import { useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import {
   type ColumnFiltersState,
   createColumnHelper,
@@ -30,7 +30,8 @@ import {
 import type { Pagination } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
-import { useSetAtom } from "jotai";
+import { atom, useSetAtom } from "jotai";
+import { type ExportData, ExportDialog } from "@/components/shared/shared-dialogs";
 
 type ActivityLog = {
   staffId: string;
@@ -40,11 +41,35 @@ type ActivityLog = {
   timestamp: string;
 };
 
+const successDialogAtom = atom({
+    show: false,
+    message: "",
+})
+
 function ListToolbar(_props: { table: TableType<ActivityLog> }) {
   const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
   const [searchParam, setSearchParam] = useQueryStates({
     searchName: parseAsString.withDefault(""),
   });
+
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+
+  const handleExport = useCallback(
+    async (data: ExportData) => {
+      // Handle the export logic here, e.g., sending data to an API
+      console.log("Exporting data with the following details:", data);
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setExportDialogOpen(false);
+      setSuccessDialogOpen({
+        show: true,
+        message: "Data exported successfully!",
+      });
+    },
+    [setSuccessDialogOpen]
+  );
+
   return (
     <div className="flex flex-row-reverse items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
       <div className="flex items-center gap-x-2 ">
@@ -140,9 +165,11 @@ function ListToolbar(_props: { table: TableType<ActivityLog> }) {
           </div>
         </TableFilter>
 
-        <Button size={"sm"} className="rounded-md md:rounded-xl">
-          Export
-        </Button>
+        <ExportDialog
+          open={exportDialogOpen}
+          setOpenAction={setExportDialogOpen}
+          onSubmitAction={handleExport}
+        />
       </div>
     </div>
   );
