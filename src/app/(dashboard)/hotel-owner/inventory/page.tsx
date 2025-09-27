@@ -47,8 +47,6 @@ function InventoryPage({
     })
   );
 
-  console.log({ inventoryQuery, paginationMeta });
-
   return <MainInventoryPage data={inventoryQuery} paginationMeta={paginationMeta} />;
 }
 
