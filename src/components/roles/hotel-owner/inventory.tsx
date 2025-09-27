@@ -14,10 +14,11 @@ import {
 } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
-import type { GetHotelResponse } from "@/lib/fetch";
+import type { GetHotelResponse, Pagination } from "@/lib/fetch";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 
 
 const columnHelper = createColumnHelper<GetHotelResponse>();
@@ -151,7 +152,8 @@ const columns = [
 ];
 
 
-export function MainInventoryPage({ data }: { data: GetHotelResponse[] }) {
+export function MainInventoryPage({ data, paginationMeta }: { data: GetHotelResponse[]; paginationMeta: Pagination }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams()
   const table = useReactTable({
     data,
     columns,
@@ -159,6 +161,12 @@ export function MainInventoryPage({ data }: { data: GetHotelResponse[] }) {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      pagination
+    },
+    onPaginationChange,
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages
   });
 
   return (

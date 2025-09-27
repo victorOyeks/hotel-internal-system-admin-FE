@@ -23,7 +23,10 @@ function InventoryPage({
   const params = use(searchParams);
   const parsedQueryParams = ParamsSchema.parse(params);
 
-  const inventoryQuery = use(
+  const {
+    content: inventoryQuery,
+    ...paginationMeta
+  } = use(
     queryClient.ensureQueryData({
       queryKey: [
         "hotels",
@@ -44,7 +47,7 @@ function InventoryPage({
     })
   );
 
-  return <MainInventoryPage data={inventoryQuery.content} />;
+  return <MainInventoryPage data={inventoryQuery} paginationMeta={paginationMeta} />;
 }
 
 export default InventoryPage;
