@@ -168,7 +168,7 @@ const columnHelper = createColumnHelper<ManagerActivityLog>();
 
 const columns = [
   columnHelper.accessor("customId", {
-    header: "Staff ID",
+    header: "ID",
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("staffName", {
