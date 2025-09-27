@@ -2,7 +2,7 @@
 
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
-import type { InventoryResponse } from "@/lib/fetch";
+import type { InventoryResponse, Pagination } from "@/lib/fetch";
 import { SearchIcon, CheckIcon, ArrowLeftIcon } from "lucide-react";
 import {
   createColumnHelper,
@@ -29,6 +29,7 @@ import { DataTablePagination } from "@/components/shared/pagination";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 
 
 function ListToolbar() {
@@ -286,7 +287,8 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
   );
 }
 
-function AllSupplySection({ data }: { data: InventoryResponse[] }) {
+function AllSupplySection({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
     columns: allSupplyColumns,
@@ -294,11 +296,14 @@ function AllSupplySection({ data }: { data: InventoryResponse[] }) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    onPaginationChange,
     state: {
       sorting: [],
       globalFilter: "",
       columnFilters: [],
-      pagination: { pageIndex: 0, pageSize: 10 },
+      pagination,
     },
   });
 
@@ -420,9 +425,12 @@ function InventoryHistoryTable({
 
 function InventHistorySection({
   data,
+  paginationMeta,
 }: {
   data: InventoryHistoryResponse[];
+  paginationMeta: Pagination;
 }) {
+  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
     columns: inventoryHistoryColumns,
@@ -430,12 +438,21 @@ function InventHistorySection({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    pageCount: paginationMeta.totalPages,
+    onPaginationChange,
+    state: {
+      sorting: [],
+      globalFilter: "",
+      columnFilters: [],
+      pagination,
+    },
   });
 
   return <InventoryHistoryTable table={table} />;
 }
 
-export function SingleInventoryPage({ data }: { data: InventoryResponse[] }) {
+export function SingleInventoryPage({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
   const searchParams = useSearchParams();
   const currentSection = searchParams.get("section") || "all";
 
@@ -451,9 +468,9 @@ export function SingleInventoryPage({ data }: { data: InventoryResponse[] }) {
 
       <ListToolbar />
       {currentSection === "all" ? (
-        <AllSupplySection data={data} />
+        <AllSupplySection data={data} paginationMeta={paginationMeta} />
       ) : (
-        <InventHistorySection data={data as InventoryHistoryResponse[]} />
+        <InventHistorySection data={data as InventoryHistoryResponse[]} paginationMeta={paginationMeta} />
       )}
     </div>
   );

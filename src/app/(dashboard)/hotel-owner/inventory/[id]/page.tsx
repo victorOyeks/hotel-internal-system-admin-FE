@@ -38,7 +38,7 @@ function InventoryPage({
     SearchParamsSchema.parse(searchParamsData);
   const validatedParams = ParamsSchema.parse(paramsData);
 
-  const inventoryQuery = use(
+  const { content, ...paginationMeta } = use(
     queryClient.ensureQueryData({
       queryKey: ["inventory", validatedParams.id, section, validatedSearchParams],
       queryFn: async () => {
@@ -59,7 +59,7 @@ function InventoryPage({
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <SingleInventoryPage data={inventoryQuery.content} />
+      <SingleInventoryPage data={content} paginationMeta={paginationMeta} />
     </Suspense>
   );
 }
