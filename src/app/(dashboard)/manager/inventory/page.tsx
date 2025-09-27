@@ -117,6 +117,7 @@ function Page({ searchParams }: PageProps) {
 
   return (
     <ManagerInventoryPage
+      section={query.section}
       breadcrumbs={breadcrumbs}
       statData={statData}
       inventoryData={content}

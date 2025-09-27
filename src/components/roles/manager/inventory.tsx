@@ -72,6 +72,7 @@ function InventoryStat({ data }: { data: InventorySummaryResponse }) {
 
 export function ManagerInventoryPage({
   breadcrumbs,
+  section,
   statData,
   inventoryData,
   paginationMeta,
@@ -80,6 +81,7 @@ export function ManagerInventoryPage({
     title: string;
     breadcrumbs: Breadcrumb[];
   };
+  section: "restock" | null;
   inventoryData: InventoryResponse[] | InventoryRestockRequest[];
   statData: InventorySummaryResponse;
   paginationMeta: Pagination;
@@ -94,8 +96,10 @@ export function ManagerInventoryPage({
   return (
     <div className="p-4 md:p-6 space-y-2 md:space-y-4">
       <InventoryStat data={statData} />
-      <ManagerInventoryTable data={inventoryData}
-      paginationMeta={paginationMeta}
+      <ManagerInventoryTable
+        data={inventoryData}
+        section={section}
+        paginationMeta={paginationMeta}
       />
     </div>
   );

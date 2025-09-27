@@ -4,7 +4,14 @@ import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  Form,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -24,7 +31,13 @@ import type {
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 // import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
@@ -46,16 +59,16 @@ import {
   useQueryState,
   useQueryStates,
 } from "nuqs";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const successDialogAtom = atom({
   show: false,
   message: "",
 });
-
 
 function _AddNewItemDialog() {
   const [open, setOpen] = useState(false);
@@ -93,7 +106,7 @@ const newItemFormSchema = z.object({
   quantity: z
     .number({ error: "Quantity must be a number" })
     .nonnegative("Quantity cannot be negative"),
-    itemId: z.string().optional(),
+  itemId: z.string().optional(),
 });
 
 function AddItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
@@ -139,9 +152,7 @@ function AddItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     <Form {...form}>
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit((data) =>
-          mutate(data)
-        )}
+        onSubmit={form.handleSubmit((data) => mutate(data))}
       >
         <FormField
           name="name"
@@ -380,6 +391,8 @@ const allSupplyColumns = [
         AVAILABLE: "green",
       };
 
+      console.log(availability, info.row.original);
+
       return (
         <Badge className="capitalize" variant={variant[availability]}>
           {availability.toLowerCase()}
@@ -466,7 +479,13 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
   );
 }
 
-function AllSupplySection({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
+function AllSupplySection({
+  data,
+  paginationMeta,
+}: {
+  data: InventoryResponse[];
+  paginationMeta: Pagination;
+}) {
   const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
@@ -482,7 +501,7 @@ function AllSupplySection({ data, paginationMeta }: { data: InventoryResponse[];
       sorting: [],
       globalFilter: "",
       columnFilters: [],
-      pagination
+      pagination,
     },
   });
 
@@ -621,7 +640,13 @@ function InventoryHistoryTable({
   );
 }
 
-function InventHistorySection({ data, paginationMeta }: { data: InventoryRestockRequest[]; paginationMeta: Pagination }) {
+function InventHistorySection({
+  data,
+  paginationMeta,
+}: {
+  data: InventoryRestockRequest[];
+  paginationMeta: Pagination;
+}) {
   const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
@@ -637,7 +662,7 @@ function InventHistorySection({ data, paginationMeta }: { data: InventoryRestock
       sorting: [],
       globalFilter: "",
       columnFilters: [],
-      pagination
+      pagination,
     },
   });
 
@@ -646,15 +671,83 @@ function InventHistorySection({ data, paginationMeta }: { data: InventoryRestock
 
 export function ManagerInventoryTable({
   data,
+  section,
   paginationMeta,
 }: {
   data: InventoryResponse[] | InventoryRestockRequest[];
+  section: "restock" | null;
   paginationMeta: Pagination;
 }) {
   const [currentSection, setCurrentSection] = useQueryState(
     "section",
-    parseAsStringLiteral(["inventory", "restock"]).withDefault("inventory")
+    parseAsStringLiteral(["inventory", "restock"]).withDefault(
+      section ?? "inventory"
+    )
   );
+
+  const isPending = useMemo(
+    () => currentSection !== (section ?? "inventory"),
+    [currentSection, section]
+  );
+
+  const renderedSection = useMemo(() => {
+    if (isPending) {
+      return (
+        <Table>
+          <TableHeader className="bg-gray-100">
+            <TableRow>
+              {Array.from({
+                length:
+                  section === "restock"
+                    ? inventoryHistoryColumns.length
+                    : allSupplyColumns.length,
+              }).map((_, index) => (
+                <TableHead key={index} className="text-gray-500">
+                  <Skeleton className="h-4 w-20 animate-pulse" />
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {Array.from({
+              length:
+                // use existing data length or 5 rows as placeholder
+                data.length > 0 ? data.length : 5,
+            }).map((_, rowIndex) => (
+              <TableRow
+                key={rowIndex}
+                className="cursor-pointer hover:bg-gray-50"
+              >
+                {Array.from({
+                  length:
+                    section === "restock"
+                      ? inventoryHistoryColumns.length
+                      : allSupplyColumns.length,
+                }).map((_, cellIndex) => (
+                  <TableCell key={cellIndex} className="text-gray-600">
+                    <Skeleton className="h-4 w-full animate-pulse" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      );
+    }
+
+    return currentSection === "inventory" ? (
+      <AllSupplySection
+        paginationMeta={paginationMeta}
+        data={data as InventoryResponse[]}
+      />
+    ) : (
+      <InventHistorySection
+        paginationMeta={paginationMeta}
+        data={data as InventoryRestockRequest[]}
+      />
+    );
+  }, [currentSection, section, isPending, data, paginationMeta]);
 
   return (
     <div className="h-full w-full space-y-2 md:space-y-4">
@@ -662,17 +755,7 @@ export function ManagerInventoryTable({
         currentSection={currentSection}
         setCurrentSection={setCurrentSection}
       />
-      {currentSection === "inventory" ? (
-        <AllSupplySection
-          paginationMeta={paginationMeta}
-          data={data as InventoryResponse[]}
-        />
-      ) : (
-        <InventHistorySection
-          paginationMeta={paginationMeta}
-          data={data as InventoryRestockRequest[]}
-        />
-      )}
+      {renderedSection}
     </div>
   );
 }
