@@ -149,17 +149,12 @@ const columnHelper = createColumnHelper<BookingViewResponse>();
 const columns = [
   columnHelper.display({
     header: "S/N",
-    cell: (info) => info.getValue(),
+    cell: (info) => info.row.index + 1,
   }),
   columnHelper.accessor("guestName", {
     header: "Guest Name",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("roomNo", {
-    header: "Room Number",
-    cell: (info) => info.getValue(),
-  }),
-
   columnHelper.accessor("branchName", {
     header: "Branch Name",
     cell: (info) => info.getValue(),

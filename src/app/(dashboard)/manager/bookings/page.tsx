@@ -1,4 +1,4 @@
-import { BookingsPage } from "@/components/roles/hotel-owner/bookings";
+import { BookingsPage } from "@/components/roles//manager/bookings";
 import { getManagerCurrentHotel } from "@/lib/dal";
 import { $fetch, BookingStatus } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";

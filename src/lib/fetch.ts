@@ -355,9 +355,11 @@ const ApiResponseListBookingViewResponse = z.object({
 
 
 const ManagerBookingViewResponse = BookingViewResponse.extend({
+  id: z.string(),
   customId: z.string(),
   amountPaid: z.number(),
-});
+})
+.omit({ roomNo: true, bookingId: true });
 
 export type ManagerBookingViewResponse = z.infer<typeof ManagerBookingViewResponse>;
 
