@@ -15,7 +15,6 @@ import { use } from "react";
 
 type PageProps = {
   searchParams: Promise<SearchParams>;
-  params: Promise<{ id: string }>;
 };
 
 enum RoomStatus {

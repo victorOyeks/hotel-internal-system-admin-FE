@@ -440,6 +440,27 @@ const ApiResponseOnboardStaffResponse = ApiResponseObject.extend({
   data: StaffDetails,
 });
 
+const ManagerActivityLog = z.object({
+  "id": z.string(),
+  "customId": z.string(),
+  "staffId": z.string(),
+  "staffEmail": z.string(),
+  "staffName": z.string(),
+  "role": z.string(),
+  "activity": z.string(),
+  "createdAt": z.iso.datetime(),
+  "hotelId": z.string(),
+  "hotelName": z.string()
+});
+
+export type ManagerActivityLog = z.infer<typeof ManagerActivityLog>;
+
+const ApiResponseManagerActivityLogResponse = ApiResponseObject.extend({
+  data: Pagination.extend({
+    content: z.array(ManagerActivityLog),
+  }),
+});
+
 export type BookingStatus = z.infer<typeof BookingStatus>;
 // --- Main Fetch Schema ---
 
@@ -626,7 +647,17 @@ export const schema = createSchema({
       }).partial(),
       output: ApiResponseInventoryRestockRequestResponse,
     },
-    "@post/api/managers/inventories/item": {}
+    "@get/api/managers/logs/:hotelId": {
+      params: z.object({ hotelId: z.string() }),
+      query: z.object({
+        search: z.string().nullable(),
+        startDate: z.iso.date().nullable(),
+        endDate: z.iso.date().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseManagerActivityLogResponse,
+    }
   });
 
   export const $fetch = createFetch({

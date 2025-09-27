@@ -1,8 +1,7 @@
 "use client";
 
 import { TableFilter } from "@/components/shared/table-filter";
-import { Button } from "@/components/ui/button";
-import { SearchIcon, CheckIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useQueryStates, parseAsString } from "nuqs";
 import { useCallback, useLayoutEffect, useState } from "react";
 import {
@@ -27,29 +26,23 @@ import {
   TableFooter,
   Table,
 } from "@/components/ui/table";
-import type { Pagination } from "@/lib/fetch";
+import type { ManagerActivityLog, Pagination } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { atom, useSetAtom } from "jotai";
-import { type ExportData, ExportDialog } from "@/components/shared/shared-dialogs";
-
-type ActivityLog = {
-  staffId: string;
-  staffName: string;
-  role: string;
-  activity: string;
-  timestamp: string;
-};
+import {
+  type ExportData,
+  ExportDialog,
+} from "@/components/shared/shared-dialogs";
 
 const successDialogAtom = atom({
-    show: false,
-    message: "",
-})
+  show: false,
+  message: "",
+});
 
-function ListToolbar(_props: { table: TableType<ActivityLog> }) {
-  const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
+function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
   const [searchParam, setSearchParam] = useQueryStates({
-    searchName: parseAsString.withDefault(""),
+    search: parseAsString.withDefault(""),
   });
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -77,11 +70,11 @@ function ListToolbar(_props: { table: TableType<ActivityLog> }) {
           <input
             type="text"
             placeholder="Search"
-            value={searchParam.searchName}
+            value={searchParam.search}
             onChange={(e) =>
               setSearchParam((prev) => ({
                 ...prev,
-                searchName: e.target.value,
+                search: e.target.value,
               }))
             }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-sm md:placeholder:text-base placeholder:text-primary-1/80 rounded-md md:rounded-full"
@@ -89,81 +82,7 @@ function ListToolbar(_props: { table: TableType<ActivityLog> }) {
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
 
-        <TableFilter>
-          <div className="flex flex-col gap-y-4">
-            <div className="flex items-center justify-between gap-x-4">
-              <div className="flex items-center gap-x-2">
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("dateRange")}
-                  data-active={currentFilter === "dateRange"}
-                >
-                  {currentFilter === "dateRange" && <CheckIcon />}
-                  <span>Date Range</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("status")}
-                  data-active={currentFilter === "status"}
-                >
-                  {currentFilter === "status" && <CheckIcon />}
-                  <span>Status</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("roomType")}
-                  data-active={currentFilter === "roomType"}
-                >
-                  {currentFilter === "roomType" && <CheckIcon />}
-                  <span>Room Type</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("branchName")}
-                  data-active={currentFilter === "branchName"}
-                >
-                  {currentFilter === "branchName" && <CheckIcon />}
-                  <span>Branch Name</span>
-                </Button>
-              </div>
-
-              <Button
-                variant={"link"}
-                className="text-blue-600"
-                onClick={() => setCurrentFilter("dateRange")}
-              >
-                Reset
-              </Button>
-            </div>
-
-            <div className="ml-auto flex items-center gap-x-2">
-              <Button
-                size={"sm"}
-                variant={"outline"}
-                data-active
-                className="rounded-xl shadow-none border-transparent font-semibold"
-                onClick={() => setCurrentFilter("")}
-              >
-                <span>Reset All</span>
-              </Button>
-
-              <Button
-                size={"sm"}
-                className="rounded-xl shadow-none font-semibold"
-              >
-                <span>Apply Filter</span>
-              </Button>
-            </div>
-          </div>
-        </TableFilter>
+        <TableFilter></TableFilter>
 
         <ExportDialog
           open={exportDialogOpen}
@@ -175,7 +94,7 @@ function ListToolbar(_props: { table: TableType<ActivityLog> }) {
   );
 }
 
-function ActivityLogTable({ table }: { table: TableType<ActivityLog> }) {
+function ActivityLogTable({ table }: { table: TableType<ManagerActivityLog> }) {
   return (
     <div className="overflow-hidden rounded-md border bg-card">
       <Table>
@@ -245,21 +164,21 @@ function ActivityLogTable({ table }: { table: TableType<ActivityLog> }) {
   );
 }
 
-const columnHelper = createColumnHelper<ActivityLog>();
+const columnHelper = createColumnHelper<ManagerActivityLog>();
 
 const columns = [
-  columnHelper.accessor("staffId", {
+  columnHelper.accessor("customId", {
     header: "Staff ID",
-    cell: (info) => `#${info.getValue()}`,
+    cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("staffName", {
     header: "Staff Name",
-    cell: (info) => (
-      <div className="flex items-center justify-center bg-[#fff5da] text-[#1c1c1c] p-2 rounded-md">
-        {info.getValue()}
-      </div>
-    ),
+    cell: (info) => info.getValue(),
     filterFn: "equalsString",
+  }),
+  columnHelper.accessor("staffEmail", {
+    header: "Staff Email",
+    cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("role", {
     header: "Room Status",
@@ -273,9 +192,23 @@ const columns = [
     header: "Activity",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("timestamp", {
+  columnHelper.accessor("hotelName", {
+    header: "Hotel",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("createdAt", {
     header: "Timestamp",
-    cell: (info) => new Date(info.getValue()).toLocaleString(),
+    cell: (info) =>
+      new Date(info.getValue()).toLocaleString(
+        Intl.DateTimeFormat().resolvedOptions().locale,
+        {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      ),
   }),
 ];
 
@@ -288,7 +221,7 @@ export function ManagerActivityLogPage({
     title: string;
     breadcrumbs: Breadcrumb[];
   };
-  data: ActivityLog[];
+  data: ManagerActivityLog[];
   paginationMeta: Pagination;
 }) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
