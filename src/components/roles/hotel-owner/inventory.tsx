@@ -111,10 +111,10 @@ function HotelList({ table }: { table: TableType<GetHotelResponse> }) {
 }
 
 const columns = [
-  columnHelper.display({
-    header: "S/N",
+  columnHelper.accessor("customId", {
+    header: "ID",
     cell: (info) => (
-      <span className="text-foreground">{info.row.index + 1}</span>
+      <span className="text-foreground">{info.getValue()}</span>
     ),
   }),
   columnHelper.accessor("name", {
