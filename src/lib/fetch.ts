@@ -53,6 +53,7 @@ const UpdateRoomRequest = z.object({
 
 const RoomResponse = z.object({
   id: z.string(),
+  customId: z.string(),
   hotelName: z.string(),
   roomIdentifier: z.string(),
   roomType: z.string(),

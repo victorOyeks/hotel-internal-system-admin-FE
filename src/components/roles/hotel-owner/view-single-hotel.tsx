@@ -15,7 +15,6 @@ import {
   getSortedRowModel,
   type Table as TableType,
 } from "@tanstack/table-core";
-import { formatCurrency } from "@/lib/utils";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { flexRender, useReactTable } from "@tanstack/react-table";
 import {
@@ -217,9 +216,13 @@ function ViewSingleHotelTable({ table }: { table: TableType<RoomDetails> }) {
 const columnHelper = createColumnHelper<RoomDetails>();
 
 const columns = [
+  columnHelper.accessor("customId", {
+    header: "ID",
+    cell: (info) => info.getValue(),
+  }),
   columnHelper.accessor("roomIdentifier", {
-    header: "Room Number",
-    cell: (info) => `#${info.getValue()}`,
+    header: "Room Name/No",
+    cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("roomType", {
     header: "Room Type",
@@ -234,11 +237,6 @@ const columns = [
     header: "Branch Name",
     cell: (info) => info.getValue(),
     filterFn: "includesString",
-  }),
-  columnHelper.accessor("roomPrice", {
-    header: "Room Price",
-    cell: (info) => formatCurrency(info.getValue()),
-    filterFn: "equals",
   }),
   columnHelper.accessor("checkInStatus", {
     header: "Room Status",
