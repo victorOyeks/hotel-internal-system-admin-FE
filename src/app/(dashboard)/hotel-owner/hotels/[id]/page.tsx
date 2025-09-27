@@ -27,9 +27,9 @@ enum RoomStatus {
 
 const loadSearchParams = createLoader({
   ...paginationSearchParams,
-  roomType: parseAsString.withDefault(""),
+  roomType: parseAsString,
   status: parseAsStringEnum(Object.values(RoomStatus)),
-  search: parseAsString.withDefault(""),
+  search: parseAsString,
 });
 
 export default function Page({ params, searchParams }: PageProps) {
