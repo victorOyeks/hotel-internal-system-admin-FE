@@ -42,7 +42,7 @@ const successDialogAtom = atom({
 
 function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
   const [searchParam, setSearchParam] = useQueryStates({
-    search: parseAsString.withDefault(""),
+    search: parseAsString,
   });
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -70,7 +70,7 @@ function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
           <input
             type="text"
             placeholder="Search"
-            value={searchParam.search}
+            value={searchParam.search ?? ""}
             onChange={(e) =>
               setSearchParam((prev) => ({
                 ...prev,
