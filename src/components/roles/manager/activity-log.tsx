@@ -181,11 +181,11 @@ const columns = [
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("role", {
-    header: "Room Status",
+    header: "Role",
     cell: (info) => {
       const status = info.getValue();
       const statusToLabel = status.replace(/_/g, " ").toLowerCase();
-      return <Badge className="capitalize">{statusToLabel}</Badge>;
+      return <Badge className="capitalize " variant={"outline"}>{statusToLabel}</Badge>;
     },
   }),
   columnHelper.accessor("activity", {

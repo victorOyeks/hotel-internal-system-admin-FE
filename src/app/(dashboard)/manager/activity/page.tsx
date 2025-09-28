@@ -32,7 +32,7 @@ function Page({ searchParams }: PageProps) {
     const { content, ...paginationMeta } = use(
       queryClient.ensureQueryData({
         queryKey: ["log", id, query],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
           const response = await $fetch("@get/api/managers/logs/:hotelId", {
             params: {
               hotelId: id,
@@ -48,6 +48,7 @@ function Page({ searchParams }: PageProps) {
               page: query.page ? query.page - 1 : 0
             },
             throw: true,
+            signal
           });
           return response.data;
         },
