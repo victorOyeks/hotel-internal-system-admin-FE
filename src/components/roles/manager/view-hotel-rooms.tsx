@@ -395,13 +395,7 @@ function RoomsListTable({ table }: { table: TableType<RoomDetails> }) {
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                tabIndex={-1}
-                onClick={() => {
-                  // mark row as selected
-                  row.toggleSelected();
-                }}
-                className="cursor-pointer hover:bg-gray-50"
+                className="hover:bg-gray-50"
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-gray-600">
