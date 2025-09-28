@@ -116,9 +116,7 @@ function Page({ searchParams }: PageProps) {
       }
     })
   );
-
-  console.log({ query, content });
-
+  
   return (
     <ManagerInventoryPage
       section={query.section}

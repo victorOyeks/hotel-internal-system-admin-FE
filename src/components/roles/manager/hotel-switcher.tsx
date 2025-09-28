@@ -16,6 +16,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { switchManagerCurrentHotel } from "@/lib/manager-actions";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function HotelSwitcher({
   hotels,
@@ -65,25 +66,27 @@ export function HotelSwitcher({
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               Hotels you manage
             </DropdownMenuLabel>
-            {hotels.map((hotel) => (
-              <DropdownMenuItem
-                key={hotel.id}
-                onClick={() => {
-                  toast.promise(mutateAsync(hotel.id), {
-                    loading: "Switching hotel...",
-                  });
-                }}
-                className="gap-1 p-1"
-              >
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  <HotelIcon className="size-3.5 shrink-0" />
-                </div>
-                {hotel.name}
-                {hotel.id === activeHotel.id && (
-                  <CheckIcon className="ml-auto" />
-                )}
-              </DropdownMenuItem>
-            ))}
+            <ScrollArea className="max-h-60 w-full">
+              {hotels.map((hotel) => (
+                <DropdownMenuItem
+                  key={hotel.id}
+                  onClick={() => {
+                    toast.promise(mutateAsync(hotel.id), {
+                      loading: "Switching hotel...",
+                    });
+                  }}
+                  className="gap-1 p-1"
+                >
+                  <div className="flex size-6 items-center justify-center rounded-md border">
+                    <HotelIcon className="size-3.5 shrink-0" />
+                  </div>
+                  {hotel.name}
+                  {hotel.id === activeHotel.id && (
+                    <CheckIcon className="ml-auto" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </ScrollArea>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
