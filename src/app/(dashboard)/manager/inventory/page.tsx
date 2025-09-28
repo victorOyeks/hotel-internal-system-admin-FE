@@ -78,7 +78,7 @@ function Page({ searchParams }: PageProps) {
   const { content, ...paginationMeta } = use(
     queryClient.ensureQueryData({
       queryKey: [query.section ?? "inventory", id, query],
-      queryFn: async () => {
+      queryFn: async ({ signal }) => {
 
         if (query.section === "restock") {
           const response = await $fetch(
@@ -91,6 +91,7 @@ function Page({ searchParams }: PageProps) {
                 page: query.page ? query.page - 1 : 0,
               },
               throw: true,
+              signal
             }
           );
 
@@ -107,6 +108,7 @@ function Page({ searchParams }: PageProps) {
               page: query.page ? query.page - 1 : 0,
             },
             throw: true,
+            signal
           }
         );
 
