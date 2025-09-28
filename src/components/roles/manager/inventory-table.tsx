@@ -240,7 +240,7 @@ function InventoryTableToolbar({
   setCurrentSection: (value: "inventory" | "restock") => void;
   totalItems: number;
 }) {
-  const [currentFilter] = useQueryStates({
+  const [currentFilter, setCurrentFilter] = useQueryStates({
     dateRange: parseAsIsoDate,
     status: parseAsStringLiteral(["AVAILABLE", "LOW_IN_STOCK", "OUT_OF_STOCK"]),
     roomType: parseAsString,
@@ -291,6 +291,13 @@ function InventoryTableToolbar({
           <input
             type="text"
             placeholder="Search"
+            value={currentFilter.searchName ?? ""}
+            onChange={(e) =>
+              setCurrentFilter((prev) => ({
+                ...prev,
+                searchName: e.target.value || null,
+              }))
+            }
             className="w-full pl-9 py-2 bg-primary-5/10 text-primary-1 placeholder:text-sm md:placeholder:text-base placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
@@ -399,8 +406,6 @@ const allSupplyColumns = [
       const variant: Record<string, BadgeVariant> = {
         AVAILABLE: "green",
       };
-
-      console.log(availability, info.row.original);
 
       return (
         <Badge className="capitalize" variant={variant[availability]}>

@@ -4,7 +4,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { parseAsString } from "nuqs";
+import { parseAsString } from "nuqs/server";
 import {
   createLoader,
   parseAsStringLiteral,
@@ -116,6 +116,8 @@ function Page({ searchParams }: PageProps) {
       }
     })
   );
+
+  console.log({ query, content });
 
   return (
     <ManagerInventoryPage
