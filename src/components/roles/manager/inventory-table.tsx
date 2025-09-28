@@ -234,15 +234,18 @@ function AddItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 function InventoryTableToolbar({
   currentSection,
   setCurrentSection,
+  totalItems,
 }: {
   currentSection: "inventory" | "restock";
   setCurrentSection: (value: "inventory" | "restock") => void;
+  totalItems: number;
 }) {
   const [currentFilter] = useQueryStates({
     dateRange: parseAsIsoDate,
     status: parseAsStringLiteral(["AVAILABLE", "LOW_IN_STOCK", "OUT_OF_STOCK"]),
     roomType: parseAsString,
     branchName: parseAsString,
+    searchName: parseAsString,
   });
 
   return (
@@ -257,7 +260,9 @@ function InventoryTableToolbar({
               : "bg-gray-100"
           )}
           size={"sm"}
-          onClick={() => setCurrentSection("inventory")}
+          onClick={() =>
+            currentSection !== "inventory" && setCurrentSection("inventory")
+          }
         >
           Inventory
         </Button>
@@ -268,12 +273,16 @@ function InventoryTableToolbar({
             "bg-gray-100": currentSection !== "restock",
           })}
           size={"sm"}
-          onClick={() => setCurrentSection("restock")}
+          onClick={() =>
+            currentSection !== "restock" && setCurrentSection("restock")
+          }
         >
           Restock Request
-          <span className="size-4 text-xs flex items-center justify-center rounded-full bg-red-600 text-white">
-            8
-          </span>
+          {currentSection === "restock" && (
+            <span className="size-4 text-xs flex items-center justify-center rounded-full bg-red-600 text-white">
+              {totalItems}
+            </span>
+          )}
         </Button>
       </div>
 
@@ -432,10 +441,7 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-gray-50"
-              >
+              <TableRow key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-gray-600">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -587,10 +593,7 @@ function InventoryHistoryTable({
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-gray-50"
-              >
+              <TableRow key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-gray-600">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -742,6 +745,7 @@ export function ManagerInventoryTable({
       <InventoryTableToolbar
         currentSection={currentSection}
         setCurrentSection={setCurrentSection}
+        totalItems={data.length}
       />
       {renderedSection}
     </div>
