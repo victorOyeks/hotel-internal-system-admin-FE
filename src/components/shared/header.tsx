@@ -2,7 +2,6 @@
 
 import { formatDate } from "date-fns";
 import {
-  BellIcon,
   FileIcon,
   ImageIcon,
   Link2,
@@ -35,6 +34,7 @@ import { PopoverClose } from "@radix-ui/react-popover";
 import type { UserInfoResponse } from "@/lib/fetch";
 import { logout } from "@/lib/actions";
 import { toast } from "sonner";
+import { NotificationsPopover } from "../notification-popover";
 
 function ProfilePopover({ user }: { user: UserInfoResponse }) {
   return (
@@ -250,9 +250,7 @@ export function Header({ user }: { user: UserInfoResponse }) {
             {formatDate(new Date(), "PPP")}
           </div>
 
-          <Button size={"icon"} variant={"ghost"} className="rounded-full">
-            <BellIcon size={20} className="text-primary-1" />
-          </Button>
+      <NotificationsPopover />
 
           <ProfilePopover user={user} />
         </div>
