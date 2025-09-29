@@ -76,7 +76,6 @@ export async function editHotelBranch(id: string, payload: Omit<OnboardHotelRequ
   return response.data;
 }
 
-
 export async function deleteStaffMember(id: string) {
   const sessionData = await verifySession();
 

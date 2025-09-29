@@ -134,7 +134,7 @@ function HotelListToolbar({
         </div>
         <TableFilter></TableFilter>
 
-        <AddNewStaffDialog />
+        {/* <AddNewStaffDialog /> */}
 
         <ExportDialog
           open={exportDialogOpen}
@@ -146,7 +146,7 @@ function HotelListToolbar({
   );
 }
 
-function AddNewStaffDialog() {
+function _AddNewStaffDialog() {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -183,27 +183,6 @@ const newStaffFormSchema = z.object({
     }),
 });
 
-// mock add new staff function
-async function addNewStaff(data: z.infer<typeof newStaffFormSchema>) {
-  console.log("Adding new staff with data:", data);
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        message: "Staff added successfully",
-        data: {
-          id: "new-staff-id",
-          fullName: data.staffName,
-          email: data.email,
-          role: data.role,
-          status: "ACTIVE",
-          currentShift: "Morning",
-          profilePicture: "/images/default-profile.png", // Placeholder image
-        },
-      });
-    }, 2000);
-  });
-}
-
 function AddStaffForm({
   setOpen,
 }: {
@@ -211,7 +190,9 @@ function AddStaffForm({
 }) {
   const queryClient = useQueryClient();
   const { mutate, isPending } = useMutation({
-    mutationFn: addNewStaff,
+    mutationFn: async (data: z.infer<typeof newStaffFormSchema>) => {
+      return data;
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();
