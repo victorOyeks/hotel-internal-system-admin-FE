@@ -170,7 +170,7 @@ const CreateHotelManagerRequest = z.object({
   fullName: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
-  staffId: z.string(),
+  staffId: z.string().optional(),
 });
 
 const OnboardHotelResponse = z.object({

@@ -77,9 +77,18 @@ import {
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import { Textarea } from "@/components/ui/textarea";
-import { type Pagination, Role, type CustomPageStaffResponse } from "@/lib/fetch";
+import {
+  type Pagination,
+  Role,
+  type CustomPageStaffResponse,
+} from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { deleteStaffMember, revalidateRoute } from "@/lib/actions";
+import {
+  deleteStaffMember,
+  onboardManagerToHotel,
+  revalidateRoute,
+  updateStaffDetailsByOwner,
+} from "@/lib/actions";
 import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -127,14 +136,16 @@ function HotelListToolbar({
             type="text"
             placeholder="Search"
             value={searchParam.search}
-            onChange={(e) => setSearchParam(prev => ({ ...prev, search: e.target.value }))}
+            onChange={(e) =>
+              setSearchParam((prev) => ({ ...prev, search: e.target.value }))
+            }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
         <TableFilter></TableFilter>
 
-        {/* <AddNewStaffDialog /> */}
+        <AddNewStaffDialog />
 
         <ExportDialog
           open={exportDialogOpen}
@@ -146,7 +157,7 @@ function HotelListToolbar({
   );
 }
 
-function _AddNewStaffDialog() {
+function AddNewStaffDialog() {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -162,13 +173,13 @@ function _AddNewStaffDialog() {
       </DialogTrigger>
 
       <DialogContent className="p-4 rounded-2xl">
-        <DialogTitle>New Staff</DialogTitle>
+        <DialogTitle>Add new manager</DialogTitle>
         <DialogDescription className="sr-only">
           Fill in the details below to add a new staff member.
         </DialogDescription>
 
         <div className="mt-4">
-            <AddStaffForm setOpen={setOpen} />
+          <AddStaffForm setOpen={setOpen} />
         </div>
       </DialogContent>
     </Dialog>
@@ -176,23 +187,17 @@ function _AddNewStaffDialog() {
 }
 
 const newStaffFormSchema = z.object({
-    staffName: z.string().nonempty("Staff name is required"),
-    email: z.email("Invalid email address"),
-    role: z.string().refine((val) => Role.safeParse(val).success, {
-      message: "Invalid role",
-    }),
+  fullName: z.string().nonempty("Staff name is required"),
+  email: z.email("Invalid email address"),
+  phoneNumber: z.string().nonempty("Phone number is required"),
+  // role: z.string().refine((val) => Role.safeParse(val).success, {
+  //   message: "Invalid role",
+  // }),
 });
 
-function AddStaffForm({
-  setOpen,
-}: {
-  setOpen: (open: boolean) => void;
-}) {
-  const queryClient = useQueryClient();
+function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: async (data: z.infer<typeof newStaffFormSchema>) => {
-      return data;
-    },
+    mutationFn: onboardManagerToHotel,
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -200,10 +205,7 @@ function AddStaffForm({
         show: true,
         message: "Staff added successfully",
       });
-      await queryClient.invalidateQueries({
-        exact: true,
-        queryKey: ["staffs"],
-      });
+      revalidateRoute("/hotel-owner/staff-management");
     },
     onError: () => {
       toast.error("Something went wrong", {
@@ -215,9 +217,9 @@ function AddStaffForm({
   const form = useForm({
     resolver: zodResolver(newStaffFormSchema),
     defaultValues: {
-        staffName: "",
-        email: "",
-        role: "FRONT_DESK",
+      fullName: "",
+      email: "",
+      phoneNumber: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -227,13 +229,11 @@ function AddStaffForm({
   return (
     <Form {...form}>
       <form
-                className="space-y-4"
-                onSubmit={form.handleSubmit((data) =>
-                mutate(data)
-        )}
+        className="space-y-4"
+        onSubmit={form.handleSubmit((data) => mutate(data))}
       >
         <FormField
-          name="staffName"
+          name="fullName"
           control={form.control}
           render={({ field }) => (
             <FormItem>
@@ -260,29 +260,18 @@ function AddStaffForm({
         />
         <FormField
           control={form.control}
-          name="role"
+          name="phoneNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Assign role</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-                    <SelectItem value="MANAGER">Manager</SelectItem>
-                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                    <SelectItem value="INVENTORY">Inventory</SelectItem>
-                    <SelectItem value="BAR">Bar</SelectItem>
-                    <SelectItem value="KITCHEN">Kitchen</SelectItem>
-                </SelectContent>
-              </Select>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g +123456789" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <Button
           type="submit"
           className="mt-4 w-full font-semibold"
@@ -302,16 +291,19 @@ function AddStaffForm({
   );
 }
 
-const hotelOwnerStaffEditSchema = newStaffFormSchema;
+const hotelOwnerStaffEditSchema = newStaffFormSchema.extend({
+  role: Role,
+});
 
 function UpdateHotelStaffForm({
   initialValues,
+  staffId,
   setOpen,
 }: {
   initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+  staffId: string;
   setOpen: (open: boolean) => void;
 }) {
-  const [isPending, setIsPending] = useState(false);
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const form = useForm({
     resolver: zodResolver(hotelOwnerStaffEditSchema),
@@ -321,22 +313,24 @@ function UpdateHotelStaffForm({
     reValidateMode: "onBlur",
   });
 
-  const handleSubmit = useCallback(
-    (data: z.infer<typeof newStaffFormSchema>) => {
-      console.log("Form submitted with data:", data);
-      setIsPending(true);
-      setTimeout(() => {
-        setIsPending(false);
-        setOpen(false);
-        form.reset();
-        setShowSuccessDialog({
-          show: true,
-          message: "Changes saved successfully",
-        });
-      }, 3000);
+  const { mutate, isPending } = useMutation({
+    mutationFn: updateStaffDetailsByOwner,
+    onSuccess: async () => {
+      setOpen(false);
+      form.reset();
+      setShowSuccessDialog({
+        show: true,
+        message: "Changes saved successfully",
+      });
+      revalidateRoute("/hotel-owner/staff-management");
     },
-    [setShowSuccessDialog, setOpen, form]
-  );
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to update staff details",
+      });
+    },
+  });
+
 
   return (
     <DialogContent className="p-4 rounded-2xl">
@@ -345,10 +339,13 @@ function UpdateHotelStaffForm({
         Edit hotel details
       </DialogDescription>
       <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+        <form className="space-y-4" onSubmit={form.handleSubmit((data) => mutate({
+          ...data,
+          staffId
+        }))}>
           <FormField
             control={form.control}
-            name="staffName"
+            name="fullName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Staff Name</FormLabel>
@@ -358,45 +355,61 @@ function UpdateHotelStaffForm({
                 <FormMessage />
               </FormItem>
             )}
-            />
-            <FormField
+          />
+          <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
-                <FormItem>
+              <FormItem>
                 <FormLabel>Email address</FormLabel>
                 <FormControl>
-                    <Input placeholder="e.g john.doe@example.com" {...field} />
+                  <Input placeholder="e.g john.doe@example.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-            <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Assign role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                        <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-                        <SelectItem value="MANAGER">Manager</SelectItem>
-                        <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                        <SelectItem value="INVENTORY">Inventory</SelectItem>
-                        <SelectItem value="BAR">Bar</SelectItem>
-                        <SelectItem value="KITCHEN">Kitchen</SelectItem>
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input type="tel" placeholder="e.g +123456789" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assign role</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+                    <SelectItem value="MANAGER">Manager</SelectItem>
+                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                    <SelectItem value="INVENTORY">Inventory</SelectItem>
+                    <SelectItem value="BAR">Bar</SelectItem>
+                    <SelectItem value="KITCHEN">Kitchen</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <Button
             type="submit"
             className="mt-4 w-full font-semibold"
@@ -607,7 +620,7 @@ const columns = [
     cell: (info) => (
       <span className="text-foreground">{info.row.index + 1}</span>
     ),
-}),
+  }),
   columnHelper.accessor("fullName", {
     header: "Staff Name",
     cell: (info) => (
@@ -627,7 +640,10 @@ const columns = [
     header: "Role",
     cell: (info) => {
       const role = info.getValue();
-      const refinedRole = role.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      const refinedRole = role
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
       return <Badge variant={"outline"}>{refinedRole}</Badge>;
     },
   }),
@@ -655,9 +671,7 @@ const columns = [
           case "contact-staff":
             return (
               <ContactStaffForm
-                setOpen={(isOpen) =>
-                  setOpen(isOpen ? "contact-staff" : false)
-                }
+                setOpen={(isOpen) => setOpen(isOpen ? "contact-staff" : false)}
               />
             );
           case "edit-staff": {
@@ -665,10 +679,12 @@ const columns = [
             return (
               <UpdateHotelStaffForm
                 initialValues={{
-                    staffName: rowData.fullName,
-                    email: rowData.email,
-                    role: rowData.role,
+                  fullName: rowData.fullName,
+                  email: rowData.email,
+                  role: rowData.role,
+                  phoneNumber: rowData.phoneNumber,
                 }}
+                staffId={rowData.id}
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
               />
             );
@@ -817,7 +833,7 @@ function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
 export function HotelOwnerStaff({
   breadcrumb,
   staffs,
-  paginationMeta
+  paginationMeta,
 }: {
   breadcrumb: {
     title: string;
@@ -826,7 +842,7 @@ export function HotelOwnerStaff({
   staffs: CustomPageStaffResponse[];
   paginationMeta: Pagination;
 }) {
-  const [pagination, setPagination] = usePaginationSearchParams()
+  const [pagination, setPagination] = usePaginationSearchParams();
   const table = useReactTable({
     data: staffs,
     columns: columns,
@@ -837,7 +853,7 @@ export function HotelOwnerStaff({
     manualPagination: true,
     pageCount: paginationMeta.totalPages,
     state: {
-      pagination
+      pagination,
     },
     onPaginationChange: setPagination,
   });
@@ -855,7 +871,9 @@ export function HotelOwnerStaff({
       <HotelList table={table} />
       <SuccessDialog
         open={successDialogOpen.show}
-        setOpenAction={(show) => setSuccessDialogOpen({ ...successDialogOpen, show })}
+        setOpenAction={(show) =>
+          setSuccessDialogOpen({ ...successDialogOpen, show })
+        }
         message={successDialogOpen.message}
       />
     </div>

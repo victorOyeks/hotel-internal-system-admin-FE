@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { $fetch, type OnboardHotelRequest } from "./fetch";
+import { $fetch, type OnboardStaffRequest, type OnboardHotelRequest } from "./fetch";
 import { createSession, deleteSession } from "./session";
 import { getUser, verifySession } from "./dal";
 import { revalidatePath } from "next/cache";
@@ -101,3 +101,35 @@ export async function assignManagerToHotelBranch(payload: { hotelId: string; man
   return response.data;
 }
 
+
+export async function onboardManagerToHotel(payload: Omit<OnboardStaffRequest, "role" | "staffId">) {
+    const sessionData = await verifySession();
+    if (sessionData.role !== "HOTEL_OWNER") {
+        throw new Error("Unauthorized");
+    }
+
+    const { data } = await $fetch("@post/api/hotel-owners/managers", {
+        auth: { type: "Bearer", token: sessionData.token },
+        body: {
+            ...payload,
+            role: "MANAGER"
+        },
+        throw: true
+    })
+
+    return data;
+}
+
+export async function updateStaffDetailsByOwner({ staffId, ...payload }: OnboardStaffRequest) {
+    const sessionData = await verifySession();
+    if (sessionData.role !== "HOTEL_OWNER") {
+        throw new Error("Unauthorized");
+    }
+
+    await $fetch("@put/api/hotel-owners/users/:staffId", {
+        params: { staffId },
+        auth: { type: "Bearer", token: sessionData.token },
+        body: payload,
+        throw: true
+    })
+}
