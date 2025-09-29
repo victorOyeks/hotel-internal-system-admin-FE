@@ -173,9 +173,7 @@ function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
                 <FormLabel>Room Number</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
                     placeholder="e.g 101"
-                    min={0}
                     {...field}
                   />
                 </FormControl>
