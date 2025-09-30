@@ -2,11 +2,13 @@ import {
   BookOpenIcon,
   BookTextIcon,
   ChartNoAxesCombined,
+  FolderClosedIcon,
   HomeIcon,
   HotelIcon,
   IdCardIcon,
   MessagesSquare,
   ToolCaseIcon,
+  TruckIcon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -54,4 +56,12 @@ export const managerOwnerLinks = [
   { title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
   // { title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/dashboard/settings/permissions" },
   // { title: "Task Management", icon: <MonitorCheckIcon />, url: "/dashboard/tasks" },
+];
+
+export const inventoryOfficerLinks = [
+  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
+  { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
+  { title: "Supplies & Deliveries", icon: <TruckIcon />, url: "/dashboard/supplies" },
+  { title: "Reports", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
 ];
