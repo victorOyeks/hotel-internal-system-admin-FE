@@ -265,7 +265,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="e.g +123456789" {...field} />
+                <Input type="tel" placeholder="e.g +123456789" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -334,9 +334,9 @@ function UpdateHotelStaffForm({
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Edit hotel</DialogTitle>
+      <DialogTitle>Edit staff details</DialogTitle>
       <DialogDescription className="sr-only">
-        Edit hotel details
+        Edit staff details
       </DialogDescription>
       <Form {...form}>
         <form className="space-y-4" onSubmit={form.handleSubmit((data) => mutate({
@@ -816,8 +816,10 @@ function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
             <TableCell colSpan={columns.length}>
               <div className="w-full flex items-center justify-between">
                 <p>
-                  {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                  {table.getFilteredRowModel().rows.length} row(s) selected.
+                  Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min(
+                    (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                    table.getFilteredRowModel().rows.length
+                  )} of {table.getFilteredRowModel().rows.length} results
                 </p>
 
                 <DataTablePagination table={table} />
