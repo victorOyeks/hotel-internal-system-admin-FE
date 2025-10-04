@@ -14,8 +14,8 @@ function Profile() {
       icon: UserIcon,
     },
     {
-      label: "Reset Password",
-      href: "/profile/reset-password",
+      label: "Change Password",
+      href: "/profile/change-password",
       icon: LockIcon,
     },
     {
