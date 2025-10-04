@@ -93,7 +93,6 @@ import {
   resetPasswordForStaff,
   suspendStaffAccount,
 } from "@/lib/manager-actions";
-import type { HotelRole } from "@/lib/types";
 import {
   Popover,
   PopoverContent,
@@ -178,14 +177,14 @@ function AddNewStaffDialog() {
           className="rounded-md md:rounded-xl"
         >
           <PlusCircleIcon />
-          <span className="hidden md:inline">Add Manager</span>
+          <span className="hidden md:inline">Add staff</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="p-4 rounded-2xl">
-        <DialogTitle>Add a new manager</DialogTitle>
+        <DialogTitle>Add a new staff</DialogTitle>
         <DialogDescription className="sr-only">
-          Fill in the details below to add a new manager as staff member.
+          Fill in the details below to add a new staff member.
         </DialogDescription>
 
         <div className="mt-4">
@@ -197,16 +196,14 @@ function AddNewStaffDialog() {
 }
 
 const newStaffFormSchema = z.object({
-  staffName: z.string().nonempty("Staff name is required"),
+  fullName: z.string().nonempty("Staff name is required"),
   email: z.email("Invalid email address"),
   phoneNumber: z.string().nonempty("Phone number is required"),
-  role: z.string().refine((val) => Role.safeParse(val).success, {
-    message: "Invalid role",
-  }),
+  role: Role,
+  staffId: z.string().optional(),
 });
 
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-  const queryClient = useQueryClient();
   const { mutate, isPending } = useMutation({
     mutationFn: onboardStaffToHotel,
     onSuccess: async () => {
@@ -216,15 +213,11 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
         show: true,
         message: "Staff added successfully",
       });
-      await queryClient.invalidateQueries({
-        exact: true,
-        queryKey: ["staffs"],
-      });
       await revalidateRoute("/manager/staff-management");
     },
-    onError: () => {
+    onError: (e) => {
       toast.error("Something went wrong", {
-        description: "Failed to add staff",
+        description: e.message || "Failed to add staff",
       });
     },
   });
@@ -232,10 +225,11 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const form = useForm({
     resolver: zodResolver(newStaffFormSchema),
     defaultValues: {
-      staffName: "",
+      fullName: "",
       email: "",
       role: "FRONT_DESK",
       phoneNumber: "",
+      staffId: ""
     },
     progressive: true,
     mode: "onBlur",
@@ -246,18 +240,10 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     <Form {...form}>
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit((data) =>
-          mutate({
-            fullName: data.staffName,
-            email: data.email,
-            role: data.role as HotelRole,
-            phoneNumber: "",
-            staffId: "",
-          })
-        )}
+        onSubmit={form.handleSubmit((data) => mutate(data as Required<z.infer<typeof newStaffFormSchema>>))}
       >
         <FormField
-          name="staffName"
+          name="fullName"
           control={form.control}
           render={({ field }) => (
             <FormItem>
@@ -346,7 +332,6 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 }
 
 const hotelOwnerStaffEditSchema = newStaffFormSchema;
-// .omit({ role: true });
 
 function UpdateHotelStaffForm({
   initialValues,
@@ -369,14 +354,16 @@ function UpdateHotelStaffForm({
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
       const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
+      type DataKey = keyof z.infer<typeof hotelOwnerStaffEditSchema>;
 
       for (const key in data) {
-        if (
-          data[key as keyof typeof data] ===
-          initialValues[key as keyof typeof data]
-        )
-          continue;
-        changes[key as keyof typeof data] = data[key as keyof typeof data];
+        const typedKey = key as DataKey;
+        if (data[typedKey] === initialValues[typedKey]) continue;
+        if (typedKey === "role") {
+          changes.role = data.role;
+        } else {
+          changes[typedKey] = data[typedKey];
+        }
       }
       return editStaffDetails(staffId, changes);
     },
@@ -410,7 +397,7 @@ function UpdateHotelStaffForm({
         <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
           <FormField
             control={form.control}
-            name="staffName"
+            name="fullName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Staff Name</FormLabel>
@@ -967,10 +954,11 @@ const columns = [
               <UpdateHotelStaffForm
                 staffId={rowData.id}
                 initialValues={{
-                  staffName: rowData.fullName,
+                  fullName: rowData.fullName,
                   email: rowData.email,
                   role: rowData.role,
                   phoneNumber: rowData.phoneNumber,
+                  staffId: rowData.staffId
                 }}
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
               />

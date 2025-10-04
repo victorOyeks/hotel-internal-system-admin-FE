@@ -52,6 +52,7 @@ export async function addNewRoomToHotel(payload: Omit<CreateRoomRequest, "hotelI
 }
 
 export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
+    try {
     const sessionData = await verifySession();
     if (sessionData.role !== "MANAGER") {
         throw new Error("Unauthorized");
@@ -62,6 +63,8 @@ export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
         throw new Error("No hotel found for the manager");
     }
 
+    console.log({ payload })
+
     const { data } = await $fetch("@post/api/managers/hotels/:hotelId/onboard-staff", {
         params: { hotelId: currentHotel.id },
         auth: { type: "Bearer", token: sessionData.token },
@@ -70,6 +73,17 @@ export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
     })
 
     return data;     
+} catch (e) {
+    if (e instanceof Error) {
+        return {
+            error: e.message
+        }
+    }
+
+    return {
+        error: "Failed to add staff"
+    }
+}
 }
 
 export async function editStaffDetails(staffId: string, payload: Partial<Omit<OnboardStaffRequest, "role">>) {
