@@ -514,7 +514,7 @@ function AssignManagerForm({
   setOpen: (open: boolean) => void;
   revalidate: () => Promise<void>;
 }) {
-  const { isPending, mutateAsync } = useMutation({
+  const { isPending, mutate } = useMutation({
     mutationKey: ["assign-manager-to-hotel", hotelId],
     mutationFn: ({
       managerId
@@ -529,7 +529,7 @@ function AssignManagerForm({
       await revalidate();
     },
     onError: (e) => {
-      toast.error("Failed to assign manger", {
+      toast.error("Failed to assign manager", {
         description: e.message,
       });
     },
@@ -545,13 +545,6 @@ function AssignManagerForm({
     reValidateMode: "onBlur",
   });
 
-  const handleSubmit = useCallback(
-    async (data: z.infer<typeof assignManagerFormSchema>) => {
-      await mutateAsync(data);
-    },
-    [mutateAsync],
-  );
-
   return (
     <DialogContent className="p-4 rounded-2xl">
       <DialogTitle>Assign Manager</DialogTitle>
@@ -560,7 +553,7 @@ function AssignManagerForm({
       </DialogDescription>
 
       <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+        <form className="space-y-4" onSubmit={form.handleSubmit((data) => mutate(data))}>
           <FormField
             control={form.control}
             name="managerId"
@@ -952,7 +945,7 @@ const columns = [
                   onClick={() => setOpen("assign-manager")}
                 >
                   <UserPlus2Icon />
-                  Assign Manger
+                  Assign Manager
                 </DialogTrigger>
               </DropdownMenuItem>
 
