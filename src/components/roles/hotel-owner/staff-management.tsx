@@ -168,7 +168,7 @@ function AddNewStaffDialog() {
           className="rounded-md md:rounded-xl"
         >
           <PlusCircleIcon />
-          <span className="hidden md:inline">Add Staff</span>
+          <span className="hidden md:inline">Add Manager</span>
         </Button>
       </DialogTrigger>
 

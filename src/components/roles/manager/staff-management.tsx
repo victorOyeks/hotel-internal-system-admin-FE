@@ -582,7 +582,7 @@ function ResetPasswordForm({
                   <FormControl>
                     <Input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Enter password"
                       className="pr-10"
                       {...field}
                     />
@@ -616,7 +616,7 @@ function ResetPasswordForm({
                   <FormControl>
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Enter password"
                       className="pr-10"
                       {...field}
                     />
