@@ -8,6 +8,9 @@ const inventoryStat = {
 };
 
 function Page() {
+  if (Math.random() < 0.5) {
+    throw new Error("Failed to load inventory data");
+  }
   return (
     <div className="space-y-4 px-4">
       <InventoryStat data={inventoryStat} />
