@@ -52,7 +52,6 @@ export async function addNewRoomToHotel(payload: Omit<CreateRoomRequest, "hotelI
 }
 
 export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
-    try {
     const sessionData = await verifySession();
     if (sessionData.role !== "MANAGER") {
         throw new Error("Unauthorized");
@@ -73,17 +72,7 @@ export async function onboardStaffToHotel(payload: OnboardStaffRequest) {
     })
 
     return data;     
-} catch (e) {
-    if (e instanceof Error) {
-        return {
-            error: e.message
-        }
-    }
 
-    return {
-        error: "Failed to add staff"
-    }
-}
 }
 
 export async function editStaffDetails(staffId: string, payload: Partial<Omit<OnboardStaffRequest, "role">>) {

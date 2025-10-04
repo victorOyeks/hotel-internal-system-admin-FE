@@ -79,6 +79,7 @@ import {
 } from "@/components/shared/shared-dialogs";
 import {
   type CustomPageStaffResponse,
+  OnboardStaffRequest,
   type Pagination,
   Role,
 } from "@/lib/fetch";
