@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import { revalidateRoute } from "@/lib/actions";
 import type { InventoryResponse, Pagination } from "@/lib/fetch";
-import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -260,7 +259,13 @@ const allSupplyColumns = [
   }),
 ];
 
-function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
+function InventoryTable({
+  table,
+  showFooter = false,
+}: {
+  table: TableType<InventoryResponse>;
+  showFooter?: boolean;
+}) {
   return (
     <div className="overflow-hidden rounded-md border bg-card">
       <Table>
@@ -306,19 +311,21 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
           )}
         </TableBody>
 
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={allSupplyColumns.length}>
-              <div className="w-full flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  Page {table.getState().pagination.pageIndex + 1} of{" "}
-                  {table.getPageCount()}
-                </span>
-                <DataTablePagination table={table} />
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableFooter>
+        {showFooter && (
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={allSupplyColumns.length}>
+                <div className="w-full flex items-center justify-between">
+                  <span className="text-sm text-gray-500">
+                    Page {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount()}
+                  </span>
+                  <DataTablePagination table={table} />
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        )}
       </Table>
     </div>
   );
@@ -326,12 +333,9 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
 
 function AllSupplySection({
   data,
-  paginationMeta,
 }: {
   data: InventoryResponse[];
-  paginationMeta: Pagination;
 }) {
-  const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
     columns: allSupplyColumns,
@@ -339,14 +343,10 @@ function AllSupplySection({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    pageCount: paginationMeta.totalPages,
-    onPaginationChange,
     state: {
       sorting: [],
       globalFilter: "",
       columnFilters: [],
-      pagination,
     },
   });
 
@@ -355,14 +355,12 @@ function AllSupplySection({
 
 export function InventoryOfficerInventoryTable({
   data,
-  paginationMeta,
 }: {
   data: InventoryResponse[];
   paginationMeta: Pagination;
 }) {
   return (
     <AllSupplySection
-      paginationMeta={paginationMeta}
       data={data as InventoryResponse[]}
     />
   );

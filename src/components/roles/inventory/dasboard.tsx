@@ -10,7 +10,6 @@ import type {
 import {
   ArchiveIcon,
   ChevronRightIcon,
-  FolderSymlink,
   Loader2Icon,
   PackageCheckIcon,
   PlusIcon,
@@ -116,11 +115,6 @@ const actions = [
     Component: AddNewItemForm,
     icon: PlusIcon,
     key: "add-stock-item",
-  },
-  {
-    title: "Receive Stock Item",
-    icon: FolderSymlink,
-    key: "receive-stock-item",
   },
   {
     title: "Issue Stock Item",
