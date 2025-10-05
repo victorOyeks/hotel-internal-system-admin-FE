@@ -405,6 +405,8 @@ const allSupplyColumns = [
 
       const variant: Record<string, BadgeVariant> = {
         AVAILABLE: "green",
+        LOW_IN_STOCK: "yellow",
+        OUT_OF_STOCK: "red",
       };
 
       return (
