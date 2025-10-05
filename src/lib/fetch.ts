@@ -670,7 +670,41 @@ export const schema = createSchema({
         size: z.coerce.number().default(10),
       }).partial(),
       output: ApiResponseManagerActivityLogResponse,
-    }
+    },
+
+    // Inventory Officer APIs
+    "@get/api/inventories/items": {
+      query: z.object({
+        searchName: z.string().nullable(),
+        customId: z.string().nullable(),
+        category: z.string().nullable(),
+        unit: z.string().nullable(),
+        availability: z.string().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseListInventoryResponse.extend({
+        data: Pagination.extend({
+          content: z.array(InventoryResponse.extend({
+            restockReason: z.string().nullable().optional(),
+            restockDate: z.coerce.date().nullable().optional(),
+            department: z.string(),
+          })),
+        }),
+      }),
+    },
+    "@post/api/inventories/items": {
+      input: z.object({
+        name: z.string().nonempty(),
+        category: z.string().nonempty(),
+        unit: z.string().optional(),
+        quantity: z.number().min(0),
+        itemId: z.string().optional(),
+      }),
+      output: ApiResponseObject.extend({
+        data: z.string(),
+      }),
+    },
   });
 
   export const $fetch = createFetch({

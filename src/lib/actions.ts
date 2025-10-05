@@ -39,6 +39,15 @@ export async function logout() {
   redirect('/auth')
 }
 
+export async function forgotPassword(payload: { email: string }) {
+  const response = await $fetch("@post/api/auth/reset-password", {
+    body: payload,
+    throw: true
+  });
+
+  return response as { message: string; data: string };
+}
+
 
 export async function createHotelBranch(payload: OnboardHotelRequest) {
   const sessionData = await verifySession();

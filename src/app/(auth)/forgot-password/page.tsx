@@ -18,8 +18,11 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { forgotPassword } from "@/lib/actions";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
@@ -37,10 +40,14 @@ function ForgotPassword() {
 		mode: "onSubmit",
 	});
 
-	const handleSubmit = useCallback((data: z.infer<typeof formSchema>) => {
-		console.log("Form submitted with data:", data);
-		// Handle form submission logic here, like sending a reset link
-	}, []);
+	const router = useRouter();
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: forgotPassword,
+		onSuccess: (data) => {
+			
+		}
+	})
 
 	return (
 		<Card className="w-full h-full md:h-auto md:max-w-[450px]">
@@ -60,7 +67,9 @@ function ForgotPassword() {
 				<Form {...form}>
 					<form
 						id="forgot-password-form"
-						onSubmit={form.handleSubmit(handleSubmit)}
+						onSubmit={form.handleSubmit((data => {
+							mutate(data);
+						}))}
 						className="space-y-4"
 					>
 						<FormField

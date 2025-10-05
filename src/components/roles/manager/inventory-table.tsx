@@ -130,7 +130,7 @@ function AddItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     },
     onError: () => {
       toast.error("Something went wrong", {
-        description: "Failed to add staff",
+        description: "Failed to add item",
       });
     },
   });
