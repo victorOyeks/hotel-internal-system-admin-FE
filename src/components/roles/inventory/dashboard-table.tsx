@@ -343,11 +343,6 @@ function AllSupplySection({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    state: {
-      sorting: [],
-      globalFilter: "",
-      columnFilters: [],
-    },
   });
 
   return <InventoryTable table={table} />;
