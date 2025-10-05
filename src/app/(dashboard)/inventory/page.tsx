@@ -14,13 +14,6 @@ import {
 } from "nuqs/server";
 import { use } from "react";
 
-const inventoryStat = {
-  totalItems: 100,
-  available: 80,
-  lowInStock: 15,
-  outOfStock: 5,
-};
-
 type PageProps = {
   searchParams: Promise<SearchParams>;
 };
@@ -61,9 +54,23 @@ function Page({ searchParams }: PageProps) {
       },
     })
   );
+  const inventoryStatData = use(
+    queryClient.ensureQueryData({
+      queryKey: ["inventory-stat"],
+      queryFn: async () => {
+        const response = await $fetch("@get/api/inventories/summary", {
+          auth: { type: "Bearer", token },
+          throw: true,
+        });
+
+        return response.data;
+      },
+    })
+  );
+
   return (
     <div className="space-y-4 px-4 py-4">
-      <InventoryStat data={inventoryStat} />
+      <InventoryStat data={inventoryStatData} />
       <QuickActions />
       <InventoryDashboard
         content={content}

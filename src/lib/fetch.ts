@@ -705,6 +705,9 @@ export const schema = createSchema({
         data: z.string(),
       }),
     },
+    "@get/api/inventories/summary": {
+      output: ApiResponseInventorySummaryResponse,
+    },
   });
 
   export const $fetch = createFetch({
