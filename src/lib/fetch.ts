@@ -464,6 +464,20 @@ const ApiResponseManagerActivityLogResponse = ApiResponseObject.extend({
 });
 
 export type BookingStatus = z.infer<typeof BookingStatus>;
+
+
+const ApiResponseInventoryItemResponse = ApiResponseListInventoryResponse.extend({
+  data: Pagination.extend({
+    content: z.array(InventoryResponse.extend({
+      restockReason: z.string().nullable().optional(),
+      restockDate: z.coerce.date().nullable().optional(),
+      department: z.string(),
+    })),
+  }),
+});
+
+export type InventoryItemResponse = z.infer<typeof ApiResponseInventoryItemResponse>['data']['content'][number];
+
 // --- Main Fetch Schema ---
 
 export const schema = createSchema({
@@ -683,15 +697,7 @@ export const schema = createSchema({
         page: z.coerce.number().default(0),
         size: z.coerce.number().default(10),
       }).partial(),
-      output: ApiResponseListInventoryResponse.extend({
-        data: Pagination.extend({
-          content: z.array(InventoryResponse.extend({
-            restockReason: z.string().nullable().optional(),
-            restockDate: z.coerce.date().nullable().optional(),
-            department: z.string(),
-          })),
-        }),
-      }),
+      output: ApiResponseInventoryItemResponse,
     },
     "@post/api/inventories/items": {
       input: z.object({
@@ -707,6 +713,26 @@ export const schema = createSchema({
     },
     "@get/api/inventories/summary": {
       output: ApiResponseInventorySummaryResponse,
+    },
+    "@get/api/inventories/issued": {
+      query: z.object({
+        searchName: z.string().nullable(),
+        customId: z.string().nullable(),
+        department: z.enum([ "BAR", "KITCHEN", "HOUSEKEEPING", "FRONT_DESK", "MAINTENANCE", "MANAGEMENT", "INVENTORY", "OTHER"]).nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseInventoryItemResponse,
+    },
+    "@get/api/inventories/items/restock-requests": {
+      query: z.object({
+        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        searchName: z.string().nullable(),
+        itemCustomId: z.string().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseInventoryRestockRequestResponse,
     },
   });
 
