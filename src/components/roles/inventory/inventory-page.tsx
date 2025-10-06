@@ -15,7 +15,6 @@ import {
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
-  useQueryState,
   useQueryStates,
 } from "nuqs";
 import { useEffect, useMemo } from "react";
@@ -189,8 +188,6 @@ function InventoryOfficerInventoryTable({
     }
   }, [currentSection.section, data, isPending, paginationMeta]);
 
-  // const table = useInventoryTable(data);
-  // return <InventoryTable table={table} />;
   return (
     <div className="space-y-4">
       <InventoryTableToolbar
