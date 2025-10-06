@@ -3,7 +3,7 @@
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import type {
-  InventoryResponse,
+  InventoryItemResponse,
   InventoryRestockRequest,
   Pagination,
 } from "@/lib/fetch";
@@ -15,7 +15,10 @@ import {
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
+  type ParserBuilder,
+  type SetValues,
   useQueryStates,
+  type Values,
 } from "nuqs";
 import { useEffect, useMemo } from "react";
 import { AllItemsTable } from "./all-items-table";
@@ -28,20 +31,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IssuedItemsTable } from "./issued-items";
 
-type SectionType = "all" | "issued" | "stock-request";
+type SectionType = "issued" | "stock-request" | null;
 
 function InventoryTableToolbar({
   currentSection,
-  setCurrentSection,
+  query,
+  setQuery,
 }: {
   currentSection: SectionType;
-  setCurrentSection: (value: SectionType) => void;
+  query: Values<{
+    section: ParserBuilder<"issued" | "stock-request">;
+    page: ParserBuilder<number>;
+    searchName: ParserBuilder<string>;
+  }>
+  setQuery: SetValues<{
+    section: ParserBuilder<"issued" | "stock-request">;
+    page: ParserBuilder<number>;
+    searchName: ParserBuilder<string>;
+}>;
 }) {
-  const [currentFilter, setCurrentFilter] = useQueryStates({
-    searchName: parseAsString,
-    page: parseAsInteger,
-  });
+
+  const resetToSection = (section: SectionType) => {
+    setQuery({ section, page: null, searchName: null });
+  };
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
       <div className="flex items-center gap-x-2">
@@ -49,14 +63,13 @@ function InventoryTableToolbar({
           variant={"outline"}
           className={cn(
             "rounded-full shadow-none border-none",
-            currentSection === "all"
+            currentSection === null
               ? "bg-primary-5/20 text-primary"
               : "bg-gray-100"
           )}
           size={"sm"}
           onClick={() => {
-            setCurrentFilter((prev) => ({ ...prev, page: null }));
-            currentSection !== "all" && setCurrentSection("all");
+            currentSection !== null && resetToSection(null);
           }}
         >
           All Items
@@ -69,8 +82,7 @@ function InventoryTableToolbar({
           })}
           size={"sm"}
           onClick={() => {
-            setCurrentFilter((prev) => ({ ...prev, page: null }));
-            currentSection !== "issued" && setCurrentSection("issued");
+            currentSection !== "issued" && resetToSection("issued");
           }}
         >
           Issued Items
@@ -84,9 +96,7 @@ function InventoryTableToolbar({
           })}
           size={"sm"}
           onClick={() => {
-            setCurrentFilter((prev) => ({ ...prev, page: null }));
-            currentSection !== "stock-request" &&
-              setCurrentSection("stock-request");
+            currentSection !== "stock-request" && resetToSection("stock-request");
           }}
         >
           Stock Requests
@@ -98,9 +108,9 @@ function InventoryTableToolbar({
           <input
             type="text"
             placeholder="Search"
-            value={currentFilter.searchName ?? ""}
+            value={query.searchName ?? ""}
             onChange={(e) =>
-              setCurrentFilter((prev) => ({
+              setQuery((prev) => ({
                 ...prev,
                 searchName: e.target.value || null,
               }))
@@ -120,23 +130,20 @@ function InventoryOfficerInventoryTable({
   serverSection,
   paginationMeta,
 }: {
-  data: InventoryResponse[] | InventoryRestockRequest[];
+  data: InventoryItemResponse[] | InventoryRestockRequest[];
   paginationMeta: Pagination;
   serverSection: SectionType;
 }) {
-  const [currentSection, setCurrentSection] = useQueryStates({
-    section: parseAsStringLiteral<SectionType>([
-      "all",
-      "issued",
-      "stock-request",
-    ]).withDefault(serverSection),
+  const [query, setQuery] = useQueryStates({
+    section: parseAsStringLiteral(["issued", "stock-request"]),
     page: parseAsInteger,
+    searchName: parseAsString,
   });
 
   // pending state for reconciling client and server section
   const isPending = useMemo(() => {
-    return currentSection.section !== serverSection;
-  }, [currentSection.section, serverSection]);
+    return query.section !== serverSection;
+  }, [query.section, serverSection]);
 
   const renderedSection = useMemo(() => {
     if (isPending) {
@@ -176,25 +183,39 @@ function InventoryOfficerInventoryTable({
       );
     }
 
-    switch (currentSection.section) {
-      case "all": {
+    switch (query.section) {
+      case "issued": {
+        return (
+          <IssuedItemsTable
+            data={data as InventoryItemResponse[]}
+            paginationMeta={paginationMeta}
+          />
+        );
+      }
+      case "stock-request": {
+        return (
+          <div className="text-center text-gray-500">
+            Stock Requests section is under construction.
+          </div>
+        );
+      }
+      default: {
         return (
           <AllItemsTable
-            data={data as InventoryResponse[]}
+            data={data as InventoryItemResponse[]}
             paginationMeta={paginationMeta}
           />
         );
       }
     }
-  }, [currentSection.section, data, isPending, paginationMeta]);
+  }, [query, data, isPending, paginationMeta]);
 
   return (
     <div className="space-y-4">
       <InventoryTableToolbar
         currentSection={serverSection}
-        setCurrentSection={(value) => {
-          setCurrentSection({ section: value, page: null });
-        }}
+        query={query}
+        setQuery={setQuery}
       />
       {renderedSection}
     </div>
@@ -212,7 +233,7 @@ export function InventoryOfficerInventoryPage({
     title: string;
     breadcrumbs: Breadcrumb[];
   };
-  data: InventoryResponse[] | InventoryRestockRequest[];
+  data: InventoryItemResponse[] | InventoryRestockRequest[];
   paginationMeta: Pagination;
 }) {
   const setBreadcrumb = useSetAtom(breadcrumbAtom);

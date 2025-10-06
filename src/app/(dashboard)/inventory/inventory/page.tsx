@@ -18,7 +18,7 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
   ...paginationSearchParams,
-  section: parseAsStringLiteral(["all", "issued", "stock-request"]),
+  section: parseAsStringLiteral(["issued", "stock-request"]),
   searchName: parseAsString,
   customId: parseAsString,
   category: parseAsString,
@@ -108,7 +108,7 @@ function InventoryPage({ searchParams }: PageProps) {
           title: "Inventory",
         }}
         data={content}
-        section={query.section ?? "all"}
+        section={query.section}
         paginationMeta={paginationMeta}
       />
     </div>
