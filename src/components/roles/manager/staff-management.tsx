@@ -79,7 +79,6 @@ import {
 } from "@/components/shared/shared-dialogs";
 import {
   type CustomPageStaffResponse,
-  OnboardStaffRequest,
   type Pagination,
   Role,
 } from "@/lib/fetch";
@@ -932,6 +931,17 @@ const columns = [
   columnHelper.accessor("phoneNumber", {
     header: "Phone Number",
     cell: (info) => <span>{info.getValue()}</span>,
+  }),
+  columnHelper.accessor("lastLogin", {
+    header: "Last Login",
+    cell: (info) => {
+      const lastLogin = info.getValue();
+      if (!lastLogin) {
+        return <span>N/A</span>;
+      }
+      const date = new Date(lastLogin);
+      return <span>{format(date, "PPP p")}</span>;
+    },
   }),
   columnHelper.display({
     id: "actions",
