@@ -162,7 +162,6 @@ function AddNewHotelDialog({
   managers: HotelManager[];
   revalidate: () => Promise<void>;
 }) {
-  const [section, setSection] = useState<"single" | "multiple">("single");
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -182,36 +181,13 @@ function AddNewHotelDialog({
         <DialogDescription className="sr-only">
           Fill in the details below to add a new hotel branch.
         </DialogDescription>
-
-        <div className="flex items-center">
-          <Button
-            variant={section === "single" ? "secondary" : "outline"}
-            onClick={() => setSection("single")}
-            className="rounded-none"
-          >
-            Single Hotel
-          </Button>
-          <Button
-            variant={section === "multiple" ? "secondary" : "outline"}
-            onClick={() => setSection("multiple")}
-            className="rounded-none"
-          >
-            Bulk Upload
-          </Button>
-        </div>
-
-        <div className="mt-4">
-          {section === "single" ? (
             <SingleHotelForm
               revalidate={revalidate}
               setOpen={setOpen}
               managers={managers}
             />
-          ) : (
-            <p className="text-gray-500">
-              Bulk upload functionality is not yet implemented.
-            </p>
-          )}
+        <div className="mt-4">
+
         </div>
       </DialogContent>
     </Dialog>
