@@ -6,6 +6,7 @@ import {
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
+import type { Breadcrumb } from "@/lib/store";
 import {
   createLoader,
   parseAsString,
@@ -68,11 +69,21 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
+
+  const breadcrumb = {
+    title: "Inventory",
+    breadcrumbs: [
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Inventory", href: "/dashboard/inventory" },
+    ] satisfies Breadcrumb[],
+  };
+
   return (
     <div className="space-y-4 px-4 py-4">
       <InventoryStat data={inventoryStatData} />
       <QuickActions />
       <InventoryDashboard
+        breadcrumb={breadcrumb}
         content={content}
         paginationMeta={paginationMeta}
       />

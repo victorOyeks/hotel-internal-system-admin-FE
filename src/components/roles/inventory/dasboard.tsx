@@ -17,7 +17,12 @@ import {
   TruckIcon,
 } from "lucide-react";
 import { InventoryOfficerInventoryTable } from "./dashboard-table";
-import { useState, type PropsWithChildren, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +49,7 @@ import { atom, useAtom, useSetAtom } from "jotai";
 import { addToInventory } from "@/lib/inventory-actions";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import Link from "next/link";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 
 const successDialogAtom = atom({
   show: false,
@@ -334,11 +340,19 @@ function InventoryDashboardToolbar() {
 export function InventoryDashboard({
   content,
   paginationMeta,
+  breadcrumb,
 }: {
   content: InventoryResponse[];
   paginationMeta: Pagination;
+  breadcrumb: { title: string; breadcrumbs: Breadcrumb[] };
 }) {
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+
+  useEffect(() => {
+    setBreadcrumb(breadcrumb);
+  }, [setBreadcrumb, breadcrumb]);
+
   return (
     <div>
       <InventoryDashboardToolbar />
