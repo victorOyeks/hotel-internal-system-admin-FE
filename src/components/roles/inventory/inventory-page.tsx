@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IssuedItemsTable } from "./issued-items";
+import { RestockRequestTable } from "./restock-request";
 
 type SectionType = "issued" | "stock-request" | null;
 
@@ -194,9 +195,10 @@ function InventoryOfficerInventoryTable({
       }
       case "stock-request": {
         return (
-          <div className="text-center text-gray-500">
-            Stock Requests section is under construction.
-          </div>
+          <RestockRequestTable
+            data={data as InventoryRestockRequest[]}
+            paginationMeta={paginationMeta}
+          />
         );
       }
       default: {

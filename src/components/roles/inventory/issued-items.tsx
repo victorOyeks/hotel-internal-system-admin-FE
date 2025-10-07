@@ -31,8 +31,8 @@ const issuedItemsColumns = [
     header: "Item",
     cell: (info) => <span className="text-foreground">{info.getValue()}</span>,
   }),
-  issuedItemsColumnHelper.accessor("department", {
-    header: "Department Issued",
+  issuedItemsColumnHelper.accessor("category", {
+    header: "Category",
     cell: (info) => (
       <span className="capitalize font-semibold text-foreground">
         {info.getValue() || "N/A"}
