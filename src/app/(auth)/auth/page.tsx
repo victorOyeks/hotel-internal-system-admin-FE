@@ -39,7 +39,13 @@ function AuthPage() {
 
   const loginMutation = useMutation({
     mutationKey: ["login"],
-    mutationFn: login,
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const response = await login(data);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSettled: () => {
       loginMutation.reset();
     },
