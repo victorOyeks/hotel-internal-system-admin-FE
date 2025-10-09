@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PopoverClose } from "@radix-ui/react-popover";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface NotificationItem {
   id: string;
@@ -84,8 +85,12 @@ export function NotificationsPopover() {
           <BellIcon size={20} className="text-primary-1" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 bg-white space-y-3 rounded-xl !px-2" align="end" sideOffset={8}>
-        <div className="flex items-center justify-between px-2">
+      <PopoverContent
+        className="w-80 bg-white rounded-xl p-0"
+        align="end"
+        sideOffset={8}
+      >
+        <div className="flex items-center justify-between p-4 pb-2">
           <h3 className="font-semibold text-gray-900">Notifications</h3>
           <PopoverClose asChild>
             <Button
@@ -97,28 +102,27 @@ export function NotificationsPopover() {
             </Button>
           </PopoverClose>
         </div>
-        <div className="max-h-96 space-y-3">
-          {mockNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className="p-3 bg-popover rounded-xl"
-            >
-              <div className="flex items-center justify-between gap-4">
-               <p className="font-medium">Approve action</p>
-                <div className="text-sm shrink-0 mt-1">
-                  {notification.timestamp}
+        <ScrollArea className="h-96">
+          <div className="space-y-3 px-4 pb-4">
+            {mockNotifications.map((notification) => (
+              <div key={notification.id} className="p-3 bg-popover rounded-xl">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-medium">Approve action</p>
+                  <div className="text-sm shrink-0 mt-1">
+                    {notification.timestamp}
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-sm text-gray-900">
+                    <span className="font-semibold">{notification.type}</span>{" "}
+                    <span className="font-medium">{notification.name}</span>,{" "}
+                    {notification.action}
+                  </div>
                 </div>
               </div>
-              <div className="mt-2">
-                <div className="text-sm text-gray-900">
-                  <span className="font-semibold">{notification.type}</span>{" "}
-                  <span className="font-medium">{notification.name}</span>,{" "}
-                  {notification.action}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );
