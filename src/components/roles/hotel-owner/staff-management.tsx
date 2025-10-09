@@ -197,7 +197,13 @@ const newStaffFormSchema = z.object({
 
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: onboardManagerToHotel,
+    mutationFn: async (data: z.infer<typeof newStaffFormSchema>) => {
+      const response = await onboardManagerToHotel(data);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -314,7 +320,15 @@ function UpdateHotelStaffForm({
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: updateStaffDetailsByOwner,
+    mutationFn: async () => {
+      const response = await updateStaffDetailsByOwner({
+        staffId,
+        ...form.getValues(),
+      });
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -331,7 +345,6 @@ function UpdateHotelStaffForm({
     },
   });
 
-
   return (
     <DialogContent className="p-4 rounded-2xl">
       <DialogTitle>Edit staff details</DialogTitle>
@@ -339,10 +352,10 @@ function UpdateHotelStaffForm({
         Edit staff details
       </DialogDescription>
       <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit((data) => mutate({
-          ...data,
-          staffId
-        }))}>
+        <form
+          className="space-y-4"
+          onSubmit={form.handleSubmit(() => mutate())}
+        >
           <FormField
             control={form.control}
             name="fullName"
@@ -520,7 +533,13 @@ function DeleteStaffDialog({
   const queryClient = useQueryClient();
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: deleteStaffMember,
+    mutationFn: async (staffId: string) => {
+      const response = await deleteStaffMember(staffId);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSuccess: () => {
       setOpen(false);
       setShowSuccessDialog({
@@ -533,9 +552,9 @@ function DeleteStaffDialog({
       });
       revalidateRoute("/hotel-owner/staff-management");
     },
-    onError: () => {
+    onError: (e) => {
       toast.error("Something went wrong", {
-        description: "Failed to delete staff",
+        description: e.message || "Failed to delete staff",
       });
     },
   });
@@ -816,10 +835,17 @@ function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
             <TableCell colSpan={columns.length}>
               <div className="w-full flex items-center justify-between">
                 <p>
-                  Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min(
-                    (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                  Showing{" "}
+                  {table.getState().pagination.pageIndex *
+                    table.getState().pagination.pageSize +
+                    1}{" "}
+                  to{" "}
+                  {Math.min(
+                    (table.getState().pagination.pageIndex + 1) *
+                      table.getState().pagination.pageSize,
                     table.getFilteredRowModel().rows.length
-                  )} of {table.getFilteredRowModel().rows.length} results
+                  )}{" "}
+                  of {table.getFilteredRowModel().rows.length} results
                 </p>
 
                 <DataTablePagination table={table} />

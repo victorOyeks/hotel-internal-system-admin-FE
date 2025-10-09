@@ -211,7 +211,13 @@ function SingleHotelForm({
   revalidate: () => Promise<void>;
 }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: createHotelBranch,
+    mutationFn: async (data: z.infer<typeof hotelFormSchema>) => {
+      const response = await createHotelBranch(data);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -359,13 +365,19 @@ function EditHotelForm({
 }) {
   const { isPending, mutateAsync } = useMutation({
     mutationKey: ["edit-hotel", hotelId],
-    mutationFn: ({
+    mutationFn: async ({
       id,
       payload,
     }: {
       id: string;
       payload: z.infer<typeof editHotelFormSchema>;
-    }) => editHotelBranch(id, payload),
+    }) => {
+      const response = await editHotelBranch(id, payload);
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       setShowSuccessDialog({
@@ -492,9 +504,15 @@ function AssignManagerForm({
 }) {
   const { isPending, mutate } = useMutation({
     mutationKey: ["assign-manager-to-hotel", hotelId],
-    mutationFn: ({
+    mutationFn: async ({
       managerId
-    }: z.infer<typeof assignManagerFormSchema>) => assignManagerToHotelBranch({ hotelId, managerId }, "ASSIGN"),
+    }: z.infer<typeof assignManagerFormSchema>) => {
+      const response = await assignManagerToHotelBranch({ hotelId, managerId }, "ASSIGN");
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       setShowSuccessDialog({
@@ -666,11 +684,11 @@ function DeleteHotel({
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (id: string) => {
-        const { data, error } = await deleteHotelBranch(id);
-        if (error) {
-          throw new Error(error.message);
+        const response = await deleteHotelBranch(id);
+        if (!response.success) {
+          throw new Error(response.error);
         }
-        return data;
+        return response.data;
     },
     onSuccess: async () => {
       setOpen(false);
