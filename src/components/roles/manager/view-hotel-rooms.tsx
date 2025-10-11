@@ -106,7 +106,15 @@ const RoomFormSchema = z.object({
 
 function SingleRoomForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: addNewRoomToHotel,
+    mutationFn: async (...params: Parameters<typeof addNewRoomToHotel>) => {
+      const res = await addNewRoomToHotel(...params);
+
+      if (!res.success) {
+        throw new Error(res.error || "Failed to add room");
+      }
+
+      return res.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();

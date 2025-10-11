@@ -205,7 +205,13 @@ const newStaffFormSchema = z.object({
 
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   const { mutate, isPending } = useMutation({
-    mutationFn: onboardStaffToHotel,
+    mutationFn: async (...params: Parameters<typeof onboardStaffToHotel>) => {
+      const res = await onboardStaffToHotel(...params);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to add staff");
+      }
+      return res.data;
+    },
     onSuccess: async () => {
       setOpen(false);
       form.reset();
@@ -229,7 +235,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
       email: "",
       role: "FRONT_DESK",
       phoneNumber: "",
-      staffId: ""
+      staffId: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -240,7 +246,9 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
     <Form {...form}>
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit((data) => mutate(data as Required<z.infer<typeof newStaffFormSchema>>))}
+        onSubmit={form.handleSubmit((data) =>
+          mutate(data as Required<z.infer<typeof newStaffFormSchema>>)
+        )}
       >
         <FormField
           name="fullName"
@@ -352,7 +360,7 @@ function UpdateHotelStaffForm({
   });
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+    mutationFn: async (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
       const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
       type DataKey = keyof z.infer<typeof hotelOwnerStaffEditSchema>;
 
@@ -365,7 +373,11 @@ function UpdateHotelStaffForm({
           changes[typedKey] = data[typedKey];
         }
       }
-      return editStaffDetails(staffId, changes);
+      const res = await editStaffDetails(staffId, changes);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to update staff details");
+      }
+      return res.data;
     },
     onSuccess: async () => {
       setOpen(false);
@@ -667,11 +679,8 @@ function SuspendStaffDialog({
   const queryClient = useQueryClient();
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (data: {
-      reason: string;
-      fromDate: string;
-      toDate: string;
-    }) => suspendStaffAccount(id, data),
+    mutationFn: (data: { reason: string; fromDate: string; toDate: string }) =>
+      suspendStaffAccount(id, data),
     onSuccess: () => {
       setOpen(false);
       setShowSuccessDialog({
@@ -969,7 +978,7 @@ const columns = [
                   email: rowData.email,
                   role: rowData.role,
                   phoneNumber: rowData.phoneNumber,
-                  staffId: rowData.staffId
+                  staffId: rowData.staffId,
                 }}
                 setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
               />
