@@ -2,6 +2,14 @@
 
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -23,7 +31,7 @@ import {
   useReactTable,
   type Table as TableType,
 } from "@tanstack/react-table";
-
+import { EditIcon, MoreVerticalIcon, Trash2Icon } from "lucide-react";
 
 const allSupplyColumnHelper = createColumnHelper<InventoryResponse>();
 
@@ -65,6 +73,30 @@ const allSupplyColumns = [
   allSupplyColumnHelper.accessor("quantity", {
     header: "Quantity in stock",
     cell: (info) => <span>{info.getValue()}</span>,
+  }),
+  allSupplyColumnHelper.display({
+    id: "actions",
+    cell: () => {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <MoreVerticalIcon />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem>
+              <EditIcon /> Adjust Inventory
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive">
+              <Trash2Icon /> Delete Item
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
   }),
 ];
 
@@ -140,11 +172,7 @@ function InventoryTable({
   );
 }
 
-function AllSupplySection({
-  data,
-}: {
-  data: InventoryResponse[];
-}) {
+function AllSupplySection({ data }: { data: InventoryResponse[] }) {
   const table = useReactTable({
     data,
     columns: allSupplyColumns,
@@ -163,9 +191,5 @@ export function InventoryOfficerInventoryTable({
   data: InventoryResponse[];
   paginationMeta: Pagination;
 }) {
-  return (
-    <AllSupplySection
-      data={data as InventoryResponse[]}
-    />
-  );
+  return <AllSupplySection data={data as InventoryResponse[]} />;
 }
