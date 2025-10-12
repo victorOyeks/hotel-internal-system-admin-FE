@@ -478,6 +478,25 @@ const ApiResponseInventoryItemResponse = ApiResponseListInventoryResponse.extend
 
 export type InventoryItemResponse = z.infer<typeof ApiResponseInventoryItemResponse>['data']['content'][number];
 
+const ApiResponseInventorySuppliers = ApiResponseObject.extend({
+  data: Pagination.extend({
+    content: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.email().nullable(),
+      phone: z.string().nullable(),
+      items: z.array(z.object({
+        id: z.string(),
+        customId: z.string(),
+        name: z.string(),
+      }))
+    })),
+  }),
+});
+
+export type InventorySuppliers = z.infer<typeof ApiResponseInventorySuppliers>['data']['content'][number];
+export type InventorySupplierItem = InventorySuppliers['items'][number];
+
 // --- Main Fetch Schema ---
 
 export const schema = createSchema({
@@ -734,6 +753,14 @@ export const schema = createSchema({
       }).partial(),
       output: ApiResponseInventoryRestockRequestResponse,
     },
+    "@get/api/inventories/suppliers": {
+      query: z.object({
+        search: z.string().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      }).partial(),
+      output: ApiResponseInventorySuppliers,
+    }
   });
 
   export const $fetch = createFetch({
