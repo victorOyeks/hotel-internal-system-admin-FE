@@ -8,16 +8,43 @@ import {
   DialogTrigger,
   DialogContent,
 } from "@/components/ui/dialog";
-import { BedIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
-import { useState, type PropsWithChildren, type ReactNode } from "react";
+import { BedIcon, ChevronRightIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import { useEffect, useState, type PropsWithChildren, type ReactNode } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@radix-ui/react-select";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { parseAsString, useQueryStates } from "nuqs";
+import * as React from "react"
+import { CalendarIcon } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns";
+import { RoomDetails } from "@/lib/fetch";
 
 export function FrontDeskStats() {
   const stats = [
@@ -68,135 +95,377 @@ export function FrontDeskStats() {
   );
 }
 
-function CreateNewBookingForm(_: { setOpen: (open: boolean) => void }) {
-    const [view, setView] = useState<"check-in" | "reservation">("check-in");
-  return <div className="space-y-4">
-    <div className="border-b border-primary-5/20 max-w-[content]">
-        <Button variant={view === "check-in" ? "secondary" : "ghost"} className="rounded-none" onClick={() => setView("check-in")}>
+function CreateNewBookingForm({ data }: { setOpen: (open: boolean) => void; open: boolean; data: RoomDetails[] }) {
+  const [view, setView] = useState<"check-in" | "reservation">("check-in");
+  return (
+    <div className="space-y-4">
+      <div className="border-b border-primary-5/20 max-w-[content]">
+        <Button
+          variant={view === "check-in" ? "secondary" : "ghost"}
+          className="rounded-none"
+          onClick={() => setView("check-in")}
+        >
           Check-In
         </Button>
-        <Button variant={view === "reservation" ? "secondary" : "ghost"} className="rounded-none" onClick={() => setView("reservation")}>
+        <Button
+          variant={view === "reservation" ? "secondary" : "ghost"}
+          className="rounded-none"
+          onClick={() => setView("reservation")}
+        >
           Reservation
         </Button>
-    </div>
+      </div>
 
-    {view === "check-in" ? (
-        <CheckInForm />
-    ) : (
-        <div className="text-sm text-muted-foreground">Reservation Form (to be implemented)</div>
-    )}
-  </div>;
+      {view === "check-in" ? (
+        <CheckInForm data={data} />
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Reservation Form (to be implemented)
+        </div>
+      )}
+    </div>
+  );
 }
 
-/***]]
- * 
- *   "guestName": "string",
-  "phoneNumber": "string",
-  "amountPaid": 0,
-  "roomStatus": "CHECKED_IN",
-  "checkInDate": "2025-10-13"
- */
-
 const checkInFormSchema = z.object({
-    guestName: z.string().nonempty("Guest name is required"),
-    phoneNumber: z.string().nonempty("Phone number is required"),
-    amountPaid: z.number().min(0, "Amount paid must be at least 0"),
-    roomStatus: z.enum(["CHECKED_IN", "CHECKED_OUT"]),
-    checkInDate: z.string().nonempty("Check-in date is required"),
+  guestName: z.string().nonempty("Guest name is required"),
+  phoneNumber: z.string().nonempty("Phone number is required"),
+  amountPaid: z
+    .number()
+    .nonnegative("You cannot pay a negative amount")
+    .min(0, "Please enter a valid amount"),
+  roomStatus: z.enum(["CHECKED_IN", "CHECKED_OUT"]),
+  roomId: z.string().nonempty("Room is required"),
+  checkInDate: z.string().nonempty("Check-in date is required"),
 });
 
-function CheckInForm() {
-    const form = useForm({
-        resolver: zodResolver(checkInFormSchema),
-        defaultValues: {
-            guestName: "",
-            phoneNumber: "",
-            amountPaid: 0,
-            roomStatus: "CHECKED_IN" as "CHECKED_IN" | "CHECKED_OUT",
-            checkInDate: new Date().toISOString().split("T")[0],
-        },
-    })
+function SelectRoomBox({
+  value,
+  setValue,
+  rooms,
+  searchValue,
+  setSearchValue,
+}: {
+  value: string;
+  setValue: (value: string) => void;
+  rooms: Array<{ id: string; roomIdentifier: string }>;
+  searchValue: string;
+  setSearchValue: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={(open) => {
+      setOpen(open);
+      setSearchValue("");
+    }}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          {value
+            ? rooms.find((room) => room.id === value)?.roomIdentifier
+            : "Select room..."}
+          <ChevronsUpDown className="opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search room..."
+            className="h-9"
+            value={searchValue}
+            onValueChange={setSearchValue}
+          />
+          <CommandList>
+            <CommandEmpty>No room found.</CommandEmpty>
+            <CommandGroup>
+              {rooms.map((room) => (
+                <CommandItem
+                  key={room.id}
+                  value={room.id}
+                  onSelect={(currentValue) => {
+                    setValue(currentValue === value ? "" : currentValue);
+                    setOpen(false);
+                  }}
+                >
+                  {room.roomIdentifier}
+                  <Check
+                    className={cn(
+                      "ml-auto",
+                      value === room.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
-    
-    return (
-        <Form {...form}>
-            <form>
-                <FormField
-                    control={form.control}
-                    name="guestName"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Guest Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Enter guest name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Phone Number</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Enter phone number" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="amountPaid"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Amount Paid</FormLabel>
-                            <FormControl>
-                                <Input type="number" placeholder="Enter amount paid" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="roomStatus"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Room Status</FormLabel>
-                            <FormControl>
-                                <Select {...field}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select room status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="CHECKED_IN">Checked In</SelectItem>
-                                        <SelectItem value="CHECKED_OUT">Checked Out</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="checkInDate"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Check-In Date</FormLabel>
-                            <FormControl>
-                                <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </form>
-        </Form>
-    )
+function formatDate(date: Date | undefined) {
+  if (!date) {
+    return ""
+  }
+
+  return date.toLocaleDateString("en-US", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  })
+}
+
+function isValidDate(date: Date | undefined) {
+  if (!date) {
+    return false
+  }
+  return !Number.isNaN(date.getTime())
+}
+
+function CheckInDate({ 
+  initialDate, 
+  onChange 
+}: { 
+  initialDate: string; 
+  onChange: (date: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [date, setDate] = React.useState<Date | undefined>(
+    initialDate ? new Date(initialDate) : new Date()
+  )
+  const [month, setMonth] = React.useState<Date | undefined>(date)
+  const [value, setValue] = React.useState(formatDate(date))
+
+  // Update form when date changes
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate && isValidDate(newDate)) {
+      const dateString = newDate.toISOString().split("T")[0]
+      onChange(dateString)
+    }
+  }
+
+  return (
+      <div className="relative flex gap-2">
+        <Input
+          id="date"
+          value={value}
+          placeholder={format(new Date(), "MMMM dd, yyyy")}
+          className="bg-background pr-10"
+          onChange={(e) => {
+            const newDate = new Date(e.target.value)
+            setValue(e.target.value)
+            if (isValidDate(newDate)) {
+              setDate(newDate)
+              setMonth(newDate)
+              handleDateChange(newDate)
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault()
+              setOpen(true)
+            }
+          }}
+        />
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="date-picker"
+              variant="ghost"
+              className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
+            >
+              <CalendarIcon className="size-3.5" />
+              <span className="sr-only">Select date</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-auto overflow-hidden p-0"
+            align="end"
+            alignOffset={-8}
+            sideOffset={10}
+          >
+            <Calendar
+              mode="single"
+              selected={date}
+              captionLayout="dropdown"
+              month={month}
+              onMonthChange={setMonth}
+              onSelect={(selectedDate) => {
+                setDate(selectedDate)
+                setValue(formatDate(selectedDate))
+                handleDateChange(selectedDate)
+                setOpen(false)
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+  )
+}
+
+
+function CheckInForm({ data }: { data: RoomDetails[] }) {
+  const [roomQuery, setRoomQuery] = useQueryStates({
+    "room:search": parseAsString.withDefault(""),
+    "room:type": parseAsString.withDefault(""),
+  });
+
+  const form = useForm({
+    resolver: zodResolver(checkInFormSchema),
+    defaultValues: {
+      guestName: "",
+      phoneNumber: "",
+      amountPaid: 0,
+      roomId: "",
+      roomStatus: "CHECKED_IN" as "CHECKED_IN" | "CHECKED_OUT",
+      checkInDate: new Date().toISOString().split("T")[0],
+    },
+  });
+
+  // use effect to clean queries on unmount
+  useEffect(() => {
+    return () => {
+      setRoomQuery({
+        "room:search": "",
+        "room:type": "",
+      });
+    };
+  }, [setRoomQuery]);
+
+  const onSubmit = async (values: z.infer<typeof checkInFormSchema>) => {
+    try {
+      console.log("Check-in form submitted:", values);
+      // TODO: Implement the actual check-in logic here
+      // This could be an API call to create a new booking/check-in
+      // For now, we'll just log the values
+    } catch (error) {
+      console.error("Error during check-in:", error);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
+          <FormField
+            control={form.control}
+            name="guestName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Guest Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g +234 801 234 5678" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid gap-2">
+            <Label>Room Type</Label>
+            <Input
+              placeholder="e.g Deluxe, Standard"
+              value={roomQuery["room:type"]}
+              onChange={(e) =>
+                setRoomQuery((prev) => ({
+                  ...prev,
+                  "room:type": e.target.value,
+                }))
+              }
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="roomId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Room</FormLabel>
+                <FormControl>
+                  <SelectRoomBox
+                    value={field.value}
+                    setValue={field.onChange}
+                    rooms={data}
+                    searchValue={roomQuery["room:search"]}
+                    setSearchValue={(value) =>
+                      setRoomQuery((prev) => ({
+                        ...prev,
+                        "room:search": value,
+                      }))
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="amountPaid"
+            render={() => (
+              <FormItem>
+                <FormLabel>Amount Paid</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="e.g 100"
+                    {...form.register("amountPaid", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="checkInDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Check-in Date</FormLabel>
+                <FormControl>
+                  <CheckInDate 
+                    initialDate={field.value} 
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <Button type="submit" className="mt-4 w-full font-semibold">
+          {form.formState.isSubmitting ? (
+            <>
+              <Loader2Icon className="animate-spin" />
+              <span>Processing check-in...</span>
+            </>
+          ) : (
+            "Check In Guest"
+          )}
+        </Button>
+      </form>
+    </Form>
+  );
 }
 
 const actions = [
@@ -219,7 +488,7 @@ const actions = [
   },
 ];
 
-export function QuickActions() {
+export function QuickActions({ rooms }: { rooms: RoomDetails[] }) {
   const [open, setOpen] = useState<false | string>(false);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -246,7 +515,7 @@ export function QuickActions() {
             <DialogTitle>{heading || title}</DialogTitle>
             <DialogDescription className="sr-only">{title}</DialogDescription>
             {Component && (
-              <Component setOpen={(open) => setOpen(open ? key : false)} />
+              <Component setOpen={(open) => setOpen(open ? key : false)} open={open === key} data={rooms} />
             )}
           </BaseModal>
         );
@@ -269,7 +538,9 @@ function BaseModal({
     <Dialog modal open={open} onOpenChange={setOpen}>
       <DialogTrigger>{trigger}</DialogTrigger>
 
-      <DialogContent className="rounded-4xl max-w-sm">{children}</DialogContent>
+      <DialogContent className="rounded-4xl max-w-2xl">
+        {children}
+      </DialogContent>
     </Dialog>
   );
 }
