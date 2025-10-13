@@ -31,6 +31,7 @@ import { atom, useSetAtom } from "jotai";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect } from "react";
+import { InventoryDeliveryHistory } from "./delivery-history";
 
 const successDialogAtom = atom({
   show: false,
@@ -244,7 +245,10 @@ export function SuppliesPage({
       <BookingsListToolbar view={view} setView={setView} />
 
       {view === "DELIVERY-HISTORY" ? (
-        <div></div>
+        <InventoryDeliveryHistory 
+          data={[]}
+          paginationMeta={paginationMeta}
+        />
       ) : (
         <SuppliesTable
           data={data as InventorySuppliers[]}
