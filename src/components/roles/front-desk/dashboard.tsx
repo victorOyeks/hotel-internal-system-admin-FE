@@ -44,35 +44,40 @@ import * as React from "react"
 import { CalendarIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns";
-import { RoomDetails } from "@/lib/fetch";
+import type { RoomDetails } from "@/lib/fetch";
+import { useMutation } from "@tanstack/react-query";
+import { checkInGuest } from "@/lib/front-desk-actions";
+import { toast } from "sonner";
+import { revalidateRoute } from "@/lib/actions";
+import type { APIOutput } from "@/lib/action-utils";
 
-export function FrontDeskStats() {
-  const stats = [
+export function FrontDeskStats({ stats }: { stats: APIOutput<"@get/api/front-desks/dashboard-cards">["data"] }) {
+  const data = [
     {
       label: "Total Check-Ins",
-      value: 120,
+      value: stats.totalCheckIns,
       color: "text-green-500 bg-green-500/10",
     },
     {
       label: "Total Check-Outs",
-      value: 100,
+      value: stats.totalCheckOuts,
       color: "text-red-500 bg-red-500/10",
     },
     {
       label: "Total Available Rooms",
-      value: 50,
+      value: stats.totalAvailableRooms,
       color: "text-blue-500 bg-blue-500/10",
     },
     {
       label: "Total Reservations",
-      value: 30,
+      value: stats.totalReservedRooms,
       color: "text-yellow-500 bg-yellow-500/10",
     },
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-      {stats.map((stat) => (
+      {data.map((stat) => (
         <div
           key={stat.label}
           className="bg-card border border-primary-5/10 rounded-xl md:rounded-2xl p-3 flex flex-col gap-y-4"
@@ -134,7 +139,7 @@ const checkInFormSchema = z.object({
     .number()
     .nonnegative("You cannot pay a negative amount")
     .min(0, "Please enter a valid amount"),
-  roomStatus: z.enum(["CHECKED_IN", "CHECKED_OUT"]),
+  roomStatus: z.enum(["CHECKED_IN"]),
   roomId: z.string().nonempty("Room is required"),
   checkInDate: z.string().nonempty("Check-in date is required"),
 });
@@ -322,35 +327,49 @@ function CheckInForm({ data }: { data: RoomDetails[] }) {
       phoneNumber: "",
       amountPaid: 0,
       roomId: "",
-      roomStatus: "CHECKED_IN" as "CHECKED_IN" | "CHECKED_OUT",
+      roomStatus: "CHECKED_IN" as "CHECKED_IN",
       checkInDate: new Date().toISOString().split("T")[0],
     },
   });
 
+  const { isPending, mutate } = useMutation({
+    mutationFn: async (data: z.infer<typeof checkInFormSchema> & {
+      roomStatus: "CHECKED_IN";
+    }) => {
+      const response = await checkInGuest(data);
+
+      if (!response.success) {
+        throw new Error(response.error || "An error occurred");
+      }
+
+      return response.data;
+    },
+    onError: (error) => {
+      toast.error(error.message || "An error occurred during check-in.");
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Guest checked in successfully.");
+      form.reset();
+      revalidateRoute("/front-desk");
+    },
+  });
+
   // use effect to clean queries on unmount
-  useEffect(() => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: false
+    useEffect(() => {
     return () => {
       setRoomQuery({
         "room:search": "",
         "room:type": "",
       });
     };
-  }, [setRoomQuery]);
-
-  const onSubmit = async (values: z.infer<typeof checkInFormSchema>) => {
-    try {
-      console.log("Check-in form submitted:", values);
-      // TODO: Implement the actual check-in logic here
-      // This could be an API call to create a new booking/check-in
-      // For now, we'll just log the values
-    } catch (error) {
-      console.error("Error during check-in:", error);
-    }
-  };
+  }, []);
 
   return (
     <Form {...form}>
-      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+      <form className="space-y-4" onSubmit={form.handleSubmit((data) => {
+        mutate(data);
+      })}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
           <FormField
             control={form.control}
@@ -453,8 +472,8 @@ function CheckInForm({ data }: { data: RoomDetails[] }) {
             )}
           />
         </div>
-        <Button type="submit" className="mt-4 w-full font-semibold">
-          {form.formState.isSubmitting ? (
+        <Button type="submit" className="mt-4 w-full font-semibold" disabled={isPending}>
+          {isPending ? (
             <>
               <Loader2Icon className="animate-spin" />
               <span>Processing check-in...</span>
