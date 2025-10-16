@@ -811,8 +811,47 @@ export const schema = createSchema({
     output: ApiResponseListRoomResponse,
     query: ListRoomsQuery,
   },
+  "@post/api/front-desks/:roomId/check-in": {
+    params: z.object({ roomId: z.string() }),
+    input: z.object({
+      guestName: z.string().nonempty(),
+      phoneNumber: z.string().nonempty(),
+      amountPaid: z.number().min(0),
+      roomStatus: z.literal("CHECKED_IN"),
+      checkInDate: z.string().nonempty(), // yyyy-mm-dd
+    }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
+  },
+  "@get/api/front-desks/dashboard-cards": {
+    output: ApiResponseObject.extend({
+      data: z.object({
+        totalCheckIns: z.number(),
+        totalCheckOuts: z.number(),
+        totalReservedRooms: z.number(),
+        totalAvailableRooms: z.number(),
+      }),
+    }),
+  },
+  "@get/api/front-desks/bookings": {
+    output: ApiResponseListBookingViewResponse,
+    query: z
+      .object({
+        bookingStatus: BookingStatus,
+        search: z.enum([
+          "CHECKED_IN",
+          "CHECKED_OUT",
+          "RESERVED",
+          "CANCELLED",
+          "AVAILABLE",
+        ]),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+  },
 });
-
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,
   schema: schema,

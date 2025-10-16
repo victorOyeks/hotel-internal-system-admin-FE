@@ -6,8 +6,9 @@ import { getCookieData, tokenKey } from './server-fns'
 import { decrypt } from './session'
 import { redirect } from 'next/navigation'
 import { $fetch } from './fetch'
+import type { HotelRole } from './types'
 
-export const verifySession = cache(async () => {
+export const verifySession = cache(async (role?: HotelRole) => {
   const cookie = (await cookies()).get(tokenKey)?.value;
 
   if (!cookie) {
@@ -17,6 +18,10 @@ export const verifySession = cache(async () => {
 
   if (!session?.userId) {
     redirect('/login')
+  }
+
+  if (role && session.role !== role) {
+    redirect('/unauthorized')
   }
 
   return {
