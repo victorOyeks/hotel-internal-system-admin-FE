@@ -65,3 +65,13 @@ export const inventoryOfficerLinks = [
   { title: "Supplies & Deliveries", icon: <TruckIcon />, url: "/dashboard/supplies" },
   { title: "Reports", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
 ];
+
+
+export const frontDeskLinks = [
+  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
+  { title: "Rooms", icon: <HotelIcon />, url: "/dashboard/rooms" },
+  { title: "Guests", icon: <IdCardIcon />, url: "/dashboard/guests" },
+  { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
+  { title: "Lost & Found", icon: <FolderClosedIcon />, url: "/dashboard/lost-and-found" },
+]
