@@ -835,7 +835,13 @@ export const schema = createSchema({
     }),
   },
   "@get/api/front-desks/bookings": {
-    output: ApiResponseListBookingViewResponse,
+    output: ApiResponseListBookingViewResponse.and(z.object({
+      data: Pagination.extend({
+        content: z.array(BookingViewResponse.extend({
+          amountPaid: z.number().min(0),
+        })),
+      }),
+    })),
     query: z
       .object({
         bookingStatus: BookingStatus,

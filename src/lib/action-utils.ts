@@ -1,6 +1,6 @@
 import type { $fetch, schema } from "./fetch";
 
-type Prettify<T> = {
+export type Prettify<T> = {
     [key in keyof T]: T[key];
 } & {};
 
