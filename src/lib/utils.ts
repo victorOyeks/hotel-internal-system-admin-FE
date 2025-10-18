@@ -6,6 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: number) {
+  // cross-check at runtime if value is a number
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return value;
+  }
 	return Intl.NumberFormat("en-NG", {
 		style: "currency",
 		currency: "NGN",
