@@ -424,7 +424,7 @@ const columns = [
     },
   }),
   columnHelper.accessor("roomFacility", {
-    header: "Room Description",
+    header: "Room Facilities",
     cell: (info) => (
       <div className="flex flex-wrap gap-2">
         {info.getValue().map((facility, i) => (
