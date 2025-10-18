@@ -15,6 +15,7 @@ import { useSetAtom, useAtom, atom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
+  EditIcon,
   EyeIcon,
   MessageCircleMoreIcon,
   MoreVerticalIcon,
@@ -68,6 +69,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/utils";
 import type { APIOutput, Prettify } from "@/lib/action-utils";
+import { AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type BookingViewResponse = Prettify<
   APIOutput<"@get/api/front-desks/bookings">["data"]["content"][number]
@@ -78,75 +80,25 @@ const successDialogAtom = atom({
   message: "",
 });
 
-const contactManagerFormSchema = z.object({
-  title: z.string().nonempty("Title is required"),
-  message: z.string().nonempty("Message is required"),
-});
 
-function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ChangeBookingStatus() {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const form = useForm({
-    resolver: zodResolver(contactManagerFormSchema),
-    defaultValues: {
-      title: "",
-      message: "",
-    },
-  });
 
-  const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
-    console.log("Message sent:", data.message);
-    setOpen(false);
+
+  const handleSubmit = () => {
     setShowSuccessDialog({
       show: true,
-      message: "Message delivered",
+      message: "Booking status updated",
     });
-    form.reset();
   };
 
   return (
     <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Contact Branch Manager</DialogTitle>
+      <DialogTitle>Change booking status</DialogTitle>
       <DialogDescription className="sr-only">
-        Fill in the details below to send a message to the branch manager.
-      </DialogDescription>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                <FormControl>
-                  <Input placeholder="Message Title" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
-          <FormField
-            control={form.control}
-            name="message"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Message</FormLabel>
-                <FormControl>
-                  <Textarea
-                    className="resize-none"
-                    placeholder="Type your message here..."
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full font-semibold">
-            Send Message
-          </Button>
-        </form>
-      </Form>
+      </DialogDescription>
+
     </DialogContent>
   );
 }
@@ -207,7 +159,7 @@ const columns = [
       const checkInDate = new Date(info.row.original.checkInDate);
       const checkOutDate = new Date(info.row.original.checkOutDate);
 
-     // e.g Sep 03, 2025 - Sep 03, 2025 
+      // e.g Sep 03, 2025 - Sep 03, 2025
 
       const options: Intl.DateTimeFormatOptions = {
         month: "short",
@@ -235,58 +187,16 @@ const columns = [
   columnHelper.display({
     id: "actions",
     cell: (info) => {
-      const [open, setOpen] = useState<"contact-manager" | false>(false);
-
-      const dialog = useMemo(() => {
-        switch (open) {
-          case "contact-manager":
-            return (
-              <ContactManagerForm
-                setOpen={(open) => setOpen(open ? "contact-manager" : false)}
-              />
-            );
-          default:
-            return null;
-        }
-      }, [open]);
-
       return (
-        <Dialog
-          open={typeof open === "string"}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) setOpen(false);
-          }}
-        >
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <PenLineIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white" align="end">
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/reports/branch-id/${info.row.original.bookingId}`}
-                >
-                  <EyeIcon />
-                  View branch report
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <DialogTrigger
-                  className="w-full"
-                  onClick={() => setOpen("contact-manager")}
-                >
-                  <MessageCircleMoreIcon />
-                  Contact Branch Manager
-                </DialogTrigger>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant={"ghost"}>
+              <EditIcon />
+            </Button>
+          </DialogTrigger>
 
-          {dialog}
+          <ChangeBookingStatus
+          />
         </Dialog>
       );
     },
