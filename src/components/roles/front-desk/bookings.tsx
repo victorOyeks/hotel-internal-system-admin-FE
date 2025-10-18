@@ -540,10 +540,17 @@ function BookingsListToolbar({
 
         {/* <AddNewHotelDialog /> */}
 
-        <Button size={"sm"} className="rounded-xl gap-2">
-          <PlusIcon className="w-4 h-4" />
-          Add Booking
-        </Button>
+        {bookingState === "RESERVED" ? (
+          <Button size={"sm"} className="rounded-xl gap-2">
+            <PlusIcon className="w-4 h-4" />
+            New Reservation
+          </Button>
+        ) : bookingState === null ? (
+          <Button size={"sm"} className="rounded-xl gap-2">
+            <PlusIcon className="w-4 h-4" />
+            Add Booking
+          </Button>
+        ) : null}
       </div>
     </div>
   );
