@@ -26,7 +26,7 @@ const columnHelper = createColumnHelper<GetHotelResponse>();
 
 function Toolbar(_: { table: TableType<GetHotelResponse> }) {
   return (
-    <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+    <div className="flex items-center justify-between space-x-2 bg-card border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div>
         <div className="relative">
           <input
