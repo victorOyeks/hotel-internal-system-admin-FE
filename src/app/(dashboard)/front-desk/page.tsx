@@ -63,8 +63,6 @@ function Page({ searchParams }: PageProps) {
             auth: { type: "Bearer", token },
           });
 
-          console.log(response.data, query);
-
           return response.data;
         }
       })

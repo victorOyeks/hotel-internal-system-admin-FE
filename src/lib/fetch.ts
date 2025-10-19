@@ -857,6 +857,23 @@ export const schema = createSchema({
       })
       .partial(),
   },
+  "@get/api/front-desks/guest-logs": {
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z.array(
+          z.object({
+            customId: z.string(),
+            guestName: z.string(),
+            phoneNumber: z.string(),
+            bookingStatus: BookingStatus,
+            roomIdentifier: z.string(),
+            checkInDate: z.coerce.date(),
+            checkOutDate: z.coerce.date().nullable(),
+          })
+        ),
+      }),
+    }),
+  },
 });
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,
