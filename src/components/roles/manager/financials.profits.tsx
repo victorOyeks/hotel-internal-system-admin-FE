@@ -100,7 +100,7 @@ const budgetItems = [
 interface BudgetItemProps {
   name: string;
   percentage: number;
-  amount: string;
+  amount: string | number;
   color: string;
 }
 
