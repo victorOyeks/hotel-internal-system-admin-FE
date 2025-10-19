@@ -678,6 +678,25 @@ const columns = [
     header: "Phone Number",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
+  columnHelper.accessor("lastLogin", {
+    header: "Last Login",
+    cell: (info) => {
+      const value = info.getValue();
+      if (!value || value === "N/A") return <span>N/A</span>;
+      const date = new Date(value);
+
+      // e.g. Jun 15, 2023, 10:30 AM
+      const formattedDate = date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      });
+      return <span>{formattedDate}</span>;
+    },
+  }),
   columnHelper.display({
     id: "actions",
     cell: (info) => {
