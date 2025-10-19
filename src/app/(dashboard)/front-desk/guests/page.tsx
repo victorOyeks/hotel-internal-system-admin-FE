@@ -12,9 +12,13 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
   ...paginationSearchParams,
-  roomStatus: parseAsString,
+  status: parseAsString,
   search: parseAsString,
   roomType: parseAsString,
+}, {
+  urlKeys: {
+    status: "roomStatus",
+  }
 });
 
 function Page({ searchParams }: PageProps) {
@@ -41,6 +45,8 @@ function Page({ searchParams }: PageProps) {
       },
     })
   );
+
+  console.log(query)
 
   return (
     <GuestsLogPage
