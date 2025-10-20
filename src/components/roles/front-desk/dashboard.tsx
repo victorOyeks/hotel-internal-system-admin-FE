@@ -52,7 +52,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { RoomDetails } from "@/lib/fetch";
 import { useMutation } from "@tanstack/react-query";
-import { checkInGuest } from "@/lib/front-desk-actions";
+import { checkInGuest, makeReservation } from "@/lib/front-desk-actions";
 import { toast } from "sonner";
 import { revalidateRoute } from "@/lib/actions";
 import type { APIOutput } from "@/lib/action-utils";
@@ -493,6 +493,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
 
 function CreateNewBookingForm({
   data,
+  setOpen
 }: {
   setOpen: (open: boolean) => void;
   open: boolean;
@@ -521,7 +522,9 @@ function CreateNewBookingForm({
       {view === "check-in" ? (
         <CheckInForm data={data} />
       ) : (
-        <ReservationForm data={data} />
+        <ReservationForm data={data}
+          setOpen={setOpen}
+        />
       )}
     </div>
   );
@@ -1017,7 +1020,7 @@ function CheckInForm({ data }: { data: RoomDetails[] }) {
   );
 }
 
-function ReservationForm({ data }: { data: RoomDetails[] }) {
+function ReservationForm({ data, setOpen }: { data: RoomDetails[]; setOpen: (open: boolean) => void }) {
   const [roomQuery, setRoomQuery] = useQueryStates({
     "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
@@ -1037,18 +1040,22 @@ function ReservationForm({ data }: { data: RoomDetails[] }) {
 
   const { isPending, mutate } = useMutation({
     mutationFn: async (data: z.infer<typeof reservationFormSchema>) => {
-      // Simulate API call for creating reservation
-      console.log("Creating reservation:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return { message: "Reservation created successfully" };
+      const response = await makeReservation(data);
+      if (!response.success) {
+        throw new Error(response.error || "An error occurred");
+      }
+      return response.data;
     },
-    onError: () => {
-      toast.error("An error occurred while creating the reservation.");
+    onError: (e) => {
+      toast.error("An error occurred while creating the reservation.", {
+        description: e.message,
+      });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(data.message || "Reservation created successfully.");
       form.reset();
-      revalidateRoute("/front-desk");
+      setOpen(false);
+      await revalidateRoute("/front-desk");
     },
   });
 
@@ -1187,27 +1194,14 @@ function ReservationForm({ data }: { data: RoomDetails[] }) {
 
         {/* Reservation Summary */}
         {form.watch("checkInDate") && form.watch("checkOutDate") && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-blue-900 mb-2">
-              Reservation Summary
-            </h3>
-            <div className="space-y-1 text-sm text-blue-800">
-              <div>
-                Check-in: {formatDate(new Date(form.watch("checkInDate")))}
-              </div>
-              <div>
-                Check-out: {formatDate(new Date(form.watch("checkOutDate")))}
-              </div>
-              <div className="font-medium">
-                Duration:{" "}
-                {Math.ceil(
-                  (new Date(form.watch("checkOutDate")).getTime() -
-                    new Date(form.watch("checkInDate")).getTime()) /
-                    (1000 * 60 * 60 * 24)
-                )}{" "}
-                night(s)
-              </div>
-            </div>
+          <div className="font-medium">
+            Duration:{" "}
+            {Math.ceil(
+              (new Date(form.watch("checkOutDate")).getTime() -
+                new Date(form.watch("checkInDate")).getTime()) /
+                (1000 * 60 * 60 * 24)
+            )}{" "}
+            night(s)
           </div>
         )}
 
