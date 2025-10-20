@@ -48,7 +48,7 @@ import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import type { BookingStatus, Pagination } from "@/lib/fetch";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { APIOutput, Prettify } from "@/lib/action-utils";
 import {
   Select,
@@ -148,7 +148,7 @@ function ChangeBookingStatus({
   );
   const currentStatusLabel = statusOptions.find(
     (option) => option.value === currentStatus
-  )?.label;
+  )?.label || currentStatus?.replaceAll("_", " ").toLowerCase();
 
   const handleSubmit = async () => {
     if (!selectedStatus) return;
@@ -187,10 +187,10 @@ function ChangeBookingStatus({
 
   return (
     <DialogContent className="p-6 rounded-2xl max-w-md">
-      <DialogTitle className="text-xl font-semibold mb-1">
+      <DialogTitle className="text-xl font-semibold">
         Change Booking Status
       </DialogTitle>
-      <DialogDescription className="text-gray-600 mb-6">
+      <DialogDescription className="text-gray-600">
         {statusOptions.length > 0 
           ? "Update the status of this booking following the hotel workflow."
           : "View booking details and current status."
@@ -214,34 +214,13 @@ function ChangeBookingStatus({
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Current Status:</span>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                className={cn`px-2 py-1 rounded-full text-xs font-medium border capitalize ${getStatusColor(
                   currentStatus!
                 )}`}
               >
                 {currentStatusLabel}
               </span>
             </div>
-            {statusOptions.length > 0 && (
-              <div className="pt-3 border-t border-gray-200">
-                <div className="text-xs text-gray-500 mb-2">Booking Workflow:</div>
-                <div className="flex items-center gap-1 text-xs">
-                  <span className={`px-2 py-1 rounded ${currentStatus === 'RESERVED' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
-                    Reserved
-                  </span>
-                  <span className="text-gray-400">→</span>
-                  <span className={`px-2 py-1 rounded ${currentStatus === 'CHECKED_IN' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                    Checked In
-                  </span>
-                  <span className="text-gray-400">→</span>
-                  <span className={`px-2 py-1 rounded ${currentStatus === 'CHECKED_OUT' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                    Checked Out
-                  </span>
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  (Cancellation available only from Reserved status)
-                </div>
-              </div>
-            )}
           </div>
         )}
 
