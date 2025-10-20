@@ -82,7 +82,7 @@ function ChangeBookingStatus({
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const statusOptions: Array<{
+  const allStatusOptions: Array<{
     value: BookingStatus;
     label: string;
     description: string;
@@ -110,6 +110,42 @@ function ChangeBookingStatus({
   ];
 
   const currentStatus = booking?.bookingStatus;
+
+  // Define valid transitions based on business logic
+  // Booking workflow: RESERVED → CHECKED_IN → CHECKED_OUT
+  // Cancellation is only allowed from RESERVED status
+  // Once CHECKED_OUT or CANCELLED, no further transitions are allowed
+  const getValidTransitions = (currentStatus: BookingStatus): BookingStatus[] => {
+    switch (currentStatus) {
+      case "RESERVED":
+        // From Reserved: can check in or cancel
+        return ["CHECKED_IN", "CANCELLED"];
+      
+      case "CHECKED_IN":
+        // From Checked In: can only check out (no cancellation once checked in)
+        return ["CHECKED_OUT"];
+      
+      case "CHECKED_OUT":
+        // From Checked Out: no further transitions allowed (final state)
+        return [];
+      
+      case "CANCELLED":
+        // From Cancelled: no further transitions allowed (final state)
+        return [];
+      
+      case "AVAILABLE":
+        // From Available: can be reserved
+        return ["RESERVED"];
+      
+      default:
+        return [];
+    }
+  };
+
+  const validTransitions = currentStatus ? getValidTransitions(currentStatus) : [];
+  const statusOptions = allStatusOptions.filter(option => 
+    validTransitions.includes(option.value)
+  );
   const currentStatusLabel = statusOptions.find(
     (option) => option.value === currentStatus
   )?.label;
@@ -155,7 +191,10 @@ function ChangeBookingStatus({
         Change Booking Status
       </DialogTitle>
       <DialogDescription className="text-gray-600 mb-6">
-        Update the status of this booking and add any relevant notes.
+        {statusOptions.length > 0 
+          ? "Update the status of this booking following the hotel workflow."
+          : "View booking details and current status."
+        }
       </DialogDescription>
 
       <div className="space-y-2">
@@ -182,6 +221,27 @@ function ChangeBookingStatus({
                 {currentStatusLabel}
               </span>
             </div>
+            {statusOptions.length > 0 && (
+              <div className="pt-3 border-t border-gray-200">
+                <div className="text-xs text-gray-500 mb-2">Booking Workflow:</div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className={`px-2 py-1 rounded ${currentStatus === 'RESERVED' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
+                    Reserved
+                  </span>
+                  <span className="text-gray-400">→</span>
+                  <span className={`px-2 py-1 rounded ${currentStatus === 'CHECKED_IN' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                    Checked In
+                  </span>
+                  <span className="text-gray-400">→</span>
+                  <span className={`px-2 py-1 rounded ${currentStatus === 'CHECKED_OUT' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                    Checked Out
+                  </span>
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  (Cancellation available only from Reserved status)
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -190,30 +250,35 @@ function ChangeBookingStatus({
           <Label htmlFor="status-select" className="text-sm font-medium">
             New Status
           </Label>
-          <Select
-            value={selectedStatus}
-            onValueChange={(value) => setSelectedStatus(value as BookingStatus)}
-          >
-            <SelectTrigger id="status-select" className="w-full">
-              <SelectValue placeholder="Select new status" />
-            </SelectTrigger>
-            <SelectContent className="w-full">
-              {statusOptions.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.value === currentStatus}
-                >
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">{option.label}</span>
-                    <span className="text-xs text-gray-500">
-                      {option.description}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {statusOptions.length > 0 ? (
+            <Select
+              value={selectedStatus}
+              onValueChange={(value) => setSelectedStatus(value as BookingStatus)}
+            >
+              <SelectTrigger id="status-select" className="w-full">
+                <SelectValue placeholder="Select new status" />
+              </SelectTrigger>
+              <SelectContent className="w-full">
+                {statusOptions.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">{option.label}</span>
+                      <span className="text-xs text-gray-500">
+                        {option.description}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="p-3 bg-gray-100 rounded-lg text-center text-sm text-gray-600">
+              No status changes available for this booking
+            </div>
+          )}
         </div>
 
         {/* Status Change Warning */}
@@ -231,32 +296,47 @@ function ChangeBookingStatus({
           >
             <AlertCircleIcon className="h-4 w-4" />
             <AlertDescription>
-              {selectedStatus === "CANCELLED" &&
-                "Cancelling this booking will make the room available for new reservations."}
-              {selectedStatus === "CHECKED_OUT" &&
-                "Checking out will finalize the booking and make the room available for cleaning."}
-              {selectedStatus === "CHECKED_IN" &&
-                "Checking in will mark the guest as currently occupying the room."}
-              {selectedStatus === "RESERVED" &&
-                "Setting to reserved will hold the room for the guest's arrival."}
+              {selectedStatus === "CANCELLED" && currentStatus === "RESERVED" &&
+                "Cancelling this reservation will free up the room for new bookings. This action cannot be undone."}
+              {selectedStatus === "CHECKED_OUT" && currentStatus === "CHECKED_IN" &&
+                "Checking out will finalize the stay and make the room available for cleaning and new guests."}
+              {selectedStatus === "CHECKED_IN" && currentStatus === "RESERVED" &&
+                "Checking in will mark the guest as currently occupying the room and start their stay."}
+              {selectedStatus === "RESERVED" && currentStatus === "AVAILABLE" &&
+                "Creating a reservation will hold this room for the guest's arrival."}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* No valid transitions message */}
+        {statusOptions.length === 0 && (
+          <Alert variant="info">
+            <AlertCircleIcon className="h-4 w-4" />
+            <AlertDescription>
+              {currentStatus === "CHECKED_OUT" && 
+                "This booking is completed. No further status changes are available."}
+              {currentStatus === "CANCELLED" && 
+                "This booking was cancelled. No further status changes are available."}
             </AlertDescription>
           </Alert>
         )}
 
         {/* Notes */}
-        <div className="space-y-3">
-          <Label htmlFor="notes" className="text-sm font-medium">
-            Notes (Optional)
-          </Label>
-          <Textarea
-            id="notes"
-            placeholder="Add any additional notes about this status change..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="resize-none"
-          />
-        </div>
+        {statusOptions.length > 0 && (
+          <div className="space-y-3">
+            <Label htmlFor="notes" className="text-sm font-medium">
+              Notes (Optional)
+            </Label>
+            <Textarea
+              id="notes"
+              placeholder="Add any additional notes about this status change..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
@@ -267,29 +347,31 @@ function ChangeBookingStatus({
             disabled={isSubmitting}
           >
             <XIcon className="w-4 h-4 mr-2" />
-            Cancel
+            {statusOptions.length > 0 ? "Cancel" : "Close"}
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              !selectedStatus ||
-              selectedStatus === currentStatus ||
-              isSubmitting
-            }
-            className="flex-1"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              <>
-                <CheckIcon className="w-4 h-4 mr-2" />
-                Update Status
-              </>
-            )}
-          </Button>
+          {statusOptions.length > 0 && (
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                !selectedStatus ||
+                selectedStatus === currentStatus ||
+                isSubmitting
+              }
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-4 h-4 mr-2" />
+                  Update Status
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </DialogContent>
