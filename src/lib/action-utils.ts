@@ -1,4 +1,5 @@
-import type { $fetch, schema } from "./fetch";
+import type z from "zod";
+import type { schema } from "./fetch";
 
 export type Prettify<T> = {
     [key in keyof T]: T[key];
@@ -43,21 +44,21 @@ type Schema = (typeof schema)["schema"];
 
 type ExtractAPIOutput<
   Endpoint extends keyof Schema,
-  Output extends Schema[Endpoint]
-> = typeof $fetch<unknown, unknown, Endpoint, Endpoint, Output>;
+  SchemaDef extends Schema[Endpoint] = Schema[Endpoint]
+> = SchemaDef;
 
-type APIOutput1<T extends keyof Schema> = Awaited<
-  ReturnType<ExtractAPIOutput<T, Schema[T]>>
->;
-
-type APIOutput2<T extends keyof Schema> = APIOutput1<T> extends {
-  data: infer D;
+export type APIInput<T extends keyof Schema> = ExtractAPIOutput<T> extends {
+  input: infer I;
 }
-  ? D
+  ? I extends z.ZodTypeAny
+    ? z.infer<I>
+    : I
   : never;
 
-export type APIOutput<T extends keyof Schema> = NonNullable<APIOutput2<T>>;
-
-export type ApiErrorOutput<T extends keyof Schema> = NonNullable<
-  APIOutput1<T> extends { error: infer E } ? E : never
->;
+export type APIOutput<T extends keyof Schema> = ExtractAPIOutput<T> extends {
+  output: infer O;
+}
+  ? O extends z.ZodTypeAny
+    ? z.infer<O>
+    : O
+  : never;
