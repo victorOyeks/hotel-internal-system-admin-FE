@@ -351,7 +351,6 @@ const columns = [
     cell: (info) => {
       const checkInDate = new Date(info.row.original.checkInDate);
       const checkOutDate = new Date(info.row.original.checkOutDate);
-      console.log({checkInDate, checkOutDate});
 
       // e.g Sep 03, 2025 - Sep 03, 2025
 
