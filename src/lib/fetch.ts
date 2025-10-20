@@ -824,6 +824,59 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
+  "@post/api/front-desks/{roomId}/check-out": {
+    params: z.object({ roomId: z.string() }),
+    input: z.object({
+      finalAmountPaid: z.number().min(0),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.object({
+        guestName: z.string(),
+        roomIdentifier: z.string(),
+        roomType: z.string(),
+        branchName: z.string(),
+        checkInDate: z.string(),
+        checkOutDate: z.string(),
+        totalAmountPaid: z.number(),
+        bookingStatus: BookingStatus,
+      }),
+    }),
+  },
+  "@post/api/front-desks/:roomId/make-reservation": {
+    params: z.object({ roomId: z.string() }),
+    input: z.object({
+      guestName: z.string().nonempty(),
+      phoneNumber: z.string().nonempty(),
+      checkInDate: z.string().nonempty(), // yyyy-mm-dd
+      checkOutDate: z.string().nonempty(), // yyyy-mm-dd
+      notes: z.string().nullable().optional(),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.object({
+        bookingId: z.string(),
+        guestName: z.string(),
+        roomIdentifier: z.string(),
+        roomType: z.string(),
+        branchName: z.string(),
+        checkInDate: z.string(),
+        checkOutDate: z.string(),
+        status: BookingStatus,
+      }),
+    }),
+  },
+  "@post/api/front-desks/:roomId/cancel-reservation": {
+    params: z.object({ roomId: z.string() }),
+    output: ApiResponseObject.extend({
+      data: z.object({
+        bookingId: z.string(),
+        guestName: z.string(),
+        roomIdentifier: z.string(),
+        roomType: z.string(),
+        status: BookingStatus,
+        message: z.string(),
+      })
+    }),
+  },
   "@get/api/front-desks/dashboard-cards": {
     output: ApiResponseObject.extend({
       data: z.object({
@@ -875,6 +928,7 @@ export const schema = createSchema({
     }),
   },
 });
+
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,
   schema: schema,

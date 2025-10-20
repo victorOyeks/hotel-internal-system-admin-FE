@@ -178,76 +178,80 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
   return (
     <Form {...form}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
-          <FormField
-            control={form.control}
-            name="itemName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Item Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. Wallet, Keys, Phone..." {...field} />
-                </FormControl>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {[
-                    "Phone",
-                    "Wallet",
-                    "Keys",
-                    "Jewelry",
-                    "Glasses",
-                    "Charger",
-                  ].map((item) => (
-                    <Button
-                      key={item}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-6 px-2"
-                      onClick={() => field.onChange(item)}
-                    >
-                      {item}
-                    </Button>
-                  ))}
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="roomIdentifier"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location Found</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. 101, 202A, Lobby..." {...field} />
-                </FormControl>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {[
-                    "Lobby",
-                    "Restaurant",
-                    "Pool Area",
-                    "Gym",
-                    "Parking",
-                    "Elevator",
-                  ].map((location) => (
-                    <Button
-                      key={location}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-6 px-2"
-                      onClick={() => field.onChange(location)}
-                    >
-                      {location}
-                    </Button>
-                  ))}
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="itemName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Item Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Wallet, Keys, Phone..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <div className="grid grid-cols-2 gap-1 mt-2">
+                    {[
+                      "Phone",
+                      "Wallet",
+                      "Keys",
+                      "Jewelry",
+                      "Glasses",
+                      "Charger",
+                    ].map((item) => (
+                      <Button
+                        key={item}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 px-2 truncate"
+                        onClick={() => field.onChange(item)}
+                      >
+                        {item}
+                      </Button>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="roomIdentifier"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location Found</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. 101, Lobby..." {...field} />
+                  </FormControl>
+                  <div className="grid grid-cols-2 gap-1 mt-2">
+                    {[
+                      "Lobby",
+                      "Restaurant",
+                      "Pool Area",
+                      "Gym",
+                      "Parking",
+                      "Elevator",
+                    ].map((location) => (
+                      <Button
+                        key={location}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 px-1 truncate"
+                        onClick={() => field.onChange(location)}
+                      >
+                        {location}
+                      </Button>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}
@@ -267,126 +271,126 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
               </FormItem>
             )}
           />
+        </div>
 
-          <div className="grid gap-2">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Image Upload */}
+          <div className="space-y-2">
             <Label>Image (Optional)</Label>
-            <div className="space-y-2">
-              {!imagePreview ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="cursor-pointer flex flex-col items-center gap-2"
-                  >
-                    <div className="text-gray-500">
-                      <svg
-                        className="w-8 h-8 mx-auto"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        aria-label="Upload image"
-                      >
-                        <title>Upload image</title>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-primary font-medium">
-                        Click to upload
-                      </span>
-                      <span className="text-gray-500"> or drag and drop</span>
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      PNG, JPG, GIF up to 10MB
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="relative w-full h-32 rounded-lg border overflow-hidden">
-                  <div
-                    className="w-full h-full bg-cover bg-center"
-                    style={{ backgroundImage: `url(${imagePreview})` }}
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2 h-8 w-8 p-0"
-                    onClick={() => {
-                      setSelectedImage(null);
-                      setImagePreview(null);
-                    }}
-                  >
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <div className="text-gray-500">
                     <svg
-                      className="h-4 w-4"
+                      className="w-8 h-8 mx-auto"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
-                      aria-label="Delete image"
+                      aria-label="Upload image"
                     >
-                      <title>Delete image</title>
+                      <title>Upload image</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        strokeWidth="2"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                       />
                     </svg>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Provide detailed description of the item, including color, size, brand, condition, and where exactly it was found..."
-                  className="resize-none"
-                  rows={4}
-                  {...field}
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-primary font-medium">
+                      Click to upload
+                    </span>
+                    <span className="text-gray-500"> or drag and drop</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    PNG, JPG, GIF up to 10MB
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="relative w-full h-40 rounded-lg border overflow-hidden">
+                <div
+                  className="w-full h-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${imagePreview})` }}
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="button"
-          className="w-full font-semibold"
-          onClick={() => {
-            form.trigger().then((isValid) => {
-              if (isValid) {
-                setShowSummary(true);
-              }
-            });
-          }}
-          disabled={isPending}
-        >
-          Review & Submit
-        </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2 h-8 w-8 p-0"
+                  onClick={() => {
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                  }}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-label="Delete image"
+                  >
+                    <title>Delete image</title>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </Button>
+              </div>
+            )}
+          </div>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel className="leading-none">Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Provide detailed description of the item, including color, size, brand, condition, and where exactly it was found..."
+                    className="resize-none h-full"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="pt-2">
+          <Button
+            type="button"
+            className="w-full font-semibold"
+            onClick={() => {
+              form.trigger().then((isValid) => {
+                if (isValid) {
+                  setShowSummary(true);
+                }
+              });
+            }}
+            disabled={isPending}
+          >
+            Review & Submit
+          </Button>
+        </div>
 
         {/* Summary Confirmation Dialog */}
         <Dialog open={showSummary} onOpenChange={setShowSummary}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogTitle>Confirm Lost Item Report</DialogTitle>
             <DialogDescription>
               Please review the details before submitting the report.
@@ -397,47 +401,54 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                 <h3 className="text-sm font-medium text-orange-900 mb-3">
                   Lost Item Summary
                 </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-orange-700 font-medium">Item:</span>
-                    <span className="text-orange-800">
-                      {form.watch("itemName")}
-                    </span>
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-orange-700 font-medium block">
+                        Item:
+                      </span>
+                      <span className="text-orange-800">
+                        {form.watch("itemName")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-orange-700 font-medium block">
+                        Location:
+                      </span>
+                      <span className="text-orange-800">
+                        {form.watch("roomIdentifier")}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-orange-700 font-medium">
-                      Location:
-                    </span>
-                    <span className="text-orange-800">
-                      {form.watch("roomIdentifier")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-orange-700 font-medium">
+
+                  <div>
+                    <span className="text-orange-700 font-medium block">
                       Date Found:
                     </span>
                     <span className="text-orange-800">
                       {formatDate(new Date(form.watch("dateFound")))}
                     </span>
                   </div>
+
                   {form.watch("description") && (
                     <div className="pt-2 border-t border-orange-200">
-                      <span className="text-orange-700 font-medium block mb-1">
+                      <span className="text-orange-700 font-medium block mb-2">
                         Description:
                       </span>
-                      <p className="text-orange-800 text-xs leading-relaxed">
+                      <p className="text-orange-800 text-sm leading-relaxed bg-white rounded p-2 border border-orange-100">
                         {form.watch("description")}
                       </p>
                     </div>
                   )}
+
                   {selectedImage && (
                     <div className="pt-2 border-t border-orange-200">
-                      <span className="text-orange-700 font-medium block mb-1">
+                      <span className="text-orange-700 font-medium block mb-2">
                         Image:
                       </span>
-                      <div className="w-16 h-16 rounded border">
+                      <div className="w-20 h-20 rounded-lg border overflow-hidden">
                         <div
-                          className="w-full h-full bg-cover bg-center rounded"
+                          className="w-full h-full bg-cover bg-center"
                           style={{ backgroundImage: `url(${imagePreview})` }}
                         />
                       </div>
@@ -446,7 +457,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => setShowSummary(false)}
@@ -1245,6 +1256,7 @@ const actions = [
     Component: CreateNewBookingForm,
     icon: PlusIcon,
     key: "create-new-booking",
+    maxWidth: "max-w-2xl",
   },
   {
     title: "Report Maintenance",
@@ -1256,6 +1268,7 @@ const actions = [
     icon: PlusIcon,
     Component: ReportLostItem,
     key: "report-lost-items",
+    maxWidth: "max-w-lg",
   },
 ];
 
@@ -1263,38 +1276,41 @@ export function QuickActions({ rooms }: { rooms: RoomDetails[] }) {
   const [open, setOpen] = useState<false | string>(false);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {actions.map(({ icon: Icon, title, key, heading, Component }) => {
-        return (
-          <BaseModal
-            key={key}
-            open={open === key}
-            setOpen={(open) => setOpen(open ? key : false)}
-            trigger={
-              <div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
-                <div className="flex items-center gap-x-2 flex-1">
-                  <div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
-                    <Icon className="size-5 text-green-600" />
+      {actions.map(
+        ({ icon: Icon, title, key, heading, Component, maxWidth }) => {
+          return (
+            <BaseModal
+              key={key}
+              open={open === key}
+              setOpen={(open) => setOpen(open ? key : false)}
+              maxWidth={maxWidth}
+              trigger={
+                <div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
+                  <div className="flex items-center gap-x-2 flex-1">
+                    <div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
+                      <Icon className="size-5 text-green-600" />
+                    </div>
+
+                    <p className="text-sm font-medium">{title}</p>
                   </div>
 
-                  <p className="text-sm font-medium">{title}</p>
+                  <ChevronRightIcon className="size-4 text-muted-foreground" />
                 </div>
-
-                <ChevronRightIcon className="size-4 text-muted-foreground" />
-              </div>
-            }
-          >
-            <DialogTitle>{heading || title}</DialogTitle>
-            <DialogDescription className="sr-only">{title}</DialogDescription>
-            {Component && (
-              <Component
-                setOpen={(open) => setOpen(open ? key : false)}
-                open={open === key}
-                data={rooms}
-              />
-            )}
-          </BaseModal>
-        );
-      })}
+              }
+            >
+              <DialogTitle>{heading || title}</DialogTitle>
+              <DialogDescription className="sr-only">{title}</DialogDescription>
+              {Component && (
+                <Component
+                  setOpen={(open) => setOpen(open ? key : false)}
+                  open={open === key}
+                  data={rooms}
+                />
+              )}
+            </BaseModal>
+          );
+        }
+      )}
     </div>
   );
 }
@@ -1304,16 +1320,18 @@ function BaseModal({
   open,
   setOpen,
   trigger,
+  maxWidth = "max-w-2xl",
 }: PropsWithChildren<{
   trigger: ReactNode;
   open: boolean;
   setOpen: (open: boolean) => void;
+  maxWidth?: string;
 }>) {
   return (
     <Dialog modal open={open} onOpenChange={setOpen}>
       <DialogTrigger>{trigger}</DialogTrigger>
 
-      <DialogContent className="rounded-4xl max-w-2xl">
+      <DialogContent className={`rounded-4xl ${maxWidth}`}>
         {children}
       </DialogContent>
     </Dialog>
