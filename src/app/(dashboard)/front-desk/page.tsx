@@ -36,6 +36,7 @@ function Page({ searchParams }: PageProps) {
               limit: 10,
               search: query["room:search"],
               roomType: query["room:type"],
+              roomStatus: "AVAILABLE",
             },
             signal,
             throw: true,
