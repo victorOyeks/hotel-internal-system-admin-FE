@@ -30,7 +30,15 @@ import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { DataTablePagination } from "@/components/shared/pagination";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableFooter } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableFooter,
+} from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 
@@ -54,21 +62,31 @@ function RoomsFilter({
 
   // Get unique room types from rooms data - memoized to prevent recalculation
   const roomTypes = useMemo(() => {
-    return Array.from(new Set(rooms.map((room) => room.roomType))).filter(Boolean);
+    return Array.from(new Set(rooms.map((room) => room.roomType))).filter(
+      Boolean
+    );
   }, [rooms]);
 
   // Memoize filter state computations
   const filterStates = useMemo(() => {
     const hasActiveFilters = tempFilters.roomType || tempFilters.status;
     const hasAppliedFilters = queryState.roomType || queryState.roomStatus;
-    const appliedFiltersCount = [queryState.roomType, queryState.roomStatus].filter(Boolean).length;
-    
+    const appliedFiltersCount = [
+      queryState.roomType,
+      queryState.roomStatus,
+    ].filter(Boolean).length;
+
     return {
       hasActiveFilters,
       hasAppliedFilters,
       appliedFiltersCount,
     };
-  }, [tempFilters.roomType, tempFilters.status, queryState.roomType, queryState.roomStatus]);
+  }, [
+    tempFilters.roomType,
+    tempFilters.status,
+    queryState.roomType,
+    queryState.roomStatus,
+  ]);
 
   // Memoized callback functions to prevent unnecessary re-renders
   const applyFilters = useCallback(() => {
@@ -93,12 +111,12 @@ function RoomsFilter({
   }, [queryState.search, setQueryState]);
 
   const roomStatusOptions = [
-    { value: "AVAILABLE", label: "Available", color: "bg-green-500" },
-    { value: "RESERVED", label: "Reserved", color: "bg-yellow-500" },
-    { value: "CHECKED_IN", label: "Checked In", color: "bg-blue-500" },
-    { value: "CHECKED_OUT", label: "Checked Out", color: "bg-gray-500" },
-    { value: "BLOCKED", label: "Blocked", color: "bg-red-500" },
-    { value: "DIRTY", label: "Dirty", color: "bg-orange-500" },
+    { value: "AVAILABLE", label: "Available" },
+    { value: "RESERVED", label: "Reserved" },
+    { value: "CHECKED_IN", label: "Checked In" },
+    { value: "CHECKED_OUT", label: "Checked Out" },
+    { value: "BLOCKED", label: "Blocked" },
+    { value: "DIRTY", label: "Dirty" },
   ];
 
   return (
@@ -124,7 +142,7 @@ function RoomsFilter({
           onValueChange={(value) =>
             setTempFilters({
               ...tempFilters,
-              status: value === "all" ? null : value as "AVAILABLE",
+              status: value === "all" ? null : (value as "AVAILABLE"),
             })
           }
         >
@@ -135,10 +153,7 @@ function RoomsFilter({
             <SelectItem value="all">All statuses</SelectItem>
             {roomStatusOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
-                  {option.label}
-                </div>
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -151,7 +166,10 @@ function RoomsFilter({
         <Select
           value={tempFilters.roomType || "all"}
           onValueChange={(value) =>
-            setTempFilters({ ...tempFilters, roomType: value === "all" ? null : value })
+            setTempFilters({
+              ...tempFilters,
+              roomType: value === "all" ? null : value,
+            })
           }
         >
           <SelectTrigger className="w-full">
@@ -175,7 +193,7 @@ function RoomsFilter({
           <div className="flex flex-wrap gap-1">
             {tempFilters.status && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
-                Status: {tempFilters.status.toLowerCase().replace('_', ' ')}
+                Status: {tempFilters.status.toLowerCase().replace("_", " ")}
               </span>
             )}
             {tempFilters.roomType && (
@@ -205,10 +223,10 @@ function RoomsFilter({
   );
 }
 
-function RoomListToolbar({ 
-  table, 
-  rooms 
-}: { 
+function RoomListToolbar({
+  table,
+  rooms,
+}: {
   table: TableType<RoomDetails>;
   rooms: RoomDetails[];
 }) {
@@ -254,7 +272,9 @@ function RoomListToolbar({
         </Button>
       </div>
 
-      <div className="flex items-center gap-x-2 ">        <div className="relative">
+      <div className="flex items-center gap-x-2 ">
+        {" "}
+        <div className="relative">
           <input
             type="text"
             placeholder="Search rooms..."
@@ -264,7 +284,6 @@ function RoomListToolbar({
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        
         <div className="flex items-center gap-2">
           <TableFilter>
             <RoomsFilter
@@ -273,7 +292,7 @@ function RoomListToolbar({
               setQueryState={setQueryState}
             />
           </TableFilter>
-          
+
           {/* Applied Filters Display */}
           {queryState.roomType && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
