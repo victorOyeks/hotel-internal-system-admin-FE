@@ -760,13 +760,13 @@ function BookingsFilter({
             </p>
             <div className="flex flex-wrap gap-1">
               {tempFilters.bookingStatus && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
                   Status:{" "}
                   {tempFilters.bookingStatus.toLowerCase().replace("_", " ")}
                 </span>
               )}
               {tempFilters.roomType && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
                   Room: {tempFilters.roomType}
                 </span>
               )}
