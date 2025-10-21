@@ -192,12 +192,12 @@ function RoomsFilter({
           <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
           <div className="flex flex-wrap gap-1">
             {tempFilters.status && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
                 Status: {tempFilters.status.toLowerCase().replace("_", " ")}
               </span>
             )}
             {tempFilters.roomType && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
                 Type: {tempFilters.roomType}
               </span>
             )}
@@ -297,7 +297,7 @@ function RoomListToolbar({
           {queryState.roomType && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <span>Type:</span>
-              <span className="bg-secondary px-2 py-1 rounded-md font-medium">
+              <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
                 {queryState.roomType}
               </span>
               <Button
