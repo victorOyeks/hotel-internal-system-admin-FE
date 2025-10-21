@@ -11,7 +11,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
   EditIcon,
@@ -23,8 +23,9 @@ import {
   UserIcon,
   Loader2Icon,
   AlertCircleIcon,
+  FilterIcon,
+  RotateCcwIcon,
 } from "lucide-react";
-import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -40,13 +41,14 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
-import type { BookingStatus, Pagination } from "@/lib/fetch";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import type { BookingStatus, Pagination, RoomDetails } from "@/lib/fetch";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { APIOutput, Prettify } from "@/lib/action-utils";
@@ -57,9 +59,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  cancelReservation,
+  checkInGuest,
+  checkOutGuest,
+} from "@/lib/front-desk-actions";
+import { revalidateRoute } from "@/lib/actions";
+import { Input } from "@/components/ui/input";
+import { CheckInForm, ReservationForm } from "./dashboard";
+import { TableFilter } from "@/components/shared/table-filter";
 
 type BookingViewResponse = Prettify<
   APIOutput<"@get/api/front-desks/bookings">["data"]["content"][number]
@@ -80,7 +98,9 @@ function ChangeBookingStatus({
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
   const [selectedStatus, setSelectedStatus] = useState<BookingStatus | "">("");
   const [notes, setNotes] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [optionalFields, setOptionalFields] = useState<{
+    finalAmountPaid?: number;
+  }>({});
 
   const allStatusOptions: Array<{
     value: BookingStatus;
@@ -115,64 +135,104 @@ function ChangeBookingStatus({
   // Booking workflow: RESERVED → CHECKED_IN → CHECKED_OUT
   // Cancellation is only allowed from RESERVED status
   // Once CHECKED_OUT or CANCELLED, no further transitions are allowed
-  const getValidTransitions = (currentStatus: BookingStatus): BookingStatus[] => {
+  const getValidTransitions = (
+    currentStatus: BookingStatus
+  ): BookingStatus[] => {
     switch (currentStatus) {
       case "RESERVED":
         // From Reserved: can check in or cancel
         return ["CHECKED_IN", "CANCELLED"];
-      
+
       case "CHECKED_IN":
         // From Checked In: can only check out (no cancellation once checked in)
         return ["CHECKED_OUT"];
-      
+
       case "CHECKED_OUT":
         // From Checked Out: no further transitions allowed (final state)
         return [];
-      
+
       case "CANCELLED":
         // From Cancelled: no further transitions allowed (final state)
         return [];
-      
-      case "AVAILABLE":
-        // From Available: can be reserved
-        return ["RESERVED"];
-      
+
+      // case "AVAILABLE":
+      //   // From Available: can be reserved
+      //   return ["RESERVED"];
+
       default:
         return [];
     }
   };
 
-  const validTransitions = currentStatus ? getValidTransitions(currentStatus) : [];
-  const statusOptions = allStatusOptions.filter(option => 
+  const validTransitions = currentStatus
+    ? getValidTransitions(currentStatus)
+    : [];
+  const statusOptions = allStatusOptions.filter((option) =>
     validTransitions.includes(option.value)
   );
-  const currentStatusLabel = statusOptions.find(
-    (option) => option.value === currentStatus
-  )?.label || currentStatus?.replaceAll("_", " ").toLowerCase();
+  const currentStatusLabel =
+    statusOptions.find((option) => option.value === currentStatus)?.label ||
+    currentStatus?.replaceAll("_", " ").toLowerCase();
 
-  const handleSubmit = async () => {
-    if (!selectedStatus) return;
+  const { isPending, mutate } = useMutation({
+    mutationFn: async () => {
+      if (!selectedStatus) return;
 
-    setIsSubmitting(true);
+      switch (selectedStatus) {
+        case "CANCELLED": {
+          const response = await cancelReservation({
+            roomId: booking?.roomIdentifier!,
+          });
+          if (!response.success) {
+            throw new Error(response.error || "Failed to create reservation.");
+          }
+          return;
+        }
+        case "CHECKED_IN": {
+          const response = await checkInGuest({
+            roomId: booking?.roomIdentifier!,
+            amountPaid: booking?.amountPaid!,
+            checkInDate: new Date().toISOString(),
+            guestName: booking?.guestName!,
+            phoneNumber: booking?.guestPhoneNumber!,
+            roomStatus: "CHECKED_IN",
+          });
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+          if (!response.success) {
+            throw new Error(response.error || "Failed to check in guest.");
+          }
+          return;
+        }
+        case "CHECKED_OUT": {
+          const response = await checkOutGuest({
+            roomId: booking?.roomIdentifier!,
+            finalAmountPaid: optionalFields.finalAmountPaid!,
+          });
 
+          if (!response.success) {
+            throw new Error(response.error || "Failed to check out guest.");
+          }
+          return;
+        }
+        default: {
+          toast.info("Status update feature coming soon!");
+        }
+      }
+    },
+    onSuccess: () => {
       setShowSuccessDialog({
         show: true,
-        message: `Booking status successfully updated to ${
-          statusOptions.find((opt) => opt.value === selectedStatus)?.label
-        }`,
+        message: "Booking status updated successfully.",
       });
-
       onClose?.();
-    } catch (error) {
-      console.error("Error updating booking status:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      revalidateRoute("/front-desk/bookings");
+    },
+    onError: (e) => {
+      toast.error("Failed to update booking status.", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    },
+  });
 
   const getStatusColor = (status: BookingStatus) => {
     const colors = {
@@ -191,10 +251,9 @@ function ChangeBookingStatus({
         Change Booking Status
       </DialogTitle>
       <DialogDescription className="text-gray-600">
-        {statusOptions.length > 0 
+        {statusOptions.length > 0
           ? "Update the status of this booking following the hotel workflow."
-          : "View booking details and current status."
-        }
+          : "View booking details and current status."}
       </DialogDescription>
 
       <div className="space-y-2">
@@ -208,7 +267,7 @@ function ChangeBookingStatus({
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-600">
-                Room {booking.roomType} • ID: {booking.bookingId}
+                Room {booking.roomType} • ID: {booking.customId}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -232,17 +291,16 @@ function ChangeBookingStatus({
           {statusOptions.length > 0 ? (
             <Select
               value={selectedStatus}
-              onValueChange={(value) => setSelectedStatus(value as BookingStatus)}
+              onValueChange={(value) =>
+                setSelectedStatus(value as BookingStatus)
+              }
             >
               <SelectTrigger id="status-select" className="w-full">
                 <SelectValue placeholder="Select new status" />
               </SelectTrigger>
               <SelectContent className="w-full">
                 {statusOptions.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                  >
+                  <SelectItem key={option.value} value={option.value}>
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{option.label}</span>
                       <span className="text-xs text-gray-500">
@@ -275,13 +333,16 @@ function ChangeBookingStatus({
           >
             <AlertCircleIcon className="h-4 w-4" />
             <AlertDescription>
-              {selectedStatus === "CANCELLED" && currentStatus === "RESERVED" &&
+              {selectedStatus === "CANCELLED" &&
+                currentStatus === "RESERVED" &&
                 "Cancelling this reservation will free up the room for new bookings. This action cannot be undone."}
-              {selectedStatus === "CHECKED_OUT" && currentStatus === "CHECKED_IN" &&
+              {selectedStatus === "CHECKED_OUT" &&
+                currentStatus === "CHECKED_IN" &&
                 "Checking out will finalize the stay and make the room available for cleaning and new guests."}
-              {selectedStatus === "CHECKED_IN" && currentStatus === "RESERVED" &&
+              {selectedStatus === "CHECKED_IN" &&
+                currentStatus === "RESERVED" &&
                 "Checking in will mark the guest as currently occupying the room and start their stay."}
-              {selectedStatus === "RESERVED" && currentStatus === "AVAILABLE" &&
+              {selectedStatus === "RESERVED" &&
                 "Creating a reservation will hold this room for the guest's arrival."}
             </AlertDescription>
           </Alert>
@@ -292,16 +353,38 @@ function ChangeBookingStatus({
           <Alert variant="info">
             <AlertCircleIcon className="h-4 w-4" />
             <AlertDescription>
-              {currentStatus === "CHECKED_OUT" && 
+              {currentStatus === "CHECKED_OUT" &&
                 "This booking is completed. No further status changes are available."}
-              {currentStatus === "CANCELLED" && 
+              {currentStatus === "CANCELLED" &&
                 "This booking was cancelled. No further status changes are available."}
             </AlertDescription>
           </Alert>
         )}
 
+        {/* Optional field for checkout */}
+        {selectedStatus === "CHECKED_OUT" && (
+          <div className="space-y-3">
+            <Label htmlFor="finalAmountPaid" className="text-sm font-medium">
+              Final Amount Paid
+            </Label>
+            <Input
+              id="finalAmountPaid"
+              type="number"
+              value={optionalFields.finalAmountPaid}
+              onChange={(e) =>
+                setOptionalFields((prev) => ({
+                  ...prev,
+                  finalAmountPaid: Number(e.target.value),
+                }))
+              }
+              placeholder="Enter the final amount paid by the guest"
+              className="w-full"
+            />
+          </div>
+        )}
+
         {/* Notes */}
-        {statusOptions.length > 0 && (
+        {statusOptions.length > 0 && selectedStatus === "RESERVED" && (
           <div className="space-y-3">
             <Label htmlFor="notes" className="text-sm font-medium">
               Notes (Optional)
@@ -323,22 +406,20 @@ function ChangeBookingStatus({
             variant="outline"
             onClick={onClose}
             className="flex-1"
-            disabled={isSubmitting}
+            disabled={isPending}
           >
             <XIcon className="w-4 h-4 mr-2" />
             {statusOptions.length > 0 ? "Cancel" : "Close"}
           </Button>
           {statusOptions.length > 0 && (
             <Button
-              onClick={handleSubmit}
+              onClick={() => mutate()}
               disabled={
-                !selectedStatus ||
-                selectedStatus === currentStatus ||
-                isSubmitting
+                !selectedStatus || selectedStatus === currentStatus || isPending
               }
               className="flex-1"
             >
-              {isSubmitting ? (
+              {isPending ? (
                 <>
                   <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
                   Updating...
@@ -360,7 +441,7 @@ function ChangeBookingStatus({
 const columnHelper = createColumnHelper<BookingViewResponse>();
 
 const columns = [
-  columnHelper.accessor("bookingId", {
+  columnHelper.accessor("customId", {
     header: "ID",
     cell: (info) => info.getValue(),
   }),
@@ -391,7 +472,6 @@ const columns = [
     header: "Status",
     cell: (info) => {
       const statusToVariant: Record<BookingStatus, BadgeVariant> = {
-        AVAILABLE: "outline",
         CHECKED_IN: "green",
         CHECKED_OUT: "blue",
         RESERVED: "yellow",
@@ -526,15 +606,215 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
   );
 }
 
+function BookingsFilter({
+  rooms,
+  queryState,
+  setQueryState,
+}: {
+  rooms: RoomDetails[];
+  queryState: {
+    bookingStatus:
+      | "RESERVED"
+      | "CHECKED_OUT"
+      | "CHECKED_IN"
+      | "CANCELLED"
+      | null;
+    search: string | null;
+    roomType: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState({
+    roomType: queryState.roomType,
+    bookingStatus: queryState.bookingStatus,
+  });
+
+  // Get unique room types from rooms data - memoized to prevent recalculation
+  const roomTypes = useMemo(() => {
+    return Array.from(new Set(rooms.map((room) => room.roomType))).filter(
+      Boolean
+    );
+  }, [rooms]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = tempFilters.roomType || tempFilters.bookingStatus;
+    const hasAppliedFilters = queryState.bookingStatus || queryState.roomType;
+    const appliedFiltersCount = [
+      queryState.bookingStatus,
+      queryState.roomType,
+    ].filter(Boolean).length;
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [
+    tempFilters.roomType,
+    tempFilters.bookingStatus,
+    queryState.bookingStatus,
+    queryState.roomType,
+  ]);
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      bookingStatus: tempFilters.bookingStatus,
+      roomType: tempFilters.roomType,
+    });
+    setIsOpen(false);
+  }, [
+    queryState,
+    tempFilters.bookingStatus,
+    tempFilters.roomType,
+    setQueryState,
+  ]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      roomType: null,
+      bookingStatus: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      search: queryState.search,
+      bookingStatus: null,
+      roomType: null,
+    });
+    setIsOpen(false);
+  }, [queryState.search, setQueryState]);
+
+  return (
+    <TableFilter open={isOpen} setOpen={(open) => setIsOpen(open)}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-sm">Filter Bookings</h4>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcwIcon className="h-3 w-3 mr-1" />
+            Clear all
+          </Button>
+        </div>
+
+        {/* Booking Status Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Status</Label>
+          <Select
+            value={tempFilters.bookingStatus ?? ""}
+            onValueChange={(value) =>
+              setTempFilters({
+                ...tempFilters,
+                bookingStatus:
+                  value === ""
+                    ? null
+                    : (value as typeof queryState.bookingStatus),
+              })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="RESERVED">Reserved</SelectItem>
+              <SelectItem value="CHECKED_IN">Checked In</SelectItem>
+              <SelectItem value="CHECKED_OUT">Checked Out</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Room Type Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Room Type</Label>
+          <Select
+            value={tempFilters.roomType || ""}
+            onValueChange={(value) =>
+              setTempFilters({ ...tempFilters, roomType: value || null })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All room types" />
+            </SelectTrigger>
+            <SelectContent>
+              {roomTypes.map((roomType) => (
+                <SelectItem key={roomType} value={roomType}>
+                  {roomType}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filter Summary */}
+        {filterStates.hasActiveFilters && (
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2">
+              Active filters:
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {tempFilters.bookingStatus && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                  Status:{" "}
+                  {tempFilters.bookingStatus.toLowerCase().replace("_", " ")}
+                </span>
+              )}
+              {tempFilters.roomType && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                  Room: {tempFilters.roomType}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsOpen(false)}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button size="sm" onClick={applyFilters} className="flex-1">
+            Apply Filters
+          </Button>
+        </div>
+      </div>
+    </TableFilter>
+  );
+}
+
 function BookingsListToolbar({
+  rooms,
   table,
 }: {
+  rooms: RoomDetails[];
   table: TableType<BookingViewResponse>;
 }) {
-  const [bookingState, setBookingState] = useQueryState(
-    "bookingStatus",
-    parseAsStringLiteral(["RESERVED", "CHECKED_OUT"])
-  );
+  const [queryState, setQueryState] = useQueryStates({
+    bookingStatus: parseAsStringLiteral([
+      "RESERVED",
+      "CHECKED_OUT",
+      "CHECKED_IN",
+      "CANCELLED",
+    ]),
+    search: parseAsString,
+    roomType: parseAsString,
+  });
+
+  const [modalStates, setModalStates] = useState({
+    checkInModalOpen: false,
+    reservationModalOpen: false,
+  });
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
@@ -542,48 +822,48 @@ function BookingsListToolbar({
         <Button
           size="sm"
           variant="outline"
-          data-active={bookingState === null}
-          onClick={() => setBookingState(null)}
+          data-active={queryState.bookingStatus === null}
+          onClick={() => setQueryState({ bookingStatus: null })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            bookingState === null
+            queryState.bookingStatus === null
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
           All Bookings{" "}
-          {bookingState === null &&
+          {queryState.bookingStatus === null &&
             `(${table.getRowCount() * table.getPageCount()})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={bookingState === "RESERVED"}
-          onClick={() => setBookingState("RESERVED")}
+          data-active={queryState.bookingStatus === "RESERVED"}
+          onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            bookingState === "RESERVED"
+            queryState.bookingStatus === "RESERVED"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
           Reservations{" "}
-          {bookingState === "RESERVED" &&
+          {queryState.bookingStatus === "RESERVED" &&
             `(${table.getFilteredRowModel().rows.length})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={bookingState === "CHECKED_OUT"}
-          onClick={() => setBookingState("CHECKED_OUT")}
+          data-active={queryState.bookingStatus === "CHECKED_OUT"}
+          onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            bookingState === "CHECKED_OUT"
+            queryState.bookingStatus === "CHECKED_OUT"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
           Booking history{" "}
-          {bookingState === "CHECKED_OUT" &&
+          {queryState.bookingStatus === "CHECKED_OUT" &&
             `(${table.getFilteredRowModel().rows.length})`}
         </Button>
       </div>
@@ -594,23 +874,93 @@ function BookingsListToolbar({
             type="text"
             placeholder="Search bookings"
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
+            value={queryState.search ?? ""}
+            onChange={(e) => setQueryState({ search: e.target.value || null })}
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+        <div className="flex items-center gap-2">
+          <BookingsFilter
+            rooms={rooms}
+            queryState={queryState}
+            setQueryState={setQueryState}
+          />
 
-        {/* <AddNewHotelDialog /> */}
+          {/* Applied Filters Display */}
+          {queryState.roomType && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>Room Type:</span>
+              <span className="bg-primary/10 px-2 py-1 rounded-md font-medium">
+                {queryState.roomType}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setQueryState({ roomType: null })}
+              >
+                <XIcon className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
 
-        {bookingState === "RESERVED" ? (
-          <Button size={"sm"} className="rounded-xl gap-2">
-            <PlusIcon className="w-4 h-4" />
-            New Reservation
-          </Button>
-        ) : bookingState === null ? (
-          <Button size={"sm"} className="rounded-xl gap-2">
-            <PlusIcon className="w-4 h-4" />
-            Add Booking
-          </Button>
+        {queryState.bookingStatus === "RESERVED" ? (
+          <Dialog
+            open={modalStates.reservationModalOpen}
+            onOpenChange={(open) =>
+              setModalStates({ ...modalStates, reservationModalOpen: open })
+            }
+          >
+            <DialogTrigger asChild>
+              <Button size={"sm"} className="rounded-xl gap-2">
+                <PlusIcon className="w-4 h-4" />
+                New Reservation
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Reservation</DialogTitle>
+                <DialogDescription>
+                  Fill in the details below to create a new reservation.
+                </DialogDescription>
+              </DialogHeader>
+
+              <ReservationForm
+                data={rooms}
+                setOpen={(open) =>
+                  setModalStates({
+                    ...modalStates,
+                    reservationModalOpen: open,
+                  })
+                }
+              />
+            </DialogContent>
+          </Dialog>
+        ) : queryState === null ? (
+          <Dialog
+            open={modalStates.checkInModalOpen}
+            onOpenChange={(open) =>
+              setModalStates({ ...modalStates, checkInModalOpen: open })
+            }
+          >
+            <DialogTrigger asChild>
+              <Button size={"sm"} className="rounded-xl gap-2">
+                <PlusIcon className="w-4 h-4" />
+                Add Booking
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Booking</DialogTitle>
+                <DialogDescription>
+                  Fill in the details below to create a new booking.
+                </DialogDescription>
+              </DialogHeader>
+
+              <CheckInForm data={rooms} />
+            </DialogContent>
+          </Dialog>
         ) : null}
       </div>
     </div>
@@ -621,8 +971,10 @@ export function BookingsPage({
   breadcrumb,
   paginationMeta,
   bookings,
+  rooms,
 }: {
   bookings: BookingViewResponse[];
+  rooms: RoomDetails[];
   paginationMeta: Pagination;
   breadcrumb: {
     title: string;
@@ -654,7 +1006,7 @@ export function BookingsPage({
 
   return (
     <div className="p-4 space-y-2 md:space-y-4">
-      <BookingsListToolbar table={table} />
+      <BookingsListToolbar rooms={rooms} table={table} />
       <BookingList table={table} />
       <SuccessDialog
         open={successDialogOpen.show}

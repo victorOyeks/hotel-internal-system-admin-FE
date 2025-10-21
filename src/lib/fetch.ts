@@ -323,7 +323,6 @@ export const BookingStatus = z.enum([
   "CHECKED_OUT",
   "RESERVED",
   "CANCELLED",
-  "AVAILABLE",
 ]);
 
 const BookingViewResponse = z.object({
@@ -824,7 +823,7 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@post/api/front-desks/{roomId}/check-out": {
+  "@post/api/front-desks/:roomId/check-out": {
     params: z.object({ roomId: z.string() }),
     input: z.object({
       finalAmountPaid: z.number().min(0),
@@ -892,21 +891,20 @@ export const schema = createSchema({
       data: Pagination.extend({
         content: z.array(BookingViewResponse.extend({
           amountPaid: z.number().min(0),
+          id: z.string(),
+          customId: z.string(),
+          guestPhoneNumber: z.string(),
+          roomIdentifier: z.string(),
         })),
       }),
     })),
     query: z
       .object({
-        bookingStatus: BookingStatus,
-        search: z.enum([
-          "CHECKED_IN",
-          "CHECKED_OUT",
-          "RESERVED",
-          "CANCELLED",
-          "AVAILABLE",
-        ]),
-        page: z.coerce.number().default(0),
-        size: z.coerce.number().default(10),
+        bookingStatus: BookingStatus.nullable(),
+        search: z.string().nullable(),
+        roomType: z.string().nullable(),
+        page: z.number().nullable().default(0),
+        size: z.number().nullable().default(10),
       })
       .partial(),
   },

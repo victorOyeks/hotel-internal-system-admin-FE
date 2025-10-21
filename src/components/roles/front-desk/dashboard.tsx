@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
   DialogTitle,
   DialogDescription,
@@ -493,7 +493,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
 
 function CreateNewBookingForm({
   data,
-  setOpen
+  setOpen,
 }: {
   setOpen: (open: boolean) => void;
   open: boolean;
@@ -522,9 +522,7 @@ function CreateNewBookingForm({
       {view === "check-in" ? (
         <CheckInForm data={data} />
       ) : (
-        <ReservationForm data={data}
-          setOpen={setOpen}
-        />
+        <ReservationForm data={data} setOpen={setOpen} />
       )}
     </div>
   );
@@ -605,7 +603,8 @@ function SelectRoomBox({
           className="w-full justify-between"
         >
           {value
-            ? rooms.find((room) => room.id === value)?.roomIdentifier
+            ? rooms.find((room) => room.roomIdentifier === value)
+                ?.roomIdentifier
             : "Select room..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
@@ -624,7 +623,7 @@ function SelectRoomBox({
               {rooms.map((room) => (
                 <CommandItem
                   key={room.id}
-                  value={room.id}
+                  value={room.roomIdentifier}
                   onSelect={(currentValue) => {
                     setValue(currentValue === value ? "" : currentValue);
                     setOpen(false);
@@ -634,7 +633,9 @@ function SelectRoomBox({
                   <Check
                     className={cn(
                       "ml-auto",
-                      value === room.id ? "opacity-100" : "opacity-0"
+                      value === room.roomIdentifier
+                        ? "opacity-100"
+                        : "opacity-0"
                     )}
                   />
                 </CommandItem>
@@ -838,7 +839,7 @@ function DatePicker({
   );
 }
 
-function CheckInForm({ data }: { data: RoomDetails[] }) {
+export function CheckInForm({ data }: { data: RoomDetails[] }) {
   const [roomQuery, setRoomQuery] = useQueryStates({
     "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
@@ -1020,7 +1021,13 @@ function CheckInForm({ data }: { data: RoomDetails[] }) {
   );
 }
 
-function ReservationForm({ data, setOpen }: { data: RoomDetails[]; setOpen: (open: boolean) => void }) {
+export function ReservationForm({
+  data,
+  setOpen,
+}: {
+  data: RoomDetails[];
+  setOpen: (open: boolean) => void;
+}) {
   const [roomQuery, setRoomQuery] = useQueryStates({
     "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
