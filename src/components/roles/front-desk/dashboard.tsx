@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   DialogTitle,
   DialogDescription,
@@ -565,7 +565,6 @@ const lostItemFormSchema = z.object({
   itemName: z.string().nonempty("Item name is required"),
   description: z.string().nonempty("Description is required"),
   imageUrl: z
-    .string()
     .url("Please enter a valid URL")
     .optional()
     .or(z.literal("")),
