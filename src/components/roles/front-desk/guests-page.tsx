@@ -117,10 +117,9 @@ const columns = [
     header: "Room Status",
     cell: (info) => {
       const statusToVariant: Record<GuestLog["bookingStatus"], BadgeVariant> = {
-        AVAILABLE: "green",
         RESERVED: "yellow",
         CHECKED_IN: "blue",
-        CHECKED_OUT: "secondary",
+        CHECKED_OUT: "red",
         CANCELLED: "gray",
       };
 

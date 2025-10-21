@@ -179,7 +179,7 @@ const columns = [
     header: "Status",
     cell: (info) => {
       const statusToVariant: Record<BookingStatus, BadgeVariant> = {
-        AVAILABLE: "outline",
+        // AVAILABLE: "outline",
         CHECKED_IN: "green",
         CHECKED_OUT: "blue",
         RESERVED: "yellow",

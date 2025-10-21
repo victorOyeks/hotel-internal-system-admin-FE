@@ -352,7 +352,7 @@ const columns = [
         RESERVED: "yellow",
         BOOKED: "blue",
         CHECKED_IN: "blue",
-        CHECKED_OUT: "secondary",
+        CHECKED_OUT: "red",
         BLOCKED: "gray",
         DIRTY: "red",
       };
