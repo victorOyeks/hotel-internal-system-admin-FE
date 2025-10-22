@@ -23,7 +23,6 @@ import {
   UserIcon,
   Loader2Icon,
   AlertCircleIcon,
-  FilterIcon,
   RotateCcwIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,11 +58,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -958,7 +952,15 @@ function BookingsListToolbar({
                 </DialogDescription>
               </DialogHeader>
 
-              <CheckInForm data={rooms} />
+              <CheckInForm
+                data={rooms}
+                setOpen={(open) =>
+                  setModalStates({
+                    ...modalStates,
+                    checkInModalOpen: open,
+                  })
+                }
+              />
             </DialogContent>
           </Dialog>
         ) : null}

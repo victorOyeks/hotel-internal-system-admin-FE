@@ -49,13 +49,19 @@ import { parseAsString, useQueryStates } from "nuqs";
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
 import type { RoomDetails } from "@/lib/fetch";
 import { useMutation } from "@tanstack/react-query";
 import { checkInGuest, makeReservation } from "@/lib/front-desk-actions";
 import { toast } from "sonner";
 import { revalidateRoute } from "@/lib/actions";
 import type { APIOutput } from "@/lib/action-utils";
+import { SuccessDialog } from "@/components/shared/shared-dialogs";
+import { atom, useAtom, useSetAtom } from "jotai";
+
+const successDialogAtom = atom({
+  show: false,
+  message: "",
+});
 
 export function FrontDeskStats({
   stats,
@@ -520,7 +526,7 @@ function CreateNewBookingForm({
       </div>
 
       {view === "check-in" ? (
-        <CheckInForm data={data} />
+        <CheckInForm data={data} setOpen={setOpen} />
       ) : (
         <ReservationForm data={data} setOpen={setOpen} />
       )}
@@ -538,6 +544,7 @@ const checkInFormSchema = z.object({
   roomStatus: z.enum(["CHECKED_IN"]),
   roomId: z.string().nonempty("Room is required"),
   checkInDate: z.string().nonempty("Check-in date is required"),
+  checkOutDate: z.string().optional(),
 });
 
 const reservationFormSchema = z
@@ -564,10 +571,7 @@ const reservationFormSchema = z
 const lostItemFormSchema = z.object({
   itemName: z.string().nonempty("Item name is required"),
   description: z.string().nonempty("Description is required"),
-  imageUrl: z
-    .url("Please enter a valid URL")
-    .optional()
-    .or(z.literal("")),
+  imageUrl: z.url("Please enter a valid URL").optional().or(z.literal("")),
   roomIdentifier: z.string().nonempty("Room identifier is required"),
   dateFound: z.string().nonempty("Date found is required"),
 });
@@ -666,87 +670,6 @@ function isValidDate(date: Date | undefined) {
   return !Number.isNaN(date.getTime());
 }
 
-function CheckInDate({
-  initialDate,
-  onChange,
-}: {
-  initialDate: string;
-  onChange: (date: string) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<Date | undefined>(
-    initialDate ? new Date(initialDate) : new Date()
-  );
-  const [month, setMonth] = React.useState<Date | undefined>(date);
-  const [value, setValue] = React.useState(formatDate(date));
-
-  // Update form when date changes
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate && isValidDate(newDate)) {
-      const dateString = newDate.toISOString().split("T")[0];
-      onChange(dateString);
-    }
-  };
-
-  return (
-    <div className="relative flex gap-2">
-      <Input
-        id="date"
-        value={value}
-        placeholder={format(new Date(), "MMMM dd, yyyy")}
-        className="bg-background pr-10"
-        onChange={(e) => {
-          const newDate = new Date(e.target.value);
-          setValue(e.target.value);
-          if (isValidDate(newDate)) {
-            setDate(newDate);
-            setMonth(newDate);
-            handleDateChange(newDate);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setOpen(true);
-          }
-        }}
-      />
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            id="date-picker"
-            variant="ghost"
-            className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
-          >
-            <CalendarIcon className="size-3.5" />
-            <span className="sr-only">Select date</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-auto overflow-hidden p-0"
-          align="end"
-          alignOffset={-8}
-          sideOffset={10}
-        >
-          <Calendar
-            mode="single"
-            selected={date}
-            captionLayout="dropdown"
-            month={month}
-            onMonthChange={setMonth}
-            onSelect={(selectedDate) => {
-              setDate(selectedDate);
-              setValue(formatDate(selectedDate));
-              handleDateChange(selectedDate);
-              setOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
 function DatePicker({
   initialDate,
   onChange,
@@ -838,7 +761,15 @@ function DatePicker({
   );
 }
 
-export function CheckInForm({ data }: { data: RoomDetails[] }) {
+export function CheckInForm({
+  data,
+  setOpen,
+}: {
+  data: RoomDetails[];
+  setOpen: (open: boolean) => void;
+}) {
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+
   const [roomQuery, setRoomQuery] = useQueryStates({
     "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
@@ -853,6 +784,7 @@ export function CheckInForm({ data }: { data: RoomDetails[] }) {
       roomId: "",
       roomStatus: "CHECKED_IN" as "CHECKED_IN",
       checkInDate: new Date().toISOString().split("T")[0],
+      checkOutDate: undefined,
     },
   });
 
@@ -875,7 +807,12 @@ export function CheckInForm({ data }: { data: RoomDetails[] }) {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Guest checked in successfully.");
+      setShowSuccessDialog({
+        show: true,
+        message: "Guest checked in successfully.",
+      });
       form.reset();
+      setOpen(false);
       revalidateRoute("/front-desk");
     },
   });
@@ -904,7 +841,7 @@ export function CheckInForm({ data }: { data: RoomDetails[] }) {
             control={form.control}
             name="guestName"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="col-span-2">
                 <FormLabel>Guest Name</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g John Doe" {...field} />
@@ -991,9 +928,37 @@ export function CheckInForm({ data }: { data: RoomDetails[] }) {
               <FormItem>
                 <FormLabel>Check-in Date</FormLabel>
                 <FormControl>
-                  <CheckInDate
+                  <DatePicker
                     initialDate={field.value}
                     onChange={field.onChange}
+                    placeholder="Select check-in date"
+                    minDate={new Date(Date.now() - 24 * 60 * 60 * 1000)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="checkOutDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Check-out Date (Optional)</FormLabel>
+                <FormControl>
+                  <DatePicker
+                    initialDate={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder="Select check-out date"
+                    minDate={
+                      form.watch("checkInDate")
+                        ? new Date(
+                            new Date(form.watch("checkInDate")).getTime() +
+                              24 * 60 * 60 * 1000
+                          )
+                        : new Date()
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -1274,44 +1239,57 @@ const actions = [
 
 export function QuickActions({ rooms }: { rooms: RoomDetails[] }) {
   const [open, setOpen] = useState<false | string>(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {actions.map(
-        ({ icon: Icon, title, key, heading, Component, maxWidth }) => {
-          return (
-            <BaseModal
-              key={key}
-              open={open === key}
-              setOpen={(open) => setOpen(open ? key : false)}
-              maxWidth={maxWidth}
-              trigger={
-                <div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
-                  <div className="flex items-center gap-x-2 flex-1">
-                    <div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
-                      <Icon className="size-5 text-green-600" />
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {actions.map(
+          ({ icon: Icon, title, key, heading, Component, maxWidth }) => {
+            return (
+              <BaseModal
+                key={key}
+                open={open === key}
+                setOpen={(open) => setOpen(open ? key : false)}
+                maxWidth={maxWidth}
+                trigger={
+                  <div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
+                    <div className="flex items-center gap-x-2 flex-1">
+                      <div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
+                        <Icon className="size-5 text-green-600" />
+                      </div>
+
+                      <p className="text-sm font-medium">{title}</p>
                     </div>
 
-                    <p className="text-sm font-medium">{title}</p>
+                    <ChevronRightIcon className="size-4 text-muted-foreground" />
                   </div>
-
-                  <ChevronRightIcon className="size-4 text-muted-foreground" />
-                </div>
-              }
-            >
-              <DialogTitle>{heading || title}</DialogTitle>
-              <DialogDescription className="sr-only">{title}</DialogDescription>
-              {Component && (
-                <Component
-                  setOpen={(open) => setOpen(open ? key : false)}
-                  open={open === key}
-                  data={rooms}
-                />
-              )}
-            </BaseModal>
-          );
+                }
+              >
+                <DialogTitle>{heading || title}</DialogTitle>
+                <DialogDescription className="sr-only">
+                  {title}
+                </DialogDescription>
+                {Component && (
+                  <Component
+                    setOpen={(open) => setOpen(open ? key : false)}
+                    open={open === key}
+                    data={rooms}
+                  />
+                )}
+              </BaseModal>
+            );
+          }
+        )}
+      </div>
+      <SuccessDialog
+        open={successDialogOpen.show}
+        setOpenAction={(show) =>
+          setSuccessDialogOpen({ ...successDialogOpen, show })
         }
-      )}
-    </div>
+        message={successDialogOpen.message}
+      />
+    </>
   );
 }
 

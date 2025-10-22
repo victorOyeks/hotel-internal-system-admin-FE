@@ -148,7 +148,7 @@ export async function onboardManagerToHotel(payload: Omit<OnboardStaffRequest, "
   }
 }
 
-export async function updateStaffDetailsByOwner({ staffId, ...payload }: OnboardStaffRequest): ServerActionResponse<string> {
+export async function updateStaffDetailsByOwner({ staffId, ...payload }: Omit<OnboardStaffRequest, "password">): ServerActionResponse<string> {
   try {
     const sessionData = await verifySession();
     if (sessionData.role !== "HOTEL_OWNER") {

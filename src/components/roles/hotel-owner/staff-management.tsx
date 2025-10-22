@@ -190,6 +190,7 @@ const newStaffFormSchema = z.object({
   fullName: z.string().nonempty("Staff name is required"),
   email: z.email("Invalid email address"),
   phoneNumber: z.string().nonempty("Phone number is required"),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
   // role: z.string().refine((val) => Role.safeParse(val).success, {
   //   message: "Invalid role",
   // }),
@@ -278,6 +279,24 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input
+                  type="password" 
+                  placeholder="Enter a secure password"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           className="mt-4 w-full font-semibold"
@@ -299,7 +318,10 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 const hotelOwnerStaffEditSchema = newStaffFormSchema.extend({
   role: Role,
-});
+})
+.omit({
+  password: true,
+})
 
 function UpdateHotelStaffForm({
   initialValues,
