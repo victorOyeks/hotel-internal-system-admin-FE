@@ -429,6 +429,7 @@ const OnboardStaffRequest = z.object({
   phoneNumber: z.string(),
   staffId: z.string(),
   role: Role,
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>;
