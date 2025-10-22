@@ -84,9 +84,11 @@ import {
 } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { parseAsString, useQueryStates } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { RotateCcwIcon, XIcon } from "lucide-react";
 import {
   editStaffDetails,
   onboardStaffToHotel,
@@ -109,13 +111,191 @@ const successDialogAtom = atom({
   message: "",
 });
 
+function StaffFilter({
+  queryState,
+  setQueryState,
+  setOpen
+}: {
+  queryState: {
+    search: string | null;
+    status: "ACTIVE" | "INACTIVE" | "PENDING" | "SUSPENDED" | null;
+    role: "HOTEL_OWNER" | "MANAGER" | "FRONT_DESK" | "MAINTENANCE" | "INVENTORY" | "BAR" | "KITCHEN" | "SUPER_ADMIN" | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+  setOpen: (open: boolean) => void;
+}) {
+  const [tempFilters, setTempFilters] = useState({
+    status: queryState.status,
+    role: queryState.role,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      status: tempFilters.status,
+      role: tempFilters.role,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters.status, tempFilters.role, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      status: null,
+      role: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      search: queryState.search,
+      status: null,
+      role: null,
+    });
+    setOpen(false);
+  }, [queryState.search, setQueryState, setOpen]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = tempFilters.status || tempFilters.role;
+    const hasAppliedFilters = queryState.status || queryState.role;
+    const appliedFiltersCount = [queryState.status, queryState.role].filter(Boolean).length;
+    
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters.status, tempFilters.role, queryState.status, queryState.role]);
+
+  const statusOptions = [
+    { value: "ACTIVE", label: "Active", color: "bg-green-500" },
+    { value: "INACTIVE", label: "Inactive", color: "bg-gray-500" },
+    { value: "PENDING", label: "Pending", color: "bg-yellow-500" },
+    { value: "SUSPENDED", label: "Suspended", color: "bg-red-500" },
+  ];
+
+  const roleOptions = [
+    { value: "HOTEL_OWNER", label: "Hotel Owner" },
+    { value: "MANAGER", label: "Manager" },
+    { value: "FRONT_DESK", label: "Front Desk" },
+    { value: "MAINTENANCE", label: "Maintenance" },
+    { value: "INVENTORY", label: "Inventory" },
+    { value: "BAR", label: "Bar" },
+    { value: "KITCHEN", label: "Kitchen" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Staff</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Status Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Status</Label>
+        <Select
+          value={tempFilters.status || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              status: value === "all" ? null : value as typeof tempFilters.status,
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+                  {option.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Role Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Role</Label>
+        <Select
+          value={tempFilters.role || "all"}
+          onValueChange={(value) =>
+            setTempFilters({ ...tempFilters, role: value === "all" ? null : value as typeof tempFilters.role })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All roles</SelectItem>
+            {roleOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.status && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Status: {tempFilters.status.toLowerCase()}
+              </span>
+            )}
+            {tempFilters.role && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Role: {roleOptions.find(r => r.value === tempFilters.role)?.label}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function HotelListToolbar({
   table,
 }: {
   table: TableType<CustomPageStaffResponse>;
 }) {
-  const [searchParam, setSearchParam] = useQueryStates({
-    search: parseAsString.withDefault(""),
+  const [queryState, setQueryState] = useQueryStates({
+    search: parseAsString,
+    status: parseAsStringLiteral(["ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"]),
+    role: parseAsStringLiteral(["HOTEL_OWNER", "MANAGER", "FRONT_DESK", "MAINTENANCE", "INVENTORY", "BAR", "KITCHEN", "SUPER_ADMIN"]),
   });
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
@@ -133,6 +313,8 @@ function HotelListToolbar({
     [setSuccessDialogOpen]
   );
 
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div>
@@ -143,16 +325,63 @@ function HotelListToolbar({
         <div className="relative">
           <input
             type="text"
-            placeholder="Search"
-            value={searchParam.search}
+            placeholder="Search staff..."
+            value={queryState.search ?? ""}
             onChange={(e) =>
-              setSearchParam((prev) => ({ ...prev, search: e.target.value }))
+              setQueryState({ search: e.target.value || null })
             }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+        
+        <div className="flex items-center gap-2">
+          <TableFilter open={open} setOpen={setOpen}>
+            <StaffFilter
+              queryState={queryState}
+              setQueryState={setQueryState}
+              setOpen={setOpen}
+            />
+          </TableFilter>
+          
+          {/* Applied Filters Display */}
+          {(queryState.status || queryState.role) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {queryState.status && (
+                <>
+                  <span>Status:</span>
+                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                    {queryState.status}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQueryState({ status: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+              {queryState.role && (
+                <>
+                  <span>Role:</span>
+                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                    {queryState.role.replace('_', ' ')}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQueryState({ role: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         <AddNewStaffDialog />
 
