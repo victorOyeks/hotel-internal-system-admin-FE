@@ -3,8 +3,17 @@
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import type { Pagination } from "@/lib/fetch";
-import { SearchIcon } from "lucide-react";
-import { useQueryState, parseAsStringLiteral } from "nuqs";
+import { SearchIcon, RotateCcwIcon, XIcon } from "lucide-react";
+import { parseAsStringLiteral, useQueryStates, parseAsString } from "nuqs";
+import { useState, useMemo, useCallback } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 import {
   createColumnHelper,
@@ -36,11 +45,148 @@ import type { APIOutput } from "@/lib/action-utils";
 type GuestLog =
   APIOutput<"@get/api/front-desks/guest-logs">["data"]["content"][number];
 
-function RoomListToolbar({ table }: { table: TableType<GuestLog> }) {
-  const [roomStatus, setRoomStatus] = useQueryState(
-    "roomStatus",
-    parseAsStringLiteral(["AVAILABLE"])
+const GuestsFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    roomStatus: "AVAILABLE" | null;
+    search: string | null;
+    status: "RESERVED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    status: queryState.status || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      status: tempFilters.status,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters.status, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      status: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      roomStatus: queryState.roomStatus,
+      search: queryState.search,
+      status: null,
+    });
+  }, [queryState.roomStatus, queryState.search, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!tempFilters.status;
+    const hasAppliedFilters = !!queryState.status;
+    const appliedFiltersCount = queryState.status ? 1 : 0;
+    
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters.status, queryState.status]);
+
+  const statusOptions = useMemo(() => [
+    { value: "RESERVED", label: "Reserved", color: "bg-yellow-500" },
+    { value: "CHECKED_IN", label: "Checked In", color: "bg-blue-500" },
+    { value: "CHECKED_OUT", label: "Checked Out", color: "bg-red-500" },
+    { value: "CANCELLED", label: "Cancelled", color: "bg-gray-500" },
+  ], []);
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Guests</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Booking Status Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Booking Status</Label>
+        <Select
+          value={tempFilters.status || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              status: value === "all" ? null : (value as "RESERVED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED"),
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Guests" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Guests</SelectItem>
+            {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+                  {option.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.status && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Status: {statusOptions.find(s => s.value === tempFilters.status)?.label}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
   );
+};
+
+function RoomListToolbar({ table }: { table: TableType<GuestLog> }) {
+  const [queryStates, setQueryStates] = useQueryStates({
+    roomStatus: parseAsStringLiteral(["AVAILABLE"]),
+    search: parseAsString,
+    status: parseAsStringLiteral(["RESERVED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED"]),
+  });
+
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -48,46 +194,78 @@ function RoomListToolbar({ table }: { table: TableType<GuestLog> }) {
         <Button
           size="sm"
           variant="outline"
-          data-active={roomStatus === null}
-          onClick={() => setRoomStatus(null)}
+          data-active={queryStates.roomStatus === null}
+          onClick={() => setQueryStates({ roomStatus: null })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            roomStatus === null
+            queryStates.roomStatus === null
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
-          All Rooms{" "}
-          {roomStatus === null &&
+          All Guests{" "}
+          {queryStates.roomStatus === null &&
             `(${table.getRowCount() * table.getPageCount()})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={roomStatus === "AVAILABLE"}
-          onClick={() => setRoomStatus("AVAILABLE")}
+          data-active={queryStates.roomStatus === "AVAILABLE"}
+          onClick={() => setQueryStates({ roomStatus: "AVAILABLE" })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            roomStatus === "AVAILABLE"
+            queryStates.roomStatus === "AVAILABLE"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
-          Available Rooms{" "}
-          {roomStatus === "AVAILABLE" &&
+          Active Guests{" "}
+          {queryStates.roomStatus === "AVAILABLE" &&
             `(${table.getFilteredRowModel().rows.length})`}
         </Button>
-      </div>
-
-      <div className="flex items-center gap-x-2 ">
+      </div>        <div className="flex items-center gap-x-2">
         <div className="relative">
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search guests..."
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
+            value={queryStates.search ?? ""}
+            onChange={(e) =>
+              setQueryStates({ search: e.target.value || null })
+            }
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+        
+        <div className="flex items-center gap-2">
+          <TableFilter
+            open={open}
+            setOpen={setOpen}
+          >
+            <GuestsFilter
+              queryState={queryStates}
+              setQueryState={setQueryStates}
+              setOpen={setOpen}
+            />
+          </TableFilter>
+          
+          {/* Applied Filters Display */}
+          {queryStates.status && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>Status:</span>
+              <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium capitalize">
+                {queryStates.status.replace('_', ' ').toLowerCase()}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setQueryStates({ status: null })}
+              >
+                <XIcon className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

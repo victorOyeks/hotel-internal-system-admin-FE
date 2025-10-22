@@ -925,6 +925,15 @@ export const schema = createSchema({
         ),
       }),
     }),
+    query: z
+      .object({
+        search: z.string().nullable(),
+        hotelId: z.string().nullable(),
+        status: z.string().nullable(),
+        page: z.number().nullable().default(0),
+        size: z.number().nullable().default(10),
+      })
+      .partial(),
   },
 });
 
