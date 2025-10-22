@@ -201,9 +201,12 @@ const newStaffFormSchema = z.object({
   phoneNumber: z.string().nonempty("Phone number is required"),
   role: Role,
   staffId: z.string().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+  const [showPassword, setShowPassword] = useState(false);
+
   const { mutate, isPending } = useMutation({
     mutationFn: async (...params: Parameters<typeof onboardStaffToHotel>) => {
       const res = await onboardStaffToHotel(...params);
@@ -236,6 +239,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
       role: "FRONT_DESK",
       phoneNumber: "",
       staffId: "",
+      password: "",
     },
     progressive: true,
     mode: "onBlur",
@@ -270,7 +274,11 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             <FormItem>
               <FormLabel>Email address</FormLabel>
               <FormControl>
-                <Input placeholder="e.g john.doe@example.com" {...field} />
+                <Input
+                  placeholder="e.g john.doe@example.com"
+                  autoComplete="off"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -320,6 +328,41 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <div className="relative">
+                <FormControl>
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter a password"
+                    autoComplete="off"
+                    {...field}
+                  />
+                </FormControl>
+                <Button
+                  type="button"
+                  variant={"ghost"}
+                  size={"icon"}
+                  className="absolute right-0 top-1/2 -translate-y-1/2"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? (
+                    <EyeOffIcon className="h-4 w-4" />
+                  ) : (
+                    <EyeIcon className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           className="mt-4 w-full font-semibold"
@@ -339,7 +382,9 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
   );
 }
 
-const hotelOwnerStaffEditSchema = newStaffFormSchema;
+const hotelOwnerStaffEditSchema = newStaffFormSchema.omit({
+  password: true,
+});
 
 function UpdateHotelStaffForm({
   initialValues,
@@ -941,7 +986,7 @@ const columns = [
     header: "Phone Number",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
-    columnHelper.accessor("lastLogin", {
+  columnHelper.accessor("lastLogin", {
     header: "Last Login",
     cell: (info) => {
       const value = info.getValue();
