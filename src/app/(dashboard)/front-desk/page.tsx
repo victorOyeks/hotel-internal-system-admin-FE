@@ -52,7 +52,7 @@ function Page({ searchParams }: PageProps) {
           "@get/api/front-desks/all-rooms-by-type",
           {
             query: {
-              roomType: query["room:type"]!,
+              roomType: query["room:type"] ?? roomTypes[0],
             },
             signal,
             throw: true,

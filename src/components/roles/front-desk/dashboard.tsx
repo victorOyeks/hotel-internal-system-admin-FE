@@ -36,6 +36,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { parseAsString, useQueryStates } from "nuqs";
@@ -579,22 +580,13 @@ function SelectRoomBox({
       onOpenChange={(open) => {
         setOpen(open);
       }}
+      value={value}
       onValueChange={(value) => setValue(value)}
     >
-      <SelectTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between"
-        >
-          {value
-            ? rooms.find((room) => room === value)
-            : "Select room..."}
-          <ChevronsUpDown className="opacity-50" />
-        </Button>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select a room" />
       </SelectTrigger>
-      <SelectContent className="w-full p-0">
+      <SelectContent className="w-full">
         {
           rooms.map((room) => (
             <SelectItem key={room} value={room}>
@@ -720,15 +712,7 @@ export function CheckInForm({
               }
             >
               <SelectTrigger className="w-full">
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={false}
-                  className="w-full justify-between"
-                >
-                  {roomQuery["room:type"] || "Select room type..."}
-                  <ChevronsUpDown className="opacity-50" />
-                </Button>
+               <SelectValue placeholder="e.g Deluxe, Standard" />
               </SelectTrigger>
               <SelectContent className="w-full p-0">
                 {data.roomTypes.map((type) => (
@@ -983,16 +967,23 @@ export function ReservationForm({
 
           <div className="grid gap-2">
             <Label>Room Type</Label>
-            <Input
-              placeholder="e.g Deluxe, Standard"
-              value={roomQuery["room:type"]}
-              onChange={(e) =>
-                setRoomQuery((prev) => ({
-                  ...prev,
-                  "room:type": e.target.value,
-                }))
+            <Select
+              value={roomQuery["room:type"] ?? ""}
+              onValueChange={(value) =>
+                setRoomQuery({ "room:type": value })
               }
-            />
+            >
+              <SelectTrigger className="w-full">
+               <SelectValue placeholder="e.g Deluxe, Standard" />
+              </SelectTrigger>
+              <SelectContent className="w-full p-0">
+                {data.roomTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <FormField
@@ -1005,7 +996,7 @@ export function ReservationForm({
                   <SelectRoomBox
                     value={field.value}
                     setValue={field.onChange}
-                    rooms={data.roomTypes}
+                    rooms={data.rooms}
                   />
                 </FormControl>
                 <FormMessage />
