@@ -1,4 +1,4 @@
-import { LostItemPage } from "@/components/roles/front-desk/lost-&-found";
+import { FrontDeskLostItemStats, LostItemPage } from "@/components/roles/front-desk/lost-&-found";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
@@ -47,7 +47,30 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
-  return <LostItemPage data={lostItems} paginationMeta={pagination} />;
+  const lostItemStats = use(
+    queryClient.ensureQueryData({
+      queryKey: ["front-desks", "lost-and-found", "stats"],
+      queryFn: async ({ signal }) => {
+        const response = await $fetch(
+          "@get/api/front-desks/lost-and-found/stats",
+          {
+            signal,
+            throw: true,
+            auth: { type: "Bearer", token },
+          }
+        );
+
+        return response.data;
+      },
+    })
+  );
+
+  return (
+    <div className="space-y-4 px-4">
+      <FrontDeskLostItemStats stats={lostItemStats} />
+      <LostItemPage data={lostItems} paginationMeta={pagination} />
+    </div>
+  );
 }
 
 export default Page;

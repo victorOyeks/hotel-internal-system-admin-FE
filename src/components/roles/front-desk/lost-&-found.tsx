@@ -1,7 +1,7 @@
 "use client";
 
 import { TableFilter } from "@/components/shared/table-filter";
-import { SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon, Trash2Icon, CircleDotDashedIcon } from "lucide-react";
+import { SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon, Trash2Icon, CircleDotDashedIcon, BedIcon } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryStates, parseAsString, parseAsStringLiteral, type ParserBuilder, type SetValues } from "nuqs";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DatePicker } from "@/components/shared/date-picker";
 import { formatDate } from "date-fns";
+import { APIOutput } from "@/lib/action-utils";
+import { cn } from "@/lib/utils";
 
 function LostItemFilter({
   queryState,
@@ -652,6 +654,54 @@ function LostItemTable({ table }: { table: TableType<LostItem> }) {
   );
 }
 
+export function FrontDeskLostItemStats({
+  stats,
+}: {
+  stats: APIOutput<"@get/api/front-desks/lost-and-found/stats">["data"];
+}) {
+  const data = [
+    {
+      label: "Total Items",
+      value: stats.totalItems,
+      color: "text-green-500 bg-green-500/10",
+    },
+    {
+      label: "Total Claimed Items",
+      value: stats.claimedItems,
+      color: "text-blue-500 bg-blue-500/10",
+    },
+    {
+      label: "Total unclaimed Items",
+      value: stats.unclaimedItems,
+      color: "text-red-500 bg-red-500/10",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      {data.map((stat) => (
+        <div
+          key={stat.label}
+          className="bg-card border border-primary-5/10 rounded-xl md:rounded-2xl p-3 flex flex-col gap-y-4"
+        >
+          <div
+            className={cn(
+              "size-10 rounded-full flex items-center justify-center mb-2",
+              stat.color
+            )}
+          >
+            <BedIcon />
+          </div>
+          <div className="space-y-2">
+            <div className="text-sm text-muted-foreground">{stat.label}</div>
+            <div className="text-2xl font-medium">{stat.value}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function LostItemPage({
   data,
   paginationMeta,
@@ -676,7 +726,7 @@ export function LostItemPage({
   });
 
   return (
-    <div className="space-y-4 px-4">
+    <div className="space-y-4">
       <Toolbar table={table} />
       <LostItemTable table={table} />
     </div>

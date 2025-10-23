@@ -961,24 +961,6 @@ export const schema = createSchema({
       .partial(),
   },
   "@get/api/front-desks/lost-and-found": {
-    /**
-        "id": "string",
-        "customId": "string",
-        "itemName": "string",
-        "description": "string",
-        "imageUrl": "string",
-        "roomIdentifier": "string",
-        "dateFound": "2025-10-22",
-        "claimStatus": "UNCLAIMED",
-        "claimedBy": "string",
-        "claimedDate": "2025-10-22T14:48:30.433Z",
-        "claimNotes": "string",
-        "hotelName": "string",
-        "loggedBy": "string",
-        "createdAt": "2025-10-22T14:48:30.433Z",
-        "updatedAt": "2025-10-22T14:48:30.433Z"
-     */
-
     output: ApiResponseLostItem,
     query: z
       .object({
@@ -990,6 +972,15 @@ export const schema = createSchema({
         dateTo: z.string().nullable(),
       })
       .partial(),
+  },
+  "@get/api/front-desks/lost-and-found/stats": {
+    output: ApiResponseObject.extend({
+      data: z.object({
+        totalItems: z.number(),
+        unclaimedItems: z.number(),
+        claimedItems: z.number(),
+      }),
+    }),
   }
 });
 
