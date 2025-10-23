@@ -138,3 +138,30 @@ export async function checkOutGuest({
     data: response.data,
   };
 }
+
+export async function reportLostItem(payload: APIInput<"@post/api/front-desks/lost-and-found">): ServerActionResponseFromEndpoint<"@post/api/front-desks/lost-and-found"> {
+  const { token } = await verifySession("FRONT_DESK");
+
+  const response = await $fetch("@post/api/front-desks/lost-and-found", {
+    body: {
+      ...payload,
+    },
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  if (response.error) {
+    return {
+      success: false,
+      error:
+        response.error.message || "An error occurred while reporting the item.",
+    };
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}

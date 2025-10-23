@@ -49,7 +49,11 @@ import { parseAsString, useQueryStates } from "nuqs";
 import type * as React from "react";
 import type { RoomDetails } from "@/lib/fetch";
 import { useMutation } from "@tanstack/react-query";
-import { checkInGuest, makeReservation } from "@/lib/front-desk-actions";
+import {
+  checkInGuest,
+  makeReservation,
+  reportLostItem,
+} from "@/lib/front-desk-actions";
 import { toast } from "sonner";
 import { revalidateRoute } from "@/lib/actions";
 import type { APIOutput } from "@/lib/action-utils";
@@ -163,16 +167,21 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
         finalData.imageUrl = imageUrl;
       }
 
-      // Simulate API call for reporting lost item
-      console.log("Reporting lost item:", finalData);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await reportLostItem(finalData);
+      if (!response.success) {
+        throw new Error(response.error || "Failed to report lost item");
+      }
+
       return { message: "Lost item reported successfully" };
     },
-    onError: () => {
-      toast.error("An error occurred while reporting the lost item.");
+    onError: (e) => {
+      toast.error("Something went wrong while reporting the lost item.", {
+        description: e.message,
+      });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(data.message || "Lost item reported successfully.");
+      await revalidateRoute("/front-desk/lost-and-found");
       form.reset();
       setSelectedImage(null);
       setImagePreview(null);
@@ -432,7 +441,10 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                       Date Found:
                     </span>
                     <span className="text-orange-800">
-                      {formatDate(new Date(form.watch("dateFound")), "MMMM d, yyyy")}
+                      {formatDate(
+                        new Date(form.watch("dateFound")),
+                        "MMMM d, yyyy"
+                      )}
                     </span>
                   </div>
 
@@ -650,7 +662,6 @@ function SelectRoomBox({
     </Popover>
   );
 }
-
 
 export function CheckInForm({
   data,

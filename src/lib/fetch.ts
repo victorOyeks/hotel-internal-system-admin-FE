@@ -973,6 +973,16 @@ export const schema = createSchema({
       })
       .partial(),
   },
+  "@post/api/front-desks/lost-and-found": {
+    input: z.object({
+      itemName: z.string().nonempty(),
+      description: z.string().nonempty(),
+      imageUrl: z.string().url().nullable().optional(),
+      roomIdentifier: z.string().nonempty(),
+      dateFound: z.string().nonempty(), // yyyy-mm-dd
+    }),
+    output: ApiResponseObject
+  },
   "@get/api/front-desks/lost-and-found/stats": {
     output: ApiResponseObject.extend({
       data: z.object({
