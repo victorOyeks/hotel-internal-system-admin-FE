@@ -527,7 +527,9 @@ const ApiResponseLostItem = ApiResponseObject.extend({
   }),
 });
 
-export type LostItem = z.infer<typeof ApiResponseLostItem>["data"]["content"][number];
+export type LostItem = z.infer<
+  typeof ApiResponseLostItem
+>["data"]["content"][number];
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -899,7 +901,7 @@ export const schema = createSchema({
         roomType: z.string(),
         status: BookingStatus,
         message: z.string(),
-      })
+      }),
     }),
   },
   "@get/api/front-desks/dashboard-cards": {
@@ -913,17 +915,21 @@ export const schema = createSchema({
     }),
   },
   "@get/api/front-desks/bookings": {
-    output: ApiResponseListBookingViewResponse.and(z.object({
-      data: Pagination.extend({
-        content: z.array(BookingViewResponse.extend({
-          amountPaid: z.number().min(0),
-          id: z.string(),
-          customId: z.string(),
-          guestPhoneNumber: z.string(),
-          roomIdentifier: z.string(),
-        })),
-      }),
-    })),
+    output: ApiResponseListBookingViewResponse.and(
+      z.object({
+        data: Pagination.extend({
+          content: z.array(
+            BookingViewResponse.extend({
+              amountPaid: z.number().min(0),
+              id: z.string(),
+              customId: z.string(),
+              guestPhoneNumber: z.string(),
+              roomIdentifier: z.string(),
+            })
+          ),
+        }),
+      })
+    ),
     query: z
       .object({
         bookingStatus: BookingStatus.nullable(),
@@ -978,10 +984,10 @@ export const schema = createSchema({
       itemName: z.string().nonempty(),
       description: z.string().nonempty(),
       imageUrl: z.string().url().nullable().optional(),
-      roomIdentifier: z.string().nonempty(),
+      roomIdentifier: z.string().nonempty().optional(),
       dateFound: z.string().nonempty(), // yyyy-mm-dd
     }),
-    output: ApiResponseObject
+    output: ApiResponseObject,
   },
   "@get/api/front-desks/lost-and-found/stats": {
     output: ApiResponseObject.extend({
@@ -990,9 +996,23 @@ export const schema = createSchema({
         unclaimedItems: z.number(),
         claimedItems: z.number(),
       }),
-    }),
-  }
-});
+    })
+  },
+    "@get/api/front-desks/all-room-types": {
+      output: ApiResponseObject.extend({
+        data: z.array(z.string()),
+      }),
+    },
+    "@get/api/front-desks/all-rooms-by-type": {
+      query: z.object({
+        roomType: z.string().nonempty(),
+      }),
+      output: ApiResponseObject.extend({
+        data: z.array(z.string()),
+      }),
+    },
+  },
+);
 
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,

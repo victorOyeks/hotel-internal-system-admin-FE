@@ -32,18 +32,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, ChevronsUpDown } from "lucide-react";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { parseAsString, useQueryStates } from "nuqs";
 import type * as React from "react";
@@ -55,7 +48,7 @@ import {
   reportLostItem,
 } from "@/lib/front-desk-actions";
 import { toast } from "sonner";
-import { revalidateRoute } from "@/lib/actions";
+import { revalidateRoute, uploadImage } from "@/lib/actions";
 import type { APIOutput } from "@/lib/action-utils";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { atom, useAtom, useSetAtom } from "jotai";
@@ -131,7 +124,6 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
       itemName: "",
       description: "",
       imageUrl: "",
-      roomIdentifier: "",
       dateFound: new Date().toISOString().split("T")[0],
     },
   });
@@ -150,11 +142,12 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
     }
   };
 
-  const uploadImageToUrl = async (file: File): Promise<string> => {
-    // Simulate image upload and return URL
-    // In real implementation, this would upload to cloud storage
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return `https://example.com/images/${file.name}-${Date.now()}`;
+  const uploadImageToUrl = async (file: File) => {
+    const data = await uploadImage({ file });
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    return data.data?.url!;  
   };
 
   const { isPending, mutate } = useMutation({
@@ -194,7 +187,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
     <Form {...form}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <FormField
               control={form.control}
               name="itemName"
@@ -207,32 +200,11 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                       {...field}
                     />
                   </FormControl>
-                  <div className="grid grid-cols-2 gap-1 mt-2">
-                    {[
-                      "Phone",
-                      "Wallet",
-                      "Keys",
-                      "Jewelry",
-                      "Glasses",
-                      "Charger",
-                    ].map((item) => (
-                      <Button
-                        key={item}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7 px-2 truncate"
-                        onClick={() => field.onChange(item)}
-                      >
-                        {item}
-                      </Button>
-                    ))}
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
+            {/* <FormField
               control={form.control}
               name="roomIdentifier"
               render={({ field }) => (
@@ -265,7 +237,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
           </div>
 
           <FormField
@@ -426,14 +398,14 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                         {form.watch("itemName")}
                       </span>
                     </div>
-                    <div>
+                    {/* <div>
                       <span className="text-orange-700 font-medium block">
                         Location:
                       </span>
                       <span className="text-orange-800">
                         {form.watch("roomIdentifier")}
                       </span>
-                    </div>
+                    </div> */}
                   </div>
 
                   <div>
@@ -515,7 +487,10 @@ function CreateNewBookingForm({
 }: {
   setOpen: (open: boolean) => void;
   open: boolean;
-  data: RoomDetails[];
+  data: {
+    rooms: Array<string>;
+    roomTypes: Array<string>;
+  }
 }) {
   const [view, setView] = useState<"check-in" | "reservation">("check-in");
   return (
@@ -584,7 +559,7 @@ const lostItemFormSchema = z.object({
   itemName: z.string().nonempty("Item name is required"),
   description: z.string().nonempty("Description is required"),
   imageUrl: z.url("Please enter a valid URL").optional().or(z.literal("")),
-  roomIdentifier: z.string().nonempty("Room identifier is required"),
+  // roomIdentifier: z.string().nonempty("Room identifier is required"),
   dateFound: z.string().nonempty("Date found is required"),
 });
 
@@ -592,25 +567,21 @@ function SelectRoomBox({
   value,
   setValue,
   rooms,
-  searchValue,
-  setSearchValue,
 }: {
   value: string;
   setValue: (value: string) => void;
-  rooms: Array<{ id: string; roomIdentifier: string }>;
-  searchValue: string;
-  setSearchValue: (value: string) => void;
+  rooms: Array<string>;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover
+    <Select
       open={open}
       onOpenChange={(open) => {
         setOpen(open);
-        setSearchValue("");
       }}
+      onValueChange={(value) => setValue(value)}
     >
-      <PopoverTrigger asChild>
+      <SelectTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
@@ -618,48 +589,21 @@ function SelectRoomBox({
           className="w-full justify-between"
         >
           {value
-            ? rooms.find((room) => room.roomIdentifier === value)
-                ?.roomIdentifier
+            ? rooms.find((room) => room === value)
             : "Select room..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search room..."
-            className="h-9"
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
-          <CommandList>
-            <CommandEmpty>No room found.</CommandEmpty>
-            <CommandGroup>
-              {rooms.map((room) => (
-                <CommandItem
-                  key={room.id}
-                  value={room.roomIdentifier}
-                  onSelect={(currentValue) => {
-                    setValue(currentValue === value ? "" : currentValue);
-                    setOpen(false);
-                  }}
-                >
-                  {room.roomIdentifier}
-                  <Check
-                    className={cn(
-                      "ml-auto",
-                      value === room.roomIdentifier
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      </SelectTrigger>
+      <SelectContent className="w-full p-0">
+        {
+          rooms.map((room) => (
+            <SelectItem key={room} value={room}>
+              {room}
+            </SelectItem>
+          ))
+        }
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -667,13 +611,15 @@ export function CheckInForm({
   data,
   setOpen,
 }: {
-  data: RoomDetails[];
+  data: {
+    rooms: Array<string>;
+    roomTypes: Array<string>;
+  };
   setOpen: (open: boolean) => void;
 }) {
   const setShowSuccessDialog = useSetAtom(successDialogAtom);
 
   const [roomQuery, setRoomQuery] = useQueryStates({
-    "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
   });
 
@@ -724,7 +670,6 @@ export function CheckInForm({
   useEffect(() => {
     return () => {
       setRoomQuery({
-        "room:search": "",
         "room:type": "",
       });
     };
@@ -768,16 +713,31 @@ export function CheckInForm({
 
           <div className="grid gap-2">
             <Label>Room Type</Label>
-            <Input
-              placeholder="e.g Deluxe, Standard"
+            <Select
               value={roomQuery["room:type"]}
-              onChange={(e) =>
-                setRoomQuery((prev) => ({
-                  ...prev,
-                  "room:type": e.target.value,
-                }))
+              onValueChange={(value) =>
+                setRoomQuery({ "room:type": value })
               }
-            />
+            >
+              <SelectTrigger className="w-full">
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={false}
+                  className="w-full justify-between"
+                >
+                  {roomQuery["room:type"] || "Select room type..."}
+                  <ChevronsUpDown className="opacity-50" />
+                </Button>
+              </SelectTrigger>
+              <SelectContent className="w-full p-0">
+                {data.roomTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <FormField
@@ -790,14 +750,7 @@ export function CheckInForm({
                   <SelectRoomBox
                     value={field.value}
                     setValue={field.onChange}
-                    rooms={data}
-                    searchValue={roomQuery["room:search"]}
-                    setSearchValue={(value) =>
-                      setRoomQuery((prev) => ({
-                        ...prev,
-                        "room:search": value,
-                      }))
-                    }
+                    rooms={data.rooms}
                   />
                 </FormControl>
                 <FormMessage />
@@ -891,7 +844,10 @@ export function ReservationForm({
   data,
   setOpen,
 }: {
-  data: RoomDetails[];
+  data: {
+    rooms: Array<string>;
+    roomTypes: Array<string>;
+  };
   setOpen: (open: boolean) => void;
 }) {
   const [roomQuery, setRoomQuery] = useQueryStates({
@@ -1049,14 +1005,7 @@ export function ReservationForm({
                   <SelectRoomBox
                     value={field.value}
                     setValue={field.onChange}
-                    rooms={data}
-                    searchValue={roomQuery["room:search"]}
-                    setSearchValue={(value) =>
-                      setRoomQuery((prev) => ({
-                        ...prev,
-                        "room:search": value,
-                      }))
-                    }
+                    rooms={data.roomTypes}
                   />
                 </FormControl>
                 <FormMessage />
@@ -1139,7 +1088,7 @@ const actions = [
   },
 ];
 
-export function QuickActions({ rooms }: { rooms: RoomDetails[] }) {
+export function QuickActions({ rooms, roomTypes }: { rooms: string[]; roomTypes: string[] }) {
   const [open, setOpen] = useState<false | string>(false);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
 
@@ -1176,7 +1125,10 @@ export function QuickActions({ rooms }: { rooms: RoomDetails[] }) {
                   <Component
                     setOpen={(open) => setOpen(open ? key : false)}
                     open={open === key}
-                    data={rooms}
+                    data={{
+                      rooms,
+                      roomTypes,
+                    }}
                   />
                 )}
               </BaseModal>
