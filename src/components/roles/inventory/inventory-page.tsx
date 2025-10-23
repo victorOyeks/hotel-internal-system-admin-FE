@@ -2,6 +2,7 @@
 
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
+
 import type {
   InventoryItemResponse,
   InventoryRestockRequest,
@@ -20,7 +21,10 @@ import {
   useQueryStates,
   type Values,
 } from "nuqs";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { RotateCcwIcon, XIcon } from "lucide-react";
 import { AllItemsTable } from "./all-items-table";
 import {
   Table,
@@ -36,6 +40,224 @@ import { RestockRequestTable } from "./restock-request";
 
 type SectionType = "issued" | "stock-request" | null;
 
+const InventoryFilter = ({
+  queryState,
+  setQueryState,
+}: {
+  queryState: {
+    section: "issued" | "stock-request" | null;
+    page: number | null;
+    searchName: string | null;
+    category: string | null;
+    availability: string | null;
+    department: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    category: queryState.category || null,
+    availability: queryState.availability || null,
+    department: queryState.department || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      category: tempFilters.category,
+      availability: tempFilters.availability,
+      department: tempFilters.department,
+    });
+  }, [queryState, tempFilters, setQueryState]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      category: null,
+      availability: null,
+      department: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      section: queryState.section,
+      page: queryState.page,
+      searchName: queryState.searchName,
+      category: null,
+      availability: null,
+      department: null,
+    });
+  }, [queryState.section, queryState.page, queryState.searchName, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!(tempFilters.category || tempFilters.availability || tempFilters.department);
+    const hasAppliedFilters = !!(queryState.category || queryState.availability || queryState.department);
+    const appliedFiltersCount = [queryState.category, queryState.availability, queryState.department].filter(Boolean).length;
+    
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters, queryState.category, queryState.availability, queryState.department]);
+
+  const categoryOptions = useMemo(() => [
+    { value: "ELECTRONICS", label: "Electronics" },
+    { value: "FURNITURE", label: "Furniture" },
+    { value: "CLEANING", label: "Cleaning Supplies" },
+    { value: "KITCHEN", label: "Kitchen" },
+    { value: "OFFICE", label: "Office Supplies" },
+    { value: "MAINTENANCE", label: "Maintenance" },
+  ], []);
+
+  const availabilityOptions = useMemo(() => [
+    { value: "IN_STOCK", label: "In Stock" },
+    { value: "OUT_OF_STOCK", label: "Out of Stock" },
+    { value: "LOW_STOCK", label: "Low Stock" },
+  ], []);
+
+  const departmentOptions = useMemo(() => [
+    { value: "HOUSEKEEPING", label: "Housekeeping" },
+    { value: "FRONT_DESK", label: "Front Desk" },
+    { value: "KITCHEN", label: "Kitchen" },
+    { value: "MAINTENANCE", label: "Maintenance" },
+    { value: "MANAGEMENT", label: "Management" },
+  ], []);
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Inventory</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Category Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Category</Label>
+        <Select
+          value={tempFilters.category || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              category: value === "all" ? null : value,
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categoryOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Availability Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Availability</Label>
+        <Select
+          value={tempFilters.availability || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              availability: value === "all" ? null : value,
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Availability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Availability</SelectItem>
+            {availabilityOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Department Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Department</Label>
+        <Select
+          value={tempFilters.department || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              department: value === "all" ? null : value,
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departmentOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.category && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                Category: {categoryOptions.find(c => c.value === tempFilters.category)?.label}
+              </span>
+            )}
+            {tempFilters.availability && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                Availability: {availabilityOptions.find(a => a.value === tempFilters.availability)?.label}
+              </span>
+            )}
+            {tempFilters.department && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
+                Department: {departmentOptions.find(d => d.value === tempFilters.department)?.label}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 function InventoryTableToolbar({
   currentSection,
   query,
@@ -46,16 +268,22 @@ function InventoryTableToolbar({
     section: ParserBuilder<"issued" | "stock-request">;
     page: ParserBuilder<number>;
     searchName: ParserBuilder<string>;
+    category: ParserBuilder<string>;
+    availability: ParserBuilder<string>;
+    department: ParserBuilder<string>;
   }>
   setQuery: SetValues<{
     section: ParserBuilder<"issued" | "stock-request">;
     page: ParserBuilder<number>;
     searchName: ParserBuilder<string>;
+    category: ParserBuilder<string>;
+    availability: ParserBuilder<string>;
+    department: ParserBuilder<string>;
 }>;
 }) {
 
   const resetToSection = (section: SectionType) => {
-    setQuery({ section, page: null, searchName: null });
+    setQuery({ section, page: null, searchName: null, category: null, availability: null, department: null });
   };
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -120,7 +348,68 @@ function InventoryTableToolbar({
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+        <div className="flex items-center gap-2">
+          <TableFilter>
+            <InventoryFilter
+              queryState={query}
+              setQueryState={setQuery}
+            />
+          </TableFilter>
+          
+          {/* Applied Filters Display */}
+          {(query.category || query.availability || query.department) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {query.category && (
+                <div className="flex items-center gap-1">
+                  <span>Category:</span>
+                  <span className="bg-secondary px-2 py-1 rounded-md font-medium">
+                    {query.category}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQuery({ category: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {query.availability && (
+                <div className="flex items-center gap-1">
+                  <span>Availability:</span>
+                  <span className="bg-secondary px-2 py-1 rounded-md font-medium">
+                    {query.availability}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQuery({ availability: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {query.department && (
+                <div className="flex items-center gap-1">
+                  <span>Department:</span>
+                  <span className="bg-secondary px-2 py-1 rounded-md font-medium">
+                    {query.department}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQuery({ department: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -139,6 +428,9 @@ function InventoryOfficerInventoryTable({
     section: parseAsStringLiteral(["issued", "stock-request"]),
     page: parseAsInteger,
     searchName: parseAsString,
+    category: parseAsString,
+    availability: parseAsString,
+    department: parseAsString,
   });
 
   // pending state for reconciling client and server section

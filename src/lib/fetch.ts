@@ -503,8 +503,33 @@ export type InventorySuppliers = z.infer<
 >["data"]["content"][number];
 export type InventorySupplierItem = InventorySuppliers["items"][number];
 
-// --- Main Fetch Schema ---
+const ApiResponseLostItem = ApiResponseObject.extend({
+  data: Pagination.extend({
+    content: z.array(
+      z.object({
+        id: z.string(),
+        customId: z.string(),
+        itemName: z.string(),
+        description: z.string(),
+        imageUrl: z.string().nullable(),
+        roomIdentifier: z.string(),
+        dateFound: z.coerce.date(),
+        claimStatus: z.enum(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
+        claimedBy: z.string().nullable(),
+        claimedDate: z.coerce.date().nullable(),
+        claimNotes: z.string().nullable(),
+        hotelName: z.string(),
+        loggedBy: z.string(),
+        createdAt: z.coerce.date(),
+        updatedAt: z.coerce.date(),
+      })
+    ),
+  }),
+});
 
+export type LostItem = z.infer<typeof ApiResponseLostItem>["data"]["content"][number];
+
+// --- Main Fetch Schema ---
 export const schema = createSchema({
   // Auth APIs
   "@post/api/auth/sign-in": {
@@ -935,6 +960,37 @@ export const schema = createSchema({
       })
       .partial(),
   },
+  "@get/api/front-desks/lost-and-found": {
+    /**
+        "id": "string",
+        "customId": "string",
+        "itemName": "string",
+        "description": "string",
+        "imageUrl": "string",
+        "roomIdentifier": "string",
+        "dateFound": "2025-10-22",
+        "claimStatus": "UNCLAIMED",
+        "claimedBy": "string",
+        "claimedDate": "2025-10-22T14:48:30.433Z",
+        "claimNotes": "string",
+        "hotelName": "string",
+        "loggedBy": "string",
+        "createdAt": "2025-10-22T14:48:30.433Z",
+        "updatedAt": "2025-10-22T14:48:30.433Z"
+     */
+
+    output: ApiResponseLostItem,
+    query: z
+      .object({
+        page: z.number().nullable().default(0),
+        size: z.number().nullable().default(10),
+        claimStatus: z.string().nullable(),
+        search: z.string().nullable(),
+        dateFrom: z.string().nullable(),
+        dateTo: z.string().nullable(),
+      })
+      .partial(),
+  }
 });
 
 export const $fetch = createFetch({

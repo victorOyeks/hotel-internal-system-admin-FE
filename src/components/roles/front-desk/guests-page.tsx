@@ -52,9 +52,8 @@ const GuestsFilter = ({
 }: {
   setOpen: (open: boolean) => void;
   queryState: {
-    roomStatus: "AVAILABLE" | null;
     search: string | null;
-    status: "RESERVED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | null;
+    status: | "RESERVED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | null;
   };
   setQueryState: (state: Partial<typeof queryState>) => void;
 }) => {
@@ -77,11 +76,10 @@ const GuestsFilter = ({
     };
     setTempFilters(clearedFilters);
     setQueryState({
-      roomStatus: queryState.roomStatus,
       search: queryState.search,
       status: null,
     });
-  }, [queryState.roomStatus, queryState.search, setQueryState]);
+  }, [queryState.search, setQueryState]);
 
   // Memoize filter state computations
   const filterStates = useMemo(() => {
@@ -181,7 +179,6 @@ const GuestsFilter = ({
 
 function RoomListToolbar({ table }: { table: TableType<GuestLog> }) {
   const [queryStates, setQueryStates] = useQueryStates({
-    roomStatus: parseAsStringLiteral(["AVAILABLE"]),
     search: parseAsString,
     status: parseAsStringLiteral(["RESERVED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED"]),
   });
@@ -194,35 +191,36 @@ function RoomListToolbar({ table }: { table: TableType<GuestLog> }) {
         <Button
           size="sm"
           variant="outline"
-          data-active={queryStates.roomStatus === null}
-          onClick={() => setQueryStates({ roomStatus: null })}
+          data-active={queryStates.status === null}
+          onClick={() => setQueryStates({ status: null })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            queryStates.roomStatus === null
+            queryStates.status === null
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
           All Guests{" "}
-          {queryStates.roomStatus === null &&
+          {queryStates.status === null &&
             `(${table.getRowCount() * table.getPageCount()})`}
         </Button>
 
         <Button
           size="sm"
           variant="outline"
-          data-active={queryStates.roomStatus === "AVAILABLE"}
-          onClick={() => setQueryStates({ roomStatus: "AVAILABLE" })}
+          data-active={queryStates.status === "CHECKED_IN"}
+          onClick={() => setQueryStates({ status: "CHECKED_IN" })}
           className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            queryStates.roomStatus === "AVAILABLE"
+            queryStates.status === "CHECKED_IN"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
           }`}
         >
           Active Guests{" "}
-          {queryStates.roomStatus === "AVAILABLE" &&
+          {queryStates.status === "CHECKED_IN" &&
             `(${table.getFilteredRowModel().rows.length})`}
         </Button>
-      </div>        <div className="flex items-center gap-x-2">
+      </div>
+      <div className="flex items-center gap-x-2">
         <div className="relative">
           <input
             type="text"
