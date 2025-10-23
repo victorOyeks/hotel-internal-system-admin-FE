@@ -16,6 +16,10 @@ const loadSearchParams = createLoader({
   search: parseAsString,
   dateFrom: parseAsString,
   dateTo: parseAsString,
+}, {
+  urlKeys: {
+    claimStatus: "status",
+  }
 });
 
 function Page({ searchParams }: PageProps) {

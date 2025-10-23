@@ -46,9 +46,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { parseAsString, useQueryStates } from "nuqs";
-import * as React from "react";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+import type * as React from "react";
 import type { RoomDetails } from "@/lib/fetch";
 import { useMutation } from "@tanstack/react-query";
 import { checkInGuest, makeReservation } from "@/lib/front-desk-actions";
@@ -57,6 +55,8 @@ import { revalidateRoute } from "@/lib/actions";
 import type { APIOutput } from "@/lib/action-utils";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { atom, useAtom, useSetAtom } from "jotai";
+import { DatePicker } from "@/components/shared/date-picker";
+import { formatDate } from "date-fns";
 
 const successDialogAtom = atom({
   show: false,
@@ -432,7 +432,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                       Date Found:
                     </span>
                     <span className="text-orange-800">
-                      {formatDate(new Date(form.watch("dateFound")))}
+                      {formatDate(new Date(form.watch("dateFound")), "MMMM d, yyyy")}
                     </span>
                   </div>
 
@@ -651,115 +651,6 @@ function SelectRoomBox({
   );
 }
 
-function formatDate(date: Date | undefined) {
-  if (!date) {
-    return "";
-  }
-
-  return date.toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function isValidDate(date: Date | undefined) {
-  if (!date) {
-    return false;
-  }
-  return !Number.isNaN(date.getTime());
-}
-
-function DatePicker({
-  initialDate,
-  onChange,
-  placeholder = "Select date",
-  minDate,
-}: {
-  initialDate: string;
-  onChange: (date: string) => void;
-  placeholder?: string;
-  minDate?: Date;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<Date | undefined>(
-    initialDate ? new Date(initialDate) : undefined
-  );
-  const [month, setMonth] = React.useState<Date | undefined>(
-    date || new Date()
-  );
-  const [value, setValue] = React.useState(
-    initialDate ? formatDate(new Date(initialDate)) : ""
-  );
-
-  // Update form when date changes
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate && isValidDate(newDate)) {
-      const dateString = newDate.toISOString().split("T")[0];
-      onChange(dateString);
-    }
-  };
-
-  return (
-    <div>
-      {" "}
-      <div className="relative h-auto">
-        <Input
-          value={value}
-          placeholder={placeholder}
-          className="bg-background pr-10"
-          onChange={(e) => {
-            const newDate = new Date(e.target.value);
-            setValue(e.target.value);
-            if (isValidDate(newDate)) {
-              setDate(newDate);
-              setMonth(newDate);
-              handleDateChange(newDate);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-        />
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
-            >
-              <CalendarIcon className="size-3.5" />
-              <span className="sr-only">Select date</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-auto overflow-hidden p-0"
-            align="end"
-            alignOffset={-8}
-            sideOffset={10}
-          >
-            <Calendar
-              mode="single"
-              selected={date}
-              captionLayout="dropdown"
-              month={month}
-              onMonthChange={setMonth}
-              disabled={(date) => (minDate ? date < minDate : false)}
-              onSelect={(selectedDate) => {
-                setDate(selectedDate);
-                setValue(formatDate(selectedDate));
-                handleDateChange(selectedDate);
-                setOpen(false);
-              }}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
-  );
-}
 
 export function CheckInForm({
   data,

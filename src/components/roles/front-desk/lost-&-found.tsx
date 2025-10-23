@@ -2,9 +2,8 @@
 
 import { TableFilter } from "@/components/shared/table-filter";
 import { SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon, Trash2Icon, CircleDotDashedIcon } from "lucide-react";
-import NextImage from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
+import { useQueryStates, parseAsString, parseAsStringLiteral, type ParserBuilder, type SetValues } from "nuqs";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,8 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
-  CellContext,
+  type CellContext,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -40,19 +40,32 @@ import {
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DatePicker } from "@/components/shared/date-picker";
+import { formatDate } from "date-fns";
 
 function LostItemFilter({
   queryState,
   setQueryState,
+  setOpen
 }: {
   queryState: {
     search: string | null;
     status: "UNCLAIMED" | "CLAIMED" | "DISPOSED" | null;
+    dateFrom: string | null;
+    dateTo: string | null;
   };
-  setQueryState: (state: Partial<typeof queryState>) => void;
+  setQueryState: SetValues<{
+    search: ParserBuilder<string>;
+    status: ParserBuilder<"UNCLAIMED" | "CLAIMED" | "DISPOSED">;
+    dateFrom: ParserBuilder<string>;
+    dateTo: ParserBuilder<string>;
+  }>;
+  setOpen: (open: boolean) => void;
 }) {
   const [tempFilters, setTempFilters] = useState({
     status: queryState.status || null,
+    dateFrom: queryState.dateFrom || null,
+    dateTo: queryState.dateTo || null,
   });
 
   // Memoized callback functions to prevent unnecessary re-renders
@@ -60,32 +73,39 @@ function LostItemFilter({
     setQueryState({
       ...queryState,
       status: tempFilters.status,
+      dateFrom: tempFilters.dateFrom,
+      dateTo: tempFilters.dateTo,
     });
-  }, [queryState, tempFilters.status, setQueryState]);
+    setOpen(false);
+  }, [queryState, tempFilters, setQueryState, setOpen]);
 
   const clearFilters = useCallback(() => {
     const clearedFilters = {
       status: null,
+      dateFrom: null,
+      dateTo: null,
     };
     setTempFilters(clearedFilters);
     setQueryState({
       search: queryState.search,
       status: null,
+      dateFrom: null,
+      dateTo: null,
     });
   }, [queryState.search, setQueryState]);
 
   // Memoize filter state computations
   const filterStates = useMemo(() => {
-    const hasActiveFilters = !!tempFilters.status;
-    const hasAppliedFilters = !!queryState.status;
-    const appliedFiltersCount = queryState.status ? 1 : 0;
+    const hasActiveFilters = !!(tempFilters.status || tempFilters.dateFrom || tempFilters.dateTo);
+    const hasAppliedFilters = !!(queryState.status || queryState.dateFrom || queryState.dateTo);
+    const appliedFiltersCount = [queryState.status, queryState.dateFrom, queryState.dateTo].filter(Boolean).length;
 
     return {
       hasActiveFilters,
       hasAppliedFilters,
       appliedFiltersCount,
     };
-  }, [tempFilters.status, queryState.status]);
+  }, [tempFilters.status, tempFilters.dateFrom, tempFilters.dateTo, queryState.status, queryState.dateFrom, queryState.dateTo]);
 
   const statusOptions = useMemo(
     () => [
@@ -143,6 +163,37 @@ function LostItemFilter({
         </Select>
       </div>
 
+      {/* Date Range Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Date Found Range</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">From</Label>
+                <DatePicker
+                  initialDate={tempFilters.dateFrom || ""}
+                  onChange={(date) => {
+                    setTempFilters({
+                      ...tempFilters,
+                      dateFrom: date || null,
+                    });
+                  }}
+                />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <DatePicker
+              initialDate={tempFilters.dateFrom || ""}
+              onChange={(date) => {
+                setTempFilters({
+                  ...tempFilters,
+                  dateTo: date || null,
+                });
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Filter Summary */}
       {filterStates.hasActiveFilters && (
         <div className="pt-2 border-t">
@@ -155,6 +206,16 @@ function LostItemFilter({
                   statusOptions.find((s) => s.value === tempFilters.status)
                     ?.label
                 }
+              </span>
+            )}
+            {tempFilters.dateFrom && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                From: {formatDate(new Date(tempFilters.dateFrom), "MMMM d, yyyy")}
+              </span>
+            )}
+            {tempFilters.dateTo && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                To: {formatDate(new Date(tempFilters.dateTo), "MMMM d, yyyy")}
               </span>
             )}
           </div>
@@ -183,7 +244,11 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
   const [queryStates, setQueryStates] = useQueryStates({
     search: parseAsString,
     status: parseAsStringLiteral(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
+    dateFrom: parseAsString, // yyyy-mm-dd
+    dateTo: parseAsString,   // yyyy-mm-dd
   });
+
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-between space-x-2 bg-card border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
@@ -202,28 +267,68 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
 
       <div className="flex items-center gap-x-2">
         <div className="flex items-center gap-2">
-          <TableFilter>
+          <TableFilter
+            open={open}
+            setOpen={setOpen}
+          >
             <LostItemFilter
               queryState={queryStates}
               setQueryState={setQueryStates}
+              setOpen={setOpen}
             />
           </TableFilter>
 
           {/* Applied Filters Display */}
-          {queryStates.status && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>Status:</span>
-              <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium capitalize">
-                {queryStates.status.toLowerCase()}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                onClick={() => setQueryStates({ status: null })}
-              >
-                <XIcon className="h-3 w-3" />
-              </Button>
+          {(queryStates.status || queryStates.dateFrom || queryStates.dateTo) && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {queryStates.status && (
+                <div className="flex items-center gap-1">
+                  <span>Status:</span>
+                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium capitalize">
+                    {queryStates.status.toLowerCase()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQueryStates({ status: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {queryStates.dateFrom && (
+                <div className="flex items-center gap-1">
+                  <span>From:</span>
+                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                    {new Date(queryStates.dateFrom).toLocaleDateString()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQueryStates({ dateFrom: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {queryStates.dateTo && (
+                <div className="flex items-center gap-1">
+                  <span>To:</span>
+                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                    {new Date(queryStates.dateTo).toLocaleDateString()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setQueryStates({ dateTo: null })}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
