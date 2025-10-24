@@ -101,27 +101,27 @@ function ChangeBookingStatus({
     label: string;
     description: string;
   }> = [
-    {
-      value: "RESERVED",
-      label: "Reserved",
-      description: "Room is reserved for the guest",
-    },
-    {
-      value: "CHECKED_IN",
-      label: "Checked In",
-      description: "Guest has checked into the room",
-    },
-    {
-      value: "CHECKED_OUT",
-      label: "Checked Out",
-      description: "Guest has checked out from the room",
-    },
-    {
-      value: "CANCELLED",
-      label: "Cancelled",
-      description: "Booking has been cancelled",
-    },
-  ];
+      {
+        value: "RESERVED",
+        label: "Reserved",
+        description: "Room is reserved for the guest",
+      },
+      {
+        value: "CHECKED_IN",
+        label: "Checked In",
+        description: "Guest has checked into the room",
+      },
+      {
+        value: "CHECKED_OUT",
+        label: "Checked Out",
+        description: "Guest has checked out from the room",
+      },
+      {
+        value: "CANCELLED",
+        label: "Cancelled",
+        description: "Booking has been cancelled",
+      },
+    ];
 
   const currentStatus = booking?.bookingStatus;
 
@@ -319,10 +319,10 @@ function ChangeBookingStatus({
               selectedStatus === "CANCELLED"
                 ? "destructive"
                 : selectedStatus === "CHECKED_OUT"
-                ? "info"
-                : selectedStatus === "CHECKED_IN"
-                ? "success"
-                : "warning"
+                  ? "info"
+                  : selectedStatus === "CHECKED_IN"
+                    ? "success"
+                    : "warning"
             }
           >
             <AlertCircleIcon className="h-4 w-4" />
@@ -548,9 +548,9 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 );
               })}
@@ -602,17 +602,19 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
 
 function BookingsFilter({
   rooms,
+  roomTypes,
   queryState,
   setQueryState,
 }: {
-  rooms: RoomDetails[];
+  rooms: string[];
+  roomTypes: string[];
   queryState: {
     bookingStatus:
-      | "RESERVED"
-      | "CHECKED_OUT"
-      | "CHECKED_IN"
-      | "CANCELLED"
-      | null;
+    | "RESERVED"
+    | "CHECKED_OUT"
+    | "CHECKED_IN"
+    | "CANCELLED"
+    | null;
     search: string | null;
     roomType: string | null;
   };
@@ -623,13 +625,6 @@ function BookingsFilter({
     roomType: queryState.roomType,
     bookingStatus: queryState.bookingStatus,
   });
-
-  // Get unique room types from rooms data - memoized to prevent recalculation
-  const roomTypes = useMemo(() => {
-    return Array.from(new Set(rooms.map((room) => room.roomType))).filter(
-      Boolean
-    );
-  }, [rooms]);
 
   // Memoize filter state computations
   const filterStates = useMemo(() => {
@@ -789,9 +784,11 @@ function BookingsFilter({
 
 function BookingsListToolbar({
   rooms,
+  roomTypes,
   table,
 }: {
-  rooms: RoomDetails[];
+  rooms: string[];
+  roomTypes: string[];
   table: TableType<BookingViewResponse>;
 }) {
   const [queryState, setQueryState] = useQueryStates({
@@ -818,11 +815,10 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === null}
           onClick={() => setQueryState({ bookingStatus: null })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            queryState.bookingStatus === null
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === null
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-          }`}
+            }`}
         >
           All Bookings{" "}
           {queryState.bookingStatus === null &&
@@ -834,11 +830,10 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === "RESERVED"}
           onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            queryState.bookingStatus === "RESERVED"
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "RESERVED"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-          }`}
+            }`}
         >
           Reservations{" "}
           {queryState.bookingStatus === "RESERVED" &&
@@ -850,11 +845,10 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === "CHECKED_OUT"}
           onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-            queryState.bookingStatus === "CHECKED_OUT"
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "CHECKED_OUT"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-          }`}
+            }`}
         >
           Booking history{" "}
           {queryState.bookingStatus === "CHECKED_OUT" &&
@@ -876,6 +870,7 @@ function BookingsListToolbar({
         <div className="flex items-center gap-2">
           <BookingsFilter
             rooms={rooms}
+            roomTypes={roomTypes}
             queryState={queryState}
             setQueryState={setQueryState}
           />
@@ -921,7 +916,10 @@ function BookingsListToolbar({
               </DialogHeader>
 
               <ReservationForm
-                data={rooms}
+                data={{
+                  rooms,
+                  roomTypes
+                }}
                 setOpen={(open) =>
                   setModalStates({
                     ...modalStates,
@@ -953,7 +951,7 @@ function BookingsListToolbar({
               </DialogHeader>
 
               <CheckInForm
-                data={rooms}
+                data={{ rooms, roomTypes }}
                 setOpen={(open) =>
                   setModalStates({
                     ...modalStates,
@@ -974,9 +972,11 @@ export function BookingsPage({
   paginationMeta,
   bookings,
   rooms,
+  roomTypes,
 }: {
   bookings: BookingViewResponse[];
-  rooms: RoomDetails[];
+  rooms: string[];
+  roomTypes: string[];
   paginationMeta: Pagination;
   breadcrumb: {
     title: string;
@@ -1008,7 +1008,7 @@ export function BookingsPage({
 
   return (
     <div className="p-4 space-y-2 md:space-y-4">
-      <BookingsListToolbar rooms={rooms} table={table} />
+      <BookingsListToolbar rooms={rooms} roomTypes={roomTypes} table={table} />
       <BookingList table={table} />
       <SuccessDialog
         open={successDialogOpen.show}

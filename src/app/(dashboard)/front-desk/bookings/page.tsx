@@ -29,8 +29,6 @@ const loadSearchParams = createLoader({
 });
 
 function Page({ searchParams }: PageProps) {
-  // /api/front-desks/bookings
-  const searchParamsObj = use(searchParams);
   const cookieData = use(getCookieData())!;
   const queryClient = getQueryClient();
   const query = use(loadSearchParams(searchParams));
@@ -57,18 +55,11 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
-  const { content: rooms } = use(
+    const roomTypes = use(
     queryClient.ensureQueryData({
-      queryKey: ["front-desks", "rooms"],
+      queryKey: ["front-desks", "all-room-types"],
       queryFn: async ({ signal }) => {
-        const response = await $fetch("@get/api/front-desks/rooms", {
-          query: {
-            page: 0,
-            limit: 10,
-            search: query["room:search"],
-            roomType: query["room:type"],
-            roomStatus: "AVAILABLE",
-          },
+        const response = await $fetch("@get/api/front-desks/all-room-types", {
           signal,
           throw: true,
           auth: { type: "Bearer", token: cookieData.token },
@@ -79,10 +70,32 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
+  const rooms = use(
+    queryClient.ensureQueryData({
+      queryKey: ["front-desks", "rooms"],
+      queryFn: async ({ signal }) => {
+        const response = await $fetch(
+          "@get/api/front-desks/all-rooms-by-type",
+          {
+            query: {
+              roomType: query["room:type"] ?? roomTypes[0],
+            },
+            signal,
+            throw: true,
+            auth: { type: "Bearer", token: cookieData.token },
+          }
+        );
+
+        return response.data;
+      },
+    })
+  );
+
   return (
     <BookingsPage
       bookings={content}
       rooms={rooms}
+      roomTypes={roomTypes}
       breadcrumb={{
         title: "Bookings",
         breadcrumbs: [
