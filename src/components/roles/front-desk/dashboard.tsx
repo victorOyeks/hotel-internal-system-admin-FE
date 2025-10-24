@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -41,7 +40,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { parseAsString, useQueryStates } from "nuqs";
 import type * as React from "react";
-import type { RoomDetails } from "@/lib/fetch";
 import { useMutation } from "@tanstack/react-query";
 import {
   checkInGuest,
@@ -565,11 +563,9 @@ const lostItemFormSchema = z.object({
 });
 
 function SelectRoomBox({
-  value,
   setValue,
   rooms,
 }: {
-  value: string;
   setValue: (value: string) => void;
   rooms: Array<string>;
 }) {
@@ -733,7 +729,6 @@ export function CheckInForm({
                 <FormLabel>Room</FormLabel>
                 <FormControl>
                   <SelectRoomBox
-                    value={field.value}
                     setValue={field.onChange}
                     rooms={data.rooms}
                   />
@@ -993,7 +988,6 @@ export function ReservationForm({
                 <FormLabel>Room</FormLabel>
                 <FormControl>
                   <SelectRoomBox
-                    value={field.value}
                     setValue={field.onChange}
                     rooms={data.rooms}
                   />

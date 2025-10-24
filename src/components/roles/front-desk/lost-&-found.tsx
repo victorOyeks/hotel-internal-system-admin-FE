@@ -1,9 +1,29 @@
 "use client";
 
 import { TableFilter } from "@/components/shared/table-filter";
-import { SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon, Trash2Icon, CircleDotDashedIcon, BedIcon } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQueryStates, parseAsString, parseAsStringLiteral, type ParserBuilder, type SetValues } from "nuqs";
+import {
+  SearchIcon,
+  RotateCcwIcon,
+  XIcon,
+  BedIcon,
+  Loader2Icon,
+  PenIcon,
+} from "lucide-react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import {
+  useQueryStates,
+  parseAsString,
+  parseAsStringLiteral,
+  type ParserBuilder,
+  type SetValues,
+} from "nuqs";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,7 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   type CellContext,
   createColumnHelper,
@@ -38,17 +57,45 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { DatePicker } from "@/components/shared/date-picker";
 import { formatDate } from "date-fns";
-import { APIOutput } from "@/lib/action-utils";
+import type { APIOutput } from "@/lib/action-utils";
 import { cn } from "@/lib/utils";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { atom, useSetAtom } from "jotai";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { revalidateRoute } from "@/lib/actions";
+import z from "zod";
+import { claimLostItem, deleteLostItem } from "@/lib/front-desk-actions";
+
+const successDialogAtom = atom({
+  show: false,
+  message: "",
+});
 
 function LostItemFilter({
   queryState,
   setQueryState,
-  setOpen
+  setOpen,
 }: {
   queryState: {
     search: string | null;
@@ -98,16 +145,35 @@ function LostItemFilter({
 
   // Memoize filter state computations
   const filterStates = useMemo(() => {
-    const hasActiveFilters = !!(tempFilters.status || tempFilters.dateFrom || tempFilters.dateTo);
-    const hasAppliedFilters = !!(queryState.status || queryState.dateFrom || queryState.dateTo);
-    const appliedFiltersCount = [queryState.status, queryState.dateFrom, queryState.dateTo].filter(Boolean).length;
+    const hasActiveFilters = !!(
+      tempFilters.status ||
+      tempFilters.dateFrom ||
+      tempFilters.dateTo
+    );
+    const hasAppliedFilters = !!(
+      queryState.status ||
+      queryState.dateFrom ||
+      queryState.dateTo
+    );
+    const appliedFiltersCount = [
+      queryState.status,
+      queryState.dateFrom,
+      queryState.dateTo,
+    ].filter(Boolean).length;
 
     return {
       hasActiveFilters,
       hasAppliedFilters,
       appliedFiltersCount,
     };
-  }, [tempFilters.status, tempFilters.dateFrom, tempFilters.dateTo, queryState.status, queryState.dateFrom, queryState.dateTo]);
+  }, [
+    tempFilters.status,
+    tempFilters.dateFrom,
+    tempFilters.dateTo,
+    queryState.status,
+    queryState.dateFrom,
+    queryState.dateTo,
+  ]);
 
   const statusOptions = useMemo(
     () => [
@@ -171,15 +237,15 @@ function LostItemFilter({
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs text-muted-foreground">From</Label>
-                <DatePicker
-                  initialDate={tempFilters.dateFrom || ""}
-                  onChange={(date) => {
-                    setTempFilters({
-                      ...tempFilters,
-                      dateFrom: date || null,
-                    });
-                  }}
-                />
+            <DatePicker
+              initialDate={tempFilters.dateFrom || ""}
+              onChange={(date) => {
+                setTempFilters({
+                  ...tempFilters,
+                  dateFrom: date || null,
+                });
+              }}
+            />
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">To</Label>
@@ -212,7 +278,8 @@ function LostItemFilter({
             )}
             {tempFilters.dateFrom && (
               <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-                From: {formatDate(new Date(tempFilters.dateFrom), "MMMM d, yyyy")}
+                From:{" "}
+                {formatDate(new Date(tempFilters.dateFrom), "MMMM d, yyyy")}
               </span>
             )}
             {tempFilters.dateTo && (
@@ -247,7 +314,7 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
     search: parseAsString,
     status: parseAsStringLiteral(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
     dateFrom: parseAsString, // yyyy-mm-dd
-    dateTo: parseAsString,   // yyyy-mm-dd
+    dateTo: parseAsString, // yyyy-mm-dd
   });
 
   const [open, setOpen] = useState(false);
@@ -269,10 +336,7 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
 
       <div className="flex items-center gap-x-2">
         <div className="flex items-center gap-2">
-          <TableFilter
-            open={open}
-            setOpen={setOpen}
-          >
+          <TableFilter open={open} setOpen={setOpen}>
             <LostItemFilter
               queryState={queryStates}
               setQueryState={setQueryStates}
@@ -281,7 +345,9 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
           </TableFilter>
 
           {/* Applied Filters Display */}
-          {(queryStates.status || queryStates.dateFrom || queryStates.dateTo) && (
+          {(queryStates.status ||
+            queryStates.dateFrom ||
+            queryStates.dateTo) && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {queryStates.status && (
                 <div className="flex items-center gap-1">
@@ -516,6 +582,250 @@ function DisplayItemInfo({
   );
 }
 
+type LostItemDialogSharedProps = {
+  open: boolean;
+  onOpenChange: Dispatch<SetStateAction<boolean>>;
+  info: LostItem;
+};
+
+const updateLostItemSchema = z.object({
+  claimStatus: z.enum(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
+  claimedBy: z
+    .string()
+    .min(1, "Claimed by is required when marking as claimed")
+    .optional(),
+  claimNotes: z.string().optional(),
+});
+
+function UpdateLostItemDialog({
+  onOpenChange,
+  info,
+}: LostItemDialogSharedProps) {
+  const setShowSuccessDialog = useSetAtom(successDialogAtom);
+
+  // We'll need the update mutation here - placeholder for now
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: async ({ claimStatus, ...payload }: z.infer<typeof updateLostItemSchema>) => {
+      if (claimStatus === "DISPOSED") {
+        const response = await deleteLostItem({ itemId: info.id});
+
+        if (!response.success) {
+          throw new Error(response.error || "Failed to dispose lost item");
+        }
+
+        return response.data;
+      }
+
+      if (claimStatus === "CLAIMED") {
+        const response = await claimLostItem({ itemId: info.id, ...payload, claimedBy: payload.claimedBy || "Unknown" });
+        if (!response.success) {
+          throw new Error(response.error || "Failed to claim lost item");
+        }
+
+        return response.data;
+      }
+    },
+    onSuccess: async (data) => {
+      setShowSuccessDialog({
+        show: true,
+        message: data?.data || "Lost item updated successfully",
+      });
+      await revalidateRoute("/front-desks/lost-and-found");
+      onOpenChange(false);
+    },
+    onError: async (e: Error) => {
+      toast.error("Failed to update lost item", {
+        description: e.message,
+      });
+    },
+  });
+
+  const form = useForm({
+    resolver: zodResolver(updateLostItemSchema),
+    defaultValues: {
+      claimStatus: info.claimStatus,
+      claimedBy: info.claimedBy || "",
+      claimNotes: info.claimNotes || "",
+    },
+    reValidateMode: "onChange",
+    mode: "onChange",
+  });
+
+  const watchedClaimStatus = form.watch("claimStatus");
+
+  const handleUpdate = useCallback(
+    async (data: z.infer<typeof updateLostItemSchema>) => {
+      // Validate that if status is CLAIMED, claimedBy is required
+      if (data.claimStatus === "CLAIMED" && !data.claimedBy?.trim()) {
+        form.setError("claimedBy", {
+          type: "required",
+          message: "Claimed by is required when marking as claimed",
+        });
+        return;
+      }
+
+      await mutateAsync(data);
+    },
+    [mutateAsync, form]
+  );
+
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle>Update Lost Item</DialogTitle>
+        <DialogDescription>
+          Update claim details for the lost item "{info.itemName}"
+        </DialogDescription>
+      </DialogHeader>
+
+      {/* Item Summary */}
+      <div className="border rounded-lg p-3 bg-muted/30">
+        <div className="flex items-start gap-3">
+          {info.imageUrl && (
+            /** biome-ignore lint/performance/noImgElement: Small preview image */
+            <img
+              src={info.imageUrl}
+              alt={info.itemName}
+              className="w-12 h-12 object-cover rounded border"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{info.itemName}</p>
+            <p className="text-xs text-muted-foreground">ID: {info.customId}</p>
+            <p className="text-xs text-muted-foreground">
+              Found in Room {info.roomIdentifier}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-4">
+          {/* Claim Status */}
+          <FormField
+            control={form.control}
+            name="claimStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <FormControl>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CLAIMED">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Claimed
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="DISPOSED">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          Disposed
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Claimed By - Only show when status is CLAIMED */}
+          {watchedClaimStatus === "CLAIMED" && (
+            <FormField
+              control={form.control}
+              name="claimedBy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Claimed By</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter claimant's name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* Claim Notes - Show for CLAIMED or DISPOSED status */}
+          {(watchedClaimStatus === "CLAIMED" ||
+            watchedClaimStatus === "DISPOSED") && (
+            <FormField
+              control={form.control}
+              name="claimNotes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {watchedClaimStatus === "CLAIMED"
+                      ? "Claim Notes"
+                      : "Disposal Notes"}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={
+                        watchedClaimStatus === "CLAIMED"
+                          ? "Add any notes about the claim (optional)"
+                          : "Add any notes about disposal (optional)"
+                      }
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* Current Status Info */}
+          <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+            <p>
+              <strong>Current Status:</strong> {info.claimStatus}
+            </p>
+            {info.claimedBy && (
+              <p>
+                <strong>Previously Claimed By:</strong> {info.claimedBy}
+              </p>
+            )}
+            {info.claimedDate && (
+              <p>
+                <strong>Claim Date:</strong>{" "}
+                {new Date(info.claimedDate).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2Icon className="animate-spin mr-2 h-4 w-4" />
+                  Updating...
+                </>
+              ) : (
+                "Update Item"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
+
 const columnHelper = createColumnHelper<LostItem>();
 
 const columns = [
@@ -562,31 +872,26 @@ const columns = [
   }),
   columnHelper.display({
     id: "Actions",
-    cell: () => {
+    cell: (info) => {
+      const [open, setOpen] = useState(false);
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
             <Button variant="ghost" size="icon">
-              <MoreVerticalIcon />
+              <PenIcon />
             </Button>
-          </DropdownMenuTrigger>
+          </DialogTrigger>
 
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <CircleDotDashedIcon />
-              Update Status
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
-              <Trash2Icon />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  })
+          <UpdateLostItemDialog
+            open={open}
+            onOpenChange={setOpen}
+            info={info.row.original}
+          />
+        </Dialog>
+      );
+    },
+  }),
 ];
 
 function LostItemTable({ table }: { table: TableType<LostItem> }) {

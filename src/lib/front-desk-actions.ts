@@ -165,3 +165,71 @@ export async function reportLostItem(payload: APIInput<"@post/api/front-desks/lo
     data: response.data,
   };
 }
+
+export async function deleteLostItem({
+  itemId,
+}: {
+  itemId: string;
+}): ServerActionResponseFromEndpoint<"@delete/api/front-desks/lost-and-found/:itemId"> {
+  const { token } = await verifySession("FRONT_DESK");
+
+  const response = await $fetch(
+    "@delete/api/front-desks/lost-and-found/:itemId",
+    {
+      params: { itemId },
+      auth: {
+        type: "Bearer",
+        token,
+      },
+    }
+  );
+
+  if (response.error) {
+    return {
+      success: false,
+      error:
+        response.error.message || "An error occurred while deleting the item.",
+    };
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}
+
+export async function claimLostItem({
+  itemId,
+  ...payload
+}: {
+  itemId: string;
+} & APIInput<"@post/api/front-desks/lost-and-found/:itemId/claim">): ServerActionResponseFromEndpoint<"@post/api/front-desks/lost-and-found/:itemId/claim"> {
+  const { token } = await verifySession("FRONT_DESK");
+
+  const response = await $fetch(
+    "@post/api/front-desks/lost-and-found/:itemId/claim",
+    {
+      params: { itemId },
+      body: {
+        ...payload,
+      },
+      auth: {
+        type: "Bearer",
+        token,
+      },
+    }
+  );
+
+  if (response.error) {
+    return {
+      success: false,
+      error:
+        response.error.message || "An error occurred while claiming the item.",
+    };
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}

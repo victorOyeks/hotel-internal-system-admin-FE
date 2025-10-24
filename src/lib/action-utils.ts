@@ -61,4 +61,4 @@ export type APIOutput<T extends keyof Schema> = ExtractAPIOutput<T> extends {
   ? O extends z.ZodTypeAny
     ? z.infer<O>
     : O
-  : never;
+  : unknown;

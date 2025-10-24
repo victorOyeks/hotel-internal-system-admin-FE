@@ -1012,6 +1012,22 @@ export const schema = createSchema({
         data: z.array(z.string()),
       }),
     },
+    "@delete/api/front-desks/lost-and-found/:itemId": {
+      params: z.object({ itemId: z.string() }),
+      output: ApiResponseObject.extend({
+        data: z.string(),
+      }),
+    },
+    "@post/api/front-desks/lost-and-found/:itemId/claim": {
+      params: z.object({ itemId: z.string() }),
+      input: z.object({
+        claimedBy: z.string().nonempty(),
+        claimedNotes: z.string().nullable().optional(),
+      }),
+      output: ApiResponseObject.extend({
+        data: z.string(),
+      }),
+    },
   },
 );
 
