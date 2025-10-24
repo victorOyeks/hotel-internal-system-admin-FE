@@ -464,7 +464,7 @@ function DisplayItemInfo({
                   Found Location
                 </h3>
                 <p className="text-sm">
-                  Room {info.row.original.roomIdentifier}
+                  Location: {info.row.original.location}
                 </p>
               </div>
 
@@ -658,18 +658,6 @@ function UpdateLostItemDialog({
     mode: "onBlur",
   });
 
-  useEffect(() => {
-    const unsub = form.subscribe({
-      callback(data) {
-        console.log("Form data changed:", data);
-      },
-    });
-
-    return () => {
-      unsub();
-    };
-  }, [form]);
-
   const watchedClaimStatus = form.watch("claimStatus");
 
   const handleUpdate = useCallback(
@@ -714,7 +702,7 @@ function UpdateLostItemDialog({
             <p className="font-medium text-sm truncate">{info.itemName}</p>
             <p className="text-xs text-muted-foreground">ID: {info.customId}</p>
             <p className="text-xs text-muted-foreground">
-              Found in Room {info.roomIdentifier}
+              Location: {info.location}
             </p>
           </div>
         </div>
@@ -880,6 +868,10 @@ const columns = [
   }),
   columnHelper.accessor("dateFound", {
     header: "Date Found",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("location", {
+    header: "Location",
     cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("loggedBy", {

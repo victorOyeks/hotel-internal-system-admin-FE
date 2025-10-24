@@ -124,6 +124,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
       itemName: "",
       description: "",
       imageUrl: "",
+      location: "",
       dateFound: new Date().toISOString().split("T")[0],
     },
   });
@@ -187,7 +188,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
     <Form {...form}>
       <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="itemName"
@@ -204,40 +205,19 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
                 </FormItem>
               )}
             />
-            {/* <FormField
+            <FormField
               control={form.control}
-              name="roomIdentifier"
+              name="location"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Location Found</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. 101, Lobby..." {...field} />
                   </FormControl>
-                  <div className="grid grid-cols-2 gap-1 mt-2">
-                    {[
-                      "Lobby",
-                      "Restaurant",
-                      "Pool Area",
-                      "Gym",
-                      "Parking",
-                      "Elevator",
-                    ].map((location) => (
-                      <Button
-                        key={location}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7 px-1 truncate"
-                        onClick={() => field.onChange(location)}
-                      >
-                        {location}
-                      </Button>
-                    ))}
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}
-            /> */}
+            />
           </div>
 
           <FormField
@@ -559,7 +539,7 @@ const lostItemFormSchema = z.object({
   itemName: z.string().nonempty("Item name is required"),
   description: z.string().nonempty("Description is required"),
   imageUrl: z.url("Please enter a valid URL").optional().or(z.literal("")),
-  // roomIdentifier: z.string().nonempty("Room identifier is required"),
+  location: z.string().nonempty("Location is required for the lost item"),
   dateFound: z.string().nonempty("Date found is required"),
 });
 

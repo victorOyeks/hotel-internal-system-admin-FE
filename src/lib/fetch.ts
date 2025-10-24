@@ -512,7 +512,7 @@ const ApiResponseLostItem = ApiResponseObject.extend({
         itemName: z.string(),
         description: z.string(),
         imageUrl: z.string().nullable(),
-        roomIdentifier: z.string(),
+        location: z.string(),
         dateFound: z.coerce.date(),
         claimStatus: z.enum(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
         claimedBy: z.string().nullable(),
@@ -984,7 +984,7 @@ export const schema = createSchema({
       itemName: z.string().nonempty(),
       description: z.string().nonempty(),
       imageUrl: z.string().url().nullable().optional(),
-      roomIdentifier: z.string().nonempty().optional(),
+      location: z.string().nonempty().optional(),
       dateFound: z.string().nonempty(), // yyyy-mm-dd
     }),
     output: ApiResponseObject,
