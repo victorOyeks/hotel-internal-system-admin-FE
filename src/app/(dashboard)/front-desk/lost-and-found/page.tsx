@@ -68,7 +68,15 @@ function Page({ searchParams }: PageProps) {
   return (
     <div className="space-y-4 px-4">
       <FrontDeskLostItemStats stats={lostItemStats} />
-      <LostItemPage data={lostItems} paginationMeta={pagination} />
+      <LostItemPage 
+      breadcrumbs={{
+        title: "Lost & Found",
+        breadcrumbs: [
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Lost & Found", href: "/dashboard/lost-and-found" },
+        ],
+      }}
+      data={lostItems} paginationMeta={pagination} />
     </div>
   );
 }

@@ -86,6 +86,7 @@ import { toast } from "sonner";
 import { revalidateRoute } from "@/lib/actions";
 import z from "zod";
 import { claimLostItem, deleteLostItem } from "@/lib/front-desk-actions";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 
 const successDialogAtom = atom({
   show: false,
@@ -1038,9 +1039,14 @@ export function FrontDeskLostItemStats({
 
 export function LostItemPage({
   data,
+  breadcrumbs,
   paginationMeta,
 }: {
   data: LostItem[];
+  breadcrumbs: {
+    title: string;
+    breadcrumbs: Breadcrumb[];
+  };
   paginationMeta: Pagination;
 }) {
   const [pagination, onPaginationChange] = usePaginationSearchParams();
@@ -1058,6 +1064,13 @@ export function LostItemPage({
     manualPagination: true,
     pageCount: paginationMeta.totalPages,
   });
+
+  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+
+  useEffect(() => {
+    setBreadcrumb(breadcrumbs);
+    return () => setBreadcrumb(null);
+  }, [setBreadcrumb, breadcrumbs]);
 
   return (
     <div className="space-y-4">
