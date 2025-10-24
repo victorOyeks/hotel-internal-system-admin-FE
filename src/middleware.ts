@@ -59,6 +59,8 @@ export async function middleware(request: NextRequest) {
     rewriteUrl.search = query;
     rewriteUrl.hash = hashed;
 
+    console.log("Rewriting to:", rewriteUrl.toString());
+
     return NextResponse.rewrite(rewriteUrl);
   }
 
