@@ -148,7 +148,7 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
     if (data.error) {
       throw new Error(data.error);
     }
-    return data.data?.url!;  
+    return data.data?.url!;
   };
 
   const { isPending, mutate } = useMutation({
@@ -491,7 +491,7 @@ function CreateNewBookingForm({
   data: {
     rooms: Array<string>;
     roomTypes: Array<string>;
-  }
+  };
 }) {
   const [view, setView] = useState<"check-in" | "reservation">("check-in");
   return (
@@ -580,20 +580,23 @@ function SelectRoomBox({
       onOpenChange={(open) => {
         setOpen(open);
       }}
-      value={value}
       onValueChange={(value) => setValue(value)}
     >
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Select a room" />
       </SelectTrigger>
       <SelectContent className="w-full">
-        {
+        {rooms.length > 0 ? (
           rooms.map((room) => (
             <SelectItem key={room} value={room}>
               {room}
             </SelectItem>
           ))
-        }
+        ) : (
+          <SelectItem disabled value="__EMPTY__ ">
+            No rooms available
+          </SelectItem>
+        )}
       </SelectContent>
     </Select>
   );
@@ -707,12 +710,10 @@ export function CheckInForm({
             <Label>Room Type</Label>
             <Select
               value={roomQuery["room:type"]}
-              onValueChange={(value) =>
-                setRoomQuery({ "room:type": value })
-              }
+              onValueChange={(value) => setRoomQuery({ "room:type": value })}
             >
               <SelectTrigger className="w-full">
-               <SelectValue placeholder="e.g Deluxe, Standard" />
+                <SelectValue placeholder="e.g Deluxe, Standard" />
               </SelectTrigger>
               <SelectContent className="w-full p-0">
                 {data.roomTypes.map((type) => (
@@ -969,12 +970,10 @@ export function ReservationForm({
             <Label>Room Type</Label>
             <Select
               value={roomQuery["room:type"] ?? ""}
-              onValueChange={(value) =>
-                setRoomQuery({ "room:type": value })
-              }
+              onValueChange={(value) => setRoomQuery({ "room:type": value })}
             >
               <SelectTrigger className="w-full">
-               <SelectValue placeholder="e.g Deluxe, Standard" />
+                <SelectValue placeholder="e.g Deluxe, Standard" />
               </SelectTrigger>
               <SelectContent className="w-full p-0">
                 {data.roomTypes.map((type) => (
@@ -1079,7 +1078,13 @@ const actions = [
   },
 ];
 
-export function QuickActions({ rooms, roomTypes }: { rooms: string[]; roomTypes: string[] }) {
+export function QuickActions({
+  rooms,
+  roomTypes,
+}: {
+  rooms: string[];
+  roomTypes: string[];
+}) {
   const [open, setOpen] = useState<false | string>(false);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
 
