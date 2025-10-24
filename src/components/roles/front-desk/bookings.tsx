@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
-import type { BookingStatus, Pagination, RoomDetails } from "@/lib/fetch";
+import type { BookingStatus, Pagination } from "@/lib/fetch";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -601,12 +601,10 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
 }
 
 function BookingsFilter({
-  rooms,
   roomTypes,
   queryState,
   setQueryState,
 }: {
-  rooms: string[];
   roomTypes: string[];
   queryState: {
     bookingStatus:
@@ -869,7 +867,6 @@ function BookingsListToolbar({
         </div>
         <div className="flex items-center gap-2">
           <BookingsFilter
-            rooms={rooms}
             roomTypes={roomTypes}
             queryState={queryState}
             setQueryState={setQueryState}

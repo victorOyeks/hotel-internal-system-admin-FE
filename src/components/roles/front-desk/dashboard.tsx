@@ -53,6 +53,7 @@ import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { atom, useAtom, useSetAtom } from "jotai";
 import { DatePicker } from "@/components/shared/date-picker";
 import { formatDate } from "date-fns";
+import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 
 const successDialogAtom = atom({
   show: false,
@@ -728,10 +729,7 @@ export function CheckInForm({
               <FormItem>
                 <FormLabel>Room</FormLabel>
                 <FormControl>
-                  <SelectRoomBox
-                    setValue={field.onChange}
-                    rooms={data.rooms}
-                  />
+                  <SelectRoomBox setValue={field.onChange} rooms={data.rooms} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -987,10 +985,7 @@ export function ReservationForm({
               <FormItem>
                 <FormLabel>Room</FormLabel>
                 <FormControl>
-                  <SelectRoomBox
-                    setValue={field.onChange}
-                    rooms={data.rooms}
-                  />
+                  <SelectRoomBox setValue={field.onChange} rooms={data.rooms} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1211,4 +1206,23 @@ export function PendingMaintenanceNotifications() {
       </ScrollArea>
     </div>
   );
+}
+
+export function BreadCrumbWrapper({
+  breadcrumbs,
+  children,
+}: PropsWithChildren<{
+  breadcrumbs: {
+    title: string;
+    breadcrumbs: Breadcrumb[];
+  };
+}>) {
+  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+
+  useEffect(() => {
+    setBreadcrumb(breadcrumbs);
+    return () => setBreadcrumb(null);
+  }, [setBreadcrumb, breadcrumbs]);
+
+  return <>{children}</>;
 }
