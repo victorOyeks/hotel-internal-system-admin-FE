@@ -153,7 +153,9 @@ function Hero() {
     <div className="space-y-2 md:grid md:grid-cols-12 md:gap-2">
       <div className="md:col-span-8 space-y-2">
         <Earnings />
-        <CurvedLineChart />
+        <CurvedLineChart 
+          graphData={[]}
+        />
       </div>
       <div className="md:col-span-4">
         <PieChart />
