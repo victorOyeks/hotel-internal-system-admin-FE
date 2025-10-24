@@ -82,19 +82,8 @@ function EarningsSideA() {
 	);
 }
 
-const data = [
-	{ month: "JUL", value: 1500 },
-	{ month: "AUG", value: 900 },
-	{ month: "SEP", value: 1100 },
-	{ month: "OCT", value: 1200 },
-	{ month: "NOV", value: 1700 },
-	{ month: "DEC", value: 800 },
-	{ month: "JAN", value: 1400 },
-	{ month: "FEB", value: 1600 },
-];
-
 const CustomDot = (
-	props: DotProps & { payload: { month: string; value: number } },
+	props: DotProps & { payload: { month: string; totalEarnings: number } },
 ) => {
 	const { cx, cy, payload } = props;
 	// Guard against undefined coordinates
@@ -117,12 +106,12 @@ const CustomDot = (
 			<foreignObject
 				x={cx - 25}
 				y={cy - 40}
-				width={payload.value.toString().length * 24}
+				width={payload.totalEarnings.toString().length * 24}
 				height={28}
 			>
 				<div className="flex justify-center">
 					<span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-						{payload.value.toLocaleString("en-NG", {
+						{payload.totalEarnings.toLocaleString("en-NG", {
 							style: "currency",
 							currency: "NGN",
 						})}
@@ -133,11 +122,11 @@ const CustomDot = (
 	);
 };
 
-function CurvedLineChart() {
+function CurvedLineChart({ graphData }: { graphData: { month: string; totalEarnings: number }[] }) {
 	return (
 		<ResponsiveContainer width="100%" height="100%">
 			<LineChart
-				data={data}
+				data={graphData}
 				margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
 			>
 				<XAxis
@@ -151,7 +140,7 @@ function CurvedLineChart() {
 				<Tooltip cursor={false} />
 				<Line
 					type="monotone"
-					dataKey="value"
+					dataKey="totalEarnings"
 					stroke="#22c55e"
 					strokeWidth={3}
 					dot={false}
@@ -162,7 +151,7 @@ function CurvedLineChart() {
 	);
 }
 
-export function EarningsSideB() {
+export function EarningsSideB({ graphData }: { graphData: { month: string; totalEarnings: number }[] }) {
 	return (
 		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
 			<Button
@@ -186,17 +175,17 @@ export function EarningsSideB() {
 			</div>
 
 			<div className="h-64 md:h-38 w-full">
-				<CurvedLineChart />
+				<CurvedLineChart graphData={graphData} />
 			</div>
 		</div>
 	);
 }
 
-function DashboardHero() {
+function DashboardHero({ graphData }: { graphData: { month: string; totalEarnings: number }[] }) {
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
 			<EarningsSideA />
-			<EarningsSideB />
+			<EarningsSideB graphData={graphData} />
 		</div>
 	);
 }
@@ -328,8 +317,13 @@ function HotelSuits() {
 
 export function HotelOwnerDashboard({
 	breadcrumbs = [],
+	graphData,
 }: {
 	breadcrumbs: Breadcrumb[];
+	graphData:  {
+    month: string;
+    totalEarnings: number;
+}[];
 }) {
 	const setBreadCrumb = useSetAtom(breadcrumbAtom);
 
@@ -342,7 +336,7 @@ export function HotelOwnerDashboard({
 
 	return (
 		<div className="p-4 md:p-6 space-y-2 md:space-y-4">
-			<DashboardHero />
+			<DashboardHero graphData={graphData} />
 			<BranchPerformance />
 			<HotelSuits />
 		</div>

@@ -459,6 +459,15 @@ const ApiResponseManagerActivityLogResponse = ApiResponseObject.extend({
   }),
 });
 
+const ApiResponseDashboardGraphResponse = ApiResponseObject.extend({
+  data: z.array(
+    z.object({
+      month: z.string(),
+      totalEarnings: z.number(),
+    }),
+  ),
+});
+
 export type BookingStatus = z.infer<typeof BookingStatus>;
 
 const ApiResponseInventoryItemResponse =
@@ -624,6 +633,9 @@ export const schema = createSchema({
         size: z.coerce.number().default(10),
       })
       .partial(),
+  },
+  "@get/api/hotel-owners/dashboard/graph": {
+    output: ApiResponseDashboardGraphResponse,
   },
 
   // Manager APIs
