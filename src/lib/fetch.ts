@@ -1006,6 +1006,7 @@ export const schema = createSchema({
     "@get/api/front-desks/all-rooms-by-type": {
       query: z.object({
         roomType: z.string().nonempty(),
+        roomStatus: z.literal("AVAILABLE"),
       }),
       output: ApiResponseObject.extend({
         data: z.array(z.string()),

@@ -1,11 +1,10 @@
 import { BookingsPage } from "@/components/roles/front-desk/bookings";
-import { $fetch, BookingStatus } from "@/lib/fetch";
+import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import { type SearchParams, createLoader, parseAsString, parseAsStringLiteral } from "nuqs/server";
 import { use } from "react";
-import z from "zod";
 
 type PageProps = {
   searchParams: Promise<SearchParams>;
@@ -79,6 +78,7 @@ function Page({ searchParams }: PageProps) {
           {
             query: {
               roomType: query["room:type"] ?? roomTypes[0],
+              roomStatus: "AVAILABLE",
             },
             signal,
             throw: true,

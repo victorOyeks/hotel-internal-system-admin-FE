@@ -53,6 +53,7 @@ function Page({ searchParams }: PageProps) {
           {
             query: {
               roomType: query["room:type"] ?? roomTypes[0],
+              roomStatus: "AVAILABLE",
             },
             signal,
             throw: true,

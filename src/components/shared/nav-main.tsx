@@ -45,12 +45,12 @@ export function NavMain({
 
   return (
     <sidebar.SidebarGroup>
-      <sidebar.SidebarMenu>
+      <sidebar.SidebarMenu className="gap-y-2">
         {items.map((item) => (
           <sidebar.SidebarMenuItem key={item.title}>
             <sidebar.SidebarMenuButton
               tooltip={item.title}
-              className="py-3 gap-x-3 text-base rounded-2xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="py-3 gap-x-3 text-xl rounded-2xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               asChild
               isActive={pathMatcher.match(pathname)?.path === item.url}
             >
