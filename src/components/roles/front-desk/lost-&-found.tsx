@@ -592,7 +592,7 @@ const updateLostItemSchema = z.object({
   claimStatus: z.enum(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
   claimedBy: z
     .string()
-    .min(1, "Claimed by is required when marking as claimed")
+    .nonempty("Claimed by is required when marking as claimed")
     .optional(),
   claimNotes: z.string().optional(),
 });
@@ -605,9 +605,12 @@ function UpdateLostItemDialog({
 
   // We'll need the update mutation here - placeholder for now
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async ({ claimStatus, ...payload }: z.infer<typeof updateLostItemSchema>) => {
+    mutationFn: async ({
+      claimStatus,
+      ...payload
+    }: z.infer<typeof updateLostItemSchema>) => {
       if (claimStatus === "DISPOSED") {
-        const response = await deleteLostItem({ itemId: info.id});
+        const response = await deleteLostItem({ itemId: info.id });
 
         if (!response.success) {
           throw new Error(response.error || "Failed to dispose lost item");
@@ -617,7 +620,11 @@ function UpdateLostItemDialog({
       }
 
       if (claimStatus === "CLAIMED") {
-        const response = await claimLostItem({ itemId: info.id, ...payload, claimedBy: payload.claimedBy || "Unknown" });
+        const response = await claimLostItem({
+          itemId: info.id,
+          ...payload,
+          claimedBy: payload.claimedBy || "Unknown",
+        });
         if (!response.success) {
           throw new Error(response.error || "Failed to claim lost item");
         }
@@ -644,23 +651,37 @@ function UpdateLostItemDialog({
     resolver: zodResolver(updateLostItemSchema),
     defaultValues: {
       claimStatus: info.claimStatus,
-      claimedBy: info.claimedBy || "",
+      claimedBy: info.claimedBy ?? undefined,
       claimNotes: info.claimNotes || "",
     },
-    reValidateMode: "onChange",
-    mode: "onChange",
+    reValidateMode: "onBlur",
+    mode: "onBlur",
   });
+
+  useEffect(() => {
+    const unsub = form.subscribe({
+      callback(data) {
+        console.log("Form data changed:", data);
+      },
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [form]);
 
   const watchedClaimStatus = form.watch("claimStatus");
 
   const handleUpdate = useCallback(
     async (data: z.infer<typeof updateLostItemSchema>) => {
+      console.log("Submitting update with data:", data);
       // Validate that if status is CLAIMED, claimedBy is required
       if (data.claimStatus === "CLAIMED" && !data.claimedBy?.trim()) {
         form.setError("claimedBy", {
           type: "required",
           message: "Claimed by is required when marking as claimed",
         });
+        console.error("Claimed by is required when marking as claimed");
         return;
       }
 
@@ -714,6 +735,12 @@ function UpdateLostItemDialog({
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="UNCLAIMED" disabled>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                          Unclaimed
+                        </div>
+                      </SelectItem>
                       <SelectItem value="CLAIMED">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -743,7 +770,12 @@ function UpdateLostItemDialog({
                 <FormItem>
                   <FormLabel>Claimed By</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter claimant's name" {...field} />
+                    <Input
+                      autoFocus={false}
+                      placeholder="Enter claimant's name"
+                      {...field}
+                      disabled={info.claimStatus === "CLAIMED"}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -772,6 +804,7 @@ function UpdateLostItemDialog({
                           : "Add any notes about disposal (optional)"
                       }
                       {...field}
+                      disabled={info.claimStatus === "CLAIMED"}
                     />
                   </FormControl>
                   <FormMessage />
@@ -809,7 +842,11 @@ function UpdateLostItemDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={isPending}>
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={info.claimStatus === "CLAIMED" || isPending}
+            >
               {isPending ? (
                 <>
                   <Loader2Icon className="animate-spin mr-2 h-4 w-4" />
