@@ -277,7 +277,7 @@ function ListToolbar({ table }: { table: TableType<RoomDetails> }) {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search Hotels"
+            placeholder="Search Rooms"
             value={searchParam.search}
             onChange={(e) =>
               setSearchParam((prev) => ({ ...prev, search: e.target.value }))
