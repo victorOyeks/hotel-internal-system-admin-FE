@@ -51,7 +51,7 @@ export async function login(payload: {
 
     return { success: true, data: { message, referenceId, role: data.role } };
   } catch (error) {
-    console.error("Login failed:", error);
+    console.error(error);
     return { success: false, error: parseError(error) };
   }
 }

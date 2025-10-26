@@ -1048,7 +1048,7 @@ export const $fetch = createFetch({
   schema: schema,
   errorSchema: ApiExceptionResponseObject,
   onError: ({ error }) => {
-    console.error("API Error:", error);
+    console.error(error);
     throw new Error(
       "data" in error
         ? typeof error.data === "string"
