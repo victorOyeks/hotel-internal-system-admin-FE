@@ -38,5 +38,5 @@ DOMAIN_URL = "localhost"
 NEXT_PUBLIC_API_URL = "http://62.169.21.189:8277"
 
 [env.production.vars]
-DOMAIN_URL = "hms"
+DOMAIN_URL = "hms.oyeksglobal.workers.dev"
 NEXT_PUBLIC_API_URL = "http://62.169.21.189:8277"
