@@ -5,10 +5,10 @@ export const env = createEnv({
   server: {
     DOMAIN_URL: z.string().nonempty(),
   },
-  client: {
-    NEXT_PUBLIC_API_URL: z.url().nonempty(),
-  },
   experimental__runtimeEnv: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
+  shared: {
+    NEXT_PUBLIC_API_URL: z.url().nonempty(),
   },
 });

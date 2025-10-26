@@ -552,6 +552,35 @@ const ApiResponseManagerDashboardResponse = ApiResponseObject.extend({
   }),
 });
 
+const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend({
+  data: z.object({
+    /*
+        "totalEarnings": 0,
+    "roomEarnings": 0,
+    "barEarnings": 0,
+    "kitchenEarnings": 0,
+    "overallOccupancyRate": 0.1,
+    "totalCheckIns": 0,
+    "totalCheckOuts": 0,
+    "totalRooms": 0,
+    "totalAvailableRooms": 0,
+    "totalHotels": 0,
+    "selectedMonth": "string"
+    */
+    totalEarnings: z.number(),
+    roomEarnings: z.number(),
+    barEarnings: z.number(),
+    kitchenEarnings: z.number(),
+    overallOccupancyRate: z.number(),
+    totalCheckIns: z.number(),
+    totalCheckOuts: z.number(),
+    totalRooms: z.number(),
+    totalAvailableRooms: z.number(),
+    totalHotels: z.number(),
+    selectedMonth: z.string()
+  })
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
   // Auth APIs
@@ -648,6 +677,12 @@ export const schema = createSchema({
   },
   "@get/api/hotel-owners/dashboard/graph": {
     output: ApiResponseDashboardGraphResponse,
+  },
+  "@get/api/hotel-owners/dashboard/overview": {
+    query: z.object({
+      selectedMonth: z.string()
+    }).partial().optional(),
+    output: ApiResponseHotelOwnerDashboardOverviewResponse,
   },
 
   // Manager APIs

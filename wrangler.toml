@@ -30,7 +30,7 @@ service = "hms"
 
 [vars]
 DOMAIN_URL="hms.oyeksglobal.workers.dev"
-NEXT_PUBLIC_API_URL="http://62.169.21.189:8277"
+NEXT_PUBLIC_API_URL="https://api-dev.hospio360.com"
 
 
 # Create a R2 binding with the binding name "NEXT_INC_CACHE_R2_BUCKET"
