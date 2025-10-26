@@ -1123,6 +1123,12 @@ export const $fetch = createFetch({
       }
     );
   },
+  onRequest(context) {
+      console.log(context.url.toString())
+  },
+  onResponse(context) {
+      console.log(context.response.status, context.response.url)
+  },
   retry: {
     type: "exponential",
     attempts: 3,
