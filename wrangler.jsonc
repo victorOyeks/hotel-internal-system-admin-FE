@@ -29,4 +29,8 @@
     //   "bucket_name": "<BUCKET_NAME>",
     // },
   ],
+  "vars": {
+    "DOMAIN_URL": "hms-next-app",
+    "NEXT_PUBLIC_API_URL": "http://62.169.21.189:8277"
+  }
 }

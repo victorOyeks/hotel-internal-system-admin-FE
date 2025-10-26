@@ -49,3 +49,4 @@ pnpm-lock.yaml
 .cloudflare
 .*.vars
 .open-next
+.wrangler
