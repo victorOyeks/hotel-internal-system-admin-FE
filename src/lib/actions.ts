@@ -32,6 +32,7 @@ export async function login(payload: {
   try {
     const existingUser = await getUser();
     if (existingUser) {
+      console.log("User already logged in, skipping login request.");
       return {
         success: true,
         data: { message: "User already logged in", ...existingUser },
@@ -50,6 +51,7 @@ export async function login(payload: {
 
     return { success: true, data: { message, referenceId, role: data.role } };
   } catch (error) {
+    console.error("Login failed:", error);
     return { success: false, error: parseError(error) };
   }
 }
