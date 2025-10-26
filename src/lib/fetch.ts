@@ -540,6 +540,18 @@ export type LostItem = z.infer<
   typeof ApiResponseLostItem
 >["data"]["content"][number];
 
+const ApiResponseManagerDashboardResponse = ApiResponseObject.extend({
+  data: z.object({
+   totalEarnings: z.number(),
+   occupancyRate: z.number(),
+   totalCheckIns: z.number(),
+   totalCheckOuts: z.number(),
+   totalRooms: z.number(),
+   totalAvailableRooms: z.number(),
+   selectedMonth: z.string(),
+  }),
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
   // Auth APIs
@@ -767,6 +779,20 @@ export const schema = createSchema({
       })
       .partial(),
     output: ApiResponseManagerActivityLogResponse,
+  },
+  "@get/api/managers/dashboard/:hotelId": {
+    params: z.object({ hotelId: z.string() }),
+    output: ApiResponseManagerDashboardResponse,
+    query: z.object({
+      month: z.string()
+    }).partial().optional(),
+  },
+  "@get/api/managers/dashboard/:hotelId/earnings-graph": {
+    params: z.object({ hotelId: z.string() }),
+    output: ApiResponseDashboardGraphResponse,
+  },
+  "@get/api/managers/dashboard-performance": {
+    output: ApiResponseDashboardGraphResponse
   },
 
   // Inventory Officer APIs

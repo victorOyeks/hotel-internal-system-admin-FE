@@ -1,5 +1,10 @@
 import { ManagerDashboard } from "@/components/roles/manager/dashboard";
+import { getManagerCurrentHotel } from "@/lib/dal";
+import { $fetch } from "@/lib/fetch";
+import { getQueryClient } from "@/lib/queries";
+import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
+import { use } from "react";
 
 function HomePage() {
   const breadcrumbs: Breadcrumb[] = [
@@ -9,7 +14,82 @@ function HomePage() {
     },
   ];
 
-  return <ManagerDashboard breadcrumbs={breadcrumbs} />;
+  const cookieData = use(getCookieData())!;
+  const queryClient = getQueryClient();
+  const { id } = use(getManagerCurrentHotel())!;
+
+  const dashboardData = use(
+    queryClient.ensureQueryData({
+      queryKey: ["manager", "dashboardData", cookieData.userId],
+      queryFn: async () => {
+        const res = await $fetch("@get/api/managers/dashboard/:hotelId", {
+          params: { hotelId: id },
+          auth: {
+            type: "Bearer",
+            token: cookieData.token,
+          },
+          query: {},
+          throw: true,
+        });
+
+        return res.data;
+      },
+    })
+  );
+
+  const graphData = use(
+    queryClient.ensureQueryData({
+      queryKey: ["manager", "dashboardGraphData", cookieData.userId],
+      queryFn: async () => {
+        const res = await $fetch(
+          "@get/api/managers/dashboard/:hotelId/earnings-graph",
+          {
+            params: { hotelId: id },
+            auth: {
+              type: "Bearer",
+              token: cookieData.token,
+            },
+            throw: true,
+          }
+        );
+
+        return res.data;
+      },
+    })
+  );
+
+  const dashboardPerformanceData = use(
+    queryClient.ensureQueryData({
+      queryKey: [
+        "manager",
+        "dashboardPerformanceData",
+        cookieData.userId,
+      ],
+      queryFn: async () => {
+        const res = await $fetch(
+          "@get/api/managers/dashboard-performance",
+          {
+            auth: {
+              type: "Bearer",
+              token: cookieData.token,
+            },
+            throw: true,
+          }
+        );
+
+        return res.data;
+      }
+    })
+  );
+
+  return (
+    <ManagerDashboard
+      breadcrumbs={breadcrumbs}
+      graphData={graphData}
+      dashboardData={dashboardData}
+      dashboardPerformanceData={dashboardPerformanceData}
+    />
+  );
 }
 
 export default HomePage;

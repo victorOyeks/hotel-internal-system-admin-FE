@@ -25,40 +25,45 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { BookingsData } from "./dashboard-table";
+import type { APIOutput } from "@/lib/action-utils";
 
-function EarningsSideA() {
+function EarningsSideA({
+  dashboardData,
+}: {
+  dashboardData: ManagerDashboardData;
+}) {
   const earnings = [
     {
       title: "Earnings",
       icon: DollarSign,
-      value: "₦600K",
+      value: formatCurrency(dashboardData.totalEarnings),
     },
     {
       title: "Occupancy Rate",
       icon: BedIcon,
-      value: "50%",
+      value: `${(dashboardData.occupancyRate * 100).toFixed(0)}%`,
     },
     {
       title: "Check In",
       icon: ArrowRightToLineIcon,
-      value: 20,
+      value: dashboardData.totalCheckIns,
     },
     {
       title: "Check Out",
       icon: ArrowLeftToLineIcon,
-      value: 20,
+      value: dashboardData.totalCheckOuts,
     },
     {
       title: "Total Rooms",
       icon: BedSingleIcon,
-      value: 100,
+      value: dashboardData.totalRooms,
     },
     {
       title: "Available Rooms",
       icon: BedDoubleIcon,
-      value: 80,
+      value: dashboardData.totalAvailableRooms,
     },
   ];
   return (
@@ -83,19 +88,8 @@ function EarningsSideA() {
   );
 }
 
-const data = [
-  { month: "JUL", value: 1500 },
-  { month: "AUG", value: 900 },
-  { month: "SEP", value: 1100 },
-  { month: "OCT", value: 1200 },
-  { month: "NOV", value: 1700 },
-  { month: "DEC", value: 800 },
-  { month: "JAN", value: 1400 },
-  { month: "FEB", value: 1600 },
-];
-
 const CustomDot = (
-  props: DotProps & { payload: { month: string; value: number } }
+  props: DotProps & { payload: { month: string; totalEarnings: number } }
 ) => {
   const { cx, cy, payload } = props;
   // Guard against undefined coordinates
@@ -118,12 +112,12 @@ const CustomDot = (
       <foreignObject
         x={cx - 25}
         y={cy - 40}
-        width={payload.value.toString().length * 24}
+        width={payload.totalEarnings.toString().length * 24}
         height={28}
       >
         <div className="flex justify-center">
           <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-            {payload.value.toLocaleString("en-NG", {
+            {payload.totalEarnings.toLocaleString("en-NG", {
               style: "currency",
               currency: "NGN",
             })}
@@ -134,11 +128,11 @@ const CustomDot = (
   );
 };
 
-function CurvedLineChart() {
+function CurvedLineChart({ graphData }: { graphData: EarningsGraphData }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
-        data={data}
+        data={graphData}
         margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
       >
         <XAxis
@@ -149,10 +143,18 @@ function CurvedLineChart() {
           className="text-gray-400"
         />
         <YAxis hide />
-        <Tooltip cursor={false} />
+        <Tooltip<number, string>
+         cursor={false}
+        formatter={(value) => {
+          return [
+            formatCurrency(value),
+            "Total Earnings",
+          ];
+        }}
+        />
         <Line
           type="monotone"
-          dataKey="value"
+          dataKey="totalEarnings"
           stroke="#22c55e"
           strokeWidth={3}
           dot={false}
@@ -163,7 +165,24 @@ function CurvedLineChart() {
   );
 }
 
-export function EarningsSideB() {
+export function EarningsSideB({ graphData }: { graphData: EarningsGraphData }) {
+  const currentMonthEarnings = useMemo(
+    () =>
+      graphData.reduce(
+        (acc, curr) =>
+          acc +
+          (curr.month === new Date().toLocaleString("en-US", { month: "long" })
+            ? curr.totalEarnings
+            : 0),
+        0
+      ),
+    [graphData]
+  );
+
+  const totalEarningsStr = useMemo(
+    () => formatCurrency(currentMonthEarnings),
+    [currentMonthEarnings]
+  );
   return (
     <div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
       <Button
@@ -176,7 +195,9 @@ export function EarningsSideB() {
       </Button>
 
       <div>
-        <h1 className="text-3xl font-semibold text-primary">₦800,975.87</h1>
+        <h1 className="text-3xl font-semibold text-primary">
+          {totalEarningsStr}
+        </h1>
         <p className="text-gray-500 text-sm flex items-center space-x-1">
           <span>Total profit</span>
           <span className="text-green-500 font-semibold flex items-center space-x-1">
@@ -187,47 +208,60 @@ export function EarningsSideB() {
       </div>
 
       <div className="h-64 md:h-38 w-full">
-        <CurvedLineChart />
+        <CurvedLineChart graphData={graphData} />
       </div>
     </div>
   );
 }
 
-function DashboardHero() {
+function DashboardHero({
+  dashboardData,
+  graphData,
+}: {
+  graphData: EarningsGraphData;
+  dashboardData: ManagerDashboardData;
+}) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-      <EarningsSideA />
-      <EarningsSideB />
+      <EarningsSideA dashboardData={dashboardData} />
+      <EarningsSideB graphData={graphData} />
     </div>
   );
 }
 
-function BranchPerformance() {
+function BranchPerformance({
+  dashboardPerformanceData,
+}: {
+  dashboardPerformanceData: EarningsGraphData;
+}) {
   return (
     <div className="bg-white p-4 md:p-6 rounded-3xl space-y-4">
       <h2 className="text-xl font-semibold text-primary">Branch Performance</h2>
       {/* Placeholder for branch performance chart */}
       <div className="h-64 md:h-48 w-full">
-        <BranchPerformanceChart />
+        <BranchPerformanceChart
+          dashboardPerformanceData={dashboardPerformanceData}
+        />
       </div>
     </div>
   );
 }
 
-function BranchPerformanceChart() {
-  const data = [
-    { name: "Lekki", value: 400000, yLabel: "49K" },
-    { name: "Ikoyi", value: 300000, yLabel: "30K" },
-    { name: "Victoria Island", value: 200000, yLabel: "20K" },
-    { name: "Surulere", value: 278000, yLabel: "28K" },
-    { name: "Ikeja", value: 189000, yLabel: "19K" },
-    { name: "Yaba", value: 150000, yLabel: "15K" },
-    { name: "Shomolu", value: 120000, yLabel: "12K" },
-    { name: "Festac", value: 100000, yLabel: "10K" },
-    { name: "Bariga", value: 80000, yLabel: "8K" },
-    { name: "Agege", value: 60000, yLabel: "6K" },
-    { name: "Mushin", value: 50000, yLabel: "5K" },
-  ];
+function BranchPerformanceChart({
+  dashboardPerformanceData,
+}: {
+  dashboardPerformanceData: EarningsGraphData;
+}) {
+  const data = useMemo(
+    () =>
+      dashboardPerformanceData.map((item) => ({
+        name: item.month,
+        value: item.totalEarnings,
+        /// ${totalEarnings}K
+        yLabel: `${(item.totalEarnings / 1000).toFixed(0)}K`,
+      })),
+    [dashboardPerformanceData]
+  );
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart
@@ -265,10 +299,7 @@ function BranchPerformanceChart() {
           itemStyle={{ color: "#000" }}
           cursor={false}
           formatter={(value: number) => [
-            value.toLocaleString("en-NG", {
-              style: "currency",
-              currency: "NGN",
-            }),
+            formatCurrency(value),
             "Profit",
           ]}
         />
@@ -277,7 +308,7 @@ function BranchPerformanceChart() {
   );
 }
 
-function HotelSuits() {
+function _HotelSuits() {
   const suits = [
     {
       name: "Executive Suite",
@@ -327,10 +358,21 @@ function HotelSuits() {
   );
 }
 
+type ManagerDashboardData =
+  APIOutput<"@get/api/managers/dashboard/:hotelId">["data"];
+type EarningsGraphData =
+  APIOutput<"@get/api/managers/dashboard/:hotelId/earnings-graph">["data"];
+
 export function ManagerDashboard({
   breadcrumbs = [],
+  dashboardData,
+  graphData,
+  dashboardPerformanceData,
 }: {
   breadcrumbs: Breadcrumb[];
+  dashboardData: ManagerDashboardData;
+  graphData: EarningsGraphData;
+  dashboardPerformanceData: EarningsGraphData;
 }) {
   const setBreadCrumb = useSetAtom(breadcrumbAtom);
 
@@ -343,9 +385,9 @@ export function ManagerDashboard({
 
   return (
     <div className="p-4 md:p-6 space-y-2 md:space-y-4">
-      <DashboardHero />
-      <BranchPerformance />
-      <HotelSuits />
+      <DashboardHero graphData={graphData} dashboardData={dashboardData} />
+      <BranchPerformance dashboardPerformanceData={dashboardPerformanceData} />
+      {/* <HotelSuits /> */}
       <BookingsData
         bookings={[]}
         breadcrumb={{
