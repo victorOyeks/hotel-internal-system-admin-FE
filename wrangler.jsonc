@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "hms-next-app",
+  "name": "hms",
   "compatibility_date": "2024-12-30",
   "compatibility_flags": [
     // Enable Node.js APIe
@@ -19,7 +19,7 @@
     {
       "binding": "WORKER_SELF_REFERENCE",
       // The service should match the "name" of your worker
-      "service": "hms-next-app",
+      "service": "hms",
     },
   ],
   "r2_buckets": [
@@ -30,7 +30,7 @@
     // },
   ],
   "vars": {
-    "DOMAIN_URL": "hms-next-app",
+    "DOMAIN_URL": "hms",
     "NEXT_PUBLIC_API_URL": "http://62.169.21.189:8277"
   }
 }
