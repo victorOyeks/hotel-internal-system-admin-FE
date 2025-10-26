@@ -9,7 +9,7 @@ compatibility_date = "2025-04-01"
 # see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
 compatibility_flags = [
   "nodejs_compat",
-  "global_fetch_strictly_public",
+  # "global_fetch_strictly_public",
   "nodejs_compat_populate_process_env",
 ]
 
