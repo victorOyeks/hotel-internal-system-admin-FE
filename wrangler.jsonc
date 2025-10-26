@@ -30,8 +30,18 @@
     //   "bucket_name": "<BUCKET_NAME>",
     // },
   ],
-  "vars": {
-    "DOMAIN_URL": "hms",
-    "NEXT_PUBLIC_API_URL": "http://62.169.21.189:8277"
+  "env": {
+    "development": {
+      "vars": {
+        "DOMAIN_URL": "localhost",
+        "NEXT_PUBLIC_API_URL": "http://62.169.21.189:8277"
+      }
+    },
+    "production": {
+      "vars": {
+        "DOMAIN_URL": "hms",
+        "NEXT_PUBLIC_API_URL": "http://62.169.21.189:8277"
+      }
+    }
   }
 }
