@@ -13,6 +13,12 @@ compatibility_flags = [
   "nodejs_compat_populate_process_env",
 ]
 
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
