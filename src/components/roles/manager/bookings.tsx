@@ -12,12 +12,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
   EyeIcon,
@@ -37,7 +32,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/pagination";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,21 +57,180 @@ import type {
   ManagerBookingViewResponse,
   Pagination,
 } from "@/lib/fetch";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RotateCcwIcon } from "lucide-react";
 
 const successDialogAtom = atom({
   show: false,
   message: "",
 });
 
+// Manager Bookings Filter Component
+const ManagerBookingsFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    bookingStatus: BookingStatus | null;
+    search: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    bookingStatus: queryState.bookingStatus || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      bookingStatus: tempFilters.bookingStatus,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters.bookingStatus, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      bookingStatus: null,
+      search: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      ...queryState,
+      bookingStatus: null,
+      search: null,
+    });
+  }, [queryState, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!tempFilters.bookingStatus;
+    const hasAppliedFilters = !!queryState.bookingStatus;
+    const appliedFiltersCount =
+      (queryState.bookingStatus ? 1 : 0) + (queryState.search ? 1 : 0);
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters.bookingStatus, queryState.bookingStatus, queryState.search]);
+
+  const bookingStatusOptions = useMemo(
+    () => [
+      { value: "CHECKED_IN", label: "Checked In", color: "bg-green-500" },
+      { value: "CHECKED_OUT", label: "Checked Out", color: "bg-blue-500" },
+      { value: "RESERVED", label: "Reserved", color: "bg-yellow-500" },
+      { value: "CANCELLED", label: "Cancelled", color: "bg-red-500" },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Bookings</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Booking Status Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Booking Status</Label>
+        <Select
+          value={tempFilters.bookingStatus || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              bookingStatus: value === "all" ? null : (value as BookingStatus),
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {bookingStatusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+                  {option.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.bookingStatus && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Status:{" "}
+                {
+                  bookingStatusOptions.find(
+                    (s) => s.value === tempFilters.bookingStatus
+                  )?.label
+                }
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const contactManagerFormSchema = z.object({
   title: z.string().nonempty("Title is required"),
@@ -221,7 +381,11 @@ const columns = [
       const dialog = useMemo(() => {
         switch (open) {
           case "contact-manager":
-            return <ContactManagerForm setOpen={(open) => setOpen(open ? "contact-manager" : false)} />;
+            return (
+              <ContactManagerForm
+                setOpen={(open) => setOpen(open ? "contact-manager" : false)}
+              />
+            );
           default:
             return null;
         }
@@ -243,16 +407,17 @@ const columns = [
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white" align="end">
               <DropdownMenuItem asChild>
-                <Link
-                  href={`/reports/branch-id/${info.row.original.id}`}
-                >
+                <Link href={`/reports/branch-id/${info.row.original.id}`}>
                   <EyeIcon />
                   View branch report
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <DialogTrigger className="w-full" onClick={() => setOpen("contact-manager")}>
+                <DialogTrigger
+                  className="w-full"
+                  onClick={() => setOpen("contact-manager")}
+                >
                   <MessageCircleMoreIcon />
                   Contact Branch Manager
                 </DialogTrigger>
@@ -267,7 +432,11 @@ const columns = [
   }),
 ];
 
-function BookingList({ table }: { table: TableType<ManagerBookingViewResponse> }) {
+function BookingList({
+  table,
+}: {
+  table: TableType<ManagerBookingViewResponse>;
+}) {
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
@@ -341,8 +510,52 @@ function BookingsListToolbar({
     "bookingStatus",
     parseAsStringLiteral(["RESERVED", "CHECKED_OUT"])
   );
+
+  const [filterOpen, setFilterOpen] = useState(false);
+  // Filter query states
+  const [filterQueryState, setFilterQueryStatus] = useQueryStates({
+    bookingStatus: parseAsStringLiteral([
+      "CHECKED_IN",
+      "CHECKED_OUT",
+      "RESERVED",
+      "CANCELLED",
+    ]),
+    search: parseAsString
+  });
+
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+
+  // Memoized applied filters for chips
+  const appliedFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; value: string }> = [];
+
+    if (filterQueryState) {
+      const statusLabels = {
+        CHECKED_IN: "Checked In",
+        CHECKED_OUT: "Checked Out",
+        RESERVED: "Reserved",
+        CANCELLED: "Cancelled",
+      };
+      filterQueryState.bookingStatus && filters.push({
+        key: "bookingStatus",
+        label: "Status",
+        value: statusLabels[filterQueryState.bookingStatus],
+      });
+    }
+
+    return filters;
+  }, [filterQueryState]);
+
+  // Handler to remove individual filters
+  const removeFilter = useCallback(
+    (key: string) => {
+      if (key === "bookingStatus") {
+        setFilterQueryStatus(null);
+      }
+    },
+    [setFilterQueryStatus]
+  );
 
   const handleExport = useCallback(
     async (data: ExportData) => {
@@ -404,11 +617,38 @@ function BookingsListToolbar({
           <input
             type="text"
             placeholder="Search bookings"
+            value={filterQueryState.search ?? ""}
+            onChange={e => setFilterQueryStatus({ search: e.target.value || null})}
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+
+        {/* Applied Filter Chips */}
+        {appliedFilters.map((filter) => (
+          <Badge
+            key={filter.key}
+            variant="secondary"
+            className="px-2 py-1 text-xs flex items-center gap-1"
+          >
+            {filter.label}: {filter.value}
+            <button
+              type="button"
+              onClick={() => removeFilter(filter.key)}
+              className="ml-1 hover:text-red-500"
+            >
+              ×
+            </button>
+          </Badge>
+        ))}
+
+        <TableFilter open={filterOpen} setOpen={setFilterOpen}>
+          <ManagerBookingsFilter
+            queryState={filterQueryState}
+            setQueryState={setFilterQueryStatus}
+            setOpen={setFilterOpen}
+          />
+        </TableFilter>
 
         {/* <AddNewHotelDialog /> */}
 

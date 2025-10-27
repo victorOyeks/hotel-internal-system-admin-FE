@@ -9,7 +9,7 @@ import z from "zod";
 const ParamsSchema = z
   .object({
     bookingStatus: BookingStatus,
-    search: z.enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "AVAILABLE"]),
+    search: z.string(),
     page: z.coerce.number().default(0),
     size: z.coerce.number().default(10),
   })
