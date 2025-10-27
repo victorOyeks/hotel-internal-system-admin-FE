@@ -1,7 +1,6 @@
 "use client";
 
-import { TableFilter } from "@/components/shared/table-filter";
-import { SearchIcon, RotateCcwIcon, XIcon } from "lucide-react";
+import { SearchIcon, RotateCcwIcon } from "lucide-react";
 import { useQueryStates, parseAsString } from "nuqs";
 import { useCallback, useLayoutEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,7 @@ const successDialogAtom = atom({
   message: "",
 });
 
-const ActivityFilter = ({
+const _ActivityFilter = ({
   queryState,
   setQueryState,
 }: {
@@ -220,8 +219,6 @@ const ActivityFilter = ({
 function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
   const [searchParam, setSearchParam] = useQueryStates({
     search: parseAsString,
-    role: parseAsString,
-    activity: parseAsString,
   });
 
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -261,7 +258,7 @@ function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <TableFilter>
             <ActivityFilter
               queryState={searchParam}
@@ -270,7 +267,7 @@ function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
           </TableFilter>
           
           {/* Applied Filters Display */}
-          {(searchParam.role || searchParam.activity) && (
+          {/* {(searchParam.role || searchParam.activity) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {searchParam.role && (
                 <div className="flex items-center gap-1">
@@ -306,7 +303,7 @@ function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
               )}
             </div>
           )}
-        </div>
+        </div> */}
 
         <ExportDialog
           open={exportDialogOpen}

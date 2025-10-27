@@ -38,7 +38,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-// import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { RotateCcwIcon } from "lucide-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   createColumnHelper,
@@ -51,15 +59,14 @@ import {
   type Table as TableType,
 } from "@tanstack/react-table";
 import { atom, useSetAtom } from "jotai";
-import { CheckIcon, Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
 import {
-  parseAsIsoDate,
   parseAsString,
   parseAsStringLiteral,
   useQueryState,
   useQueryStates,
 } from "nuqs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -240,13 +247,144 @@ function InventoryTableToolbar({
   setCurrentSection: (value: "inventory" | "restock") => void;
   totalItems: number;
 }) {
-  const [currentFilter, setCurrentFilter] = useQueryStates({
-    dateRange: parseAsIsoDate,
-    status: parseAsStringLiteral(["AVAILABLE", "LOW_IN_STOCK", "OUT_OF_STOCK"]),
-    roomType: parseAsString,
-    branchName: parseAsString,
+  // Filter query states matching the schema
+  const [filterStates, setFilterStates] = useQueryStates({
+    category: parseAsStringLiteral([
+      "FRONT_DESK",
+      "MAINTENANCE",
+      "INVENTORY",
+      "BAR",
+      "KITCHEN",
+      "HOUSEKEEPING",
+      "MANAGEMENT",
+      "OTHER",
+    ]),
+    unit: parseAsString,
+    availability: parseAsString,
+    approvalStatus: parseAsStringLiteral(["PENDING", "APPROVED", "REJECTED"]),
+    customId: parseAsString,
+    itemCustomId: parseAsString,
     searchName: parseAsString,
   });
+
+  // Memoized filter state and handlers
+  const filterQueryState = useMemo(
+    () => ({
+      category: filterStates.category,
+      unit: filterStates.unit,
+      availability: filterStates.availability,
+      approvalStatus: filterStates.approvalStatus,
+      customId: filterStates.customId,
+      itemCustomId: filterStates.itemCustomId,
+    }),
+    [
+      filterStates.category,
+      filterStates.unit,
+      filterStates.availability,
+      filterStates.approvalStatus,
+      filterStates.customId,
+      filterStates.itemCustomId,
+    ]
+  );
+
+  const setFilterQueryState = useCallback(
+    (state: Partial<typeof filterQueryState>) => {
+      setFilterStates((prev) => ({
+        ...prev,
+        ...state,
+      }));
+    },
+    [setFilterStates]
+  );
+
+  // Memoized applied filters for chips
+  const appliedFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; value: string }> = [];
+
+    if (filterStates.category) {
+      const categoryLabels = {
+        FRONT_DESK: "Front Desk",
+        MAINTENANCE: "Maintenance",
+        INVENTORY: "Inventory",
+        BAR: "Bar",
+        KITCHEN: "Kitchen",
+        HOUSEKEEPING: "Housekeeping",
+        MANAGEMENT: "Management",
+        OTHER: "Other",
+      };
+      filters.push({
+        key: "category",
+        label: "Category",
+        value: categoryLabels[filterStates.category],
+      });
+    }
+
+    if (filterStates.unit) {
+      filters.push({
+        key: "unit",
+        label: "Unit",
+        value: filterStates.unit,
+      });
+    }
+
+    if (filterStates.availability) {
+      const availabilityLabels = {
+        AVAILABLE: "Available",
+        LOW_IN_STOCK: "Low in Stock",
+        OUT_OF_STOCK: "Out of Stock",
+      };
+      filters.push({
+        key: "availability",
+        label: "Availability",
+        value:
+          availabilityLabels[
+            filterStates.availability as keyof typeof availabilityLabels
+          ] || filterStates.availability,
+      });
+    }
+
+    if (filterStates.approvalStatus) {
+      const statusLabels = {
+        PENDING: "Pending",
+        APPROVED: "Approved",
+        REJECTED: "Rejected",
+      };
+      filters.push({
+        key: "approvalStatus",
+        label: "Status",
+        value: statusLabels[filterStates.approvalStatus],
+      });
+    }
+
+    if (filterStates.customId) {
+      filters.push({
+        key: "customId",
+        label: "Item Code",
+        value: filterStates.customId,
+      });
+    }
+
+    if (filterStates.itemCustomId) {
+      filters.push({
+        key: "itemCustomId",
+        label: "Item ID",
+        value: filterStates.itemCustomId,
+      });
+    }
+
+    return filters;
+  }, [filterStates]);
+
+  // Handler to remove individual filters
+  const removeFilter = useCallback(
+    (key: string) => {
+      setFilterStates((prev) => ({
+        ...prev,
+        [key]: null,
+      }));
+    },
+    [setFilterStates]
+  );
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -291,9 +429,9 @@ function InventoryTableToolbar({
           <input
             type="text"
             placeholder="Search"
-            value={currentFilter.searchName ?? ""}
+            value={filterStates.searchName ?? ""}
             onChange={(e) =>
-              setCurrentFilter((prev) => ({
+              setFilterStates((prev) => ({
                 ...prev,
                 searchName: e.target.value || null,
               }))
@@ -302,71 +440,32 @@ function InventoryTableToolbar({
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
+
+        {/* Applied Filter Chips */}
+        {appliedFilters.map((filter) => (
+          <Badge
+            key={filter.key}
+            variant="secondary"
+            className="px-2 py-1 text-xs flex items-center gap-1"
+          >
+            {filter.label}: {filter.value}
+            <button
+              type="button"
+              onClick={() => removeFilter(filter.key)}
+              className="ml-1 hover:text-red-500"
+            >
+              ×
+            </button>
+          </Badge>
+        ))}
+
         <TableFilter>
-          <div className="flex flex-col gap-y-4">
-            <div className="flex items-center justify-between gap-x-4">
-              <div className="flex items-center gap-x-2">
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  data-active={currentFilter.dateRange}
-                >
-                  {currentFilter.dateRange && <CheckIcon />}
-                  <span>Date Range</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  data-active={currentFilter.status}
-                >
-                  {currentFilter.status && <CheckIcon />}
-                  <span>Status</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  data-active={currentFilter.roomType}
-                >
-                  {currentFilter.roomType && <CheckIcon />}
-                  <span>Room Type</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  data-active={currentFilter.branchName}
-                >
-                  {currentFilter.branchName && <CheckIcon />}
-                  <span>Branch Name</span>
-                </Button>
-              </div>
-
-              <Button variant={"link"} className="text-blue-600">
-                Reset
-              </Button>
-            </div>
-
-            <div className="ml-auto flex items-center gap-x-2">
-              <Button
-                size={"sm"}
-                variant={"outline"}
-                data-active
-                className="rounded-xl shadow-none border-transparent font-semibold"
-              >
-                <span>Reset All</span>
-              </Button>
-
-              <Button
-                size={"sm"}
-                className="rounded-xl shadow-none font-semibold"
-              >
-                <span>Apply Filter</span>
-              </Button>
-            </div>
-          </div>
+          <InventoryFilter
+            queryState={filterQueryState}
+            setQueryState={setFilterQueryState}
+            setOpen={(_open: boolean) => {}} // TableFilter handles this
+            currentSection={currentSection}
+          />
         </TableFilter>
 
         <Button size={"sm"} className="rounded-md md:rounded-xl">
@@ -758,3 +857,369 @@ export function ManagerInventoryTable({
     </div>
   );
 }
+
+// Inventory Filter Component
+const InventoryFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+  currentSection,
+}: {
+  setOpen: (open: boolean) => void;
+  currentSection: "inventory" | "restock";
+  queryState: {
+    category:
+      | "FRONT_DESK"
+      | "MAINTENANCE"
+      | "INVENTORY"
+      | "BAR"
+      | "KITCHEN"
+      | "HOUSEKEEPING"
+      | "MANAGEMENT"
+      | "OTHER"
+      | null;
+    unit: string | null;
+    availability: string | null;
+    approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
+    customId: string | null;
+    itemCustomId: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    category: queryState.category || null,
+    unit: queryState.unit || null,
+    availability: queryState.availability || null,
+    approvalStatus: queryState.approvalStatus || null,
+    customId: queryState.customId || null,
+    itemCustomId: queryState.itemCustomId || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      category: tempFilters.category,
+      unit: tempFilters.unit,
+      availability: tempFilters.availability,
+      approvalStatus: tempFilters.approvalStatus,
+      customId: tempFilters.customId,
+      itemCustomId: tempFilters.itemCustomId,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      category: null,
+      unit: null,
+      availability: null,
+      approvalStatus: null,
+      customId: null,
+      itemCustomId: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      ...queryState,
+      ...clearedFilters,
+    });
+  }, [queryState, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!(
+      tempFilters.category ||
+      tempFilters.unit ||
+      tempFilters.availability ||
+      tempFilters.approvalStatus ||
+      tempFilters.customId ||
+      tempFilters.itemCustomId
+    );
+
+    const hasAppliedFilters = !!(
+      queryState.category ||
+      queryState.unit ||
+      queryState.availability ||
+      queryState.approvalStatus ||
+      queryState.customId ||
+      queryState.itemCustomId
+    );
+
+    const appliedFiltersCount =
+      (queryState.category ? 1 : 0) +
+      (queryState.unit ? 1 : 0) +
+      (queryState.availability ? 1 : 0) +
+      (queryState.approvalStatus ? 1 : 0) +
+      (queryState.customId ? 1 : 0) +
+      (queryState.itemCustomId ? 1 : 0);
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters, queryState]);
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "FRONT_DESK", label: "Front Desk" },
+      { value: "MAINTENANCE", label: "Maintenance" },
+      { value: "INVENTORY", label: "Inventory" },
+      { value: "BAR", label: "Bar" },
+      { value: "KITCHEN", label: "Kitchen" },
+      { value: "HOUSEKEEPING", label: "Housekeeping" },
+      { value: "MANAGEMENT", label: "Management" },
+      { value: "OTHER", label: "Other" },
+    ],
+    []
+  );
+
+  const availabilityOptions = useMemo(
+    () => [
+      { value: "AVAILABLE", label: "Available", color: "bg-green-500" },
+      { value: "LOW_IN_STOCK", label: "Low in Stock", color: "bg-yellow-500" },
+      { value: "OUT_OF_STOCK", label: "Out of Stock", color: "bg-red-500" },
+    ],
+    []
+  );
+
+  const approvalStatusOptions = useMemo(
+    () => [
+      { value: "PENDING", label: "Pending", color: "bg-yellow-500" },
+      { value: "APPROVED", label: "Approved", color: "bg-green-500" },
+      { value: "REJECTED", label: "Rejected", color: "bg-red-500" },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">
+          Filter{" "}
+          {currentSection === "restock" ? "Restock Requests" : "Inventory"}
+        </h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Category Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Category</Label>
+        <Select
+          value={tempFilters.category || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              category:
+                value === "all" ? null : (value as typeof tempFilters.category),
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categoryOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Unit Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Unit</Label>
+        <Input
+          placeholder="Enter unit (e.g., pieces, kg)"
+          value={tempFilters.unit || ""}
+          onChange={(e) =>
+            setTempFilters({
+              ...tempFilters,
+              unit: e.target.value || null,
+            })
+          }
+        />
+      </div>
+
+      {/* Availability Filter (only for inventory section) */}
+      {currentSection === "inventory" && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Availability</Label>
+          <Select
+            value={tempFilters.availability || "all"}
+            onValueChange={(value) =>
+              setTempFilters({
+                ...tempFilters,
+                availability: value === "all" ? null : value,
+              })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Availability" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Availability</SelectItem>
+              {availabilityOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 ${option.color} rounded-full`}
+                    ></div>
+                    {option.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Approval Status Filter (only for restock section) */}
+      {currentSection === "restock" && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Approval Status</Label>
+          <Select
+            value={tempFilters.approvalStatus || "all"}
+            onValueChange={(value) =>
+              setTempFilters({
+                ...tempFilters,
+                approvalStatus:
+                  value === "all"
+                    ? null
+                    : (value as typeof tempFilters.approvalStatus),
+              })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {approvalStatusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 ${option.color} rounded-full`}
+                    ></div>
+                    {option.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Item Custom ID Filter (only for restock section) */}
+      {currentSection === "restock" ? (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Item Custom ID</Label>
+          <Input
+            placeholder="Enter item custom ID"
+            value={tempFilters.itemCustomId || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                itemCustomId: e.target.value || null,
+              })
+            }
+          />
+        </div>
+      ) : (
+        /* Custom ID Filter */
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Item Code</Label>
+          <Input
+            placeholder="Enter item code"
+            value={tempFilters.customId || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                customId: e.target.value || null,
+              })
+            }
+          />
+        </div>
+      )}
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.category && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Category:{" "}
+                {
+                  categoryOptions.find((c) => c.value === tempFilters.category)
+                    ?.label
+                }
+              </span>
+            )}
+            {tempFilters.unit && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Unit: {tempFilters.unit}
+              </span>
+            )}
+            {tempFilters.availability && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Availability:{" "}
+                {
+                  availabilityOptions.find(
+                    (a) => a.value === tempFilters.availability
+                  )?.label
+                }
+              </span>
+            )}
+            {tempFilters.approvalStatus && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Status:{" "}
+                {
+                  approvalStatusOptions.find(
+                    (s) => s.value === tempFilters.approvalStatus
+                  )?.label
+                }
+              </span>
+            )}
+            {tempFilters.customId && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Code: {tempFilters.customId}
+              </span>
+            )}
+            {tempFilters.itemCustomId && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Item ID: {tempFilters.itemCustomId}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+};
