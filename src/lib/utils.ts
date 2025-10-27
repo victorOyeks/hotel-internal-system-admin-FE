@@ -5,16 +5,46 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number) {
+export function formatCurrency(
+  value: number,
+  type: "short" | "float" | "default" = "default"
+) {
   // cross-check at runtime if value is a number
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return value;
   }
-	return Intl.NumberFormat("en-NG", {
-		style: "currency",
-		currency: "NGN",
-	}).format(value);
+
+  // Define the options based on the type
+  const options: Intl.NumberFormatOptions = {};
+
+  switch (type) {
+    case "short":
+      // Example: N1.5M
+      options.style = "currency";
+      options.currency = "NGN";
+      options.notation = "compact";
+      options.maximumFractionDigits = 1; // Looks cleaner (N1.5M vs N1.50M)
+      break;
+      
+    case "float":
+      // Example: 1,500.00 (no currency symbol)
+      options.style = "decimal";
+      options.minimumFractionDigits = 2;
+      options.maximumFractionDigits = 2;
+      break;
+      
+    case "default":
+    default:
+      // Example: N1,500.00
+      options.style = "currency";
+      options.currency = "NGN";
+      options.minimumFractionDigits = 2; // Ensures we always see decimals
+      break;
+  }
+
+  return Intl.NumberFormat("en-NG", options).format(value);
 }
+
 /**
  * @fileoverview A simple utility to match a pathname against a list of paths.
  * It finds the best match by prioritizing specificity (longer paths and exact matches).

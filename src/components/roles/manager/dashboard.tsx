@@ -38,12 +38,12 @@ function EarningsSideA({
     {
       title: "Earnings",
       icon: DollarSign,
-      value: formatCurrency(dashboardData.totalEarnings),
+      value: formatCurrency(dashboardData.totalEarnings, "short"),
     },
     {
       title: "Occupancy Rate",
       icon: BedIcon,
-      value: `${(dashboardData.occupancyRate * 100).toFixed(0)}%`,
+      value: `${(dashboardData.occupancyRate).toFixed(0)}%`,
     },
     {
       title: "Check In",
@@ -390,13 +390,6 @@ export function ManagerDashboard({
       {/* <HotelSuits /> */}
       <BookingsData
         bookings={[]}
-        breadcrumb={{
-          title: "Bookings",
-          breadcrumbs: [
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Bookings", href: "/dashboard/bookings" },
-          ],
-        }}
       />
     </div>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,9 +10,8 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { useSetAtom, useAtom, atom } from "jotai";
+import { useAtom, atom } from "jotai";
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -250,14 +248,9 @@ function BookingList({ table }: { table: TableType<ManagerBookingViewResponse> }
 }
 
 export function BookingsData({
-  breadcrumb,
   bookings,
 }: {
   bookings: ManagerBookingViewResponse[];
-  breadcrumb: {
-    title: string;
-    breadcrumbs: Breadcrumb[];
-  };
 }) {
   const table = useReactTable({
     data: bookings,
@@ -267,13 +260,7 @@ export function BookingsData({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
-  const setBreadcrumb = useSetAtom(breadcrumbAtom);
   const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
-
-  useEffect(() => {
-    setBreadcrumb(breadcrumb);
-    return () => setBreadcrumb(null);
-  }, [setBreadcrumb, breadcrumb]);
 
   return (
     <>

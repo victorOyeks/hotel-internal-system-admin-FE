@@ -36,7 +36,6 @@ export function HotelSwitcher({
     },
     onSuccess: () => {
       toast.success("Switched hotel successfully.");
-      window.location.reload();
     },
   });
 
