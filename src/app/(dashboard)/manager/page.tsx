@@ -82,12 +82,37 @@ function HomePage() {
     })
   );
 
+    const { content } = use(
+      queryClient.ensureQueryData({
+        queryKey: ["hotel-owner-bookings"],
+        queryFn: async () => {
+          const response = await $fetch(
+            "@get/api/managers/hotels/:hotelId/bookings",
+            {
+              params: {
+                hotelId: id,
+              },
+              query: {},
+              auth: {
+                type: "Bearer",
+                token: cookieData.token,
+              },
+              throw: true,
+            }
+          );
+  
+          return response.data;
+        },
+      })
+    );
+
   return (
     <ManagerDashboard
       breadcrumbs={breadcrumbs}
       graphData={graphData}
       dashboardData={dashboardData}
       dashboardPerformanceData={dashboardPerformanceData}
+      bookingData={content}
     />
   );
 }

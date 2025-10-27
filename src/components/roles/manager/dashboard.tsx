@@ -28,6 +28,8 @@ import { useSetAtom } from "jotai";
 import { useLayoutEffect, useMemo } from "react";
 import { BookingsData } from "./dashboard-table";
 import type { APIOutput } from "@/lib/action-utils";
+import type { ManagerBookingViewResponse } from "@/lib/fetch";
+import Link from "next/link";
 
 function EarningsSideA({
   dashboardData,
@@ -43,7 +45,7 @@ function EarningsSideA({
     {
       title: "Occupancy Rate",
       icon: BedIcon,
-      value: `${(dashboardData.occupancyRate).toFixed(0)}%`,
+      value: `${dashboardData.occupancyRate.toFixed(0)}%`,
     },
     {
       title: "Check In",
@@ -144,13 +146,10 @@ function CurvedLineChart({ graphData }: { graphData: EarningsGraphData }) {
         />
         <YAxis hide />
         <Tooltip<number, string>
-         cursor={false}
-        formatter={(value) => {
-          return [
-            formatCurrency(value),
-            "Total Earnings",
-          ];
-        }}
+          cursor={false}
+          formatter={(value) => {
+            return [formatCurrency(value), "Total Earnings"];
+          }}
         />
         <Line
           type="monotone"
@@ -232,7 +231,7 @@ function DashboardHero({
 function BranchPerformance({
   dashboardPerformanceData,
 }: {
-  dashboardPerformanceData: EarningsGraphData;
+  dashboardPerformanceData: PerformanceData;
 }) {
   return (
     <div className="bg-white p-4 md:p-6 rounded-3xl space-y-4">
@@ -250,15 +249,15 @@ function BranchPerformance({
 function BranchPerformanceChart({
   dashboardPerformanceData,
 }: {
-  dashboardPerformanceData: EarningsGraphData;
+  dashboardPerformanceData: PerformanceData;
 }) {
   const data = useMemo(
     () =>
       dashboardPerformanceData.map((item) => ({
-        name: item.month,
-        value: item.totalEarnings,
+        name: item.hotelName,
+        value: item.performancePercentage,
         /// ${totalEarnings}K
-        yLabel: `${(item.totalEarnings / 1000).toFixed(0)}K`,
+        yLabel: item.performancePercentage,
       })),
     [dashboardPerformanceData]
   );
@@ -274,7 +273,7 @@ function BranchPerformanceChart({
           axisLine={false}
           tickLine={false}
           tick={{ fontSize: 11, fill: "var(--color-primary-1)" }}
-          tickFormatter={(_, i) => data[i].yLabel}
+          tickFormatter={(_, i) => `${data[i].yLabel}%`}
         />
         <XAxis
           dataKey="name"
@@ -298,10 +297,7 @@ function BranchPerformanceChart({
           }}
           itemStyle={{ color: "#000" }}
           cursor={false}
-          formatter={(value: number) => [
-            formatCurrency(value),
-            "Profit",
-          ]}
+          formatter={(value: number) => [`${value}%`, "Profit"]}
         />
       </BarChart>
     </ResponsiveContainer>
@@ -362,17 +358,21 @@ type ManagerDashboardData =
   APIOutput<"@get/api/managers/dashboard/:hotelId">["data"];
 type EarningsGraphData =
   APIOutput<"@get/api/managers/dashboard/:hotelId/earnings-graph">["data"];
+type PerformanceData =
+  APIOutput<"@get/api/managers/dashboard-performance">["data"];
 
 export function ManagerDashboard({
   breadcrumbs = [],
   dashboardData,
   graphData,
   dashboardPerformanceData,
+  bookingData,
 }: {
   breadcrumbs: Breadcrumb[];
   dashboardData: ManagerDashboardData;
   graphData: EarningsGraphData;
-  dashboardPerformanceData: EarningsGraphData;
+  dashboardPerformanceData: PerformanceData;
+  bookingData: ManagerBookingViewResponse[];
 }) {
   const setBreadCrumb = useSetAtom(breadcrumbAtom);
 
@@ -388,9 +388,16 @@ export function ManagerDashboard({
       <DashboardHero graphData={graphData} dashboardData={dashboardData} />
       <BranchPerformance dashboardPerformanceData={dashboardPerformanceData} />
       {/* <HotelSuits /> */}
-      <BookingsData
-        bookings={[]}
-      />
+      <section className="bg-card p-2 rounded-2xl md:rounded-4xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl p-2">Bookings</h2>
+
+          <Button variant={"link"} asChild>
+            <Link href={"/dashboard/bookings"}>View all</Link>
+          </Button>
+        </div>
+        <BookingsData bookings={bookingData} />
+      </section>
     </div>
   );
 }

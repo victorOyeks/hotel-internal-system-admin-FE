@@ -827,7 +827,13 @@ export const schema = createSchema({
     output: ApiResponseDashboardGraphResponse,
   },
   "@get/api/managers/dashboard-performance": {
-    output: ApiResponseDashboardGraphResponse
+    output: ApiResponseObject.extend({
+      data: z.object({
+        hotelId: z.string(),
+        hotelName: z.string(),
+        performancePercentage: z.number()
+      }).array()
+    })
   },
 
   // Inventory Officer APIs
@@ -1129,6 +1135,7 @@ export const $fetch = createFetch({
   onResponse(context) {
       console.log("==>", context.response.status, context.response.url)
   },
+  timeout: 50000,
   retry: {
     type: "exponential",
     attempts: 3,
