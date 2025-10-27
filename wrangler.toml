@@ -29,7 +29,7 @@ binding = "ASSETS"
 # service = "hms"
 
 [vars]
-DOMAIN_URL="hms.oyeksglobal.workers.dev"
+DOMAIN_URL="sandbox.hospio360.com"
 NEXT_PUBLIC_API_URL="https://api-dev.hospio360.com"
 
 
