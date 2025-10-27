@@ -628,7 +628,7 @@ function BookingsListToolbar({
         {appliedFilters.map((filter) => (
           <Badge
             key={filter.key}
-            variant="secondary"
+            variant="blue"
             className="px-2 py-1 text-xs flex items-center gap-1"
           >
             {filter.label}: {filter.value}
