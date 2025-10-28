@@ -3,7 +3,11 @@
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import type { InventoryResponse, Pagination } from "@/lib/fetch";
-import { SearchIcon, CheckIcon, ArrowLeftIcon } from "lucide-react";
+import {
+  SearchIcon,
+  ArrowLeftIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -14,7 +18,7 @@ import {
   useReactTable,
   type Table as TableType,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import {
   Table,
@@ -30,13 +34,292 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
 
+// Hotel Owner Inventory Filter Component
+const HotelOwnerInventoryFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    searchName: string | null;
+    customId: string | null;
+    category:
+      | "BAR"
+      | "KITCHEN"
+      | "HOUSEKEEPING"
+      | "FRONT_DESK"
+      | "MAINTENANCE"
+      | "MANAGEMENT"
+      | "INVENTORY"
+      | "OTHER"
+      | null;
+    unit: string | null;
+    availability: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    searchName: queryState.searchName || null,
+    customId: queryState.customId || null,
+    category: queryState.category || null,
+    unit: queryState.unit || null,
+    availability: queryState.availability || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      searchName: tempFilters.searchName,
+      customId: tempFilters.customId,
+      category: tempFilters.category,
+      unit: tempFilters.unit,
+      availability: tempFilters.availability,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      searchName: null,
+      customId: null,
+      category: null,
+      unit: null,
+      availability: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      ...queryState,
+      ...clearedFilters,
+    });
+  }, [queryState, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!(
+      tempFilters.searchName ||
+      tempFilters.customId ||
+      tempFilters.category ||
+      tempFilters.unit ||
+      tempFilters.availability
+    );
+
+    const hasAppliedFilters = !!(
+      queryState.searchName ||
+      queryState.customId ||
+      queryState.category ||
+      queryState.unit ||
+      queryState.availability
+    );
+
+    const appliedFiltersCount = [
+      queryState.searchName,
+      queryState.customId,
+      queryState.category,
+      queryState.unit,
+      queryState.availability,
+    ].filter(Boolean).length;
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters, queryState]);
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "BAR", label: "Bar" },
+      { value: "KITCHEN", label: "Kitchen" },
+      { value: "HOUSEKEEPING", label: "Housekeeping" },
+      { value: "FRONT_DESK", label: "Front Desk" },
+      { value: "MAINTENANCE", label: "Maintenance" },
+      { value: "MANAGEMENT", label: "Management" },
+      { value: "INVENTORY", label: "Inventory" },
+      { value: "OTHER", label: "Other" },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-4 w-96">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Inventory</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Filter Grid - 2 columns */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Search Name Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Search Name</Label>
+          <Input
+            placeholder="Enter search term"
+            value={tempFilters.searchName || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                searchName: e.target.value || null,
+              })
+            }
+          />
+        </div>
+
+        {/* Custom ID Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Custom ID</Label>
+          <Input
+            placeholder="Enter custom ID"
+            value={tempFilters.customId || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                customId: e.target.value || null,
+              })
+            }
+          />
+        </div>
+
+        {/* Category Filter - spans full width */}
+        <div className="space-y-2 col-span-2">
+          <Label className="text-sm font-medium">Category</Label>
+          <Select
+            value={tempFilters.category || "all"}
+            onValueChange={(value) =>
+              setTempFilters({
+                ...tempFilters,
+                category:
+                  value === "all"
+                    ? null
+                    : (value as typeof tempFilters.category),
+              })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categoryOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Unit Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Unit</Label>
+          <Input
+            placeholder="Enter unit (e.g., pieces, kg)"
+            value={tempFilters.unit || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                unit: e.target.value || null,
+              })
+            }
+          />
+        </div>
+
+        {/* Availability Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Availability</Label>
+          <Input
+            placeholder="Enter availability status"
+            value={tempFilters.availability || ""}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                availability: e.target.value || null,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.searchName && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Search: {tempFilters.searchName}
+              </span>
+            )}
+            {tempFilters.customId && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                ID: {tempFilters.customId}
+              </span>
+            )}
+            {tempFilters.category && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Category:{" "}
+                {
+                  categoryOptions.find((c) => c.value === tempFilters.category)
+                    ?.label
+                }
+              </span>
+            )}
+            {tempFilters.unit && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Unit: {tempFilters.unit}
+              </span>
+            )}
+            {tempFilters.availability && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Availability: {tempFilters.availability}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 function ListToolbar() {
   const router = useRouter();
   const pageParams = useParams();
   const searchParams = useSearchParams();
-  const [currentFilter, setCurrentFilter] = useState<string>("dateRange");
 
   const currentSection = useMemo(() => {
     return (searchParams.get("section") || "all") as "all" | "history";
@@ -45,8 +328,120 @@ function ListToolbar() {
   const setSection = (section: "all" | "history") => {
     const params = new URLSearchParams(searchParams);
     params.set("section", section === "all" ? "all" : "history");
-    router.replace(`/dashboard/inventory/${pageParams.id}?${params.toString()}`);
+    router.replace(
+      `/dashboard/inventory/${pageParams.id}?${params.toString()}`
+    );
   };
+
+  // Filter query states
+  const [filterStates, setFilterStates] = useQueryStates({
+    searchName: parseAsString,
+    customId: parseAsString,
+    category: parseAsStringLiteral([
+      "BAR",
+      "KITCHEN",
+      "HOUSEKEEPING",
+      "FRONT_DESK",
+      "MAINTENANCE",
+      "MANAGEMENT",
+      "INVENTORY",
+      "OTHER",
+    ]),
+    unit: parseAsString,
+    availability: parseAsString,
+  });
+
+  // Memoized filter state and handlers
+  const filterQueryState = useMemo(
+    () => ({
+      searchName: filterStates.searchName,
+      customId: filterStates.customId,
+      category: filterStates.category,
+      unit: filterStates.unit,
+      availability: filterStates.availability,
+    }),
+    [filterStates]
+  );
+
+  const setFilterQueryState = useCallback(
+    (state: Partial<typeof filterQueryState>) => {
+      setFilterStates((prev) => ({
+        ...prev,
+        ...state,
+      }));
+    },
+    [setFilterStates]
+  );
+
+  // Memoized applied filters for chips
+  const appliedFilters = useMemo(() => {
+    const filters: Array<{ key: string; label: string; value: string }> = [];
+
+    if (filterStates.searchName) {
+      filters.push({
+        key: "searchName",
+        label: "Search",
+        value: filterStates.searchName,
+      });
+    }
+
+    if (filterStates.customId) {
+      filters.push({
+        key: "customId",
+        label: "ID",
+        value: filterStates.customId,
+      });
+    }
+
+    if (filterStates.category) {
+      const categoryLabels = {
+        BAR: "Bar",
+        KITCHEN: "Kitchen",
+        HOUSEKEEPING: "Housekeeping",
+        FRONT_DESK: "Front Desk",
+        MAINTENANCE: "Maintenance",
+        MANAGEMENT: "Management",
+        INVENTORY: "Inventory",
+        OTHER: "Other",
+      };
+      filters.push({
+        key: "category",
+        label: "Category",
+        value: categoryLabels[filterStates.category],
+      });
+    }
+
+    if (filterStates.unit) {
+      filters.push({
+        key: "unit",
+        label: "Unit",
+        value: filterStates.unit,
+      });
+    }
+
+    if (filterStates.availability) {
+      filters.push({
+        key: "availability",
+        label: "Availability",
+        value: filterStates.availability,
+      });
+    }
+
+    return filters;
+  }, [filterStates]);
+
+  // Handler to remove individual filters
+  const removeFilter = useCallback(
+    (key: string) => {
+      setFilterStates((prev) => ({
+        ...prev,
+        [key]: null,
+      }));
+    },
+    [setFilterStates]
+  );
+
+  const [filterOpen, setFilterOpen] = useState(false);
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -87,81 +482,33 @@ function ListToolbar() {
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
 
-        <TableFilter>
-          <div className="flex flex-col gap-y-4">
-            <div className="flex items-center justify-between gap-x-4">
-              <div className="flex items-center gap-x-2">
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("dateRange")}
-                  data-active={currentFilter === "dateRange"}
-                >
-                  {currentFilter === "dateRange" && <CheckIcon />}
-                  <span>Date Range</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("status")}
-                  data-active={currentFilter === "status"}
-                >
-                  {currentFilter === "status" && <CheckIcon />}
-                  <span>Status</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("roomType")}
-                  data-active={currentFilter === "roomType"}
-                >
-                  {currentFilter === "roomType" && <CheckIcon />}
-                  <span>Room Type</span>
-                </Button>
-                <Button
-                  size={"sm"}
-                  variant={"outline"}
-                  className="shadow-none text-xs hover:border-transparent"
-                  onClick={() => setCurrentFilter("branchName")}
-                  data-active={currentFilter === "branchName"}
-                >
-                  {currentFilter === "branchName" && <CheckIcon />}
-                  <span>Branch Name</span>
-                </Button>
-              </div>
-
-              <Button
-                variant={"link"}
-                className="text-blue-600"
-                onClick={() => setCurrentFilter("dateRange")}
-              >
-                Reset
-              </Button>
-            </div>
-
-            <div className="ml-auto flex items-center gap-x-2">
-              <Button
-                size={"sm"}
-                variant={"outline"}
-                data-active
-                className="rounded-xl shadow-none border-transparent font-semibold"
-                onClick={() => setCurrentFilter("")}
-              >
-                <span>Reset All</span>
-              </Button>
-
-              <Button
-                size={"sm"}
-                className="rounded-xl shadow-none font-semibold"
-              >
-                <span>Apply Filter</span>
-              </Button>
-            </div>
-          </div>
+        <TableFilter open={filterOpen} setOpen={setFilterOpen}>
+          <HotelOwnerInventoryFilter
+            queryState={filterQueryState}
+            setQueryState={setFilterQueryState}
+            setOpen={setFilterOpen}
+          />
         </TableFilter>
+
+        <div className="flex items-center gap-x-2 ">
+          {/* Applied Filter Chips */}
+          {appliedFilters.map((filter) => (
+            <Badge
+              key={filter.key}
+              variant="green"
+              className="px-2 py-1 text-xs flex items-center gap-1"
+            >
+              {filter.label}: {filter.value}
+              <button
+                type="button"
+                onClick={() => removeFilter(filter.key)}
+                className="ml-1 hover:text-red-500"
+              >
+                ×
+              </button>
+            </Badge>
+          ))}
+        </div>
 
         <Button size={"sm"} className="rounded-md md:rounded-xl">
           Export
@@ -240,10 +587,7 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-gray-50"
-              >
+              <TableRow key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-gray-600">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -281,7 +625,13 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
   );
 }
 
-function AllSupplySection({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
+function AllSupplySection({
+  data,
+  paginationMeta,
+}: {
+  data: InventoryResponse[];
+  paginationMeta: Pagination;
+}) {
   const [pagination, onPaginationChange] = usePaginationSearchParams();
   const table = useReactTable({
     data,
@@ -310,7 +660,8 @@ type InventoryHistoryResponse = InventoryResponse & {
   supplyQuantity: number;
 };
 
-const inventoryHistoryColumnHelper = createColumnHelper<InventoryHistoryResponse>();
+const inventoryHistoryColumnHelper =
+  createColumnHelper<InventoryHistoryResponse>();
 
 const inventoryHistoryColumns = [
   inventoryHistoryColumnHelper.display({
@@ -336,7 +687,9 @@ const inventoryHistoryColumns = [
   }),
   inventoryHistoryColumnHelper.accessor("supplyDate", {
     header: "Supply Date",
-    cell: (info) => <span>{new Date(info.getValue()).toLocaleDateString()}</span>,
+    cell: (info) => (
+      <span>{new Date(info.getValue()).toLocaleDateString()}</span>
+    ),
   }),
 ];
 
@@ -370,10 +723,7 @@ function InventoryHistoryTable({
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-gray-50"
-              >
+              <TableRow key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-gray-600">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -440,7 +790,13 @@ function InventHistorySection({
   return <InventoryHistoryTable table={table} />;
 }
 
-export function SingleInventoryPage({ data, paginationMeta }: { data: InventoryResponse[]; paginationMeta: Pagination }) {
+export function SingleInventoryPage({
+  data,
+  paginationMeta,
+}: {
+  data: InventoryResponse[];
+  paginationMeta: Pagination;
+}) {
   const searchParams = useSearchParams();
   const currentSection = searchParams.get("section") || "all";
 
@@ -458,7 +814,10 @@ export function SingleInventoryPage({ data, paginationMeta }: { data: InventoryR
       {currentSection === "all" ? (
         <AllSupplySection data={data} paginationMeta={paginationMeta} />
       ) : (
-        <InventHistorySection data={data as InventoryHistoryResponse[]} paginationMeta={paginationMeta} />
+        <InventHistorySection
+          data={data as InventoryHistoryResponse[]}
+          paginationMeta={paginationMeta}
+        />
       )}
     </div>
   );

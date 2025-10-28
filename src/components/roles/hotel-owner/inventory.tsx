@@ -1,7 +1,7 @@
 "use client";
 
-import { TableFilter } from "@/components/shared/table-filter";
 import { SearchIcon } from "lucide-react";
+import { parseAsString, useQueryStates } from "nuqs";
 import {
     createColumnHelper,
     flexRender,
@@ -23,23 +23,28 @@ import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 
 const columnHelper = createColumnHelper<GetHotelResponse>();
 
-
 function Toolbar(_: { table: TableType<GetHotelResponse> }) {
+  const [searchQuery, setSearchQuery] = useQueryStates({
+    searchName: parseAsString.withDefault(""),
+  });
+
   return (
     <div className="flex items-center justify-between space-x-2 bg-card border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
       <div>
         <div className="relative">
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search inventory"
+            value={searchQuery.searchName}
+            onChange={(e) =>
+              setSearchQuery({
+                searchName: e.target.value,
+              })
+            }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-      </div>
-
-      <div className="flex items-center gap-x-2 ">
-        <TableFilter></TableFilter>
       </div>
     </div>
   );
