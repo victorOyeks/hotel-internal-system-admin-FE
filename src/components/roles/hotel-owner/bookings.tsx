@@ -56,7 +56,7 @@ import type {
   BookingViewResponse,
   Pagination,
 } from "@/lib/fetch";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsStringLiteral, parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import z from "zod";
 import { useForm } from "react-hook-form";
@@ -64,6 +64,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RotateCcwIcon } from "lucide-react";
 
 const successDialogAtom = atom({
   show: false,
@@ -331,10 +334,19 @@ function BookingsListToolbar({
 }: {
   table: TableType<BookingViewResponse>;
 }) {
+  const [filterOpen, setFilterOpen] = useState(false);
   const [bookingState, setBookingState] = useQueryState(
     "bookingStatus",
     parseAsStringLiteral(["RESERVED", "CHECKED_OUT"])
   );
+  
+  // Filter query states
+  const [filterStates, setFilterStates] = useQueryStates({
+    bookingStatus: parseAsStringLiteral(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED", "AVAILABLE"]),
+    roomType: parseAsString,
+    search: parseAsString.withDefault(""),
+  });
+  
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
@@ -399,10 +411,66 @@ function BookingsListToolbar({
             type="text"
             placeholder="Search bookings"
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
+            value={filterStates.search}
+            onChange={(e) =>
+              setFilterStates({ search: e.target.value })
+            }
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
-        <TableFilter></TableFilter>
+        
+        {/* Applied Filter Chips */}
+        {filterStates.bookingStatus && (
+          <Badge
+            variant="green"
+            className="px-2 py-1 text-xs flex items-center gap-1"
+          >
+            Status: {filterStates.bookingStatus.replace(/_/g, " ").toLowerCase()}
+            <button
+              type="button"
+              onClick={() => setFilterStates(prev => ({ ...prev, bookingStatus: null }))}
+              className="ml-1 hover:text-red-500"
+            >
+              ×
+            </button>
+          </Badge>
+        )}
+        
+        {filterStates.roomType && (
+          <Badge
+            variant="green"
+            className="px-2 py-1 text-xs flex items-center gap-1"
+          >
+            Room Type: {filterStates.roomType}
+            <button
+              type="button"
+              onClick={() => setFilterStates(prev => ({ ...prev, roomType: null }))}
+              className="ml-1 hover:text-red-500"
+            >
+              ×
+            </button>
+          </Badge>
+        )}
+        
+        <TableFilter
+          open={filterOpen}
+          setOpen={setFilterOpen}
+        >
+          <HotelOwnerBookingsFilter
+            queryState={{
+              bookingStatus: filterStates.bookingStatus,
+              roomType: filterStates.roomType,
+            }}
+            setQueryState={(state) => {
+              setFilterStates(prev => ({
+                ...prev,
+                bookingStatus: state.bookingStatus ?? prev.bookingStatus,
+                roomType: state.roomType ?? prev.roomType,
+              }));
+            }}
+            setOpen={setFilterOpen}
+          />
+        </TableFilter>
 
         {/* <AddNewHotelDialog /> */}
 
@@ -415,6 +483,166 @@ function BookingsListToolbar({
     </div>
   );
 }
+
+// Hotel Owner Bookings Filter Component
+const HotelOwnerBookingsFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    bookingStatus: "CHECKED_IN" | "CHECKED_OUT" | "RESERVED" | "CANCELLED" | "AVAILABLE" | null;
+    roomType: string | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    bookingStatus: queryState.bookingStatus || null,
+    roomType: queryState.roomType || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      ...queryState,
+      bookingStatus: tempFilters.bookingStatus,
+      roomType: tempFilters.roomType,
+    });
+    setOpen(false);
+  }, [queryState, tempFilters.bookingStatus, tempFilters.roomType, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      bookingStatus: null,
+      roomType: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      ...queryState,
+      bookingStatus: null,
+      roomType: null,
+    });
+  }, [queryState, setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!tempFilters.bookingStatus || !!tempFilters.roomType;
+    const hasAppliedFilters = !!queryState.bookingStatus || !!queryState.roomType;
+    const appliedFiltersCount = 
+      (queryState.bookingStatus ? 1 : 0) + 
+      (queryState.roomType ? 1 : 0);
+    
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters.bookingStatus, tempFilters.roomType, queryState.bookingStatus, queryState.roomType]);
+
+  const bookingStatusOptions = useMemo(() => [
+    { value: "CHECKED_IN", label: "Checked In", color: "bg-green-500" },
+    { value: "CHECKED_OUT", label: "Checked Out", color: "bg-blue-500" },
+    { value: "RESERVED", label: "Reserved", color: "bg-yellow-500" },
+    { value: "CANCELLED", label: "Cancelled", color: "bg-red-500" },
+    { value: "AVAILABLE", label: "Available", color: "bg-gray-500" },
+  ], []);
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Bookings</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Booking Status Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Booking Status</Label>
+        <Select
+          value={tempFilters.bookingStatus || "all"}
+          onValueChange={(value) =>
+            setTempFilters({
+              ...tempFilters,
+              bookingStatus: value === "all" ? null : (value as typeof tempFilters.bookingStatus),
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {bookingStatusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+                  {option.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Room Type Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Room Type</Label>
+        <Input
+          placeholder="Enter room type (e.g., Standard, Deluxe)"
+          value={tempFilters.roomType || ""}
+          onChange={(e) =>
+            setTempFilters({
+              ...tempFilters,
+              roomType: e.target.value || null,
+            })
+          }
+        />
+      </div>
+
+      {/* Filter Summary */}
+      {filterStates.hasActiveFilters && (
+        <div className="pt-2 border-t">
+          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+          <div className="flex flex-wrap gap-1">
+            {tempFilters.bookingStatus && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Status: {bookingStatusOptions.find(s => s.value === tempFilters.bookingStatus)?.label}
+              </span>
+            )}
+            {tempFilters.roomType && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+                Room Type: {tempFilters.roomType}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button size="sm" onClick={applyFilters} className="flex-1">
+          Apply Filters
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export function BookingsPage({
   breadcrumb,

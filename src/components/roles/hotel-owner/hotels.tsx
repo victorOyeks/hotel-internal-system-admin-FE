@@ -7,7 +7,6 @@ import {
   ExportDialog,
   SuccessDialog,
 } from "@/components/shared/shared-dialogs";
-import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -136,8 +135,6 @@ function HotelListToolbar({
       </div>
 
       <div className="flex items-center gap-x-2 ">
-        <TableFilter>
-        </TableFilter>
 
         <AddNewHotelDialog
           // @ts-expect-error revalidate is a function
