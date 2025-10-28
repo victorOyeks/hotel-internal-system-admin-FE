@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
-  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Home", icon: <HomeIcon />, url: "/dashboard" },
   { title: "Hotels", icon: <HotelIcon />, url: "/dashboard/hotels" },
   { title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
   {
@@ -34,7 +34,7 @@ export const hotelOwnerLinks = [
 ];
 
 export const managerOwnerLinks = [
-  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Home", icon: <HomeIcon />, url: "/dashboard" },
   { title: "Room Management", icon: <HotelIcon />, url: "/dashboard/rooms" },
   {
     title: "Manage bookings",
@@ -59,19 +59,41 @@ export const managerOwnerLinks = [
 ];
 
 export const inventoryOfficerLinks = [
-  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Home", icon: <HomeIcon />, url: "/dashboard" },
   { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
   { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
-  { title: "Supplies & Deliveries", icon: <TruckIcon />, url: "/dashboard/supplies" },
+  {
+    title: "Supplies & Deliveries",
+    icon: <TruckIcon />,
+    url: "/dashboard/supplies",
+  },
   { title: "Reports", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
 ];
 
-
 export const frontDeskLinks = [
-  { title: "Dashboard", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Home", icon: <HomeIcon />, url: "/dashboard" },
   { title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
   { title: "Rooms", icon: <HotelIcon />, url: "/dashboard/rooms" },
   { title: "Guests Log", icon: <IdCardIcon />, url: "/dashboard/guests" },
   { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
-  { title: "Lost & Found", icon: <FolderClosedIcon />, url: "/dashboard/lost-and-found" },
-]
+  {
+    title: "Lost & Found",
+    icon: <FolderClosedIcon />,
+    url: "/dashboard/lost-and-found",
+  },
+];
+
+export const restaurantLinks = [
+  {
+    title: "Home",
+    icon: <HomeIcon />,
+    url: "/dashboard",
+  },
+  {
+    title: "Inventory",
+    icon: <ToolCaseIcon />,
+    url: "/dashboard/inventory"
+  },
+  { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
+  { title: "Sales Report", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
+];

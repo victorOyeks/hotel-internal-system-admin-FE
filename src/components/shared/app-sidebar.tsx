@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { frontDeskLinks, hotelOwnerLinks, inventoryOfficerLinks, managerOwnerLinks } from "../links";
+import { frontDeskLinks, hotelOwnerLinks, inventoryOfficerLinks, managerOwnerLinks, restaurantLinks } from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
 import type { HotelRole } from "@/lib/types";
@@ -37,11 +37,10 @@ export function AppSidebar({
     React.ComponentProps<typeof NavMain>["items"]
   > = {
     HOTEL_OWNER: hotelOwnerLinks,
-    BAR: [],
     FRONT_DESK: frontDeskLinks,
     MAINTENANCE: [],
     INVENTORY: inventoryOfficerLinks,
-    KITCHEN: [],
+    RESTAURANT: restaurantLinks,
     MANAGER: managerOwnerLinks,
     SUPER_ADMIN: [],
   };

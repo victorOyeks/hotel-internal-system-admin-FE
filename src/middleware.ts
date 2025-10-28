@@ -7,10 +7,9 @@ import { decrypt } from "./lib/session";
 const PREFIX_PATH = "/dashboard";
 
 const roleToPath: Record<HotelRole, string> = {
-  BAR: "/bar",
+  RESTAURANT: "/restaurant",
   FRONT_DESK: "/front-desk",
   HOTEL_OWNER: "/hotel-owner",
-  KITCHEN: "/kitchen",
   MANAGER: "/manager",
   INVENTORY: "/inventory",
   MAINTENANCE: "/maintenance",
@@ -59,7 +58,7 @@ export async function middleware(request: NextRequest) {
     rewriteUrl.search = query;
     rewriteUrl.hash = hashed;
 
-    console.log("Rewriting to:", rewriteUrl.toString());
+    console.log("Rewriting to:", rewriteUrl.toString(), { userRole, actualPath });
 
     return NextResponse.rewrite(rewriteUrl);
   }

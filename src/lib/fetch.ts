@@ -8,8 +8,7 @@ export const Role = z.enum([
   "FRONT_DESK",
   "MAINTENANCE",
   "INVENTORY",
-  "BAR",
-  "KITCHEN",
+  "RESTAURANT",
   "SUPER_ADMIN",
 ]);
 
