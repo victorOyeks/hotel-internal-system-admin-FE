@@ -684,6 +684,15 @@ export const schema = createSchema({
     }).partial().optional(),
     output: ApiResponseHotelOwnerDashboardOverviewResponse,
   },
+  "@get/api/hotel-owners/dashboard-performance": {
+    output: ApiResponseObject.extend({
+      data: z.object({
+        hotelId: z.string(),
+        hotelName: z.string(),
+        performancePercentage: z.number()
+      }).array()
+    })
+  },
 
   // Manager APIs
   "@get/api/managers/hotels/:hotelId/rooms": {

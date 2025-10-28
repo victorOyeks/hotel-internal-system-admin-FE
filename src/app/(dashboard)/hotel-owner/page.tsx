@@ -50,11 +50,32 @@ function HomePage() {
     })
   );
 
+
+  const dashboardPerformanceData = use(
+    queryClient.ensureQueryData({
+      queryKey: ["hotel-owner", "dashboard-performance"],
+      queryFn: async ({ signal }) => {
+        const res = await $fetch(
+          "@get/api/hotel-owners/dashboard-performance",
+          {
+            query: {},
+            signal,
+            auth: { type: "Bearer", token: cookieData.token },
+            throw: true,
+          }
+        );
+
+        return res.data;
+      },
+    })
+  );
+
   return (
     <HotelOwnerDashboard
       overviewData={overviewData}
       breadcrumbs={breadcrumbs}
       graphData={graphData}
+      performanceData={dashboardPerformanceData}
     />
   );
 }
