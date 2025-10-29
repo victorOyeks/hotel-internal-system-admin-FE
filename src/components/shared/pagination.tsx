@@ -1,3 +1,5 @@
+"use client";
+
 import type { Table } from "@tanstack/react-table";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -63,9 +65,18 @@ const generatePagination = (
 };
 
 // Your improved pagination component
-export function DataTablePagination<T>({ table }: { table: Table<T> }) {
-	const pageIndex = table.getState().pagination.pageIndex;
-	const pageCount = table.getPageCount();
+export function DataTablePagination<T>(props: { table: Table<T> } | {
+	pageIndex: number;
+	pageCount: number;
+	nextPage: () => void;
+	previousPage: () => void;
+	canNextPage: boolean;
+	canPreviousPage: boolean;
+	setPageIndex?: (pageIndex: number) => void;
+}) {
+	const table = "table" in props ? props.table : undefined;
+	const pageIndex = "table" in props ? props.table.getState().pagination.pageIndex : props.pageIndex;
+	const pageCount = "table" in props ? props.table.getPageCount() : props.pageCount;
 
 	const paginationRange = useMemo(
 		() => generatePagination(pageIndex, pageCount),
@@ -83,8 +94,14 @@ export function DataTablePagination<T>({ table }: { table: Table<T> }) {
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
-				disabled={!table.getCanPreviousPage()}
-				onClick={() => table.previousPage()}
+				disabled={table ? !table.getCanPreviousPage() : !("canPreviousPage" in props ? props.canPreviousPage : false)}
+				onClick={() => {
+					if (table) {
+						table.previousPage();
+					} else if ("previousPage" in props) {
+						props.previousPage();
+					}
+				}}
 			>
 				<ChevronLeftIcon className="h-4 w-4" />
 			</Button>
@@ -109,9 +126,15 @@ export function DataTablePagination<T>({ table }: { table: Table<T> }) {
 						size="icon"
 						className="h-6 w-6"
 						// `pageNumber` is 1-indexed, `setPageIndex` is 0-indexed
-						onClick={() => table.setPagination((old) => {
-							return { ...old, pageIndex: pageNumber - 1 };
-						})}
+						onClick={() => {
+							if (table) {
+								table.setPagination((old) => {
+									return { ...old, pageIndex: pageNumber - 1 };
+								});
+							} else if ("setPageIndex" in props && props.setPageIndex) {
+								props.setPageIndex(pageNumber - 1);
+							}
+						}}
 					>
 						{pageNumber}
 					</Button>
@@ -123,8 +146,14 @@ export function DataTablePagination<T>({ table }: { table: Table<T> }) {
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
-				disabled={!table.getCanNextPage()}
-				onClick={() => table.nextPage()}
+				disabled={table ? !table.getCanNextPage() : !("canNextPage" in props ? props.canNextPage : false)}
+				onClick={() => {
+					if (table) {
+						table.nextPage();
+					} else if ("nextPage" in props) {
+						props.nextPage();
+					}
+				}}
 			>
 				<ChevronRightIcon className="h-4 w-4" />
 			</Button>

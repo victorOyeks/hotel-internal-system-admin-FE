@@ -1115,6 +1115,37 @@ export const schema = createSchema({
         data: z.string(),
       }),
     },
+
+    // RESTAURANT
+    "@get/api/restaurants/kitchen-orders": {
+      query: z.object({
+        destination: z.string().nullable(),
+        status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]).nullable(),
+        searchText: z.string().nullable(),
+        startDate: z.iso.date().nullable(),
+        endDate: z.iso.date().nullable(),
+        page: z.number().nullable().default(0),
+        size: z.number().nullable().default(10),
+      }).partial().optional(),
+      output: ApiResponseObject.extend({
+        data: Pagination.extend({
+          content: z.object({
+            id: z.string(),
+            customId: z.string(),
+            destination: z.string(),
+            totalAmount: z.number(),
+            status: z.string(),
+            createdAt: z.coerce.date(),
+            orderItems: z.object({
+              itemName: z.string(),
+              quantity: z.number(),
+              price: z.number(),
+              total: z.number(),
+            }).array()
+          }).array()
+        })
+      })
+    }
   },
 );
 

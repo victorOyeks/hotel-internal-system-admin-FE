@@ -1,10 +1,10 @@
 import {
-  BreadCrumbWrapper,
   FrontDeskStats,
   PendingMaintenanceNotifications,
   QuickActions,
 } from "@/components/roles/front-desk/dashboard";
 import { RoomsListTable } from "@/components/roles/front-desk/rooms-table";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
