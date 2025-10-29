@@ -1134,7 +1134,7 @@ export const schema = createSchema({
             customId: z.string(),
             destination: z.string(),
             totalAmount: z.number(),
-            status: z.string(),
+            status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
             createdAt: z.coerce.date(),
             orderItems: z.object({
               itemName: z.string(),

@@ -3,7 +3,7 @@
 import { DataTablePagination } from "@/components/shared/pagination";
 import { ExportDialog } from "@/components/shared/shared-dialogs";
 import { TableFilter } from "@/components/shared/table-filter";
-import { Badge, BadgeVariant } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -20,10 +20,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverTrigger } from "@/components/ui/popover";
-import { APIOutput } from "@/lib/action-utils";
-import { Pagination } from "@/lib/fetch";
+import type { APIOutput } from "@/lib/action-utils";
+import { revalidateRoute } from "@/lib/actions";
+import type { Pagination } from "@/lib/fetch";
+import { updateOrderStatus } from "@/lib/restaurant-actions";
 import { formatCurrency } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -41,6 +43,7 @@ import {
   useQueryStates,
 } from "nuqs";
 import { useState, type PropsWithChildren, type ReactNode } from "react";
+import { toast } from "sonner";
 
 const actions = [
   {
@@ -205,13 +208,45 @@ type OrderItem =
 
 function OrderCard({ order }: { order: OrderItem }) {
   const statusToVariant = {
-    ON_COOK: "yellow",
     COMPLETED: "green",
     CANCELLED: "red",
     PENDING: "blue",
   } satisfies Record<string, BadgeVariant>;
 
   const [orderStatus, setOrderStatus] = useState(order.status);
+
+  const { mutate, isPending } = useMutation({
+    mutationKey: ["update-order-status", order.id],
+    mutationFn: async (newStatus: "COMPLETED" | "CANCELLED" | "PENDING") => {
+      const response = await updateOrderStatus({
+        orderId: order.id,
+        status: newStatus,
+      });
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response;
+    },
+    onSuccess: (data) => {
+      toast.success("Order status updated successfully", {
+        description: data.data,
+      });
+      revalidateRoute("/restaurant")
+    },
+    onMutate: (status) => {
+      toast.loading("Updating order status...");
+      setOrderStatus(status);
+    },
+    onError: (error) => {
+      toast.error("Failed to update order status", {
+        description: error.message,
+      });
+      setOrderStatus(order.status);
+    },
+    onSettled: () => {
+      toast.dismiss();
+    },
+  });
 
   return (
     <div className="border border-primary-5/20 rounded-2xl p-4 bg-white">
@@ -226,9 +261,9 @@ function OrderCard({ order }: { order: OrderItem }) {
           {orderStatus.replaceAll("_", " ").toLowerCase()}
         </Badge>
 
-        {orderStatus !== "COMPLETED" && (
+        {order.status !== "COMPLETED" && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger disabled={isPending} asChild>
               <button
                 type="button"
                 className="flex items-center gap-x-1 text-xs bg-muted text-muted-foreground rounded-full px-2 py-1"
@@ -243,13 +278,13 @@ function OrderCard({ order }: { order: OrderItem }) {
                   size="sm"
                   variant="ghost"
                   className="w-full justify-between"
-                  onClick={() => setOrderStatus("PENDING")}
+                  onClick={() => mutate("PENDING")}
                 >
                   New order{" "}
                   <Checkbox
                     checked={orderStatus === "PENDING"}
                     onCheckedChange={(checked) =>
-                      setOrderStatus(checked ? "PENDING" : orderStatus)
+                      mutate(checked ? "PENDING" : orderStatus)
                     }
                   />
                 </Button>
@@ -260,30 +295,30 @@ function OrderCard({ order }: { order: OrderItem }) {
                   size="sm"
                   variant="ghost"
                   className="w-full justify-between"
-                  onClick={() => setOrderStatus("ON_COOK")}
-                >
-                  On cook{" "}
-                  <Checkbox
-                    checked={orderStatus === "ON_COOK"}
-                    onCheckedChange={(checked) =>
-                      setOrderStatus(checked ? "ON_COOK" : orderStatus)
-                    }
-                  />
-                </Button>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => setOrderStatus("COMPLETED")}
+                  onClick={() => mutate("COMPLETED")}
                 >
                   Completed{" "}
                   <Checkbox
                     checked={orderStatus === "COMPLETED"}
                     onCheckedChange={(checked) =>
-                      setOrderStatus(checked ? "COMPLETED" : orderStatus)
+                      mutate(checked ? "COMPLETED" : orderStatus)
+                    }
+                  />
+                </Button>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="w-full justify-between"
+                  onClick={() => mutate("CANCELLED")}
+                >
+                  Cancel{" "}
+                  <Checkbox
+                    checked={orderStatus === "CANCELLED"}
+                    onCheckedChange={(checked) =>
+                      mutate(checked ? "CANCELLED" : orderStatus)
                     }
                   />
                 </Button>
