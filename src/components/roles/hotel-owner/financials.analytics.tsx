@@ -153,9 +153,7 @@ function Hero() {
     <div className="space-y-2 md:grid md:grid-cols-12 md:gap-2">
       <div className="md:col-span-8 space-y-2">
         <Earnings />
-        <CurvedLineChart 
-          graphData={[]}
-        />
+        <CurvedLineChart totalEarning={50000} graphData={[]} />
       </div>
       <div className="md:col-span-4">
         <PieChart />
@@ -240,7 +238,7 @@ function IncomePerfByBranch() {
         </CardContent>
       </CardHeader>
     </Card>
-  )
+  );
 }
 
 function ExpensePerfByBranch() {
@@ -248,7 +246,9 @@ function ExpensePerfByBranch() {
     <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0 px-0">
       <CardHeader>
         <CardTitle>
-          <h2 className="text-primary text-xl">Expense performance by branch</h2>
+          <h2 className="text-primary text-xl">
+            Expense performance by branch
+          </h2>
         </CardTitle>
 
         <CardContent className="w-full">
@@ -256,7 +256,7 @@ function ExpensePerfByBranch() {
         </CardContent>
       </CardHeader>
     </Card>
-  )
+  );
 }
 
 export function AnalyticsSection() {
