@@ -225,7 +225,7 @@ function InventoryTableToolbar({
         {appliedFilters.map((filter) => (
           <Badge
             key={filter.key}
-            variant="secondary"
+            variant="green"
             className="px-2 py-1 text-xs flex items-center gap-1"
           >
             {filter.label}: {filter.value}
