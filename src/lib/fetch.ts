@@ -1229,6 +1229,28 @@ export const schema = createSchema({
       }),
     }),
   },
+  "@get/api/restaurants/bar-sales": {
+    query: z.object({
+      search: z.string().nullable(),
+      startDate: z.iso.date().nullable(),
+      endDate: z.iso.date().nullable(),
+      page: z.coerce.number().default(0),
+      size: z.coerce.number().default(10),
+    }),
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z.object({
+          saleId: z.string(),
+          barItemId: z.string(),
+          barItemName: z.string(),
+          barItemCustomId: z.string(),
+          quantitySold: z.number(),
+          amount: z.number(),
+          date: z.iso.datetime()
+        }).array()
+      })
+    })
+  },
 });
 
 export const $fetch = createFetch({
