@@ -463,7 +463,7 @@ const ApiResponseDashboardGraphResponse = ApiResponseObject.extend({
     z.object({
       month: z.string(),
       totalEarnings: z.number(),
-    }),
+    })
   ),
 });
 
@@ -541,19 +541,20 @@ export type LostItem = z.infer<
 
 const ApiResponseManagerDashboardResponse = ApiResponseObject.extend({
   data: z.object({
-   totalEarnings: z.number(),
-   occupancyRate: z.number(),
-   totalCheckIns: z.number(),
-   totalCheckOuts: z.number(),
-   totalRooms: z.number(),
-   totalAvailableRooms: z.number(),
-   selectedMonth: z.string(),
+    totalEarnings: z.number(),
+    occupancyRate: z.number(),
+    totalCheckIns: z.number(),
+    totalCheckOuts: z.number(),
+    totalRooms: z.number(),
+    totalAvailableRooms: z.number(),
+    selectedMonth: z.string(),
   }),
 });
 
-const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend({
-  data: z.object({
-    /*
+const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend(
+  {
+    data: z.object({
+      /*
         "totalEarnings": 0,
     "roomEarnings": 0,
     "barEarnings": 0,
@@ -566,19 +567,20 @@ const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend(
     "totalHotels": 0,
     "selectedMonth": "string"
     */
-    totalEarnings: z.number(),
-    roomEarnings: z.number(),
-    barEarnings: z.number(),
-    kitchenEarnings: z.number(),
-    overallOccupancyRate: z.number(),
-    totalCheckIns: z.number(),
-    totalCheckOuts: z.number(),
-    totalRooms: z.number(),
-    totalAvailableRooms: z.number(),
-    totalHotels: z.number(),
-    selectedMonth: z.string()
-  })
-});
+      totalEarnings: z.number(),
+      roomEarnings: z.number(),
+      barEarnings: z.number(),
+      kitchenEarnings: z.number(),
+      overallOccupancyRate: z.number(),
+      totalCheckIns: z.number(),
+      totalCheckOuts: z.number(),
+      totalRooms: z.number(),
+      totalAvailableRooms: z.number(),
+      totalHotels: z.number(),
+      selectedMonth: z.string(),
+    }),
+  }
+);
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -678,19 +680,24 @@ export const schema = createSchema({
     output: ApiResponseDashboardGraphResponse,
   },
   "@get/api/hotel-owners/dashboard/overview": {
-    query: z.object({
-      selectedMonth: z.string()
-    }).partial().optional(),
+    query: z
+      .object({
+        selectedMonth: z.string(),
+      })
+      .partial()
+      .optional(),
     output: ApiResponseHotelOwnerDashboardOverviewResponse,
   },
   "@get/api/hotel-owners/dashboard-performance": {
     output: ApiResponseObject.extend({
-      data: z.object({
-        hotelId: z.string(),
-        hotelName: z.string(),
-        performancePercentage: z.number()
-      }).array()
-    })
+      data: z
+        .object({
+          hotelId: z.string(),
+          hotelName: z.string(),
+          performancePercentage: z.number(),
+        })
+        .array(),
+    }),
   },
 
   // Manager APIs
@@ -826,9 +833,12 @@ export const schema = createSchema({
   "@get/api/managers/dashboard/:hotelId": {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseManagerDashboardResponse,
-    query: z.object({
-      month: z.string()
-    }).partial().optional(),
+    query: z
+      .object({
+        month: z.string(),
+      })
+      .partial()
+      .optional(),
   },
   "@get/api/managers/dashboard/:hotelId/earnings-graph": {
     params: z.object({ hotelId: z.string() }),
@@ -836,12 +846,14 @@ export const schema = createSchema({
   },
   "@get/api/managers/dashboard-performance": {
     output: ApiResponseObject.extend({
-      data: z.object({
-        hotelId: z.string(),
-        hotelName: z.string(),
-        performancePercentage: z.number()
-      }).array()
-    })
+      data: z
+        .object({
+          hotelId: z.string(),
+          hotelName: z.string(),
+          performancePercentage: z.number(),
+        })
+        .array(),
+    }),
   },
 
   // Inventory Officer APIs
@@ -1083,42 +1095,43 @@ export const schema = createSchema({
         unclaimedItems: z.number(),
         claimedItems: z.number(),
       }),
-    })
+    }),
   },
-    "@get/api/front-desks/all-room-types": {
-      output: ApiResponseObject.extend({
-        data: z.array(z.string()),
-      }),
-    },
-    "@get/api/front-desks/all-rooms-by-type": {
-      query: z.object({
-        roomType: z.string().nonempty(),
-        roomStatus: z.literal("AVAILABLE"),
-      }),
-      output: ApiResponseObject.extend({
-        data: z.array(z.string()),
-      }),
-    },
-    "@delete/api/front-desks/lost-and-found/:itemId": {
-      params: z.object({ itemId: z.string() }),
-      output: ApiResponseObject.extend({
-        data: z.string(),
-      }),
-    },
-    "@post/api/front-desks/lost-and-found/:itemId/claim": {
-      params: z.object({ itemId: z.string() }),
-      input: z.object({
-        claimedBy: z.string().nonempty(),
-        claimedNotes: z.string().nullable().optional(),
-      }),
-      output: ApiResponseObject.extend({
-        data: z.string(),
-      }),
-    },
+  "@get/api/front-desks/all-room-types": {
+    output: ApiResponseObject.extend({
+      data: z.array(z.string()),
+    }),
+  },
+  "@get/api/front-desks/all-rooms-by-type": {
+    query: z.object({
+      roomType: z.string().nonempty(),
+      roomStatus: z.literal("AVAILABLE"),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.array(z.string()),
+    }),
+  },
+  "@delete/api/front-desks/lost-and-found/:itemId": {
+    params: z.object({ itemId: z.string() }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
+  },
+  "@post/api/front-desks/lost-and-found/:itemId/claim": {
+    params: z.object({ itemId: z.string() }),
+    input: z.object({
+      claimedBy: z.string().nonempty(),
+      claimedNotes: z.string().nullable().optional(),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
+  },
 
-    // RESTAURANT
-    "@get/api/restaurants/kitchen-orders": {
-      query: z.object({
+  // RESTAURANT
+  "@get/api/restaurants/kitchen-orders": {
+    query: z
+      .object({
         destination: z.string().nullable(),
         status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]).nullable(),
         searchText: z.string().nullable(),
@@ -1126,28 +1139,97 @@ export const schema = createSchema({
         endDate: z.iso.date().nullable(),
         page: z.number().nullable().default(0),
         size: z.number().nullable().default(10),
-      }).partial().optional(),
-      output: ApiResponseObject.extend({
-        data: Pagination.extend({
-          content: z.object({
+      })
+      .partial()
+      .optional(),
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z
+          .object({
             id: z.string(),
             customId: z.string(),
             destination: z.string(),
             totalAmount: z.number(),
             status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
             createdAt: z.coerce.date(),
-            orderItems: z.object({
-              itemName: z.string(),
-              quantity: z.number(),
-              price: z.number(),
-              total: z.number(),
-            }).array()
-          }).array()
-        })
-      })
-    }
+            orderItems: z
+              .object({
+                itemName: z.string(),
+                quantity: z.number(),
+                price: z.number(),
+                total: z.number(),
+              })
+              .array(),
+          })
+          .array(),
+      }),
+    }),
   },
-);
+  "@get/api/restaurants/bar-inventory-summary": {
+    output: ApiResponseObject.extend({
+      data: z.object({
+        totalItems: z.number(),
+        availableItems: z.number(),
+        lowInStockItems: z.number(),
+        outOfStockItems: z.number(),
+      }),
+    }),
+  },
+  "@get/api/restaurants/bar-restock-requests": {
+    query: z
+      .object({
+        status: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        search: z.string().nullable(),
+        startDate: z.iso.date().nullable(),
+        endDate: z.iso.date().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z
+          .object({
+            id: z.string(),
+            barItemId: z.string(),
+            barItemCustomId: z.string(),
+            barItemName: z.string(),
+            requestedQuantity: z.number(),
+            status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
+            requestedBy: z.string(),
+            requestedAt: z.coerce.date(),
+          })
+          .array(),
+      }),
+    }),
+  },
+  "@get/api/restaurants/stock": {
+    query: z
+      .object({
+        search: z.string().nullable(),
+        department: z.string().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z
+          .object({
+            id: z.string(),
+            customId: z.string(),
+            name: z.string(),
+            department: z.string(),
+            unit: z.string(),
+            quantity: z.coerce.number().default(0),
+            dateTimeReceived: z.coerce.date(),
+            createdAt: z.coerce.date(),
+          })
+          .array(),
+      }),
+    }),
+  },
+});
 
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,
@@ -1169,10 +1251,10 @@ export const $fetch = createFetch({
     );
   },
   onRequest(context) {
-      console.log("<==", context.url.toString())
+    console.log("<==", context.url.toString());
   },
   onResponse(context) {
-      console.log("==>", context.response.status, context.response.url)
+    console.log("==>", context.response.status, context.response.url);
   },
   timeout: 50000,
   retry: {

@@ -30,6 +30,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   FolderInputIcon,
+  type LucideProps,
   PackageCheckIcon,
   PlusIcon,
   SearchIcon,
@@ -42,10 +43,19 @@ import {
   useQueryState,
   useQueryStates,
 } from "nuqs";
-import { useState, type PropsWithChildren, type ReactNode } from "react";
+import { type ForwardRefExoticComponent, type RefAttributes, useState, type PropsWithChildren, type ReactNode } from "react";
 import { toast } from "sonner";
+import { CreateOrderForm } from "./quick-action-modals";
 
-const actions = [
+type QuickAction = {
+  title: string;
+  heading?: string;
+  Component?: ({ setOpen }: { setOpen: (open: boolean) => void }) => React.JSX.Element;
+  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+  key: string;
+};
+
+const actions: QuickAction[] = [
   {
     title: "Create New Order",
     heading: "Create new order",
@@ -125,19 +135,6 @@ function BaseModal({
   );
 }
 
-function CreateOrderForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-  return (
-    <div>
-      <p>This is a placeholder for Create Order Form.</p>
-      <Button
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md"
-        onClick={() => setOpen(false)}
-      >
-        Close
-      </Button>
-    </div>
-  );
-}
 
 export function KitchenToolbar() {
   const [queryState, setQueryState] = useQueryStates({
