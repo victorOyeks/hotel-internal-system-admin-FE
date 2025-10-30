@@ -5,15 +5,6 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-  Form,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
   Table,
   TableBody,
   TableCell,
@@ -22,18 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { revalidateRoute } from "@/lib/actions";
 import type { Pagination } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { cn } from "@/lib/utils";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
@@ -43,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RotateCcwIcon } from "lucide-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   createColumnHelper,
   flexRender,
@@ -54,8 +35,7 @@ import {
   useReactTable,
   type Table as TableType,
 } from "@tanstack/react-table";
-import { atom, useSetAtom } from "jotai";
-import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import {
   parseAsIsoDate,
   parseAsString,
@@ -64,9 +44,6 @@ import {
   useQueryStates,
 } from "nuqs";
 import { useMemo, useState, useCallback } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import z from "zod";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { APIOutput } from "@/lib/action-utils";
 import { DatePicker } from "@/components/shared/date-picker";
@@ -75,172 +52,6 @@ export type InventoryResponse =
   APIOutput<"@get/api/restaurants/stock">["data"]["content"][number];
 export type InventoryRestockRequest =
   APIOutput<"@get/api/restaurants/bar-restock-requests">["data"]["content"][number];
-
-const successDialogAtom = atom({
-  show: false,
-  message: "",
-});
-
-function _AddNewItemDialog() {
-  const [open, setOpen] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="rounded-md md:rounded-xl"
-        >
-          <PlusIcon />
-          <span className="hidden md:inline">Add Item</span>
-        </Button>
-      </DialogTrigger>
-
-      <DialogContent className="p-4 rounded-2xl">
-        <DialogTitle>New Item</DialogTitle>
-        <DialogDescription className="sr-only">
-          Fill in the details below to add a new item.
-        </DialogDescription>
-
-        <div className="mt-4">
-          <AddItemForm setOpen={setOpen} />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const newItemFormSchema = z.object({
-  name: z.string().nonempty("Item name is required"),
-  category: z.string().nonempty("Category is required"),
-  unit: z.string().nonempty("Unit is required"),
-  quantity: z
-    .number({ error: "Quantity must be a number" })
-    .nonnegative("Quantity cannot be negative"),
-  itemId: z.string().optional(),
-});
-
-function AddItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-  const queryClient = useQueryClient();
-  const { mutate, isPending } = useMutation({
-    mutationFn: async (data: z.infer<typeof newItemFormSchema>) => {
-      console.log(data);
-    },
-    onSuccess: async () => {
-      setOpen(false);
-      form.reset();
-      setShowSuccessDialog({
-        show: true,
-        message: "Item added successfully",
-      });
-      await queryClient.invalidateQueries({
-        exact: true,
-        queryKey: ["items"],
-      });
-      await revalidateRoute("/manager/staff-management");
-    },
-    onError: () => {
-      toast.error("Something went wrong", {
-        description: "Failed to add item",
-      });
-    },
-  });
-  const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const form = useForm({
-    resolver: zodResolver(newItemFormSchema),
-    defaultValues: {
-      name: "",
-      category: "",
-      unit: "",
-      quantity: 1,
-    },
-    progressive: true,
-    mode: "onBlur",
-    reValidateMode: "onBlur",
-  });
-
-  return (
-    <Form {...form}>
-      <form
-        className="space-y-4"
-        onSubmit={form.handleSubmit((data) => mutate(data))}
-      >
-        <FormField
-          name="name"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Item Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Item Category</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g Electronics" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="unit"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Unit</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g Pieces" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="quantity"
-          render={() => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  placeholder="e.g 100"
-                  {...form.register("quantity", { valueAsNumber: true })}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button
-          type="submit"
-          className="mt-4 w-full font-semibold"
-          disabled={isPending}
-        >
-          {isPending ? (
-            <>
-              <Loader2Icon className="animate-spin" />
-              <span>Adding, please wait...</span>
-            </>
-          ) : (
-            "Add Item"
-          )}
-        </Button>
-      </form>
-    </Form>
-  );
-}
 
 function InventoryTableToolbar({
   currentSection,
@@ -937,35 +748,6 @@ const InventoryFilter = ({
         </Button>
       </div>
 
-      {/* Category Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Category</Label>
-        <Select
-          value={tempFilters.department || "all"}
-          onValueChange={(value) =>
-            setTempFilters({
-              ...tempFilters,
-              department:
-                value === "all"
-                  ? null
-                  : (value as typeof tempFilters.department),
-            })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="All Departments" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {departmentOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Approval Status Filter (only for restock section) */}
       {currentSection === "restock" && (
         <div className="space-y-2">
@@ -1002,33 +784,64 @@ const InventoryFilter = ({
 
       {/* Date Filters for Inventory section */}
       {currentSection === "inventory" && (
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <>
+          {/* Department Filter */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Start Date</Label>
-            <DatePicker
-              initialDate={
-                tempFilters.startDate
-                  ? tempFilters.startDate.toDateString()
-                  : ""
+            <Label className="text-sm font-medium">Department</Label>
+            <Select
+              value={tempFilters.department || "all"}
+              onValueChange={(value) =>
+                setTempFilters({
+                  ...tempFilters,
+                  department:
+                    value === "all"
+                      ? null
+                      : (value as typeof tempFilters.department),
+                })
               }
-              onChange={(date) =>
-                setTempFilters({ ...tempFilters, startDate: new Date(date) })
-              }
-            />
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All Departments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departmentOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">End Date</Label>
-            <DatePicker
-              initialDate={
-                tempFilters.endDate ? tempFilters.endDate.toDateString() : ""
-              }
-              onChange={(date) =>
-                setTempFilters({ ...tempFilters, endDate: new Date(date) })
-              }
-            />
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Start Date</Label>
+              <DatePicker
+                initialDate={
+                  tempFilters.startDate
+                    ? tempFilters.startDate.toDateString()
+                    : ""
+                }
+                onChange={(date) =>
+                  setTempFilters({ ...tempFilters, startDate: new Date(date) })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">End Date</Label>
+              <DatePicker
+                initialDate={
+                  tempFilters.endDate ? tempFilters.endDate.toDateString() : ""
+                }
+                onChange={(date) =>
+                  setTempFilters({ ...tempFilters, endDate: new Date(date) })
+                }
+              />
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Filter Summary */}
