@@ -565,7 +565,16 @@ const allSupplyColumns = [
   }),
   columnHelper.accessor("createdAt", {
     header: "Date",
-    cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+    cell: (info) => {
+      return new Date(info.getValue()).toLocaleDateString("en-US", {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    },
   }),
 ];
 
