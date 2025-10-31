@@ -20,8 +20,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { SearchIcon } from "lucide-react";
-import { parseAsString, useQueryStates } from "nuqs";
+import { SearchIcon, RotateCcwIcon, CalendarIcon } from "lucide-react";
+import { parseAsString, parseAsIsoDate, useQueryStates } from "nuqs";
 import type { APIOutput } from "@/lib/action-utils";
 import { formatCurrency } from "@/lib/utils";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -33,38 +33,348 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 type BarSale =
   APIOutput<"@get/api/restaurants/bar-sales">["data"]["content"][number];
 
-function Toolbar() {
-  const [searchParam, setSearchParam] = useQueryStates({
-    search: parseAsString,
+// Sales Report Filter Component
+const SalesReportFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    search: string | null;
+    startDate: Date | null;
+    endDate: Date | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    search: queryState.search || "",
+    startDate: queryState.startDate || null,
+    endDate: queryState.endDate || null,
   });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      search: tempFilters.search || null,
+      startDate: tempFilters.startDate,
+      endDate: tempFilters.endDate,
+    });
+    setOpen(false);
+  }, [tempFilters, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      search: "",
+      startDate: null,
+      endDate: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      search: null,
+      startDate: null,
+      endDate: null,
+    });
+  }, [setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!(
+      tempFilters.search ||
+      tempFilters.startDate ||
+      tempFilters.endDate
+    );
+
+    const hasAppliedFilters = !!(
+      queryState.search ||
+      queryState.startDate ||
+      queryState.endDate
+    );
+
+    const appliedFiltersCount =
+      (queryState.search ? 1 : 0) +
+      (queryState.startDate ? 1 : 0) +
+      (queryState.endDate ? 1 : 0);
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters, queryState]);
+
+  return (
+    <div className="space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Sales Report</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Search Filter */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Search</Label>
+        <Input
+          placeholder="Search orders..."
+          value={tempFilters.search}
+          onChange={(e) =>
+            setTempFilters({
+              ...tempFilters,
+              search: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      {/* Date filter */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Start Date Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Start Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {tempFilters.startDate ? (
+                  format(tempFilters.startDate, "PPP")
+                ) : (
+                  <span>Pick a start date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={tempFilters.startDate || undefined}
+                onSelect={(date) =>
+                  setTempFilters({
+                    ...tempFilters,
+                    startDate: date || null,
+                  })
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* End Date Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">End Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {tempFilters.endDate ? (
+                  format(tempFilters.endDate, "PPP")
+                ) : (
+                  <span>Pick an end date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={tempFilters.endDate || undefined}
+                onSelect={(date) =>
+                  setTempFilters({
+                    ...tempFilters,
+                    endDate: date || null,
+                  })
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button
+          size="sm"
+          onClick={applyFilters}
+          disabled={!filterStates.hasActiveFilters}
+          className="flex-1"
+        >
+          Apply Filters
+        </Button>
+      </div>
+
+      {/* Applied Filters Summary */}
+      {filterStates.hasAppliedFilters && (
+        <div className="pt-2 border-t">
+          <div className="flex flex-wrap gap-1">
+            {queryState.search && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ search: null })}
+              >
+                Search: {queryState.search}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.startDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ startDate: null })}
+              >
+                From: {format(queryState.startDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.endDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ endDate: null })}
+              >
+                To: {format(queryState.endDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+function Toolbar() {
+  const [queryState, setQueryState] = useQueryStates({
+    search: parseAsString,
+    startDate: parseAsIsoDate,
+    endDate: parseAsIsoDate,
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Memoize applied filters count for performance
+  const appliedFiltersCount = useMemo(() => {
+    return (
+      (queryState.search ? 1 : 0) +
+      (queryState.startDate ? 1 : 0) +
+      (queryState.endDate ? 1 : 0)
+    );
+  }, [queryState.search, queryState.startDate, queryState.endDate]);
 
   return (
     <div className="flex items-center justify-between space-x-2 bg-card border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-2xl">
-      <div className="flex items-center">
+      <div className="flex items-center space-x-2">
         <div className="relative">
           <input
             type="text"
             placeholder="Search"
-            value={searchParam.search ?? ""}
+            value={queryState.search ?? ""}
             onChange={(e) =>
-              setSearchParam((prev) => ({
+              setQueryState((prev) => ({
                 ...prev,
-                search: e.target.value,
+                search: e.target.value || null,
               }))
             }
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-sm md:placeholder:text-base placeholder:text-primary-1/80 rounded-md md:rounded-full"
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
+
+        {/* Applied Filters Chips */}
+        {appliedFiltersCount > 0 && (
+          <div className="flex items-center gap-1">
+            {queryState.startDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ startDate: null })}
+              >
+                From: {format(queryState.startDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.endDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ endDate: null })}
+              >
+                To: {format(queryState.endDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
 
-      <TableFilter></TableFilter>
+      <TableFilter open={filterOpen} setOpen={setFilterOpen}>
+        <SalesReportFilter
+          queryState={queryState}
+          setQueryState={setQueryState}
+          setOpen={setFilterOpen}
+        />
+      </TableFilter>
     </div>
   );
 }

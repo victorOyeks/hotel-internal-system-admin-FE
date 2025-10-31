@@ -7,16 +7,16 @@ import { getCookieData } from "@/lib/server-fns";
 import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
-
 const loadSearchParams = createLoader({
   ...paginationSearchParams,
-  search: parseAsString
+  search: parseAsString,
+  startDate: parseAsString,
+  endDate: parseAsString,
 });
-
 
 type PageProps = {
   searchParams: Promise<SearchParams>;
-}
+};
 
 function Page({ searchParams }: PageProps) {
   const queryClient = getQueryClient();
@@ -31,7 +31,7 @@ function Page({ searchParams }: PageProps) {
           auth: { type: "Bearer", token: cookieData.token },
           query: {
             ...query,
-            page: query.page ? query.page - 1 : 0
+            page: query.page ? query.page - 1 : 0,
           },
           throw: true,
         });
