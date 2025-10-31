@@ -1236,20 +1236,30 @@ export const schema = createSchema({
       endDate: z.iso.date().nullable(),
       page: z.coerce.number().default(0),
       size: z.coerce.number().default(10),
-    }),
+    }).partial(),
     output: ApiResponseObject.extend({
       data: Pagination.extend({
-        content: z.object({
-          saleId: z.string(),
-          barItemId: z.string(),
-          barItemName: z.string(),
-          barItemCustomId: z.string(),
-          quantitySold: z.number(),
-          amount: z.number(),
-          date: z.iso.datetime()
-        }).array()
-      })
-    })
+        content: z
+          .object({
+            id: z.string(),
+            customId: z.string(),
+            destination: z.string(),
+            totalAmount: z.number(),
+            createdAt: z.coerce.date(),
+            note: z.string(),
+            orderItems: z
+              .object({
+                itemName: z.string(),
+                quantity: z.number(),
+                price: z.number(),
+                total: z.number(),
+                note: z.string(),
+              })
+              .array(),
+          })
+          .array(),
+      }),
+    }),
   },
 });
 
