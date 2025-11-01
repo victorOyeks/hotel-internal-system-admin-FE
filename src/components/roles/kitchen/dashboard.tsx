@@ -6,6 +6,21 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +40,7 @@ import { revalidateRoute } from "@/lib/actions";
 import type { Pagination } from "@/lib/fetch";
 import { updateOrderStatus } from "@/lib/restaurant-actions";
 import { formatCurrency } from "@/lib/utils";
+import { format } from "date-fns";
 import { useMutation } from "@tanstack/react-query";
 import {
   ChevronDownIcon,
@@ -35,11 +51,14 @@ import {
   PlusIcon,
   SearchIcon,
   TruckIcon,
+  RotateCcwIcon,
+  CalendarIcon,
 } from "lucide-react";
 import {
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
+  parseAsIsoDate,
   useQueryState,
   useQueryStates,
 } from "nuqs";
@@ -47,12 +66,355 @@ import {
   type ForwardRefExoticComponent,
   type RefAttributes,
   useState,
+  useMemo,
+  useCallback,
   type PropsWithChildren,
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { CreateOrderForm } from "./quick-action-modals";
 import Link from "next/link";
+
+// Kitchen Orders Filter Component
+const KitchenOrdersFilter = ({
+  queryState,
+  setQueryState,
+  setOpen,
+}: {
+  setOpen: (open: boolean) => void;
+  queryState: {
+    destination: string | null;
+    status: "COMPLETED" | "CANCELLED" | "PENDING" | null;
+    searchText: string | null;
+    startDate: Date | null;
+    endDate: Date | null;
+  };
+  setQueryState: (state: Partial<typeof queryState>) => void;
+}) => {
+  const [tempFilters, setTempFilters] = useState({
+    destination: queryState.destination || "",
+    status: queryState.status || null,
+    searchText: queryState.searchText || "",
+    startDate: queryState.startDate || null,
+    endDate: queryState.endDate || null,
+  });
+
+  // Memoized callback functions to prevent unnecessary re-renders
+  const applyFilters = useCallback(() => {
+    setQueryState({
+      destination: tempFilters.destination || null,
+      status: tempFilters.status,
+      searchText: tempFilters.searchText || null,
+      startDate: tempFilters.startDate,
+      endDate: tempFilters.endDate,
+    });
+    setOpen(false);
+  }, [tempFilters, setQueryState, setOpen]);
+
+  const clearFilters = useCallback(() => {
+    const clearedFilters = {
+      destination: "",
+      status: null,
+      searchText: "",
+      startDate: null,
+      endDate: null,
+    };
+    setTempFilters(clearedFilters);
+    setQueryState({
+      destination: null,
+      status: null,
+      searchText: null,
+      startDate: null,
+      endDate: null,
+    });
+  }, [setQueryState]);
+
+  // Memoize filter state computations
+  const filterStates = useMemo(() => {
+    const hasActiveFilters = !!(
+      tempFilters.destination ||
+      tempFilters.status ||
+      tempFilters.searchText ||
+      tempFilters.startDate ||
+      tempFilters.endDate
+    );
+
+    const hasAppliedFilters = !!(
+      queryState.destination ||
+      queryState.status ||
+      queryState.searchText ||
+      queryState.startDate ||
+      queryState.endDate
+    );
+
+    const appliedFiltersCount =
+      (queryState.destination ? 1 : 0) +
+      (queryState.status ? 1 : 0) +
+      (queryState.searchText ? 1 : 0) +
+      (queryState.startDate ? 1 : 0) +
+      (queryState.endDate ? 1 : 0);
+
+    return {
+      hasActiveFilters,
+      hasAppliedFilters,
+      appliedFiltersCount,
+    };
+  }, [tempFilters, queryState]);
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "PENDING", label: "Pending" },
+      { value: "COMPLETED", label: "Completed" },
+      { value: "CANCELLED", label: "Cancelled" },
+    ],
+    []
+  );
+
+  return (
+    <div className="space-y-4 w-96">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-sm">Filter Kitchen Orders</h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearFilters}
+          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcwIcon className="h-3 w-3 mr-1" />
+          Clear all
+        </Button>
+      </div>
+
+      {/* Filter Grid Layout */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Destination Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Destination</Label>
+          <Input
+            placeholder="Room number or location..."
+            value={tempFilters.destination}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                destination: e.target.value,
+              })
+            }
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Status</Label>
+          <Select
+            value={tempFilters.status || "all"}
+            onValueChange={(value) =>
+              setTempFilters({
+                ...tempFilters,
+                status:
+                  value === "all" ? null : (value as typeof tempFilters.status),
+              })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Search Text Filter - Full Width */}
+        <div className="col-span-2 space-y-2">
+          <Label className="text-sm font-medium">Search Text</Label>
+          <Input
+            placeholder="Search orders..."
+            value={tempFilters.searchText}
+            onChange={(e) =>
+              setTempFilters({
+                ...tempFilters,
+                searchText: e.target.value,
+              })
+            }
+          />
+        </div>
+
+        {/* Start Date Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Start Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {tempFilters.startDate ? (
+                  format(tempFilters.startDate, "MMM dd")
+                ) : (
+                  <span>Pick start date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={tempFilters.startDate || undefined}
+                onSelect={(date) =>
+                  setTempFilters({
+                    ...tempFilters,
+                    startDate: date || null,
+                  })
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* End Date Filter */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">End Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {tempFilters.endDate ? (
+                  format(tempFilters.endDate, "MMM dd")
+                ) : (
+                  <span>Pick end date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={tempFilters.endDate || undefined}
+                onSelect={(date) =>
+                  setTempFilters({
+                    ...tempFilters,
+                    endDate: date || null,
+                  })
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearFilters}
+          className="flex-1"
+        >
+          Clear
+        </Button>
+        <Button
+          size="sm"
+          onClick={applyFilters}
+          disabled={!filterStates.hasActiveFilters}
+          className="flex-1"
+        >
+          Apply Filters
+        </Button>
+      </div>
+
+      {/* Applied Filters Summary */}
+      {filterStates.hasAppliedFilters && (
+        <div className="pt-2 border-t">
+          <div className="flex flex-wrap gap-1">
+            {queryState.destination && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ destination: null })}
+              >
+                Destination: {queryState.destination}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.status && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ status: null })}
+              >
+                Status: {queryState.status}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.searchText && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ searchText: null })}
+              >
+                Search: {queryState.searchText}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.startDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ startDate: null })}
+              >
+                From: {format(queryState.startDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.endDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ endDate: null })}
+              >
+                To: {format(queryState.endDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 type QuickAction = {
   title: string;
@@ -157,9 +519,33 @@ function BaseModal({
 
 export function KitchenToolbar() {
   const [queryState, setQueryState] = useQueryStates({
-    status: parseAsStringLiteral(["COMPLETED"]),
-    search: parseAsString,
+    status: parseAsStringLiteral(["COMPLETED", "CANCELLED", "PENDING"]),
+    destination: parseAsString,
+    searchText: parseAsString,
+    startDate: parseAsIsoDate,
+    endDate: parseAsIsoDate,
+    page: parseAsInteger.withDefault(1),
+    size: parseAsInteger.withDefault(10),
   });
+
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Memoize applied filters count for performance
+  const appliedFiltersCount = useMemo(() => {
+    return (
+      (queryState.destination ? 1 : 0) +
+      (queryState.status && queryState.status !== "COMPLETED" ? 1 : 0) +
+      (queryState.searchText ? 1 : 0) +
+      (queryState.startDate ? 1 : 0) +
+      (queryState.endDate ? 1 : 0)
+    );
+  }, [
+    queryState.destination,
+    queryState.status,
+    queryState.searchText,
+    queryState.startDate,
+    queryState.endDate,
+  ]);
 
   return (
     <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -193,20 +579,119 @@ export function KitchenToolbar() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-x-2 ">
-        {" "}
+      <div className="flex items-center gap-x-2">
         <div className="relative">
           <input
             type="text"
-            placeholder="Search rooms..."
+            placeholder="Search orders..."
             className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
-            value={queryState.search ?? ""}
-            onChange={(e) => setQueryState({ search: e.target.value || null })}
+            value={queryState.searchText ?? ""}
+            onChange={(e) =>
+              setQueryState({ searchText: e.target.value || null })
+            }
           />
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
         </div>
+
+        {/* Applied Filters Chips */}
+        {appliedFiltersCount > 0 && (
+          <div className="flex items-center gap-1">
+            {queryState.destination && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ destination: null })}
+              >
+                Destination: {queryState.destination}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.status && queryState.status !== "COMPLETED" && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ status: null })}
+              >
+                Status: {queryState.status}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.searchText && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ searchText: null })}
+              >
+                Search: {queryState.searchText}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.startDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ startDate: null })}
+              >
+                From: {format(queryState.startDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {queryState.endDate && (
+              <Badge
+                variant="green"
+                className="text-xs cursor-pointer"
+                onClick={() => setQueryState({ endDate: null })}
+              >
+                To: {format(queryState.endDate, "MMM dd")}
+                <button
+                  type="button"
+                  className="ml-1 hover:bg-gray-200 rounded"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
-          <TableFilter></TableFilter>
+          <TableFilter
+            open={filterOpen}
+            setOpen={setFilterOpen}
+            count={appliedFiltersCount}
+          >
+            <KitchenOrdersFilter
+              queryState={{
+                destination: queryState.destination,
+                status: queryState.status,
+                searchText: queryState.searchText,
+                startDate: queryState.startDate,
+                endDate: queryState.endDate,
+              }}
+              setQueryState={setQueryState}
+              setOpen={setFilterOpen}
+            />
+          </TableFilter>
 
           <ExportDialog
             onSubmitAction={() => Promise.resolve()}
@@ -265,94 +750,95 @@ function OrderCard({ order }: { order: OrderItem }) {
   });
 
   return (
-    <div className="border border-primary-5/20 rounded-2xl p-4 bg-white">
-      <div className="flex justify-between items-center">
-        <Badge
-          variant={
-            statusToVariant[orderStatus as keyof typeof statusToVariant] ||
-            "blue"
-          }
-          className="capitalize"
-        >
-          {orderStatus.replaceAll("_", " ").toLowerCase()}
-        </Badge>
+    <div className="border border-primary-5/20 rounded-2xl p-4 bg-white h-full flex flex-col justify-between">
+      <div>
+        <div className="flex justify-between items-center">
+          <Badge
+            variant={
+              statusToVariant[orderStatus as keyof typeof statusToVariant] ||
+              "blue"
+            }
+            className="capitalize"
+          >
+            {orderStatus.replaceAll("_", " ").toLowerCase()}
+          </Badge>
 
-        {order.status !== "COMPLETED" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger disabled={isPending} asChild>
-              <button
-                type="button"
-                className="flex items-center gap-x-1 text-xs bg-muted text-muted-foreground rounded-full px-2 py-1"
-              >
-                Update <ChevronDownIcon className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => mutate("PENDING")}
+          {order.status !== "COMPLETED" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger disabled={isPending} asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-x-1 text-xs bg-muted text-muted-foreground rounded-full px-2 py-1"
                 >
-                  New order{" "}
-                  <Checkbox
-                    checked={orderStatus === "PENDING"}
-                    onCheckedChange={(checked) =>
-                      mutate(checked ? "PENDING" : orderStatus)
-                    }
-                  />
-                </Button>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => mutate("COMPLETED")}
-                >
-                  Completed{" "}
-                  <Checkbox
-                    checked={orderStatus === "COMPLETED"}
-                    onCheckedChange={(checked) =>
-                      mutate(checked ? "COMPLETED" : orderStatus)
-                    }
-                  />
-                </Button>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => mutate("CANCELLED")}
-                >
-                  Cancel{" "}
-                  <Checkbox
-                    checked={orderStatus === "CANCELLED"}
-                    onCheckedChange={(checked) =>
-                      mutate(checked ? "CANCELLED" : orderStatus)
-                    }
-                  />
-                </Button>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+                  Update <ChevronDownIcon className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
 
-      <div className="space-y-1">
-        <p className="font-medium text-lg mt-2">Order #{order.customId}</p>
-        <p className="text-sm text-muted-foreground">{order.destination}</p>
-        <p className="text-sm text-muted-foreground">
-          {new Date(order.createdAt).toLocaleTimeString()}
-        </p>
-      </div>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-between"
+                    onClick={() => mutate("PENDING")}
+                  >
+                    New order{" "}
+                    <Checkbox
+                      checked={orderStatus === "PENDING"}
+                      onCheckedChange={(checked) =>
+                        mutate(checked ? "PENDING" : orderStatus)
+                      }
+                    />
+                  </Button>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-between"
+                    onClick={() => mutate("COMPLETED")}
+                  >
+                    Completed{" "}
+                    <Checkbox
+                      checked={orderStatus === "COMPLETED"}
+                      onCheckedChange={(checked) =>
+                        mutate(checked ? "COMPLETED" : orderStatus)
+                      }
+                    />
+                  </Button>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-between"
+                    onClick={() => mutate("CANCELLED")}
+                  >
+                    Cancel{" "}
+                    <Checkbox
+                      checked={orderStatus === "CANCELLED"}
+                      onCheckedChange={(checked) =>
+                        mutate(checked ? "CANCELLED" : orderStatus)
+                      }
+                    />
+                  </Button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
+        <div className="space-y-1">
+          <p className="font-medium text-lg mt-2">Order #{order.customId}</p>
+          <p className="text-sm text-muted-foreground">{order.destination}</p>
+          <p className="text-sm text-muted-foreground">
+            {new Date(order.createdAt).toLocaleTimeString()}
+          </p>
+        </div>
       <hr className="my-4 border-t border-primary-5/20" />
+      </div>
 
       <div className="space-y-2">
         <div className="flex justify-between items-center text-sm font-semibold">

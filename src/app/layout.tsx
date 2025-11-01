@@ -50,7 +50,7 @@ export default function RootLayout({
         <Providers>
           {children}
 
-          <Toaster richColors duration={5000} />
+          <Toaster richColors theme="light" duration={5000} />
           <ReactQueryDevtools initialIsOpen={false} />
         </Providers>
       </body>

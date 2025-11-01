@@ -44,6 +44,7 @@ function Page({ searchParams }: PageProps) {
           //@ts-expect-error -- IGNORE --
           query: {
             ...query,
+            size: 9,
             page: query.page ? query.page - 1 : 0,
           },
           signal,
