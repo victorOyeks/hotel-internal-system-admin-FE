@@ -43,26 +43,32 @@ import {
   useQueryState,
   useQueryStates,
 } from "nuqs";
-import { type ForwardRefExoticComponent, type RefAttributes, useState, type PropsWithChildren, type ReactNode } from "react";
+import {
+  type ForwardRefExoticComponent,
+  type RefAttributes,
+  useState,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 import { CreateOrderForm } from "./quick-action-modals";
+import Link from "next/link";
 
 type QuickAction = {
   title: string;
   heading?: string;
-  Component?: ({ setOpen }: { setOpen: (open: boolean) => void }) => React.JSX.Element;
-  icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
+  Component?: ({
+    setOpen,
+  }: {
+    setOpen: (open: boolean) => void;
+  }) => React.JSX.Element;
+  icon: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >;
   key: string;
 };
 
 const actions: QuickAction[] = [
-  {
-    title: "Create New Order",
-    heading: "Create new order",
-    Component: CreateOrderForm,
-    icon: PlusIcon,
-    key: "create-new-order",
-  },
   {
     title: "Receive Stock Item",
     icon: FolderInputIcon,
@@ -84,6 +90,20 @@ export function QuickActions() {
   const [open, setOpen] = useState<false | string>(false);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <Link
+        className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50"
+        href={"/dashboard/create-order"}
+      >
+        <div className="flex items-center gap-x-2 flex-1">
+          <div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
+            <PlusIcon className="size-5 text-green-600" />
+          </div>
+
+          <p className="text-sm font-medium">Create New Order</p>
+        </div>
+
+        <ChevronRightIcon className="size-4 text-muted-foreground" />
+      </Link>
       {actions.map(({ icon: Icon, title, key, heading, Component }) => {
         return (
           <BaseModal
@@ -134,7 +154,6 @@ function BaseModal({
     </Dialog>
   );
 }
-
 
 export function KitchenToolbar() {
   const [queryState, setQueryState] = useQueryStates({
@@ -228,7 +247,7 @@ function OrderCard({ order }: { order: OrderItem }) {
       toast.success("Order status updated successfully", {
         description: data.data,
       });
-      revalidateRoute("/restaurant")
+      revalidateRoute("/restaurant");
     },
     onMutate: (status) => {
       toast.loading("Updating order status...");

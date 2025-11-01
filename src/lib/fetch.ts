@@ -1261,6 +1261,15 @@ export const schema = createSchema({
       }),
     }),
   },
+  "@get/api/restaurants/food-items/all": {
+    output: ApiResponseObject.extend({
+      data: z.object({
+        id: z.string(),
+        name: z.string(),
+        price: z.number(),
+      }).array(),
+    }),
+  }
 });
 
 export const $fetch = createFetch({

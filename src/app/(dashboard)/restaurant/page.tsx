@@ -4,7 +4,6 @@ import {
   QuickActions,
 } from "@/components/roles/kitchen/dashboard";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
-import { DataTablePagination } from "@/components/shared/pagination";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";

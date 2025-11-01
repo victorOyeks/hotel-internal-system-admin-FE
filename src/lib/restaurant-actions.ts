@@ -99,3 +99,36 @@ export async function createOrder(payload: {
         data: 'Order created successfully',
     };
 }
+
+interface OrderRequest {
+  destination: string;
+  orderItems: {
+    foodItemId: string;
+    quantity: number;
+    rate: number;
+    note?: string;
+  }[];
+  bookingId?: string;
+  note?: string;
+}
+
+
+export async function placeOrder(payload: OrderRequest): ServerActionResponse<string> {
+  const sessionData = await verifySession("RESTAURANT");
+  const response = await $fetch("@post/api/restaurants/kitchen-orders", {
+      body: payload,
+      auth: { type: "Bearer", token: sessionData.token },
+  });
+
+  if (response.error) {
+      return {
+          success: false,
+          error: response.error.message || "Failed to place order",
+      };
+  }
+
+  return {
+      success: true,
+      data: "Order placed successfully",
+  };
+}
