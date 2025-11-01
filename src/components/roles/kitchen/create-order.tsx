@@ -167,18 +167,23 @@ function MenuItemCard({
   onAddToCart: (item: MenuItem) => void;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="font-medium text-gray-900">{item.name}</h3>
-      </div>
-
-      <div className="flex justify-between items-end">
-        <span className="text-xl font-bold text-green-600">
-          {formatCurrency(item.price)}
-        </span>
-        <Button onClick={() => onAddToCart(item)} size="sm" className="ml-3">
-          <PlusIcon className="h-4 w-4 mr-1" />
-          Add
+    <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+      <div className="flex flex-col h-full">
+        <div className="flex-1 mb-4">
+          <h3 className="font-semibold text-base line-clamp-2 mb-2">
+            {item.name}
+          </h3>
+          <p className="font-medium">
+            {formatCurrency(item.price)}
+          </p>
+        </div>
+        
+        <Button
+          onClick={() => onAddToCart(item)}
+          className="w-full"
+        >
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Add to Cart
         </Button>
       </div>
     </div>
@@ -323,12 +328,12 @@ function OrderSummary({
             </div>
 
             <div className="space-y-2">
-              <Button onClick={onPlaceOrder} className="w-full"
-              disabled={isCreatingOrder}
+              <Button
+                onClick={onPlaceOrder}
+                className="w-full"
+                disabled={isCreatingOrder}
               >
-                {
-                  isCreatingOrder ? 'Placing Order...' : 'Place Order'
-                }
+                {isCreatingOrder ? "Placing Order..." : "Place Order"}
               </Button>
               <Button
                 variant="outline"
