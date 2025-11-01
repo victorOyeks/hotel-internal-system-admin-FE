@@ -81,6 +81,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ReceiveStockItem, ReportWastage, RequestRestock } from "./quick-action-modals";
 
 // Kitchen Orders Filter Component
 const KitchenOrdersFilter = ({
@@ -442,16 +443,19 @@ const actions: QuickAction[] = [
   {
     title: "Receive Stock Item",
     icon: FolderInputIcon,
+    Component: ReceiveStockItem,
     key: "receive-stock-item",
   },
   {
     title: "Report wastage",
     icon: PackageCheckIcon,
+    Component: ReportWastage,
     key: "report-wastage",
   },
   {
     title: "Request Restock",
     icon: TruckIcon,
+    Component: RequestRestock,
     key: "request-restock",
   },
 ];
