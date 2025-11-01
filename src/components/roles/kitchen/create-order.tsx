@@ -41,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { placeOrder } from "@/lib/restaurant-actions";
+import { parseAsString, useQueryState } from "nuqs";
 
 type FoodItemAPIResponse =
   APIOutput<"@get/api/restaurants/food-items/all">["data"][number];
@@ -64,13 +65,6 @@ interface OrderRequest {
   note?: string;
 }
 
-interface Booking {
-  id: string;
-  customId: string;
-  guestName: string;
-  roomNumber: string;
-}
-
 // Booking Combobox Component
 function BookingCombobox({
   value,
@@ -79,9 +73,13 @@ function BookingCombobox({
 }: {
   value: string;
   onValueChange: (value: string) => void;
-  bookings: Booking[];
+  bookings: CurrentBooking[];
 }) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useQueryState(
+    "booking:search",
+    parseAsString.withDefault("")
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -99,8 +97,12 @@ function BookingCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command>
-          <CommandInput placeholder="Search bookings..." />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search bookings..."
+            value={searchQuery}
+            onValueChange={(value) => setSearchQuery(value)}
+          />
           <CommandList>
             <CommandEmpty>No booking found.</CommandEmpty>
             <CommandGroup>
@@ -122,7 +124,7 @@ function BookingCombobox({
                   <div>
                     <div className="font-medium">{booking.customId}</div>
                     <div className="text-sm text-gray-500">
-                      {booking.guestName} - Room {booking.roomNumber}
+                      {booking.guestName} - Room {booking.roomIdentifier}
                     </div>
                   </div>
                 </CommandItem>
@@ -173,15 +175,10 @@ function MenuItemCard({
           <h3 className="font-semibold text-base line-clamp-2 mb-2">
             {item.name}
           </h3>
-          <p className="font-medium">
-            {formatCurrency(item.price)}
-          </p>
+          <p className="font-medium">{formatCurrency(item.price)}</p>
         </div>
-        
-        <Button
-          onClick={() => onAddToCart(item)}
-          className="w-full"
-        >
+
+        <Button onClick={() => onAddToCart(item)} className="w-full">
           <PlusIcon className="h-5 w-5 mr-2" />
           Add to Cart
         </Button>
@@ -260,7 +257,7 @@ function OrderSummary({
   onOrderNoteChange: (note: string) => void;
   bookingId: string;
   onBookingIdChange: (bookingId: string) => void;
-  bookings: Booking[];
+  bookings: CurrentBooking[];
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onPlaceOrder: () => void;
@@ -392,41 +389,22 @@ function MenuGrid({
   );
 }
 
-export function OrderPage({ foodItems }: { foodItems: MenuItem[] }) {
+type CurrentBooking =
+  APIOutput<"@get/api/restaurants/current-bookings">["data"]["content"][number];
+
+export function OrderPage({
+  foodItems,
+  currentBookings,
+}: {
+  foodItems: MenuItem[];
+  currentBookings: CurrentBooking[];
+}) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [destination, setDestination] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderNote, setOrderNote] = useState("");
   const [bookingId, setBookingId] = useState("");
-
-  // Mock bookings data - replace with actual API call
-  const mockBookings: Booking[] = [
-    {
-      id: "1",
-      customId: "BK001",
-      guestName: "John Doe",
-      roomNumber: "101",
-    },
-    {
-      id: "2",
-      customId: "BK002",
-      guestName: "Jane Smith",
-      roomNumber: "205",
-    },
-    {
-      id: "3",
-      customId: "BK003",
-      guestName: "Mike Johnson",
-      roomNumber: "310",
-    },
-    {
-      id: "4",
-      customId: "BK004",
-      guestName: "Sarah Wilson",
-      roomNumber: "412",
-    },
-  ];
 
   // Filter food items based on search query
   const filteredFoodItems = useMemo(() => {
@@ -579,7 +557,7 @@ export function OrderPage({ foodItems }: { foodItems: MenuItem[] }) {
                   onOrderNoteChange={setOrderNote}
                   bookingId={bookingId}
                   onBookingIdChange={setBookingId}
-                  bookings={mockBookings}
+                  bookings={currentBookings}
                   onUpdateQuantity={updateQuantity}
                   onRemoveItem={removeFromCart}
                   onPlaceOrder={createOrderRequest}

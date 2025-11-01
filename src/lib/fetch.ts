@@ -1230,13 +1230,15 @@ export const schema = createSchema({
     }),
   },
   "@get/api/restaurants/bar-sales": {
-    query: z.object({
-      search: z.string().nullable(),
-      startDate: z.iso.date().nullable(),
-      endDate: z.iso.date().nullable(),
-      page: z.coerce.number().default(0),
-      size: z.coerce.number().default(10),
-    }).partial(),
+    query: z
+      .object({
+        search: z.string().nullable(),
+        startDate: z.iso.date().nullable(),
+        endDate: z.iso.date().nullable(),
+        page: z.coerce.number().default(0),
+        size: z.coerce.number().default(10),
+      })
+      .partial(),
     output: ApiResponseObject.extend({
       data: Pagination.extend({
         content: z
@@ -1263,13 +1265,35 @@ export const schema = createSchema({
   },
   "@get/api/restaurants/food-items/all": {
     output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
-        name: z.string(),
-        price: z.number(),
-      }).array(),
+      data: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+          price: z.number(),
+        })
+        .array(),
     }),
-  }
+  },
+  "@get/api/restaurants/current-bookings": {
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z
+          .object({
+            id: z.string(),
+            customId: z.string(),
+            guestName: z.string(),
+            guestPhoneNumber: z.string(),
+            roomIdentifier: z.string(),
+            roomType: z.string(),
+            amountPaid: z.number(),
+            bookingStatus: BookingStatus,
+            checkInDate: z.coerce.date(),
+            checkOutDate: z.coerce.date().nullable(),
+          })
+          .array(),
+      }),
+    }),
+  },
 });
 
 export const $fetch = createFetch({
