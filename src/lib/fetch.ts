@@ -1152,6 +1152,7 @@ export const schema = createSchema({
             totalAmount: z.number(),
             status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
             createdAt: z.coerce.date(),
+            note: z.string().optional(),
             orderItems: z
               .object({
                 itemName: z.string(),

@@ -56,6 +56,8 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
+console.log("Dashboard orders content:", content);
+
   return (
     <BreadCrumbWrapper
       breadcrumbs={{

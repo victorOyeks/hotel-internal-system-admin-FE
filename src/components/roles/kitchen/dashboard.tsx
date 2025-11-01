@@ -73,6 +73,14 @@ import {
 } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Kitchen Orders Filter Component
 const KitchenOrdersFilter = ({
@@ -707,7 +715,13 @@ export function KitchenToolbar() {
 type OrderItem =
   APIOutput<"@get/api/restaurants/kitchen-orders">["data"]["content"][number];
 
-function OrderCard({ order }: { order: OrderItem }) {
+function OrderCard({
+  order,
+  onClick,
+}: {
+  order: OrderItem;
+  onClick: () => void;
+}) {
   const statusToVariant = {
     COMPLETED: "green",
     CANCELLED: "red",
@@ -750,7 +764,17 @@ function OrderCard({ order }: { order: OrderItem }) {
   });
 
   return (
-    <div className="border border-primary-5/20 rounded-2xl p-4 bg-white h-full flex flex-col justify-between">
+    // biome-ignore lint/a11y/noStaticElementInteractions: true
+    <div
+      className="border border-primary-5/20 rounded-2xl p-4 bg-white h-full flex flex-col justify-between"
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onClick();
+        }
+      }}
+      key={order.id}
+    >
       <div>
         <div className="flex justify-between items-center">
           <Badge
@@ -837,7 +861,7 @@ function OrderCard({ order }: { order: OrderItem }) {
             {new Date(order.createdAt).toLocaleTimeString()}
           </p>
         </div>
-      <hr className="my-4 border-t border-primary-5/20" />
+        <hr className="my-4 border-t border-primary-5/20" />
       </div>
 
       <div className="space-y-2">
@@ -864,6 +888,121 @@ function OrderCard({ order }: { order: OrderItem }) {
   );
 }
 
+function OrderDetailSheet({ order }: { order: OrderItem }) {
+  const statusToVariant = {
+    COMPLETED: "green",
+    CANCELLED: "red",
+    PENDING: "blue",
+  } satisfies Record<string, BadgeVariant>;
+
+  return (
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>Order #{order.customId}</SheetTitle>
+        <SheetDescription>
+          Complete order information and items
+        </SheetDescription>
+      </SheetHeader>
+
+      <ScrollArea className="h-[calc(100vh-120px)] px-4">
+        <div className="space-y-4 pb-6">
+          {/* Order Status */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">Order Status</h3>
+              <Badge
+                variant={
+                  statusToVariant[order.status as keyof typeof statusToVariant] ||
+                  "blue"
+                }
+                className="capitalize"
+              >
+                {order.status.replaceAll("_", " ").toLowerCase()}
+              </Badge>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Order ID:</span>
+                <span className="font-medium">{order.customId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Date & Time:</span>
+                <span className="font-medium">
+                  {format(new Date(order.createdAt), "MMM dd, yyyy 'at' hh:mm a")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Destination:</span>
+                <span className="font-medium">{order.destination}</span>
+              </div>
+              {order.note && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-gray-600 block mb-1">Order Note:</span>
+                  <p className="font-medium text-gray-900 bg-white rounded p-2 text-sm">
+                    {order.note}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Order Items */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Order Items</h3>
+            <div className="space-y-3">
+              {order.orderItems.map((item, index) => (
+                <div
+                  key={`${item.itemName}-${index}`}
+                  className="bg-white border border-gray-200 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">{item.itemName}</h4>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {formatCurrency(item.price)} × {item.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Subtotal</p>
+                      <p className="font-bold text-gray-900">
+                        {formatCurrency(item.total)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Order Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Order Summary</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Items:</span>
+                <span className="font-medium">
+                  {order.orderItems.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Number of Dishes:</span>
+                <span className="font-medium">{order.orderItems.length}</span>
+              </div>
+              <div className="border-t border-gray-300 my-2 pt-2" />
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-900 text-base">Total Amount:</span>
+                <span className="font-bold text-lg text-primary">
+                  {formatCurrency(order.totalAmount)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScrollArea>
+    </SheetContent>
+  );
+}
+
 export function Orders({
   orders,
   pagination,
@@ -875,12 +1014,18 @@ export function Orders({
     "page",
     parseAsInteger.withDefault(1)
   );
+  const [orderDetailState, setOrderDetailState] = useState<null | OrderItem>(
+    null
+  );
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {orders.map((order) => (
           <div key={order.id} className="col-span-1">
-            <OrderCard order={order} />
+            <OrderCard
+              order={order}
+              onClick={() => setOrderDetailState(order)}
+            />
           </div>
         ))}
       </div>
@@ -904,6 +1049,16 @@ export function Orders({
           }}
         />
       </div>
+      {orderDetailState && (
+        <Sheet
+          open={!!orderDetailState}
+          onOpenChange={(open) => {
+            if (!open) setOrderDetailState(null);
+          }}
+        >
+          <OrderDetailSheet order={orderDetailState} />
+        </Sheet>
+      )}
     </div>
   );
 }
