@@ -455,7 +455,6 @@ export function OrderPage({ foodItems }: { foodItems: MenuItem[] }) {
       }
 
       const response = await placeOrder(orderData);
-      console.log('Place order response:', response);
 
       if (!response.success) {
         throw new Error(response.error || "Failed to place order");
