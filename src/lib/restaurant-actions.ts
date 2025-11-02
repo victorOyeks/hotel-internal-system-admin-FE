@@ -62,9 +62,10 @@ export async function restockRequest(params: {
 interface OrderRequest {
   destination: string;
   orderItems: {
-    foodItemId: string;
+    itemType: "FOOD" | "DRINK";
+    itemId: string;
     quantity: number;
-    rate: number;
+    rate?: number;
     note?: string;
   }[];
   bookingId?: string;

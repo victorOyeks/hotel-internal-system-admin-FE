@@ -24,7 +24,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { RotateCcwIcon } from "lucide-react";
+import { MoreVerticalIcon, RotateCcwIcon } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -47,6 +47,7 @@ import { useMemo, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { APIOutput } from "@/lib/action-utils";
 import { DatePicker } from "@/components/shared/date-picker";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export type InventoryResponse =
   APIOutput<"@get/api/restaurants/stock">["data"]["content"][number];
@@ -283,6 +284,31 @@ const allSupplyColumns = [
     header: "Quantity in stock",
     cell: (info) => <span>{info.getValue()}</span>,
   }),
+  allSupplyColumnHelper.display({
+    id: "actions",
+    cell: (info) => {
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVerticalIcon />
+            </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive">
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  })
 ];
 
 function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {

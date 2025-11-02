@@ -1,4 +1,5 @@
 import { RestaurantInventoryPage } from "@/components/roles/kitchen/inventory";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
@@ -74,7 +75,6 @@ function Page({ searchParams }: PageProps) {
     queryClient.ensureQueryData({
       queryKey: [query.section ?? "inventory", cookieData.token, query],
       queryFn: async ({ signal }) => {
-
         if (query.section === "restock") {
           const response = await $fetch(
             "@get/api/restaurants/bar-restock-requests",
@@ -87,39 +87,37 @@ function Page({ searchParams }: PageProps) {
                 page: query.page ? query.page - 1 : 0,
               },
               throw: true,
-              signal
+              signal,
             }
           );
 
           return response.data;
         }
 
-        const response = await $fetch(
-          "@get/api/restaurants/stock",
-          {
-            auth: { type: "Bearer", token: cookieData.token },
-            query: {
-              ...query,
-              page: query.page ? query.page - 1 : 0,
-            },
-            throw: true,
-            signal
-          }
-        );
+        const response = await $fetch("@get/api/restaurants/stock", {
+          auth: { type: "Bearer", token: cookieData.token },
+          query: {
+            ...query,
+            page: query.page ? query.page - 1 : 0,
+          },
+          throw: true,
+          signal,
+        });
 
         return response.data;
-      }
+      },
     })
   );
-  
+
   return (
-    <RestaurantInventoryPage
-      section={query.section}
-      breadcrumbs={breadcrumbs}
-      statData={statData}
-      inventoryData={content}
-      paginationMeta={paginationMeta}
-    />
+    <BreadCrumbWrapper breadcrumbs={breadcrumbs}>
+      <RestaurantInventoryPage
+        section={query.section}
+        statData={statData}
+        inventoryData={content}
+        paginationMeta={paginationMeta}
+      />
+    </BreadCrumbWrapper>
   );
 }
 

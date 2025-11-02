@@ -54,16 +54,18 @@ interface MenuItem extends FoodItemAPIResponse {}
 
 interface CartItem extends MenuItem {
   quantity: number;
+  rate?: number;
   note?: string;
 }
 
 interface OrderRequest {
   destination: string;
   orderItems: {
-    foodItemId: string;
+    itemId: string;
+    itemType: "DRINK" | "FOOD";
     quantity: number;
-    rate: number;
-    note?: string;
+    rate: number | undefined;
+    note: string | undefined;
   }[];
   bookingId?: string;
   note?: string;
@@ -284,31 +286,66 @@ function MenuItemCard({
 function CartItemRow({
   item,
   onUpdateQuantity,
+  onUpdateRate,
   onRemove,
 }: {
   item: CartItem;
   onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onUpdateRate: (itemId: string, rate: number | undefined) => void;
   onRemove: (itemId: string) => void;
 }) {
+  const [isEditingRate, setIsEditingRate] = useState(false);
+  const [rateValue, setRateValue] = useState(
+    item.rate ? Math.round(item.rate * 100) : 100
+  );
+
+  const handleRateSubmit = () => {
+    const rate = rateValue / 100;
+    if (rate >= 0.1 && rate <= 1.0) {
+      onUpdateRate(item.id, rate === 1 ? undefined : rate);
+      setIsEditingRate(false);
+    } else {
+      toast.error("Rate must be between 10% and 100%");
+    }
+  };
+
+  const finalPrice = item.price * (item.rate || 1) * item.quantity;
+  const hasDiscount = item.rate && item.rate < 1;
+
   return (
-    <div className="flex items-start justify-between p-3 bg-gray-50 rounded">
-      <div className="flex-1 min-w-0 mr-3">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="font-medium truncate">{item.name}</p>
-          <Badge variant="outline" className="text-xs flex-shrink-0">
+    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+      {/* Item Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <p className="font-medium truncate text-sm">{item.name}</p>
+          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
             {item.itemType === "FOOD" ? (
-              <UtensilsIcon className="h-3 w-3" />
+              <UtensilsIcon className="h-2.5 w-2.5" />
             ) : (
-              <GlassWaterIcon className="h-3 w-3" />
+              <GlassWaterIcon className="h-2.5 w-2.5" />
             )}
           </Badge>
         </div>
-        <p className="text-xs text-gray-500">
-          {formatCurrency(item.price)} × {item.quantity} ={" "}
-          {formatCurrency(item.price * item.quantity)}
-        </p>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span>
+            {formatCurrency(item.price)} × {item.quantity}
+          </span>
+          {hasDiscount && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1 py-0 h-4 text-green-600 border-green-600"
+            >
+              {Math.round((item.rate || 1) * 100)}% rate
+            </Badge>
+          )}
+          <span className="font-medium text-gray-900">
+            = {formatCurrency(finalPrice)}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center space-x-2">
+
+      {/* Quantity Controls */}
+      <div className="flex items-center gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -317,7 +354,7 @@ function CartItemRow({
         >
           <MinusIcon className="h-3 w-3" />
         </Button>
-        <span className="w-8 text-center text-sm font-medium">
+        <span className="w-6 text-center text-xs font-medium">
           {item.quantity}
         </span>
         <Button
@@ -328,15 +365,60 @@ function CartItemRow({
         >
           <PlusIcon className="h-3 w-3" />
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(item.id)}
-          className="h-6 w-6 p-0 text-red-500"
-        >
-          <XIcon className="h-3 w-3" />
-        </Button>
       </div>
+
+      {/* Rate Button */}
+      <Popover open={isEditingRate} onOpenChange={setIsEditingRate}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-blue-600"
+            title="Set rate"
+          >
+            <span className="text-xs font-bold">%</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-48 p-3" align="end">
+          <div className="space-y-2">
+            <Label htmlFor={`rate-${item.id}`} className="text-xs">
+              Rate (10-100%)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id={`rate-${item.id}`}
+                type="number"
+                min="10"
+                max="100"
+                step="1"
+                value={rateValue}
+                onChange={(e) => setRateValue(Number(e.target.value))}
+                className="h-7 text-xs"
+              />
+              <Button
+                size="sm"
+                onClick={handleRateSubmit}
+                className="h-7 px-2 text-xs"
+              >
+                Set
+              </Button>
+            </div>
+            <p className="text-[10px] text-gray-500">
+              Final: {formatCurrency(item.price * (rateValue / 100))}
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Remove Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onRemove(item.id)}
+        className="h-6 w-6 p-0 text-red-500"
+      >
+        <XIcon className="h-3 w-3" />
+      </Button>
     </div>
   );
 }
@@ -344,114 +426,132 @@ function CartItemRow({
 // Order Summary Component
 function OrderSummary({
   cart,
-  destination,
-  onDestinationChange,
-  orderNote,
-  onOrderNoteChange,
-  bookingId,
-  onBookingIdChange,
+  orderDetails,
+  onOrderDetailsChange,
   bookings,
-  onUpdateQuantity,
   onRemoveItem,
+  onUpdateQuantity,
+  onUpdateRate,
   onPlaceOrder,
   onClearCart,
   total,
   isCreatingOrder,
 }: {
   cart: CartItem[];
-  destination: string;
-  onDestinationChange: (destination: string) => void;
-  orderNote: string;
-  onOrderNoteChange: (note: string) => void;
-  bookingId: string;
-  onBookingIdChange: (bookingId: string) => void;
+  orderDetails: OrderRequest;
+  onOrderDetailsChange: (details: OrderRequest) => void;
   bookings: CurrentBooking[];
-  onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onUpdateRate: (itemId: string, rate: number | undefined) => void;
   onPlaceOrder: () => void;
   onClearCart: () => void;
   total: number;
   isCreatingOrder: boolean;
 }) {
   return (
-    <ScrollArea className="h-full pb-40">
-      <div className="space-y-4 px-4">
-        {/* Destination */}
-        <div>
-          <Label htmlFor="destination">Destination *</Label>
-          <Input
-            id="destination"
-            value={destination}
-            onChange={(e) => onDestinationChange(e.target.value)}
-            placeholder="Room number or location"
-            className="mt-1"
-          />
-        </div>
+    <div className="flex flex-col h-full relative isolate">
+      <ScrollArea className="flex-1 px-4 -mx-4">
+        <div className="space-y-3 px-2">
+          <div className="grid grid-cols-2 gap-x-4">
+            {/* Destination */}
+            <div>
+              <Label htmlFor="destination" className="text-xs">
+                Destination *
+              </Label>
+              <Input
+                id="destination"
+                value={orderDetails.destination}
+                onChange={(e) =>
+                  onOrderDetailsChange({
+                    ...orderDetails,
+                    destination: e.target.value,
+                  })
+                }
+                placeholder="Room number or location"
+                className="mt-1 h-8 text-sm"
+              />
+            </div>
 
-        {/* Booking Selection (Optional) */}
-        <div>
-          <Label>Associated Booking (Optional)</Label>
-          <div className="mt-1">
-            <BookingCombobox
-              value={bookingId}
-              onValueChange={onBookingIdChange}
-              bookings={bookings}
+            {/* Booking Selection (Optional) */}
+            <div>
+              <Label className="text-xs">Associated Booking (Optional)</Label>
+              <div className="mt-1">
+                <BookingCombobox
+                  value={orderDetails.bookingId || ""}
+                  onValueChange={(bookingId) =>
+                    onOrderDetailsChange({ ...orderDetails, bookingId })
+                  }
+                  bookings={bookings}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cart Items */}
+          <div>
+            <Label className="text-xs mb-2 block">Items ({cart.length})</Label>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {cart.map((item) => (
+                <CartItemRow
+                  key={item.id}
+                  item={item}
+                  onUpdateQuantity={onUpdateQuantity}
+                  onUpdateRate={onUpdateRate}
+                  onRemove={onRemoveItem}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Order Note (Optional) */}
+          <div>
+            <Label htmlFor="orderNote" className="text-xs">
+              Order Note (Optional)
+            </Label>
+            <Textarea
+              id="orderNote"
+              value={orderDetails.note || ""}
+              onChange={(e) =>
+                onOrderDetailsChange({
+                  ...orderDetails,
+                  note: e.target.value,
+                })
+              }
+              placeholder="Special instructions"
+              className="mt-1 resize-none h-16 text-sm"
             />
           </div>
         </div>
+      </ScrollArea>
 
-        {/* Cart Items */}
-        <div className="space-y-3 max-h-64">
-          {cart.map((item) => (
-            <CartItemRow
-              key={item.id}
-              item={item}
-              onUpdateQuantity={onUpdateQuantity}
-              onRemove={onRemoveItem}
-            />
-          ))}
-        </div>
-
-        {/* Order Note (Optional) */}
-        <div>
-          <Label htmlFor="orderNote">Order Note (Optional)</Label>
-          <Textarea
-            id="orderNote"
-            value={orderNote}
-            onChange={(e) => onOrderNoteChange(e.target.value)}
-            placeholder="Special instructions"
-            className="mt-1 resize-none"
-          />
-        </div>
-
-        {/* Total */}
-        {cart.length > 0 && (
-          <div className="border-t pt-4">
-            <div className="flex justify-between font-bold text-lg mb-4">
-              <span>Total:</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
-
-            <div className="space-y-2">
-              <Button
-                onClick={onPlaceOrder}
-                className="w-full"
-                disabled={isCreatingOrder}
-              >
-                {isCreatingOrder ? "Placing Order..." : "Place Order"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={onClearCart}
-                className="w-full"
-              >
-                Clear Cart
-              </Button>
-            </div>
+      {/* Footer with Total and Actions */}
+      {cart.length > 0 && (
+        <div className="border-t pt-3 px-4 absolute bottom-0 left-0 right-0 bg-white z-10">
+          <div className="flex justify-between items-center mb-3">
+            <span className="font-semibold">Total:</span>
+            <span className="font-bold text-lg">{formatCurrency(total)}</span>
           </div>
-        )}
-      </div>
-    </ScrollArea>
+
+          <div className="space-y-2">
+            <Button
+              onClick={onPlaceOrder}
+              className="w-full h-9"
+              disabled={isCreatingOrder}
+            >
+              {isCreatingOrder ? "Placing Order..." : "Place Order"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onClearCart}
+              className="w-full h-8 text-sm"
+            >
+              Clear Cart
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -509,25 +609,27 @@ export function OrderPage({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [destination, setDestination] = useState("");
   const [searchQuery, setSearchQuery] = useQueryState(
     "search",
     parseAsString.withDefault("").withOptions({
       shallow: true,
     })
   );
-  const [orderNote, setOrderNote] = useState("");
-  const [bookingId, setBookingId] = useState("");
+  const [orderDetails, setOrderDetails] = useState<OrderRequest>({
+    destination: "",
+    bookingId: undefined,
+    orderItems: [],
+    note: undefined,
+  });
   const [itemTypeFilter, setItemTypeFilter] = useQueryState(
     "itemType",
     parseAsStringEnum(["ALL", "FOOD", "DRINK"]).withDefault("ALL")
   );
 
-
   // Calculate cart totals
   const cartSummary = useMemo(() => {
     const total = cart.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+      (sum, item) => sum + item.price * (item.rate || 1) * item.quantity,
       0
     );
     const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -542,7 +644,7 @@ export function OrderPage({
         throw new Error("Your cart is empty");
       }
 
-      if (!destination) {
+      if (!orderData.destination || orderData.destination.trim() === "") {
         throw new Error("Please enter a destination");
       }
 
@@ -560,9 +662,12 @@ export function OrderPage({
         description: `Total Amount: ${formatCurrency(cartSummary.total)}`,
       });
       setCart([]);
-      setDestination("");
-      setOrderNote("");
-      setBookingId("");
+      setOrderDetails({
+        destination: "",
+        bookingId: undefined,
+        orderItems: [],
+        note: undefined,
+      });
       setIsCartOpen(false);
     },
     onError: (error: Error) => {
@@ -613,6 +718,14 @@ export function OrderPage({
     );
   };
 
+  // Update cart item rate
+  const updateRate = (itemId: string, rate: number | undefined) => {
+    setCart((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, rate } : item))
+    );
+    toast.success("Rate updated");
+  };
+
   // Remove item from cart
   const removeFromCart = (itemId: string) => {
     setCart((prev) => prev.filter((item) => item.id !== itemId));
@@ -628,16 +741,15 @@ export function OrderPage({
   // Place order
   const createOrderRequest = () => {
     // Prepare order data according to API schema
-    const orderData: OrderRequest = {
-      destination,
+    const orderData = {
+      ...orderDetails,
       orderItems: cart.map((item) => ({
-        foodItemId: item.id,
+        itemId: item.id,
+        itemType: item.itemType,
         quantity: item.quantity,
-        rate: item.price,
-        note: item.note || undefined,
+        rate: item.rate,
+        note: item.note,
       })),
-      bookingId: bookingId || undefined,
-      note: orderNote || undefined,
     };
 
     mutate(orderData);
@@ -663,26 +775,27 @@ export function OrderPage({
               />
             </SheetTrigger>
 
-            <SheetContent>
-              <SheetHeader>
+            <SheetContent className="w-full sm:max-w-md flex flex-col p-0">
+              <SheetHeader className="border-b">
                 <SheetTitle>Order Summary</SheetTitle>
-                <SheetDescription>Review your order items</SheetDescription>
+                <SheetDescription className="text-xs">
+                  Review your order items
+                </SheetDescription>
               </SheetHeader>
 
               {cart.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Cart is empty</p>
+                <p className="text-center text-gray-500 py-12 text-sm">
+                  Cart is empty
+                </p>
               ) : (
                 <OrderSummary
                   cart={cart}
-                  destination={destination}
-                  onDestinationChange={setDestination}
-                  orderNote={orderNote}
-                  onOrderNoteChange={setOrderNote}
-                  bookingId={bookingId}
-                  onBookingIdChange={setBookingId}
+                  orderDetails={orderDetails}
+                  onOrderDetailsChange={setOrderDetails}
                   bookings={currentBookings}
-                  onUpdateQuantity={updateQuantity}
                   onRemoveItem={removeFromCart}
+                  onUpdateQuantity={updateQuantity}
+                  onUpdateRate={updateRate}
                   onPlaceOrder={createOrderRequest}
                   isCreatingOrder={isPending}
                   onClearCart={clearCart}
@@ -709,8 +822,8 @@ export function OrderPage({
           {/* Stats */}
           <div className="flex gap-4 mt-4 pt-4 border-t">
             <div className="text-sm text-gray-600">
-              <span className="font-medium">{foodItems.length}</span>{" "}
-              items found
+              <span className="font-medium">{foodItems.length}</span> items
+              found
             </div>
             <div className="text-sm text-gray-600">
               <span className="font-medium">
