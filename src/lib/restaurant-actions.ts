@@ -92,3 +92,64 @@ export async function placeOrder(payload: OrderRequest): ServerActionResponse<st
       data: "Order placed successfully",
   };
 }
+
+export async function addFoodItem({
+    name,
+    price,
+}: {
+    name: string;
+    price: number; 
+}) {
+    const sessionData = await verifySession("RESTAURANT");
+    const response = await $fetch("@post/api/restaurants/food-item", {
+        body: {
+            name,
+            price,
+        },
+        auth: { type: "Bearer", token: sessionData.token },
+    });
+
+    if (response.error) {
+        return {
+            success: false,
+            error: response.error.message || "Failed to add food item",
+        };
+    }
+
+    return {
+        success: true,
+        data: (response.data as { data: string }).data,
+    };
+}
+
+export async function addBarItem({
+    name,
+    price,
+    quantity,
+}: {
+    name: string;
+    price: number; 
+    quantity: number;
+}) {
+    const sessionData = await verifySession("RESTAURANT");
+    const response = await $fetch("@post/api/restaurants/bar-item", {
+        body: {
+            name,
+            price,
+            quantity,
+        },
+        auth: { type: "Bearer", token: sessionData.token },
+    });
+
+    if (response.error) {
+        return {
+            success: false,
+            error: response.error.message || "Failed to add bar item",
+        };
+    }
+
+    return {
+        success: true,
+        data: "Bar item added successfully",
+    };
+}

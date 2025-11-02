@@ -27,6 +27,8 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { addBarItem, addFoodItem, restockRequest } from "@/lib/restaurant-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 const receiveStockItemSchema = z.object({
   name: z.string().nonempty("Item name is required"),
@@ -280,10 +282,13 @@ export function RequestRestock({ setOpen }: { setOpen: (open: boolean) => void }
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: z.infer<typeof requestRestockSchema>) => {
-      // TODO: Replace with actual API call
-      console.log("Requesting restock:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return data;
+      const res = await restockRequest(data);
+
+      if (!res.success) {
+        throw new Error(res.error || "Failed to submit restock request");
+      }
+
+      return res.data;
     },
     onSuccess: async () => {
       form.reset();
@@ -656,17 +661,19 @@ export function AddFoodItem({ setOpen }: { setOpen: (open: boolean) => void }) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: z.infer<typeof addFoodItemSchema>) => {
-      // TODO: Replace with actual API call
-      console.log("Adding food item:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return data;
+      const res = await addFoodItem(data);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to add food item");
+      }
+      return res.data;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       form.reset();
       setOpen(false);
-      toast.success("Food item added successfully");
-      // TODO: Add revalidation if needed
-      // await revalidateRoute("/kitchen");
+      toast.success("Food item added successfully", {
+        description: data
+      });
+      await revalidateRoute("/dashboard/create-order");
     },
     onError: () => {
       toast.error("Something went wrong", {
@@ -753,17 +760,19 @@ export function AddBarItem({ setOpen }: { setOpen: (open: boolean) => void }) {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: z.infer<typeof addBarItemSchema>) => {
-      // TODO: Replace with actual API call
-      console.log("Adding bar item:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return data;
+      const res = await addBarItem(data);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to add bar item");
+      }
+      return res.data;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       form.reset();
       setOpen(false);
-      toast.success("Bar item added successfully");
-      // TODO: Add revalidation if needed
-      // await revalidateRoute("/kitchen");
+      toast.success("Bar item added successfully", {
+        description: data
+      });
+      await revalidateRoute("/dashboard/create-order");
     },
     onError: () => {
       toast.error("Something went wrong", {

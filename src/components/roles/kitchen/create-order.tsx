@@ -626,6 +626,14 @@ export function OrderPage({
     parseAsStringEnum(["ALL", "FOOD", "DRINK"]).withDefault("ALL")
   );
 
+  const filteredItems = useMemo(() => {
+    return foodItems.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.customId.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [foodItems, searchQuery]);
   // Calculate cart totals
   const cartSummary = useMemo(() => {
     const total = cart.reduce(
@@ -842,7 +850,7 @@ export function OrderPage({
 
         {/* Menu Items Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <MenuGrid items={foodItems} onAddToCart={addToCart} />
+          <MenuGrid items={filteredItems} onAddToCart={addToCart} />
         </div>
       </div>
     </div>
