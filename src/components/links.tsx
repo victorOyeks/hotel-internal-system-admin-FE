@@ -7,6 +7,7 @@ import {
   HotelIcon,
   IdCardIcon,
   MessagesSquare,
+  PlusIcon,
   ToolCaseIcon,
   TruckIcon,
 } from "lucide-react";
@@ -89,11 +90,11 @@ export const restaurantLinks = [
     icon: <HomeIcon />,
     url: "/dashboard",
   },
+  { title: "New Order", icon: <PlusIcon />, url: "/dashboard/create-order" },
   {
     title: "Inventory",
     icon: <ToolCaseIcon />,
     url: "/dashboard/inventory"
   },
   { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
-  { title: "Sales Report", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
 ];
