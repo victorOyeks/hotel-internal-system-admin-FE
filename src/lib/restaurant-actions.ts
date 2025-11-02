@@ -9,7 +9,7 @@ export async function updateOrderStatus(params: {
     status: "PENDING" | "COMPLETED" | "CANCELLED";
     }): ServerActionResponse<string> {
     const sessionData = await verifySession("RESTAURANT");
-    const response = await $fetch("@patch/api/restaurants/kitchen-orders/:orderId/status", {
+    const response = await $fetch("@patch/api/restaurants/restaurant-orders/:orderId/status", {
         params: {
             orderId: params.orderId,
         },
