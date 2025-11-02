@@ -1,5 +1,6 @@
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
+import { it } from "node:test";
 import { z } from "zod";
 
 export const Role = z.enum([
@@ -1129,7 +1130,7 @@ export const schema = createSchema({
   },
 
   // RESTAURANT
-  "@get/api/restaurants/kitchen-orders": {
+  "@get/api/restaurants/restaurant-orders": {
     query: z
       .object({
         destination: z.string().nullable(),
@@ -1156,6 +1157,8 @@ export const schema = createSchema({
             orderItems: z
               .object({
                 itemName: z.string(),
+                itemId: z.string(),
+                itemType: z.enum(["DRINK", "FOOD"]),
                 quantity: z.number(),
                 price: z.number(),
                 total: z.number(),
@@ -1264,13 +1267,23 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/food-items/all": {
+  "@get/api/restaurants/items/all": {
     output: ApiResponseObject.extend({
+      query: z
+        .object({
+          itemType: z.enum(["DRINK", "FOOD"]).nullable(),
+        })
+        .optional(),
       data: z
         .object({
           id: z.string(),
+          customId: z.string(),
           name: z.string(),
           price: z.number(),
+          itemType: z.enum(["DRINK", "FOOD"]),
+          quantity: z.number(),
+          createdAt: z.coerce.date(),
+          updatedAt: z.coerce.date(),
         })
         .array(),
     }),

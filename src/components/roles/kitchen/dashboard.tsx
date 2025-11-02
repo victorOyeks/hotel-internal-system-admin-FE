@@ -717,7 +717,7 @@ export function KitchenToolbar() {
 }
 
 type OrderItem =
-  APIOutput<"@get/api/restaurants/kitchen-orders">["data"]["content"][number];
+  APIOutput<"@get/api/restaurants/restaurant-orders">["data"]["content"][number];
 
 function OrderCard({
   order,

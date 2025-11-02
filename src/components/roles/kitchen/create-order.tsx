@@ -20,6 +20,9 @@ import {
   SearchIcon,
   CheckIcon,
   ChevronsUpDownIcon,
+  UtensilsIcon,
+  GlassWaterIcon,
+  PackageIcon,
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -41,10 +44,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { placeOrder } from "@/lib/restaurant-actions";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
+import { Badge } from "@/components/ui/badge";
 
 type FoodItemAPIResponse =
-  APIOutput<"@get/api/restaurants/food-items/all">["data"][number];
+  APIOutput<"@get/api/restaurants/items/all">["data"][number];
 
 interface MenuItem extends FoodItemAPIResponse {}
 
@@ -137,6 +141,44 @@ function BookingCombobox({
   );
 }
 
+// Filter Tabs Component
+function FilterTabs({
+  activeFilter,
+  onFilterChange,
+}: {
+  activeFilter: "ALL" | "FOOD" | "DRINK";
+  onFilterChange: (filter: "ALL" | "FOOD" | "DRINK") => void;
+}) {
+  return (
+    <div className="flex gap-2 mb-4">
+      <Button
+        variant={activeFilter === "ALL" ? "default" : "outline"}
+        onClick={() => onFilterChange("ALL")}
+        className="flex items-center gap-2"
+      >
+        <PackageIcon className="h-4 w-4" />
+        All Items
+      </Button>
+      <Button
+        variant={activeFilter === "FOOD" ? "default" : "outline"}
+        onClick={() => onFilterChange("FOOD")}
+        className="flex items-center gap-2"
+      >
+        <UtensilsIcon className="h-4 w-4" />
+        Food
+      </Button>
+      <Button
+        variant={activeFilter === "DRINK" ? "default" : "outline"}
+        onClick={() => onFilterChange("DRINK")}
+        className="flex items-center gap-2"
+      >
+        <GlassWaterIcon className="h-4 w-4" />
+        Drinks
+      </Button>
+    </div>
+  );
+}
+
 // Search Bar Component
 function SearchBar({
   searchQuery,
@@ -146,7 +188,7 @@ function SearchBar({
   onSearchChange: (query: string) => void;
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <div className="relative max-w-md">
         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
@@ -168,19 +210,70 @@ function MenuItemCard({
   item: MenuItem;
   onAddToCart: (item: MenuItem) => void;
 }) {
+  const isOutOfStock = item.quantity === 0;
+  const isLowStock = item.quantity > 0 && item.quantity <= 5;
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+    <div
+      className={cn(
+        "bg-white border border-gray-200 rounded-xl p-3",
+        isOutOfStock && "opacity-60"
+      )}
+    >
       <div className="flex flex-col h-full">
         <div className="flex-1 mb-4">
-          <h3 className="font-semibold text-base line-clamp-2 mb-2">
+          {/* Item Type Badge */}
+          <div className="flex items-center justify-between mb-2">
+            <Badge
+              variant={item.itemType === "FOOD" ? "green" : "blue"}
+              className="text-xs"
+            >
+              {item.itemType === "FOOD" ? (
+                <>
+                  <UtensilsIcon className="h-3 w-3 mr-1" />
+                  Food
+                </>
+              ) : (
+                <>
+                  <GlassWaterIcon className="h-3 w-3 mr-1" />
+                  Drink
+                </>
+              )}
+            </Badge>
+
+            {/* Stock Badge */}
+            {isOutOfStock ? (
+              <Badge variant="destructive" className="text-xs">
+                Out of Stock
+              </Badge>
+            ) : isLowStock ? (
+              <Badge
+                variant="outline"
+                className="text-xs text-orange-600 border-orange-600"
+              >
+                Low Stock ({item.quantity})
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                {item.quantity} in stock
+              </Badge>
+            )}
+          </div>
+
+          <h3 className="font-semibold text-base line-clamp-2 mb-1">
             {item.name}
           </h3>
-          <p className="font-medium">{formatCurrency(item.price)}</p>
+          <p className="text-xs text-gray-500 mb-2">ID: {item.customId}</p>
         </div>
 
-        <Button onClick={() => onAddToCart(item)} className="w-full">
+        <p className="font-medium text-lg mb-1">{formatCurrency(item.price)}</p>
+        <Button
+          onClick={() => onAddToCart(item)}
+          className="w-full"
+          disabled={isOutOfStock}
+        >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Add to Cart
+          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </Button>
       </div>
     </div>
@@ -198,9 +291,22 @@ function CartItemRow({
   onRemove: (itemId: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-      <div>
-        <p className="font-medium">{item.name}</p>
+    <div className="flex items-start justify-between p-3 bg-gray-50 rounded">
+      <div className="flex-1 min-w-0 mr-3">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="font-medium truncate">{item.name}</p>
+          <Badge variant="outline" className="text-xs flex-shrink-0">
+            {item.itemType === "FOOD" ? (
+              <UtensilsIcon className="h-3 w-3" />
+            ) : (
+              <GlassWaterIcon className="h-3 w-3" />
+            )}
+          </Badge>
+        </div>
+        <p className="text-xs text-gray-500">
+          {formatCurrency(item.price)} × {item.quantity} ={" "}
+          {formatCurrency(item.price * item.quantity)}
+        </p>
       </div>
       <div className="flex items-center space-x-2">
         <Button
@@ -211,7 +317,9 @@ function CartItemRow({
         >
           <MinusIcon className="h-3 w-3" />
         </Button>
-        <span className="w-8 text-center text-sm">{item.quantity}</span>
+        <span className="w-8 text-center text-sm font-medium">
+          {item.quantity}
+        </span>
         <Button
           variant="outline"
           size="sm"
@@ -266,7 +374,7 @@ function OrderSummary({
   isCreatingOrder: boolean;
 }) {
   return (
-    <ScrollArea className="max-h-screen pb-12">
+    <ScrollArea className="h-full pb-40">
       <div className="space-y-4 px-4">
         {/* Destination */}
         <div>
@@ -402,18 +510,19 @@ export function OrderPage({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [destination, setDestination] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useQueryState(
+    "search",
+    parseAsString.withDefault("").withOptions({
+      shallow: true,
+    })
+  );
   const [orderNote, setOrderNote] = useState("");
   const [bookingId, setBookingId] = useState("");
+  const [itemTypeFilter, setItemTypeFilter] = useQueryState(
+    "itemType",
+    parseAsStringEnum(["ALL", "FOOD", "DRINK"]).withDefault("ALL")
+  );
 
-  // Filter food items based on search query
-  const filteredFoodItems = useMemo(() => {
-    if (!searchQuery.trim()) return foodItems;
-
-    return foodItems.filter((item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [foodItems, searchQuery]);
 
   // Calculate cart totals
   const cartSummary = useMemo(() => {
@@ -463,10 +572,22 @@ export function OrderPage({
 
   // Add item to cart
   const addToCart = (item: MenuItem) => {
+    // Check if item is out of stock
+    if (item.quantity === 0) {
+      toast.error(`${item.name} is out of stock`);
+      return;
+    }
+
     setCart((prev) => {
       const existingItem = prev.find((cartItem) => cartItem.id === item.id);
 
       if (existingItem) {
+        // Check if adding more would exceed available stock
+        if (existingItem.quantity + 1 > item.quantity) {
+          toast.error(`Only ${item.quantity} ${item.name} available in stock`);
+          return prev;
+        }
+
         return prev.map((cartItem) =>
           cartItem.id === item.id
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
@@ -524,12 +645,14 @@ export function OrderPage({
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Create Order</h1>
-            <p className="text-gray-600">Select items to create a new order</p>
+            <h1 className="text-3xl font-bold">Create Order</h1>
+            <p className="text-gray-600">
+              Browse menu and create orders for guests
+            </p>
           </div>
 
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
@@ -570,11 +693,43 @@ export function OrderPage({
           </Sheet>
         </div>
 
-        <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+        {/* Filters */}
+        <div className="bg-white rounded-lg border  p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <FilterTabs
+              activeFilter={itemTypeFilter}
+              onFilterChange={setItemTypeFilter}
+            />
+            <SearchBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+          </div>
+
+          {/* Stats */}
+          <div className="flex gap-4 mt-4 pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{foodItems.length}</span>{" "}
+              items found
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">
+                {foodItems.filter((item) => item.quantity > 0).length}
+              </span>{" "}
+              in stock
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">
+                {foodItems.filter((item) => item.quantity === 0).length}
+              </span>{" "}
+              out of stock
+            </div>
+          </div>
+        </div>
 
         {/* Menu Items Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <MenuGrid items={filteredFoodItems} onAddToCart={addToCart} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <MenuGrid items={foodItems} onAddToCart={addToCart} />
         </div>
       </div>
     </div>

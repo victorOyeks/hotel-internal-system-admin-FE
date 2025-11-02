@@ -40,7 +40,7 @@ function Page({ searchParams }: PageProps) {
     queryClient.ensureQueryData({
       queryKey: ["restaurant", "dashboard-data", cookieData.token],
       queryFn: async ({ signal }) => {
-        const res = await $fetch("@get/api/restaurants/kitchen-orders", {
+        const res = await $fetch("@get/api/restaurants/restaurant-orders", {
           //@ts-expect-error -- IGNORE --
           query: {
             ...query,

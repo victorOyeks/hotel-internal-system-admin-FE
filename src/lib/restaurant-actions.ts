@@ -58,47 +58,6 @@ export async function restockRequest(params: {
     };
 }
 
-/*
-{
-  "destination": "string",
-  "orderItems": [
-    {
-      "itemName": "string",
-      "quantity": 0,
-      "price": 0.1
-    }
-  ],
-  "bookingId": "string"
-}
-*/
-export async function createOrder(payload: {
-    destination: string;
-    orderItems: {
-        itemName: string;
-        quantity: number;
-        price: number;
-    }[];
-    bookingId: string;
-}): ServerActionResponse<string> {
-    const sessionData = await verifySession("RESTAURANT");
-    const response = await $fetch("@post/api/restaurants/kitchen-orders", {
-        body: payload,
-        auth: { type: "Bearer", token: sessionData.token },
-    });
-
-    if (response.error) {
-        return {
-            success: false,
-            error: response.error.message || "Failed to create order",
-        };
-    }
-
-
-    return {
-        success: true,
-        data: 'Order created successfully',
-    };
-}
 
 interface OrderRequest {
   destination: string;
@@ -115,7 +74,7 @@ interface OrderRequest {
 
 export async function placeOrder(payload: OrderRequest): ServerActionResponse<string> {
   const sessionData = await verifySession("RESTAURANT");
-  const response = await $fetch("@post/api/restaurants/kitchen-orders", {
+  const response = await $fetch("@post/api/restaurants/restaurant-orders", {
       body: payload,
       auth: { type: "Bearer", token: sessionData.token },
   });
