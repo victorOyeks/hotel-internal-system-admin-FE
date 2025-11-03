@@ -24,7 +24,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreVerticalIcon, RotateCcwIcon } from "lucide-react";
+import { MoreVerticalIcon, RotateCcwIcon, Loader2Icon } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -47,12 +47,296 @@ import { useMemo, useState, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { APIOutput } from "@/lib/action-utils";
 import { DatePicker } from "@/components/shared/date-picker";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteStockItem, updateStockItem } from "@/lib/restaurant-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 export type InventoryResponse =
   APIOutput<"@get/api/restaurants/stock">["data"]["content"][number];
 export type InventoryRestockRequest =
   APIOutput<"@get/api/restaurants/bar-restock-requests">["data"]["content"][number];
+
+const editInventoryItemSchema = z.object({
+  name: z.string().nonempty("Item name is required"),
+  quantity: z.number().nonnegative("Quantity must be 0 or greater"),
+  unit: z.string().nonempty("Unit is required"),
+  note: z.string().optional(),
+  department: z.enum([
+    "BAR",
+    "RESTAURANT",
+    "HOUSEKEEPING",
+    "FRONT_DESK",
+    "MAINTENANCE",
+    "MANAGEMENT",
+    "INVENTORY",
+    "OTHER",
+  ]),
+  date: z.string().nonempty("Date is required"),
+  time: z.string().nonempty("Time is required"),
+});
+
+function EditInventoryItemForm({
+  item,
+  setOpen,
+}: {
+  item: InventoryResponse;
+  setOpen: (open: boolean) => void;
+}) {
+  // Parse existing dateTimeReceived or use current date/time
+  const existingDateTime = item.dateTimeReceived
+    ? new Date(item.dateTimeReceived)
+    : new Date();
+  const currentDate = existingDateTime.toISOString().split("T")[0];
+  const currentTime = existingDateTime.toTimeString().slice(0, 5);
+
+  const form = useForm({
+    resolver: zodResolver(editInventoryItemSchema),
+    defaultValues: {
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      note: "",
+      department: item.department as z.infer<
+        typeof editInventoryItemSchema
+      >["department"],
+      date: currentDate,
+      time: currentTime,
+    },
+    progressive: true,
+    reValidateMode: "onBlur",
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (data: z.infer<typeof editInventoryItemSchema>) => {
+      // Combine date and time into ISO string
+      const dateTimeReceived = new Date(
+        `${data.date}T${data.time}`
+      ).toISOString();
+
+      const payload = {
+        name: data.name,
+        quantity: data.quantity,
+        unit: data.unit,
+        note: data.note,
+        department: data.department,
+        dateTimeReceived,
+      };
+
+      const response = await updateStockItem({
+        itemId: item.id,
+        ...payload,
+      });
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      return response.data;
+    },
+    onSuccess: async (desc) => {
+      form.reset();
+      setOpen(false);
+      toast.success("Inventory item updated successfully", {
+        description: desc,
+      });
+      await revalidateRoute("/restaurant/inventory");
+    },
+    onError: () => {
+      toast.error("Something went wrong", {
+        description: "Failed to update inventory item",
+      });
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form
+        className="space-y-4"
+        onSubmit={form.handleSubmit((data) => mutate(data))}
+      >
+        <FormField
+          name="name"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Item Name</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g Rice" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="department"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Department</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="BAR">Bar</SelectItem>
+                  <SelectItem value="RESTAURANT">Restaurant</SelectItem>
+                  <SelectItem value="HOUSEKEEPING">Housekeeping</SelectItem>
+                  <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                  <SelectItem value="MANAGEMENT">Management</SelectItem>
+                  <SelectItem value="INVENTORY">Inventory</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="quantity"
+            render={() => (
+              <FormItem>
+                <FormLabel>Quantity</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="e.g 50"
+                    {...form.register("quantity", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="unit"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Unit</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g Kg" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="note"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Note (Optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="Add any notes..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date Received</FormLabel>
+                <FormControl>
+                  <DatePicker
+                    initialDate={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select date"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="time"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Time Received</FormLabel>
+                <FormControl>
+                  <Input
+                    type="time"
+                    step="1"
+                    {...field}
+                    className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="mt-4 w-full font-semibold"
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2Icon className="animate-spin" />
+              <span>Updating, please wait...</span>
+            </>
+          ) : (
+            "Update Item"
+          )}
+        </Button>
+      </form>
+    </Form>
+  );
+}
 
 function InventoryTableToolbar({
   currentSection,
@@ -287,28 +571,107 @@ const allSupplyColumns = [
   allSupplyColumnHelper.display({
     id: "actions",
     cell: (info) => {
+      const [editOpen, setEditOpen] = useState(false);
+      const [deleteOpen, setDeleteOpen] = useState(false);
+
+      const { mutate: deleteItem, isPending: isDeleting } = useMutation({
+        mutationFn: async () => {
+          const response = await deleteStockItem({
+            itemId: info.row.original.id,
+          });
+
+          if (!response.success) {
+            throw new Error(response.error);
+          }
+
+          return response.data;
+        },
+        onSuccess: async (desc) => {
+          setDeleteOpen(false);
+          toast.success("Inventory item deleted successfully", {
+            description: desc,
+          });
+          await revalidateRoute("/restaurant/inventory");
+        },
+        onError: (e) => {
+          toast.error("Something went wrong", {
+            description: e.message || "Failed to delete inventory item",
+          });
+        },
+      });
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVerticalIcon />
-            </Button>
-            </DropdownMenuTrigger>
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive">
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  })
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <DialogTrigger className="w-full">Edit</DialogTrigger>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <AlertDialogTrigger className="w-full text-red-600">
+                    Delete
+                  </AlertDialogTrigger>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DialogContent>
+              <DialogTitle>Edit Item "{info.row.original.name}"</DialogTitle>
+              <DialogDescription className="sr-only">
+                Modify the details of the inventory item.
+              </DialogDescription>
+              <EditInventoryItemForm
+                item={info.row.original}
+                setOpen={setEditOpen}
+              />
+            </DialogContent>
+
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Delete Item "{info.row.original.name}"?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  inventory item from the system.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    deleteItem();
+                  }}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2Icon className="animate-spin h-4 w-4 mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Dialog>
+      );
+    },
+  }),
 ];
 
 function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
