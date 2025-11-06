@@ -2,6 +2,7 @@
 
 import type {
   APIInput,
+  Prettify,
   ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
@@ -78,9 +79,9 @@ export async function cancelReservation({
 export async function checkInGuest({
   roomId,
   ...payload
-}: {
+}: Prettify<{
   roomId: string;
-} & APIInput<"@post/api/front-desks/:roomId/check-in">): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomId/check-in"> {
+} & APIInput<"@post/api/front-desks/:roomId/check-in">>): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomId/check-in"> {
   const { token } = await verifySession("FRONT_DESK");
 
   const response = await $fetch("@post/api/front-desks/:roomId/check-in", {

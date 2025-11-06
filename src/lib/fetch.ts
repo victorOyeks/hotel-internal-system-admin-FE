@@ -943,6 +943,10 @@ export const schema = createSchema({
     input: z.object({
       guestName: z.string().nonempty(),
       phoneNumber: z.string().nonempty(),
+      noOfAdults: z.number(),
+      noOfChildren: z.number(),
+      nightlyRate: z.number().min(0),
+      dailySpendingCap: z.number().min(0),
       amountPaid: z.number().min(0),
       roomStatus: z.literal("CHECKED_IN"),
       checkInDate: z.string().nonempty(), // yyyy-mm-dd
@@ -974,6 +978,8 @@ export const schema = createSchema({
     input: z.object({
       guestName: z.string().nonempty(),
       phoneNumber: z.string().nonempty(),
+      nightlyRate: z.number().min(0),
+      dailySpendingCap: z.number().min(0),
       checkInDate: z.string().nonempty(), // yyyy-mm-dd
       checkOutDate: z.string().nonempty(), // yyyy-mm-dd
       notes: z.string().nullable().optional(),

@@ -503,20 +503,24 @@ function CreateNewBookingForm({
 const checkInFormSchema = z.object({
   guestName: z.string().nonempty("Guest name is required"),
   phoneNumber: z.string().nonempty("Phone number is required"),
+  noOfAdults: z.number().int().positive("Number of adults must be at least 1"),
+  noOfChildren: z.number().int().nonnegative("Number of children cannot be negative"),
+  nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
+  dailySpendingCap: z.number().nonnegative("Daily spending cap must be 0 or greater"),
   amountPaid: z
     .number()
     .nonnegative("You cannot pay a negative amount")
     .min(0, "Please enter a valid amount"),
   roomStatus: z.enum(["CHECKED_IN"]),
-  roomId: z.string().nonempty("Room is required"),
   checkInDate: z.string().nonempty("Check-in date is required"),
-  checkOutDate: z.string().optional(),
 });
 
 const reservationFormSchema = z
   .object({
     guestName: z.string().nonempty("Guest name is required"),
     phoneNumber: z.string().nonempty("Phone number is required"),
+    nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
+    dailySpendingCap: z.number().nonnegative("Daily spending cap must be 0 or greater"),
     checkInDate: z.string().nonempty("Check-in date is required"),
     checkOutDate: z.string().nonempty("Check-out date is required"),
     roomId: z.string().nonempty("Room is required"),
@@ -594,26 +598,34 @@ export function CheckInForm({
     "room:type": parseAsString.withDefault(""),
   });
 
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+
   const form = useForm({
     resolver: zodResolver(checkInFormSchema),
     defaultValues: {
       guestName: "",
       phoneNumber: "",
+      noOfAdults: 1,
+      noOfChildren: 0,
+      nightlyRate: 0,
+      dailySpendingCap: 0,
       amountPaid: 0,
-      roomId: "",
       roomStatus: "CHECKED_IN" as "CHECKED_IN",
       checkInDate: new Date().toISOString().split("T")[0],
-      checkOutDate: undefined,
     },
   });
 
   const { isPending, mutate } = useMutation({
     mutationFn: async (
       data: z.infer<typeof checkInFormSchema> & {
-        roomStatus: "CHECKED_IN";
+        roomId: string;
       }
     ) => {
-      const response = await checkInGuest(data);
+      const { roomId, ...restData } = data;
+      const response = await checkInGuest({
+        roomId,
+        ...restData,
+      });
 
       if (!response.success) {
         throw new Error(response.error || "An error occurred");
@@ -649,9 +661,13 @@ export function CheckInForm({
   return (
     <Form {...form}>
       <form
-        className="space-y-4"
+        className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
         onSubmit={form.handleSubmit((data) => {
-          mutate(data);
+          if (!selectedRoomId) {
+            toast.error("Please select a room");
+            return;
+          }
+          mutate({ ...data, roomId: selectedRoomId });
         })}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
@@ -701,14 +717,86 @@ export function CheckInForm({
             </Select>
           </div>
 
+          <div className="grid gap-2">
+            <Label>Room</Label>
+            <SelectRoomBox setValue={setSelectedRoomId} rooms={data.rooms} />
+            {!selectedRoomId && (
+              <p className="text-sm text-destructive">Room is required</p>
+            )}
+          </div>
+
           <FormField
             control={form.control}
-            name="roomId"
-            render={({ field }) => (
+            name="noOfAdults"
+            render={() => (
               <FormItem>
-                <FormLabel>Room</FormLabel>
+                <FormLabel>Number of Adults</FormLabel>
                 <FormControl>
-                  <SelectRoomBox setValue={field.onChange} rooms={data.rooms} />
+                  <Input
+                    type="number"
+                    placeholder="e.g 2"
+                    min="1"
+                    {...form.register("noOfAdults", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="noOfChildren"
+            render={() => (
+              <FormItem>
+                <FormLabel>Number of Children</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="e.g 0"
+                    min="0"
+                    {...form.register("noOfChildren", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="nightlyRate"
+            render={() => (
+              <FormItem>
+                <FormLabel>Nightly Rate</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="e.g 5000"
+                    min="0"
+                    step="0.01"
+                    {...form.register("nightlyRate", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dailySpendingCap"
+            render={() => (
+              <FormItem>
+                <FormLabel>Daily Spending Cap</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="e.g 10000"
+                    min="0"
+                    step="0.01"
+                    {...form.register("dailySpendingCap", { valueAsNumber: true })}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -751,32 +839,6 @@ export function CheckInForm({
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="checkOutDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Check-out Date (Optional)</FormLabel>
-                <FormControl>
-                  <DatePicker
-                    initialDate={field.value || ""}
-                    onChange={field.onChange}
-                    placeholder="Select check-out date"
-                    minDate={
-                      form.watch("checkInDate")
-                        ? new Date(
-                            new Date(form.watch("checkInDate")).getTime() +
-                              24 * 60 * 60 * 1000
-                          )
-                        : new Date()
-                    }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
         <Button
           type="submit"
@@ -808,7 +870,6 @@ export function ReservationForm({
   setOpen: (open: boolean) => void;
 }) {
   const [roomQuery, setRoomQuery] = useQueryStates({
-    "room:search": parseAsString.withDefault(""),
     "room:type": parseAsString.withDefault(""),
   });
 
@@ -817,6 +878,8 @@ export function ReservationForm({
     defaultValues: {
       guestName: "",
       phoneNumber: "",
+      nightlyRate: 0,
+      dailySpendingCap: 0,
       checkInDate: "",
       checkOutDate: "",
       roomId: "",
@@ -850,7 +913,6 @@ export function ReservationForm({
   useEffect(() => {
     return () => {
       setRoomQuery({
-        "room:search": "",
         "room:type": "",
       });
     };
@@ -859,7 +921,7 @@ export function ReservationForm({
   return (
     <Form {...form}>
       <form
-        className="space-y-4"
+        className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
         onSubmit={form.handleSubmit((data) => {
           mutate(data);
         })}
@@ -887,6 +949,44 @@ export function ReservationForm({
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g +234 801 234 5678" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="nightlyRate"
+            render={() => (
+              <FormItem>
+                <FormLabel>Nightly Rate</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g 25000"
+                    {...form.register("nightlyRate", { valueAsNumber: true })}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="dailySpendingCap"
+            render={() => (
+              <FormItem>
+                <FormLabel>Daily Spending Cap</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g 10000"
+                    {...form.register("dailySpendingCap", { valueAsNumber: true })}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -941,7 +1041,7 @@ export function ReservationForm({
           <div className="grid gap-2">
             <Label>Room Type</Label>
             <Select
-              value={roomQuery["room:type"] ?? ""}
+              value={roomQuery["room:type"]}
               onValueChange={(value) => setRoomQuery({ "room:type": value })}
             >
               <SelectTrigger className="w-full">
@@ -973,15 +1073,40 @@ export function ReservationForm({
         </div>
 
         {/* Reservation Summary */}
-        {form.watch("checkInDate") && form.watch("checkOutDate") && (
-          <div className="font-medium">
-            Duration:{" "}
-            {Math.ceil(
-              (new Date(form.watch("checkOutDate")).getTime() -
-                new Date(form.watch("checkInDate")).getTime()) /
-                (1000 * 60 * 60 * 24)
-            )}{" "}
-            night(s)
+        {form.watch("checkInDate") && form.watch("checkOutDate") && form.watch("nightlyRate") > 0 && (
+          <div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+            <h3 className="font-medium text-sm">Reservation Summary</h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <span className="text-muted-foreground">Duration:</span>
+                <span className="ml-2 font-medium">
+                  {Math.ceil(
+                    (new Date(form.watch("checkOutDate")).getTime() -
+                      new Date(form.watch("checkInDate")).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  )}{" "}
+                  night(s)
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Nightly Rate:</span>
+                <span className="ml-2 font-medium">
+                  ₦{form.watch("nightlyRate").toLocaleString()}
+                </span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Total Cost:</span>
+                <span className="ml-2 font-medium text-lg">
+                  ₦{(
+                    Math.ceil(
+                      (new Date(form.watch("checkOutDate")).getTime() -
+                        new Date(form.watch("checkInDate")).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    ) * form.watch("nightlyRate")
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
