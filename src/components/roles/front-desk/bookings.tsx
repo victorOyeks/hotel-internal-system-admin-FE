@@ -268,7 +268,7 @@ function ChangeBookingStatus({
   };
 
   return (
-    <DialogContent className="p-6 rounded-2xl max-w-md">
+    <DialogContent className="p-6 rounded-2xl max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden">
       <DialogTitle className="text-xl font-semibold">
         Change Booking Status
       </DialogTitle>
@@ -302,6 +302,18 @@ function ChangeBookingStatus({
                 {currentStatusLabel}
               </span>
             </div>
+            {/* Payment Status */}
+            {currentStatus === "CHECKED_IN" && (
+              <div className="pt-2 border-t border-gray-200">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Balance:</span>
+                  <span className={`font-medium ${booking.amountRemaining > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                    {formatCurrency(booking.amountRemaining)}
+                    {booking.amountRemaining > 0 && ' due'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -584,11 +596,6 @@ const columns = [
     header: "Guest Name",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("branchName", {
-    header: "Branch Name",
-    cell: (info) => info.getValue(),
-  }),
-
   columnHelper.accessor("roomType", {
     header: "Room Type",
     cell: (info) => (
@@ -601,6 +608,37 @@ const columns = [
   columnHelper.accessor("amountPaid", {
     header: "Amount Paid",
     cell: (info) => formatCurrency(info.getValue()),
+  }),
+
+  columnHelper.display({
+    id: "paymentStatus",
+    header: "Payment",
+    cell: (info) => {
+      const booking = info.row.original;
+      const isFullyPaid = booking.amountRemaining === 0;
+      const paymentPercentage = booking.totalAmounDue > 0 
+        ? (booking.amountPaidTo / booking.totalAmounDue) * 100 
+        : 0;
+
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1">
+            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className={`h-full ${isFullyPaid ? 'bg-green-500' : paymentPercentage > 50 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-600">{Math.round(paymentPercentage)}%</span>
+          </div>
+          {booking.amountRemaining > 0 && (
+            <span className="text-xs text-amber-600">
+              {formatCurrency(booking.amountRemaining)} due
+            </span>
+          )}
+        </div>
+      );
+    },
   }),
 
   columnHelper.accessor("bookingStatus", {
