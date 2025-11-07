@@ -1,7 +1,6 @@
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
-import { it } from "node:test";
-import { number, z } from "zod";
+import { z } from "zod";
 
 export const Role = z.enum([
   "HOTEL_OWNER",
@@ -1035,8 +1034,7 @@ export const schema = createSchema({
               numberOfNights: z.number().min(0),
               accommodationCost: z.number().min(0),
               restaurantOrdersTotal: z.number().min(0),
-              totalAmounDue: z.number().min(0),
-              amountPaidTo: z.number().min(0),
+              totalAmountDue: z.number().min(0),
               amountRemaining: z.number().min(0),
               guestPhoneNumber: z.string(),
               roomIdentifier: z.string(),
@@ -1112,7 +1110,7 @@ export const schema = createSchema({
       currency: z.string().nonempty(),
       method: z.string().nonempty(),
       reference: z.string().nonempty(),
-      type: z.string().nonempty(),
+      type: z.enum(["OTHER", "INSTALLMENT", "FINAL", "REFUND", "DEPOSIT"]),
       paymentDate: z.string().nonempty(), // iso datetime
     }),
     output: ApiResponseObject.extend({

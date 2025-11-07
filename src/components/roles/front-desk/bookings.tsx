@@ -97,9 +97,11 @@ function ChangeBookingStatus({
     finalAmountPaid?: number;
     paymentMethod?: string;
     paymentReference?: string;
+    paymentType?: "DEPOSIT" | "INSTALLMENT" | "FINAL" | "OTHER" | "REFUND";
   }>({
     paymentMethod: "CASH",
     paymentReference: "",
+    paymentType: "FINAL",
   });
 
   const allStatusOptions: Array<{
@@ -107,27 +109,27 @@ function ChangeBookingStatus({
     label: string;
     description: string;
   }> = [
-      {
-        value: "RESERVED",
-        label: "Reserved",
-        description: "Room is reserved for the guest",
-      },
-      {
-        value: "CHECKED_IN",
-        label: "Checked In",
-        description: "Guest has checked into the room",
-      },
-      {
-        value: "CHECKED_OUT",
-        label: "Checked Out",
-        description: "Guest has checked out from the room",
-      },
-      {
-        value: "CANCELLED",
-        label: "Cancelled",
-        description: "Booking has been cancelled",
-      },
-    ];
+    {
+      value: "RESERVED",
+      label: "Reserved",
+      description: "Room is reserved for the guest",
+    },
+    {
+      value: "CHECKED_IN",
+      label: "Checked In",
+      description: "Guest has checked into the room",
+    },
+    {
+      value: "CHECKED_OUT",
+      label: "Checked Out",
+      description: "Guest has checked out from the room",
+    },
+    {
+      value: "CANCELLED",
+      label: "Cancelled",
+      description: "Booking has been cancelled",
+    },
+  ];
 
   const currentStatus = booking?.bookingStatus;
 
@@ -199,7 +201,7 @@ function ChangeBookingStatus({
             dailySpendingCap: 0, // Default to 0 as this field is not available in the booking response
             amountPaid: booking?.amountPaid!,
             roomStatus: "CHECKED_IN",
-            checkInDate: new Date().toISOString().split('T')[0], // Format as yyyy-mm-dd
+            checkInDate: new Date().toISOString().split("T")[0], // Format as yyyy-mm-dd
           });
 
           if (!response.success) {
@@ -208,31 +210,50 @@ function ChangeBookingStatus({
           return;
         }
         case "CHECKED_OUT": {
-          // First, record the final payment if there's an amount remaining
-          if (optionalFields.finalAmountPaid && optionalFields.finalAmountPaid > 0) {
+          // First, record the payment if there's an amount to pay
+          if (
+            optionalFields.finalAmountPaid &&
+            optionalFields.finalAmountPaid > 0
+          ) {
             const paymentResponse = await recordPayment({
               bookingId: booking?.id!,
               amount: optionalFields.finalAmountPaid,
               currency: "NGN",
               method: optionalFields.paymentMethod || "CASH",
-              reference: optionalFields.paymentReference || `CHECKOUT-${Date.now()}`,
-              type: "CHECKOUT_PAYMENT",
+              reference:
+                optionalFields.paymentReference || `CHECKOUT-${Date.now()}`,
+              type: optionalFields.paymentType || "FINAL",
               paymentDate: new Date().toISOString(),
             });
 
             if (!paymentResponse.success) {
-              throw new Error(paymentResponse.error || "Failed to record payment.");
+              throw new Error(
+                paymentResponse.error || "Failed to record payment."
+              );
             }
           }
 
-          // Then proceed with checkout
-          const response = await checkOutGuest({
-            roomId: booking?.roomIdentifier!,
-            finalAmountPaid: (booking?.amountPaidTo ?? 0) + (optionalFields.finalAmountPaid ?? 0),
-          });
+          // Only proceed with checkout if payment type is FINAL (full payment)
+          // For other payment types (INSTALLMENT, DEPOSIT, OTHER), just record payment without checkout
+          if (
+            optionalFields.paymentType === "FINAL" ||
+            booking?.amountRemaining === 0
+          ) {
+            const response = await checkOutGuest({
+              roomId: booking?.roomIdentifier!,
+              finalAmountPaid:
+                (booking?.amountPaid ?? 0) +
+                (optionalFields.finalAmountPaid ?? 0),
+            });
 
-          if (!response.success) {
-            throw new Error(response.error || "Failed to check out guest.");
+            if (!response.success) {
+              throw new Error(response.error || "Failed to check out guest.");
+            }
+          } else {
+            // For non-final payments, just show success message without checkout
+            toast.success(
+              "Payment recorded successfully. Guest can be checked out when final payment is made."
+            );
           }
           return;
         }
@@ -307,9 +328,15 @@ function ChangeBookingStatus({
               <div className="pt-2 border-t border-gray-200">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Balance:</span>
-                  <span className={`font-medium ${booking.amountRemaining > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                  <span
+                    className={`font-medium ${
+                      booking.amountRemaining > 0
+                        ? "text-amber-600"
+                        : "text-green-600"
+                    }`}
+                  >
                     {formatCurrency(booking.amountRemaining)}
-                    {booking.amountRemaining > 0 && ' due'}
+                    {booking.amountRemaining > 0 && " due"}
                   </span>
                 </div>
               </div>
@@ -359,10 +386,10 @@ function ChangeBookingStatus({
               selectedStatus === "CANCELLED"
                 ? "destructive"
                 : selectedStatus === "CHECKED_OUT"
-                  ? "info"
-                  : selectedStatus === "CHECKED_IN"
-                    ? "success"
-                    : "warning"
+                ? "info"
+                : selectedStatus === "CHECKED_IN"
+                ? "success"
+                : "warning"
             }
           >
             <AlertCircleIcon className="h-4 w-4" />
@@ -400,23 +427,33 @@ function ChangeBookingStatus({
           <div className="space-y-3">
             {/* Payment Summary */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-              <h4 className="font-medium text-blue-900 text-sm">Payment Summary</h4>
+              <h4 className="font-medium text-blue-900 text-sm">
+                Payment Summary
+              </h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-blue-700">Total Amount Due:</span>
                   <span className="font-medium text-blue-900">
-                    {formatCurrency(booking.totalAmounDue)}
+                    {formatCurrency(booking.totalAmountDue)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-blue-700">Amount Paid:</span>
                   <span className="font-medium text-blue-900">
-                    {formatCurrency(booking.amountPaidTo)}
+                    {formatCurrency(booking.amountPaid)}
                   </span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-blue-200">
-                  <span className="text-blue-700 font-medium">Amount Remaining:</span>
-                  <span className={`font-bold ${booking.amountRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  <span className="text-blue-700 font-medium">
+                    Amount Remaining:
+                  </span>
+                  <span
+                    className={`font-bold ${
+                      booking.amountRemaining > 0
+                        ? "text-red-600"
+                        : "text-green-600"
+                    }`}
+                  >
                     {formatCurrency(booking.amountRemaining)}
                   </span>
                 </div>
@@ -428,7 +465,13 @@ function ChangeBookingStatus({
               <Alert variant="warning">
                 <AlertCircleIcon className="h-4 w-4" />
                 <AlertDescription>
-                  Guest must pay the remaining balance of <strong>{formatCurrency(booking.amountRemaining)}</strong> before checkout.
+                  <p>
+                    Guest must pay the remaining balance of{" "}
+                    <span className="font-medium">
+                      {formatCurrency(booking.amountRemaining)}
+                    </span>{" "}
+                    before checkout.
+                  </p>
                 </AlertDescription>
               </Alert>
             )}
@@ -437,7 +480,10 @@ function ChangeBookingStatus({
             {booking.amountRemaining > 0 && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="finalAmountPaid" className="text-sm font-medium">
+                  <Label
+                    htmlFor="finalAmountPaid"
+                    className="text-sm font-medium"
+                  >
                     Payment Amount <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -453,19 +499,27 @@ function ChangeBookingStatus({
                         finalAmountPaid: Number(e.target.value),
                       }))
                     }
-                    placeholder={`Enter amount (Max: ${formatCurrency(booking.amountRemaining)})`}
+                    placeholder={`Enter amount (Max: ${formatCurrency(
+                      booking.amountRemaining
+                    )})`}
                     className="w-full"
                   />
-                  {optionalFields.finalAmountPaid !== undefined && 
-                   optionalFields.finalAmountPaid !== booking.amountRemaining && (
-                    <p className="text-xs text-amber-600">
-                      Note: Amount entered ({formatCurrency(optionalFields.finalAmountPaid)}) is less than the remaining balance.
-                    </p>
-                  )}
+                  {optionalFields.finalAmountPaid !== undefined &&
+                    optionalFields.finalAmountPaid !==
+                      booking.amountRemaining && (
+                      <p className="text-xs text-amber-600">
+                        Note: Amount entered (
+                        {formatCurrency(optionalFields.finalAmountPaid)}) is
+                        less than the remaining balance.
+                      </p>
+                    )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paymentMethod" className="text-sm font-medium">
+                  <Label
+                    htmlFor="paymentMethod"
+                    className="text-sm font-medium"
+                  >
                     Payment Method <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -483,14 +537,51 @@ function ChangeBookingStatus({
                     <SelectContent>
                       <SelectItem value="CASH">Cash</SelectItem>
                       <SelectItem value="CARD">Card</SelectItem>
-                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">
+                        Bank Transfer
+                      </SelectItem>
                       <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paymentReference" className="text-sm font-medium">
+                  <Label htmlFor="paymentType" className="text-sm font-medium">
+                    Payment Type <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={optionalFields.paymentType}
+                    onValueChange={(value) =>
+                      setOptionalFields((prev) => ({
+                        ...prev,
+                        paymentType: value as typeof optionalFields.paymentType,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="paymentType" className="w-full">
+                      <SelectValue placeholder="Select payment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FINAL">Final Payment</SelectItem>
+                      <SelectItem value="INSTALLMENT">Installment</SelectItem>
+                      <SelectItem value="DEPOSIT">Deposit</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {optionalFields.paymentType &&
+                    optionalFields.paymentType !== "FINAL" && (
+                      <p className="text-xs text-blue-600">
+                        Note: This will record the payment without checking out
+                        the guest.
+                      </p>
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="paymentReference"
+                    className="text-sm font-medium"
+                  >
                     Payment Reference
                   </Label>
                   <Input
@@ -553,14 +644,15 @@ function ChangeBookingStatus({
             <Button
               onClick={() => mutate()}
               disabled={
-                !selectedStatus || 
-                selectedStatus === currentStatus || 
+                !selectedStatus ||
+                selectedStatus === currentStatus ||
                 isPending ||
-                // Disable checkout if there's a remaining balance and no payment entered
-                (selectedStatus === "CHECKED_OUT" && 
-                 booking && 
-                 booking.amountRemaining > 0 && 
-                 (!optionalFields.finalAmountPaid || optionalFields.finalAmountPaid <= 0))
+                // Disable if trying to checkout and there's a remaining balance without payment
+                (selectedStatus === "CHECKED_OUT" &&
+                  booking &&
+                  booking.amountRemaining > 0 &&
+                  (!optionalFields.finalAmountPaid ||
+                    optionalFields.finalAmountPaid <= 0))
               }
               className="flex-1"
             >
@@ -572,8 +664,12 @@ function ChangeBookingStatus({
               ) : (
                 <>
                   <CheckIcon className="w-4 h-4 mr-2" />
-                  {selectedStatus === "CHECKED_OUT" && booking && booking.amountRemaining > 0
-                    ? "Record Payment & Check Out"
+                  {selectedStatus === "CHECKED_OUT" &&
+                  booking &&
+                  booking.amountRemaining > 0
+                    ? optionalFields.paymentType === "FINAL"
+                      ? "Record Payment & Check Out"
+                      : "Record Payment"
                     : "Update Status"}
                 </>
               )}
@@ -615,21 +711,30 @@ const columns = [
     header: "Payment",
     cell: (info) => {
       const booking = info.row.original;
-      const isFullyPaid = booking.amountRemaining === 0;
-      const paymentPercentage = booking.totalAmounDue > 0 
-        ? (booking.amountPaidTo / booking.totalAmounDue) * 100 
-        : 0;
+      const isFullyPaid = booking.amountPaid >= booking.totalAmountDue;
+      const paymentPercentage =
+        booking.totalAmountDue > 0
+          ? (booking.amountPaid / booking.totalAmountDue) * 100
+          : 0;
 
       return (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${isFullyPaid ? 'bg-green-500' : paymentPercentage > 50 ? 'bg-blue-500' : 'bg-amber-500'}`}
+              <div
+                className={`h-full ${
+                  isFullyPaid
+                    ? "bg-green-500"
+                    : paymentPercentage > 50
+                    ? "bg-blue-500"
+                    : "bg-amber-500"
+                }`}
                 style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
               />
             </div>
-            <span className="text-xs text-gray-600">{Math.round(paymentPercentage)}%</span>
+            <span className="text-xs text-gray-600">
+              {Math.round(paymentPercentage)}%
+            </span>
           </div>
           {booking.amountRemaining > 0 && (
             <span className="text-xs text-amber-600">
@@ -727,9 +832,9 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </TableHead>
                 );
               })}
@@ -787,11 +892,11 @@ function BookingsFilter({
   roomTypes: string[];
   queryState: {
     bookingStatus:
-    | "RESERVED"
-    | "CHECKED_OUT"
-    | "CHECKED_IN"
-    | "CANCELLED"
-    | null;
+      | "RESERVED"
+      | "CHECKED_OUT"
+      | "CHECKED_IN"
+      | "CANCELLED"
+      | null;
     search: string | null;
     roomType: string | null;
   };
@@ -992,10 +1097,11 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === null}
           onClick={() => setQueryState({ bookingStatus: null })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === null
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
+            queryState.bookingStatus === null
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-            }`}
+          }`}
         >
           All Bookings{" "}
           {queryState.bookingStatus === null &&
@@ -1007,10 +1113,11 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === "RESERVED"}
           onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "RESERVED"
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
+            queryState.bookingStatus === "RESERVED"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-            }`}
+          }`}
         >
           Reservations{" "}
           {queryState.bookingStatus === "RESERVED" &&
@@ -1022,10 +1129,11 @@ function BookingsListToolbar({
           variant="outline"
           data-active={queryState.bookingStatus === "CHECKED_OUT"}
           onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
-          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "CHECKED_OUT"
+          className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
+            queryState.bookingStatus === "CHECKED_OUT"
               ? "bg-primary text-primary-foreground border-primary"
               : ""
-            }`}
+          }`}
         >
           Booking history{" "}
           {queryState.bookingStatus === "CHECKED_OUT" &&
@@ -1094,7 +1202,7 @@ function BookingsListToolbar({
               <ReservationForm
                 data={{
                   rooms,
-                  roomTypes
+                  roomTypes,
                 }}
                 setOpen={(open) =>
                   setModalStates({
