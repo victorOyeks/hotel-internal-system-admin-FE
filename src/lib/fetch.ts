@@ -1,7 +1,7 @@
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
 import { it } from "node:test";
-import { z } from "zod";
+import { number, z } from "zod";
 
 export const Role = z.enum([
   "HOTEL_OWNER",
@@ -1029,9 +1029,51 @@ export const schema = createSchema({
               amountPaid: z.number().min(0),
               id: z.string(),
               customId: z.string(),
+              noOfAdults: z.number(),
+              noOfChildren: z.number(),
+              nightlyRate: z.number().min(0),
+              numberOfNights: z.number().min(0),
+              accommodationCost: z.number().min(0),
+              restaurantOrdersTotal: z.number().min(0),
+              totalAmounDue: z.number().min(0),
+              amountPaidTo: z.number().min(0),
+              amountRemaining: z.number().min(0),
               guestPhoneNumber: z.string(),
               roomIdentifier: z.string(),
-            })
+              restaurantOrders: z
+                .object({
+                  id: z.string(),
+                  customId: z.string(),
+                  destination: z.string(),
+                  totalAmount: z.number(),
+                  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
+                  createdAt: z.coerce.date(),
+                  note: z.string().optional(),
+                  orderItems: z
+                    .object({
+                      itemId: z.string(),
+                      itemType: z.enum(["FOOD", "DRINK"]),
+                      itemName: z.string(),
+                      quantity: z.number(),
+                      price: z.number(),
+                      total: z.number(),
+                      note: z.string().nullable(),
+                    })
+                    .array(),
+                  payments: z.object({
+                    id: z.string(),
+                    amount: z.number(),
+                    currency: z.string(),
+                    method: z.string(),
+                    reference: z.string(),
+                    status: z.string(),
+                    type: z.string(),
+                    paymentDate: z.coerce.date(),
+                    createdAt: z.coerce.date(),
+                  }),
+                })
+                .array(),
+            }).omit({ expectedCheckInDate: true })
           ),
         }),
       })
@@ -1045,6 +1087,37 @@ export const schema = createSchema({
         size: z.number().nullable().default(10),
       })
       .partial(),
+  },
+  "@get/api/front-desks/bookings/:bookingId/payments": {
+    output: ApiResponseObject.extend({
+      data: z.array(
+        z.object({
+          id: z.string(),
+          amount: z.number(),
+          currency: z.string(),
+          method: z.string(),
+          reference: z.string(),
+          status: z.string(),
+          type: z.string(),
+          paymentDate: z.coerce.date(),
+          createdAt: z.coerce.date(),
+        })
+      ),
+    }),
+  },
+  "@post/api/front-desks/bookings/:bookingId/payments": {
+    params: z.object({ bookingId: z.string() }),
+    input: z.object({
+      amount: z.number().min(0),
+      currency: z.string().nonempty(),
+      method: z.string().nonempty(),
+      reference: z.string().nonempty(),
+      type: z.string().nonempty(),
+      paymentDate: z.string().nonempty(), // iso datetime
+    }),
+    output: ApiResponseObject.extend({
+      data: z.string(),
+    }),
   },
   "@get/api/front-desks/guest-logs": {
     output: ApiResponseObject.extend({

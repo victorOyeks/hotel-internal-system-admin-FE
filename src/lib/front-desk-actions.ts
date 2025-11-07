@@ -234,3 +234,63 @@ export async function claimLostItem({
     data: response.data,
   };
 }
+
+export async function recordPayment({
+  bookingId,
+  ...payload
+}: {
+  bookingId: string;
+} & APIInput<"@post/api/front-desks/bookings/:bookingId/payments">): ServerActionResponseFromEndpoint<"@post/api/front-desks/bookings/:bookingId/payments"> {
+  const { token } = await verifySession("FRONT_DESK");
+
+  const response = await $fetch("@post/api/front-desks/bookings/:bookingId/payments", {
+    params: { bookingId },
+    body: {
+      ...payload,
+    },
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  if (response.error) {
+    return {
+      success: false,
+      error: response.error.message || "An error occurred while recording payment.",
+    };
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}
+
+export async function getBookingPayments({
+  bookingId,
+}: {
+  bookingId: string;
+}): ServerActionResponseFromEndpoint<"@get/api/front-desks/bookings/:bookingId/payments"> {
+  const { token } = await verifySession("FRONT_DESK");
+
+  const response = await $fetch("@get/api/front-desks/bookings/:bookingId/payments", {
+    params: { bookingId },
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  if (response.error) {
+    return {
+      success: false,
+      error: response.error.message || "An error occurred while fetching payments.",
+    };
+  }
+
+  return {
+    success: true,
+    data: response.data,
+  };
+}

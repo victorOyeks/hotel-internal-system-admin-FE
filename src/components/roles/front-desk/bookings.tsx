@@ -67,6 +67,7 @@ import {
   cancelReservation,
   checkInGuest,
   checkOutGuest,
+  recordPayment,
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,12 @@ function ChangeBookingStatus({
   const [notes, setNotes] = useState("");
   const [optionalFields, setOptionalFields] = useState<{
     finalAmountPaid?: number;
-  }>({});
+    paymentMethod?: string;
+    paymentReference?: string;
+  }>({
+    paymentMethod: "CASH",
+    paymentReference: "",
+  });
 
   const allStatusOptions: Array<{
     value: BookingStatus;
@@ -185,11 +191,15 @@ function ChangeBookingStatus({
         case "CHECKED_IN": {
           const response = await checkInGuest({
             roomId: booking?.roomIdentifier!,
-            amountPaid: booking?.amountPaid!,
-            checkInDate: new Date().toISOString(),
             guestName: booking?.guestName!,
             phoneNumber: booking?.guestPhoneNumber!,
+            noOfAdults: booking?.noOfAdults ?? 1,
+            noOfChildren: booking?.noOfChildren ?? 0,
+            nightlyRate: booking?.nightlyRate ?? 0,
+            dailySpendingCap: 0, // Default to 0 as this field is not available in the booking response
+            amountPaid: booking?.amountPaid!,
             roomStatus: "CHECKED_IN",
+            checkInDate: new Date().toISOString().split('T')[0], // Format as yyyy-mm-dd
           });
 
           if (!response.success) {
@@ -198,9 +208,27 @@ function ChangeBookingStatus({
           return;
         }
         case "CHECKED_OUT": {
+          // First, record the final payment if there's an amount remaining
+          if (optionalFields.finalAmountPaid && optionalFields.finalAmountPaid > 0) {
+            const paymentResponse = await recordPayment({
+              bookingId: booking?.id!,
+              amount: optionalFields.finalAmountPaid,
+              currency: "NGN",
+              method: optionalFields.paymentMethod || "CASH",
+              reference: optionalFields.paymentReference || `CHECKOUT-${Date.now()}`,
+              type: "CHECKOUT_PAYMENT",
+              paymentDate: new Date().toISOString(),
+            });
+
+            if (!paymentResponse.success) {
+              throw new Error(paymentResponse.error || "Failed to record payment.");
+            }
+          }
+
+          // Then proceed with checkout
           const response = await checkOutGuest({
             roomId: booking?.roomIdentifier!,
-            finalAmountPaid: optionalFields.finalAmountPaid!,
+            finalAmountPaid: (booking?.amountPaidTo ?? 0) + (optionalFields.finalAmountPaid ?? 0),
           });
 
           if (!response.success) {
@@ -356,24 +384,128 @@ function ChangeBookingStatus({
         )}
 
         {/* Optional field for checkout */}
-        {selectedStatus === "CHECKED_OUT" && (
+        {selectedStatus === "CHECKED_OUT" && booking && (
           <div className="space-y-3">
-            <Label htmlFor="finalAmountPaid" className="text-sm font-medium">
-              Final Amount Paid
-            </Label>
-            <Input
-              id="finalAmountPaid"
-              type="number"
-              value={optionalFields.finalAmountPaid}
-              onChange={(e) =>
-                setOptionalFields((prev) => ({
-                  ...prev,
-                  finalAmountPaid: Number(e.target.value),
-                }))
-              }
-              placeholder="Enter the final amount paid by the guest"
-              className="w-full"
-            />
+            {/* Payment Summary */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <h4 className="font-medium text-blue-900 text-sm">Payment Summary</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total Amount Due:</span>
+                  <span className="font-medium text-blue-900">
+                    {formatCurrency(booking.totalAmounDue)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Amount Paid:</span>
+                  <span className="font-medium text-blue-900">
+                    {formatCurrency(booking.amountPaidTo)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-blue-200">
+                  <span className="text-blue-700 font-medium">Amount Remaining:</span>
+                  <span className={`font-bold ${booking.amountRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatCurrency(booking.amountRemaining)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Required Alert */}
+            {booking.amountRemaining > 0 && (
+              <Alert variant="warning">
+                <AlertCircleIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Guest must pay the remaining balance of <strong>{formatCurrency(booking.amountRemaining)}</strong> before checkout.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Payment Fields */}
+            {booking.amountRemaining > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="finalAmountPaid" className="text-sm font-medium">
+                    Payment Amount <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="finalAmountPaid"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={booking.amountRemaining}
+                    value={optionalFields.finalAmountPaid || ""}
+                    onChange={(e) =>
+                      setOptionalFields((prev) => ({
+                        ...prev,
+                        finalAmountPaid: Number(e.target.value),
+                      }))
+                    }
+                    placeholder={`Enter amount (Max: ${formatCurrency(booking.amountRemaining)})`}
+                    className="w-full"
+                  />
+                  {optionalFields.finalAmountPaid !== undefined && 
+                   optionalFields.finalAmountPaid !== booking.amountRemaining && (
+                    <p className="text-xs text-amber-600">
+                      Note: Amount entered ({formatCurrency(optionalFields.finalAmountPaid)}) is less than the remaining balance.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="paymentMethod" className="text-sm font-medium">
+                    Payment Method <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={optionalFields.paymentMethod}
+                    onValueChange={(value) =>
+                      setOptionalFields((prev) => ({
+                        ...prev,
+                        paymentMethod: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="paymentMethod" className="w-full">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash</SelectItem>
+                      <SelectItem value="CARD">Card</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                      <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="paymentReference" className="text-sm font-medium">
+                    Payment Reference
+                  </Label>
+                  <Input
+                    id="paymentReference"
+                    type="text"
+                    value={optionalFields.paymentReference}
+                    onChange={(e) =>
+                      setOptionalFields((prev) => ({
+                        ...prev,
+                        paymentReference: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Receipt number, transaction ID"
+                    className="w-full"
+                  />
+                </div>
+              </>
+            )}
+
+            {booking.amountRemaining === 0 && (
+              <Alert variant="success">
+                <CheckIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Payment is complete. Guest can be checked out.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
 
@@ -409,7 +541,14 @@ function ChangeBookingStatus({
             <Button
               onClick={() => mutate()}
               disabled={
-                !selectedStatus || selectedStatus === currentStatus || isPending
+                !selectedStatus || 
+                selectedStatus === currentStatus || 
+                isPending ||
+                // Disable checkout if there's a remaining balance and no payment entered
+                (selectedStatus === "CHECKED_OUT" && 
+                 booking && 
+                 booking.amountRemaining > 0 && 
+                 (!optionalFields.finalAmountPaid || optionalFields.finalAmountPaid <= 0))
               }
               className="flex-1"
             >
@@ -421,7 +560,9 @@ function ChangeBookingStatus({
               ) : (
                 <>
                   <CheckIcon className="w-4 h-4 mr-2" />
-                  Update Status
+                  {selectedStatus === "CHECKED_OUT" && booking && booking.amountRemaining > 0
+                    ? "Record Payment & Check Out"
+                    : "Update Status"}
                 </>
               )}
             </Button>
