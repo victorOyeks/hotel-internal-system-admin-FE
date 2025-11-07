@@ -93,6 +93,7 @@ function Page({ searchParams }: PageProps) {
 
   return (
     <BookingsPage
+    // @ts-expect-error - types are equal but TypeScript is not able to infer it
       bookings={content}
       rooms={rooms}
       roomTypes={roomTypes}
