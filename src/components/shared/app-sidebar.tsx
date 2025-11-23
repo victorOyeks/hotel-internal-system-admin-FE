@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { frontDeskLinks, hotelOwnerLinks, inventoryOfficerLinks, managerOwnerLinks, restaurantLinks } from "../links";
+import { frontDeskLinks, hotelOwnerLinks, inventoryOfficerLinks, managerOwnerLinks, restaurantLinks, rentalsLinks } from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
 import type { HotelRole } from "@/lib/types";
@@ -41,6 +41,7 @@ export function AppSidebar({
     MAINTENANCE: [],
     INVENTORY: inventoryOfficerLinks,
     RESTAURANT: restaurantLinks,
+    RENTALS: rentalsLinks,
     MANAGER: managerOwnerLinks,
     SUPER_ADMIN: [],
   };
