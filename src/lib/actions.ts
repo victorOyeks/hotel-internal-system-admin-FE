@@ -32,7 +32,6 @@ export async function login(payload: {
   try {
     const existingUser = await getUser();
     if (existingUser) {
-      console.log("User already logged in, skipping login request.");
       return {
         success: true,
         data: { message: "User already logged in", ...existingUser },
