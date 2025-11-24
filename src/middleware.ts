@@ -13,6 +13,7 @@ const roleToPath: Record<HotelRole, string> = {
   MANAGER: "/manager",
   INVENTORY: "/inventory",
   MAINTENANCE: "/maintenance",
+  RENTALS: "/rentals",
   SUPER_ADMIN: "/admin"
 }
 

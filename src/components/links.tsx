@@ -10,6 +10,10 @@ import {
   PlusIcon,
   ToolCaseIcon,
   TruckIcon,
+  PackageIcon,
+  ClipboardListIcon,
+  AlertCircleIcon,
+  DollarSignIcon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -96,5 +100,14 @@ export const restaurantLinks = [
     icon: <ToolCaseIcon />,
     url: "/dashboard/inventory"
   },
+  { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
+];
+
+export const rentalsLinks = [
+  { title: "Home", icon: <HomeIcon />, url: "/dashboard" },
+  { title: "Rental Items", icon: <PackageIcon />, url: "/dashboard/items" },
+  { title: "Orders", icon: <ClipboardListIcon />, url: "/dashboard/orders" },
+  { title: "Overdue Rentals", icon: <AlertCircleIcon />, url: "/dashboard/overdue" },
+  { title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
   { title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];

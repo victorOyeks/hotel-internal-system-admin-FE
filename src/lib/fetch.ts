@@ -1,16 +1,17 @@
-import { env } from "@/env";
-import { createFetch, createSchema } from "@better-fetch/fetch";
-import { z } from "zod";
+import { env } from '@/env'
+import { createFetch, createSchema } from '@better-fetch/fetch'
+import { z } from 'zod'
 
 export const Role = z.enum([
-  "HOTEL_OWNER",
-  "MANAGER",
-  "FRONT_DESK",
-  "MAINTENANCE",
-  "INVENTORY",
-  "RESTAURANT",
-  "SUPER_ADMIN",
-]);
+  'HOTEL_OWNER',
+  'MANAGER',
+  'FRONT_DESK',
+  'MAINTENANCE',
+  'INVENTORY',
+  'RESTAURANT',
+  'RENTALS',
+  'SUPER_ADMIN',
+])
 
 const ApiExceptionResponseObject = z.object({
   requestTime: z.coerce.date(),
@@ -19,7 +20,7 @@ const ApiExceptionResponseObject = z.object({
   status: z.boolean(),
   message: z.string(),
   data: z.object({}), // Generic object
-});
+})
 
 const ApiResponseObject = z.object({
   requestTime: z.coerce.date(),
@@ -28,7 +29,7 @@ const ApiResponseObject = z.object({
   status: z.boolean(),
   message: z.string(),
   data: z.object({}), // Generic object
-});
+})
 
 const Pagination = z.object({
   pageNumber: z.number(),
@@ -37,9 +38,9 @@ const Pagination = z.object({
   totalPages: z.number(),
   last: z.boolean(),
   first: z.boolean(),
-});
+})
 
-export type Pagination = z.infer<typeof Pagination>;
+export type Pagination = z.infer<typeof Pagination>
 
 const UpdateRoomRequest = z.object({
   roomNo: z.string(),
@@ -48,7 +49,7 @@ const UpdateRoomRequest = z.object({
   roomPrice: z.number(),
   roomStatus: z.string(),
   roomFacility: z.array(z.string()),
-});
+})
 
 const RoomResponse = z.object({
   id: z.string(),
@@ -59,13 +60,13 @@ const RoomResponse = z.object({
   roomPrice: z.number(),
   checkInStatus: z.string(),
   roomFacility: z.array(z.string()),
-});
+})
 
-export type RoomDetails = z.infer<typeof RoomResponse>;
+export type RoomDetails = z.infer<typeof RoomResponse>
 
 const ApiResponseRoomResponse = ApiResponseObject.extend({
   data: RoomResponse,
-});
+})
 
 const OnboardHotelRequest = z.object({
   name: z.string(),
@@ -73,9 +74,9 @@ const OnboardHotelRequest = z.object({
   totalRooms: z.number().optional(),
   hotelAddress: z.string(),
   managerId: z.string(),
-});
+})
 
-export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>;
+export type OnboardHotelRequest = z.infer<typeof OnboardHotelRequest>
 
 const HotelManager = z.object({
   id: z.string(),
@@ -83,9 +84,9 @@ const HotelManager = z.object({
   fullName: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
-});
+})
 
-export type HotelManager = z.infer<typeof HotelManager>;
+export type HotelManager = z.infer<typeof HotelManager>
 
 const GetHotelResponse = z.object({
   id: z.string(),
@@ -97,9 +98,9 @@ const GetHotelResponse = z.object({
   grossRevenue: z.string(),
   expenses: z.string(),
   manager: HotelManager.partial().nullable().optional(),
-});
+})
 
-export type GetHotelResponse = z.infer<typeof GetHotelResponse>;
+export type GetHotelResponse = z.infer<typeof GetHotelResponse>
 
 const ApiResponseGetHotelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -108,13 +109,13 @@ const ApiResponseGetHotelResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: GetHotelResponse,
-});
+})
 
 const DeleteHotelResponse = z.object({
   customId: z.string(),
   name: z.string(),
   address: z.string(),
-});
+})
 
 const ApiResponseDeleteHotelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -123,13 +124,13 @@ const ApiResponseDeleteHotelResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: DeleteHotelResponse,
-});
+})
 
 const CreateHotelOwnerRequest = z.object({
   fullName: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
-});
+})
 
 const UserModelResponse = z.object({
   id: z.string(),
@@ -142,7 +143,7 @@ const UserModelResponse = z.object({
   customId: z.string(),
   parentUserCustomId: z.string(),
   verified: z.boolean(),
-});
+})
 
 const ApiResponseUserModelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -151,7 +152,7 @@ const ApiResponseUserModelResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: UserModelResponse,
-});
+})
 
 const CreateRoomRequest = z.object({
   // hotelId: z.string(),
@@ -161,22 +162,22 @@ const CreateRoomRequest = z.object({
   // roomPrice: z.number(),
   roomStatus: z.string(),
   roomFacility: z.array(z.string()),
-});
+})
 
-export type CreateRoomRequest = z.infer<typeof CreateRoomRequest>;
+export type CreateRoomRequest = z.infer<typeof CreateRoomRequest>
 
 const CreateHotelManagerRequest = z.object({
   fullName: z.string(),
   email: z.string(),
   phoneNumber: z.string(),
   staffId: z.string().optional(),
-});
+})
 
 const OnboardHotelResponse = z.object({
   hotelName: z.string(),
   hotelAddress: z.string(),
   managerId: HotelManager.partial().optional(),
-});
+})
 
 const ApiResponseOnboardHotelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -185,17 +186,17 @@ const ApiResponseOnboardHotelResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: OnboardHotelResponse,
-});
+})
 
 const LoginRequest = z.object({
   email: z.string(),
   password: z.string(),
-});
+})
 
 const LoginResponse = z.object({
   token: z.string(),
   role: z.string(),
-});
+})
 
 const ApiResponseLoginResponse = z.object({
   requestTime: z.coerce.date(),
@@ -204,7 +205,7 @@ const ApiResponseLoginResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: LoginResponse,
-});
+})
 
 const UserInfoResponse = z.object({
   id: z.string(),
@@ -232,9 +233,9 @@ const UserInfoResponse = z.object({
     )
     .optional(),
   // updatedAt: z.coerce.date(),
-});
+})
 
-export type UserInfoResponse = z.infer<typeof UserInfoResponse>;
+export type UserInfoResponse = z.infer<typeof UserInfoResponse>
 
 const ApiResponseUserInfoResponse = z.object({
   requestTime: z.coerce.date(),
@@ -243,7 +244,7 @@ const ApiResponseUserInfoResponse = z.object({
   status: z.boolean(),
   message: z.string(),
   data: UserInfoResponse,
-});
+})
 
 const ApiResponseListRoomResponse = z.object({
   requestTime: z.coerce.date(),
@@ -254,21 +255,21 @@ const ApiResponseListRoomResponse = z.object({
   data: Pagination.extend({
     content: z.array(RoomResponse),
   }),
-});
+})
 
 const ListRoomsQuery = z
   .object({
     roomType: z.string().nullable(),
     search: z.string().nullable(),
     status: z
-      .enum(["CHECKED_IN", "CHECKED_OUT", "RESERVED", "CANCELLED", "AVAILABLE"])
+      .enum(['CHECKED_IN', 'CHECKED_OUT', 'RESERVED', 'CANCELLED', 'AVAILABLE'])
       .nullable(),
     page: z.number().default(0),
     size: z.number().default(10),
   })
-  .partial();
+  .partial()
 
-export type ListRoomsQuery = z.infer<typeof ListRoomsQuery>;
+export type ListRoomsQuery = z.infer<typeof ListRoomsQuery>
 
 const StaffDetails = z.object({
   id: z.string(),
@@ -281,17 +282,17 @@ const StaffDetails = z.object({
   role: Role,
   verified: z.boolean(),
   lastLogin: z.string(),
-});
+})
 
-export type StaffDetails = z.infer<typeof StaffDetails>;
+export type StaffDetails = z.infer<typeof StaffDetails>
 
 const CustomPageStaffResponse = Pagination.extend({
   content: z.array(StaffDetails),
-});
+})
 
 export type CustomPageStaffResponse = z.infer<
   typeof CustomPageStaffResponse
->["content"][number];
+>['content'][number]
 
 const CustomPageStaffResponseQuery = z
   .object({
@@ -301,11 +302,11 @@ const CustomPageStaffResponseQuery = z
     page: z.coerce.number().default(0),
     size: z.coerce.number().default(10),
   })
-  .partial();
+  .partial()
 
 const ApiResponseCustomPageStaffResponse = ApiResponseObject.extend({
   data: CustomPageStaffResponse,
-});
+})
 
 const ApiResponseListGetHotelResponse = z.object({
   requestTime: z.coerce.date(),
@@ -316,14 +317,14 @@ const ApiResponseListGetHotelResponse = z.object({
   data: Pagination.extend({
     content: z.array(GetHotelResponse),
   }),
-});
+})
 
 export const BookingStatus = z.enum([
-  "CHECKED_IN",
-  "CHECKED_OUT",
-  "RESERVED",
-  "CANCELLED",
-]);
+  'CHECKED_IN',
+  'CHECKED_OUT',
+  'RESERVED',
+  'CANCELLED',
+])
 
 const BookingViewResponse = z.object({
   bookingId: z.string(),
@@ -335,9 +336,9 @@ const BookingViewResponse = z.object({
   expectedCheckInDate: z.iso.date(),
   checkInDate: z.iso.date(),
   checkOutDate: z.iso.date(),
-});
+})
 
-export type BookingViewResponse = z.infer<typeof BookingViewResponse>;
+export type BookingViewResponse = z.infer<typeof BookingViewResponse>
 
 const ApiResponseListBookingViewResponse = z.object({
   requestTime: z.coerce.date(),
@@ -348,17 +349,17 @@ const ApiResponseListBookingViewResponse = z.object({
   data: Pagination.extend({
     content: z.array(BookingViewResponse),
   }),
-});
+})
 
 const ManagerBookingViewResponse = BookingViewResponse.extend({
   id: z.string(),
   customId: z.string(),
   amountPaid: z.number(),
-}).omit({ roomNo: true, bookingId: true });
+}).omit({ roomNo: true, bookingId: true })
 
 export type ManagerBookingViewResponse = z.infer<
   typeof ManagerBookingViewResponse
->;
+>
 
 const ApiResponseManagerBookingViewResponse = z.object({
   requestTime: z.coerce.date(),
@@ -369,7 +370,7 @@ const ApiResponseManagerBookingViewResponse = z.object({
   data: Pagination.extend({
     content: z.array(ManagerBookingViewResponse),
   }),
-});
+})
 
 const InventoryResponse = z.object({
   id: z.string(),
@@ -379,28 +380,28 @@ const InventoryResponse = z.object({
   unit: z.string(),
   quantity: z.coerce.number().default(0),
   availability: z.string(),
-});
+})
 
-export type InventoryResponse = z.infer<typeof InventoryResponse>;
+export type InventoryResponse = z.infer<typeof InventoryResponse>
 
 const ApiResponseListInventoryResponse = ApiResponseObject.extend({
   data: Pagination.extend({
     content: z.array(InventoryResponse),
   }),
-});
+})
 
 const InventorySummaryResponse = z.object({
   totalItems: z.number(),
   available: z.number(),
   lowInStock: z.number(),
   outOfStock: z.number(),
-});
+})
 
-export type InventorySummaryResponse = z.infer<typeof InventorySummaryResponse>;
+export type InventorySummaryResponse = z.infer<typeof InventorySummaryResponse>
 
 const ApiResponseInventorySummaryResponse = ApiResponseObject.extend({
   data: InventorySummaryResponse,
-});
+})
 
 const InventoryRestockRequest = z.object({
   id: z.string(),
@@ -410,18 +411,18 @@ const InventoryRestockRequest = z.object({
   department: z.string(),
   quantity: z.number(),
   remarks: z.string().nullable(),
-  approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]),
+  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
   requestedAt: z.coerce.date(),
   supplied: z.coerce.boolean(),
-});
+})
 
-export type InventoryRestockRequest = z.infer<typeof InventoryRestockRequest>;
+export type InventoryRestockRequest = z.infer<typeof InventoryRestockRequest>
 
 const ApiResponseInventoryRestockRequestResponse = ApiResponseObject.extend({
   data: Pagination.extend({
     content: z.array(InventoryRestockRequest),
   }),
-});
+})
 
 const OnboardStaffRequest = z.object({
   fullName: z.string(),
@@ -429,14 +430,14 @@ const OnboardStaffRequest = z.object({
   phoneNumber: z.string(),
   staffId: z.string(),
   role: Role,
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
 
-export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>;
+export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>
 
 const ApiResponseOnboardStaffResponse = ApiResponseObject.extend({
   data: StaffDetails,
-});
+})
 
 const ManagerActivityLog = z.object({
   id: z.string(),
@@ -449,15 +450,15 @@ const ManagerActivityLog = z.object({
   createdAt: z.iso.datetime(),
   hotelId: z.string(),
   hotelName: z.string(),
-});
+})
 
-export type ManagerActivityLog = z.infer<typeof ManagerActivityLog>;
+export type ManagerActivityLog = z.infer<typeof ManagerActivityLog>
 
 const ApiResponseManagerActivityLogResponse = ApiResponseObject.extend({
   data: Pagination.extend({
     content: z.array(ManagerActivityLog),
   }),
-});
+})
 
 const ApiResponseDashboardGraphResponse = ApiResponseObject.extend({
   data: z.array(
@@ -466,9 +467,9 @@ const ApiResponseDashboardGraphResponse = ApiResponseObject.extend({
       totalEarnings: z.number(),
     })
   ),
-});
+})
 
-export type BookingStatus = z.infer<typeof BookingStatus>;
+export type BookingStatus = z.infer<typeof BookingStatus>
 
 const ApiResponseInventoryItemResponse =
   ApiResponseListInventoryResponse.extend({
@@ -481,11 +482,11 @@ const ApiResponseInventoryItemResponse =
         })
       ),
     }),
-  });
+  })
 
 export type InventoryItemResponse = z.infer<
   typeof ApiResponseInventoryItemResponse
->["data"]["content"][number];
+>['data']['content'][number]
 
 const ApiResponseInventorySuppliers = ApiResponseObject.extend({
   data: Pagination.extend({
@@ -505,12 +506,12 @@ const ApiResponseInventorySuppliers = ApiResponseObject.extend({
       })
     ),
   }),
-});
+})
 
 export type InventorySuppliers = z.infer<
   typeof ApiResponseInventorySuppliers
->["data"]["content"][number];
-export type InventorySupplierItem = InventorySuppliers["items"][number];
+>['data']['content'][number]
+export type InventorySupplierItem = InventorySuppliers['items'][number]
 
 const ApiResponseLostItem = ApiResponseObject.extend({
   data: Pagination.extend({
@@ -523,7 +524,7 @@ const ApiResponseLostItem = ApiResponseObject.extend({
         imageUrl: z.string().nullable(),
         location: z.string(),
         dateFound: z.coerce.date(),
-        claimStatus: z.enum(["UNCLAIMED", "CLAIMED", "DISPOSED"]),
+        claimStatus: z.enum(['UNCLAIMED', 'CLAIMED', 'DISPOSED']),
         claimedBy: z.string().nullable(),
         claimedDate: z.coerce.date().nullable(),
         claimNotes: z.string().nullable(),
@@ -534,11 +535,11 @@ const ApiResponseLostItem = ApiResponseObject.extend({
       })
     ),
   }),
-});
+})
 
 export type LostItem = z.infer<
   typeof ApiResponseLostItem
->["data"]["content"][number];
+>['data']['content'][number]
 
 const ApiResponseManagerDashboardResponse = ApiResponseObject.extend({
   data: z.object({
@@ -550,7 +551,7 @@ const ApiResponseManagerDashboardResponse = ApiResponseObject.extend({
     totalAvailableRooms: z.number(),
     selectedMonth: z.string(),
   }),
-});
+})
 
 const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend(
   {
@@ -581,29 +582,29 @@ const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend(
       selectedMonth: z.string(),
     }),
   }
-);
+)
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
   // Auth APIs
-  "@post/api/auth/sign-in": {
+  '@post/api/auth/sign-in': {
     input: LoginRequest,
     output: ApiResponseLoginResponse,
   },
 
   // User APIs
-  "@get/api/users/me": {
+  '@get/api/users/me': {
     output: ApiResponseUserInfoResponse,
   },
 
   // Platform Owner APIs
-  "@post/api/platform-owner/onboard-hotel-biz": {
+  '@post/api/platform-owner/onboard-hotel-biz': {
     input: CreateHotelOwnerRequest,
     output: ApiResponseUserModelResponse,
   },
 
   // Hotel Owner APIs
-  "@get/api/hotel-owners/hotels": {
+  '@get/api/hotel-owners/hotels': {
     output: ApiResponseListGetHotelResponse,
     query: z
       .object({
@@ -613,35 +614,35 @@ export const schema = createSchema({
       })
       .partial(),
   },
-  "@post/api/hotel-owners/hotels": {
+  '@post/api/hotel-owners/hotels': {
     input: OnboardHotelRequest,
     output: ApiResponseOnboardHotelResponse,
   },
-  "@put/api/hotel-owners/hotels/:hotelId": {
+  '@put/api/hotel-owners/hotels/:hotelId': {
     params: z.object({ hotelId: z.string() }),
     input: OnboardHotelRequest.omit({ managerId: true }),
     output: ApiResponseGetHotelResponse,
   },
-  "@delete/api/hotel-owners/hotels/:hotelId": {
+  '@delete/api/hotel-owners/hotels/:hotelId': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseDeleteHotelResponse,
   },
-  "@get/api/hotel-owners/staff": {
+  '@get/api/hotel-owners/staff': {
     output: ApiResponseCustomPageStaffResponse,
     query: CustomPageStaffResponseQuery,
   },
-  "@post/api/hotel-owners/managers": {
+  '@post/api/hotel-owners/managers': {
     input: CreateHotelManagerRequest,
     output: ApiResponseUserModelResponse,
   },
-  "@get/api/hotel-owners/hotels/:hotelId/rooms": {
+  '@get/api/hotel-owners/hotels/:hotelId/rooms': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseListRoomResponse,
   },
-  "@get/api/hotel-owners/hotels/bookings": {
+  '@get/api/hotel-owners/hotels/bookings': {
     output: ApiResponseListBookingViewResponse,
   },
-  "@get/api/hotel-owners/:hotelId/inventories": {
+  '@get/api/hotel-owners/:hotelId/inventories': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
@@ -656,16 +657,16 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseListInventoryResponse,
   },
-  "@post/api/hotel-owners/:hotelId/manager/:managerId": {
+  '@post/api/hotel-owners/:hotelId/manager/:managerId': {
     params: z.object({ hotelId: z.string(), managerId: z.string() }),
     query: z.object({
-      action: z.enum(["ASSIGN", "UNASSIGN"]),
+      action: z.enum(['ASSIGN', 'UNASSIGN']),
     }),
     output: ApiResponseObject.extend({
       data: z.string(),
     }),
   },
-  "@get/api/hotel-owners/logs": {
+  '@get/api/hotel-owners/logs': {
     output: ApiResponseManagerActivityLogResponse,
     query: z
       .object({
@@ -677,10 +678,10 @@ export const schema = createSchema({
       })
       .partial(),
   },
-  "@get/api/hotel-owners/dashboard/graph": {
+  '@get/api/hotel-owners/dashboard/graph': {
     output: ApiResponseDashboardGraphResponse,
   },
-  "@get/api/hotel-owners/dashboard/overview": {
+  '@get/api/hotel-owners/dashboard/overview': {
     query: z
       .object({
         selectedMonth: z.string(),
@@ -689,7 +690,7 @@ export const schema = createSchema({
       .optional(),
     output: ApiResponseHotelOwnerDashboardOverviewResponse,
   },
-  "@get/api/hotel-owners/dashboard-performance": {
+  '@get/api/hotel-owners/dashboard-performance': {
     output: ApiResponseObject.extend({
       data: z
         .object({
@@ -702,22 +703,22 @@ export const schema = createSchema({
   },
 
   // Manager APIs
-  "@get/api/managers/hotels/:hotelId/rooms": {
+  '@get/api/managers/hotels/:hotelId/rooms': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseListRoomResponse,
     query: ListRoomsQuery,
   },
-  "@post/api/managers/hotels/:hotelId/rooms": {
+  '@post/api/managers/hotels/:hotelId/rooms': {
     params: z.object({ hotelId: z.string() }),
     input: CreateRoomRequest,
     output: ApiResponseRoomResponse,
   },
-  "@put/api/managers/hotels/rooms/:roomCustomId": {
+  '@put/api/managers/hotels/rooms/:roomCustomId': {
     params: z.object({ roomCustomId: z.string() }),
     input: UpdateRoomRequest,
     output: ApiResponseRoomResponse,
   },
-  "@get/api/managers/hotels/:hotelId/bookings": {
+  '@get/api/managers/hotels/:hotelId/bookings': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
@@ -729,13 +730,13 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseManagerBookingViewResponse,
   },
-  "@get/api/managers/:hotelId/staff": {
+  '@get/api/managers/:hotelId/staff': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
         search: z.string().nullable(),
         status: z
-          .enum(["ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"])
+          .enum(['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED'])
           .nullable(),
         role: Role.nullable(),
         page: z.coerce.number().default(0),
@@ -744,17 +745,17 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseCustomPageStaffResponse,
   },
-  "@post/api/managers/hotels/:hotelId/onboard-staff": {
+  '@post/api/managers/hotels/:hotelId/onboard-staff': {
     params: z.object({ hotelId: z.string() }),
     input: OnboardStaffRequest,
     output: ApiResponseOnboardStaffResponse,
   },
-  "@put/api/managers/:hotelId/:staffId": {
+  '@put/api/managers/:hotelId/:staffId': {
     params: z.object({ hotelId: z.string(), staffId: z.string() }),
     input: OnboardStaffRequest.partial().omit({ role: true }),
     output: ApiResponseOnboardStaffResponse,
   },
-  "@patch/api/managers/:hotelId/:staffId/reset-password": {
+  '@patch/api/managers/:hotelId/:staffId/reset-password': {
     params: z.object({ hotelId: z.string(), staffId: z.string() }),
     input: z.object({
       newPassword: z.string().min(8),
@@ -764,7 +765,7 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@patch/api/managers/:hotelId/:staffId/suspend": {
+  '@patch/api/managers/:hotelId/:staffId/suspend': {
     params: z.object({ hotelId: z.string(), staffId: z.string() }),
     input: z.object({
       reason: z.string().nonempty(),
@@ -775,7 +776,7 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@get/api/managers/:hotelId/inventories": {
+  '@get/api/managers/:hotelId/inventories': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
@@ -783,14 +784,14 @@ export const schema = createSchema({
         customId: z.string().nullable(),
         category: z
           .enum([
-            "BAR",
-            "KITCHEN",
-            "HOUSEKEEPING",
-            "FRONT_DESK",
-            "MAINTENANCE",
-            "MANAGEMENT",
-            "INVENTORY",
-            "OTHER",
+            'BAR',
+            'KITCHEN',
+            'HOUSEKEEPING',
+            'FRONT_DESK',
+            'MAINTENANCE',
+            'MANAGEMENT',
+            'INVENTORY',
+            'OTHER',
           ])
           .nullable(),
         unit: z.string().nullable(),
@@ -801,15 +802,15 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseListInventoryResponse,
   },
-  "@get/api/managers/:hotelId/inventories/summary": {
+  '@get/api/managers/:hotelId/inventories/summary': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseInventorySummaryResponse,
   },
-  "@get/api/managers/:hotelId/inventories/restock-requests": {
+  '@get/api/managers/:hotelId/inventories/restock-requests': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
-        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).nullable(),
         searchName: z.string().nullable(),
         itemCustomId: z.string().nullable(),
         page: z.coerce.number().default(0),
@@ -818,7 +819,7 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseInventoryRestockRequestResponse,
   },
-  "@get/api/managers/logs/:hotelId": {
+  '@get/api/managers/logs/:hotelId': {
     params: z.object({ hotelId: z.string() }),
     query: z
       .object({
@@ -831,7 +832,7 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseManagerActivityLogResponse,
   },
-  "@get/api/managers/dashboard/:hotelId": {
+  '@get/api/managers/dashboard/:hotelId': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseManagerDashboardResponse,
     query: z
@@ -841,11 +842,11 @@ export const schema = createSchema({
       .partial()
       .optional(),
   },
-  "@get/api/managers/dashboard/:hotelId/earnings-graph": {
+  '@get/api/managers/dashboard/:hotelId/earnings-graph': {
     params: z.object({ hotelId: z.string() }),
     output: ApiResponseDashboardGraphResponse,
   },
-  "@get/api/managers/dashboard-performance": {
+  '@get/api/managers/dashboard-performance': {
     output: ApiResponseObject.extend({
       data: z
         .object({
@@ -858,7 +859,7 @@ export const schema = createSchema({
   },
 
   // Inventory Officer APIs
-  "@get/api/inventories/items": {
+  '@get/api/inventories/items': {
     query: z
       .object({
         searchName: z.string().nullable(),
@@ -872,7 +873,7 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseInventoryItemResponse,
   },
-  "@post/api/inventories/items": {
+  '@post/api/inventories/items': {
     input: z.object({
       name: z.string().nonempty(),
       category: z.string().nonempty(),
@@ -884,24 +885,24 @@ export const schema = createSchema({
       data: z.string(),
     }),
   },
-  "@get/api/inventories/summary": {
+  '@get/api/inventories/summary': {
     output: ApiResponseInventorySummaryResponse,
   },
-  "@get/api/inventories/issued": {
+  '@get/api/inventories/issued': {
     query: z
       .object({
         searchName: z.string().nullable(),
         customId: z.string().nullable(),
         department: z
           .enum([
-            "BAR",
-            "KITCHEN",
-            "HOUSEKEEPING",
-            "FRONT_DESK",
-            "MAINTENANCE",
-            "MANAGEMENT",
-            "INVENTORY",
-            "OTHER",
+            'BAR',
+            'KITCHEN',
+            'HOUSEKEEPING',
+            'FRONT_DESK',
+            'MAINTENANCE',
+            'MANAGEMENT',
+            'INVENTORY',
+            'OTHER',
           ])
           .nullable(),
         page: z.coerce.number().default(0),
@@ -910,10 +911,10 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseInventoryItemResponse,
   },
-  "@get/api/inventories/items/restock-requests": {
+  '@get/api/inventories/items/restock-requests': {
     query: z
       .object({
-        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).nullable(),
         searchName: z.string().nullable(),
         itemCustomId: z.string().nullable(),
         page: z.coerce.number().default(0),
@@ -922,7 +923,7 @@ export const schema = createSchema({
       .partial(),
     output: ApiResponseInventoryRestockRequestResponse,
   },
-  "@get/api/inventories/suppliers": {
+  '@get/api/inventories/suppliers': {
     query: z
       .object({
         search: z.string().nullable(),
@@ -934,11 +935,11 @@ export const schema = createSchema({
   },
 
   // Front Desk API
-  "@get/api/front-desks/rooms": {
+  '@get/api/front-desks/rooms': {
     output: ApiResponseListRoomResponse,
     query: ListRoomsQuery,
   },
-  "@post/api/front-desks/:roomId/check-in": {
+  '@post/api/front-desks/:roomId/check-in': {
     params: z.object({ roomId: z.string() }),
     input: z.object({
       guestName: z.string().nonempty(),
@@ -948,14 +949,14 @@ export const schema = createSchema({
       nightlyRate: z.number().min(0),
       dailySpendingCap: z.number().min(0),
       amountPaid: z.number().min(0),
-      roomStatus: z.literal("CHECKED_IN"),
+      roomStatus: z.literal('CHECKED_IN'),
       checkInDate: z.string().nonempty(), // yyyy-mm-dd
     }),
     output: ApiResponseObject.extend({
       data: z.string(),
     }),
   },
-  "@post/api/front-desks/:roomId/check-out": {
+  '@post/api/front-desks/:roomId/check-out': {
     params: z.object({ roomId: z.string() }),
     input: z.object({
       finalAmountPaid: z.number().min(0),
@@ -973,7 +974,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@post/api/front-desks/:roomId/make-reservation": {
+  '@post/api/front-desks/:roomId/make-reservation': {
     params: z.object({ roomId: z.string() }),
     input: z.object({
       guestName: z.string().nonempty(),
@@ -997,7 +998,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@post/api/front-desks/:roomId/cancel-reservation": {
+  '@post/api/front-desks/:roomId/cancel-reservation': {
     params: z.object({ roomId: z.string() }),
     output: ApiResponseObject.extend({
       data: z.object({
@@ -1010,7 +1011,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/front-desks/dashboard-cards": {
+  '@get/api/front-desks/dashboard-cards': {
     output: ApiResponseObject.extend({
       data: z.object({
         totalCheckIns: z.number(),
@@ -1020,7 +1021,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/front-desks/bookings": {
+  '@get/api/front-desks/bookings': {
     output: ApiResponseListBookingViewResponse.and(
       z.object({
         data: Pagination.extend({
@@ -1045,13 +1046,13 @@ export const schema = createSchema({
                   customId: z.string(),
                   destination: z.string(),
                   totalAmount: z.number(),
-                  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
+                  status: z.enum(['PENDING', 'COMPLETED', 'CANCELLED']),
                   createdAt: z.coerce.date(),
                   note: z.string().optional(),
                   orderItems: z
                     .object({
                       itemId: z.string(),
-                      itemType: z.enum(["FOOD", "DRINK"]),
+                      itemType: z.enum(['FOOD', 'DRINK']),
                       itemName: z.string(),
                       quantity: z.number(),
                       price: z.number(),
@@ -1087,7 +1088,7 @@ export const schema = createSchema({
       })
       .partial(),
   },
-  "@get/api/front-desks/bookings/:bookingId/payments": {
+  '@get/api/front-desks/bookings/:bookingId/payments': {
     output: ApiResponseObject.extend({
       data: z.array(
         z.object({
@@ -1104,21 +1105,21 @@ export const schema = createSchema({
       ),
     }),
   },
-  "@post/api/front-desks/bookings/:bookingId/payments": {
+  '@post/api/front-desks/bookings/:bookingId/payments': {
     params: z.object({ bookingId: z.string() }),
     input: z.object({
       amount: z.number().min(0),
       currency: z.string().nonempty(),
       method: z.string().nonempty(),
       reference: z.string().nonempty(),
-      type: z.enum(["OTHER", "INSTALLMENT", "FINAL", "REFUND", "DEPOSIT"]),
+      type: z.enum(['OTHER', 'INSTALLMENT', 'FINAL', 'REFUND', 'DEPOSIT']),
       paymentDate: z.string().nonempty(), // iso datetime
     }),
     output: ApiResponseObject.extend({
       data: z.string(),
     }),
   },
-  "@get/api/front-desks/guest-logs": {
+  '@get/api/front-desks/guest-logs': {
     output: ApiResponseObject.extend({
       data: Pagination.extend({
         content: z.array(
@@ -1144,7 +1145,7 @@ export const schema = createSchema({
       })
       .partial(),
   },
-  "@get/api/front-desks/lost-and-found": {
+  '@get/api/front-desks/lost-and-found': {
     output: ApiResponseLostItem,
     query: z
       .object({
@@ -1157,7 +1158,7 @@ export const schema = createSchema({
       })
       .partial(),
   },
-  "@post/api/front-desks/lost-and-found": {
+  '@post/api/front-desks/lost-and-found': {
     input: z.object({
       itemName: z.string().nonempty(),
       description: z.string().nonempty(),
@@ -1167,7 +1168,7 @@ export const schema = createSchema({
     }),
     output: ApiResponseObject,
   },
-  "@get/api/front-desks/lost-and-found/stats": {
+  '@get/api/front-desks/lost-and-found/stats': {
     output: ApiResponseObject.extend({
       data: z.object({
         totalItems: z.number(),
@@ -1176,27 +1177,27 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/front-desks/all-room-types": {
+  '@get/api/front-desks/all-room-types': {
     output: ApiResponseObject.extend({
       data: z.array(z.string()),
     }),
   },
-  "@get/api/front-desks/all-rooms-by-type": {
+  '@get/api/front-desks/all-rooms-by-type': {
     query: z.object({
       roomType: z.string().nonempty(),
-      roomStatus: z.literal("AVAILABLE"),
+      roomStatus: z.literal('AVAILABLE'),
     }),
     output: ApiResponseObject.extend({
       data: z.array(z.string()),
     }),
   },
-  "@delete/api/front-desks/lost-and-found/:itemId": {
+  '@delete/api/front-desks/lost-and-found/:itemId': {
     params: z.object({ itemId: z.string() }),
     output: ApiResponseObject.extend({
       data: z.string(),
     }),
   },
-  "@post/api/front-desks/lost-and-found/:itemId/claim": {
+  '@post/api/front-desks/lost-and-found/:itemId/claim': {
     params: z.object({ itemId: z.string() }),
     input: z.object({
       claimedBy: z.string().nonempty(),
@@ -1208,11 +1209,11 @@ export const schema = createSchema({
   },
 
   // RESTAURANT
-  "@get/api/restaurants/restaurant-orders": {
+  '@get/api/restaurants/restaurant-orders': {
     query: z
       .object({
         destination: z.string().nullable(),
-        status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]).nullable(),
+        status: z.enum(['PENDING', 'COMPLETED', 'CANCELLED']).nullable(),
         searchText: z.string().nullable(),
         startDate: z.iso.date().nullable(),
         endDate: z.iso.date().nullable(),
@@ -1229,14 +1230,14 @@ export const schema = createSchema({
             customId: z.string(),
             destination: z.string(),
             totalAmount: z.number(),
-            status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
+            status: z.enum(['PENDING', 'COMPLETED', 'CANCELLED']),
             createdAt: z.coerce.date(),
             note: z.string().optional(),
             orderItems: z
               .object({
                 itemName: z.string(),
                 itemId: z.string(),
-                itemType: z.enum(["DRINK", "FOOD"]),
+                itemType: z.enum(['DRINK', 'FOOD']),
                 quantity: z.number(),
                 price: z.number(),
                 total: z.number(),
@@ -1247,7 +1248,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/bar-inventory-summary": {
+  '@get/api/restaurants/bar-inventory-summary': {
     output: ApiResponseObject.extend({
       data: z.object({
         totalItems: z.number(),
@@ -1257,10 +1258,10 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/bar-restock-requests": {
+  '@get/api/restaurants/bar-restock-requests': {
     query: z
       .object({
-        status: z.enum(["PENDING", "APPROVED", "REJECTED"]).nullable(),
+        status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).nullable(),
         search: z.string().nullable(),
         startDate: z.iso.date().nullable(),
         endDate: z.iso.date().nullable(),
@@ -1277,7 +1278,7 @@ export const schema = createSchema({
             barItemCustomId: z.string(),
             barItemName: z.string(),
             requestedQuantity: z.number(),
-            status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
+            status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
             requestedBy: z.string(),
             requestedAt: z.coerce.date(),
           })
@@ -1285,7 +1286,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/stock": {
+  '@get/api/restaurants/stock': {
     query: z
       .object({
         search: z.string().nullable(),
@@ -1311,7 +1312,7 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/bar-sales": {
+  '@get/api/restaurants/bar-sales': {
     query: z
       .object({
         search: z.string().nullable(),
@@ -1345,11 +1346,11 @@ export const schema = createSchema({
       }),
     }),
   },
-  "@get/api/restaurants/items/all": {
+  '@get/api/restaurants/items/all': {
     output: ApiResponseObject.extend({
       query: z
         .object({
-          itemType: z.enum(["DRINK", "FOOD"]).nullable(),
+          itemType: z.enum(['DRINK', 'FOOD']).nullable(),
         })
         .optional(),
       data: z
@@ -1358,7 +1359,7 @@ export const schema = createSchema({
           customId: z.string(),
           name: z.string(),
           price: z.number(),
-          itemType: z.enum(["DRINK", "FOOD"]),
+          itemType: z.enum(['DRINK', 'FOOD']),
           quantity: z.number(),
           createdAt: z.coerce.date(),
           updatedAt: z.coerce.date(),
@@ -1366,7 +1367,7 @@ export const schema = createSchema({
         .array(),
     }),
   },
-  "@get/api/restaurants/current-bookings": {
+  '@get/api/restaurants/current-bookings': {
     output: ApiResponseObject.extend({
       data: Pagination.extend({
         content: z
@@ -1386,11 +1387,40 @@ export const schema = createSchema({
       }),
     }),
   },
+  // Rentals APIs
+  '@get/api/hotels/rentals/items': {
+    output: ApiResponseObject.extend({
+      data: Pagination.extend({
+        content: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            category: z.string(),
+            dailyRate: z.number(),
+            depositAmount: z.number(),
+            totalQuantity: z.number(),
+            availableQuantity: z.number(),
+            active: z.boolean(),
+          })
+          .array(),
+      }),
+    }),
+  },
+  '@get/api/hotels/rentals/items/available': {
   "@get/api/restaurants/destinations": {
     output: ApiResponseObject.extend({
       data: z
         .object({
           id: z.string(),
+          name: z.string(),
+          category: z.string(),
+          dailyRate: z.number(),
+          hourlyRate: z.number().optional(),
+          weeklyRate: z.number().optional(),
+          monthlyRate: z.number().optional(),
+          depositAmount: z.number(),
+          availableQuantity: z.number(),
+          description: z.string().optional(),
           customId: z.string(),
           name: z.string(),
           description: z.string(),
@@ -1428,10 +1458,10 @@ export const $fetch = createFetch({
   schema: schema,
   errorSchema: ApiExceptionResponseObject,
   onError: ({ error }) => {
-    console.error(error);
+    console.error(error)
     throw new Error(
-      "data" in error
-        ? typeof error.data === "string"
+      'data' in error
+        ? typeof error.data === 'string'
           ? error.data
           : error.data.message ||
             (error.cause as Error)?.message ||
@@ -1440,32 +1470,32 @@ export const $fetch = createFetch({
       {
         cause: error,
       }
-    );
+    )
   },
   onRequest(context) {
-    console.log("<==", context.url.toString());
+    console.log('<==', context.url.toString())
   },
   onResponse(context) {
-    console.log("==>", context.response.status, context.response.url);
+    console.log('==>', context.response.status, context.response.url)
   },
   timeout: 50000,
   retry: {
-    type: "exponential",
+    type: 'exponential',
     attempts: 3,
     baseDelay: 1000, // 1 second
     maxDelay: 5000, // 5 seconds
     shouldRetry: (response) => {
       // No response indicates a network error, so we should retry.
       if (!response) {
-        return true;
+        return true
       }
 
-      const { status } = response;
+      const { status } = response
 
       // Retry on server errors (5xx) or rate-limiting (429).
       // Do not retry on other client-side errors (4xx).
-      return status >= 500 || status === 429;
+      return status >= 500 || status === 429
     },
   },
   disableValidation: true,
-});
+})
