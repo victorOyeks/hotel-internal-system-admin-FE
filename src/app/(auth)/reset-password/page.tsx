@@ -78,7 +78,7 @@ function ResetPassword() {
 				description: data,
 			});
 			await logout();
-			redirect("/auth");
+			window.location.href = "/auth";
 		},
 	});
 
