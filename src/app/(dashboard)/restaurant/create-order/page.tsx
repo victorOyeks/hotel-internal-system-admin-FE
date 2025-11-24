@@ -62,6 +62,20 @@ function Page({ searchParams }: PageProps) {
     })
   );
 
+  const destinations = use(
+    queryClient.ensureQueryData({
+      queryKey: ["restaurant", "destinations", cookieData.token],
+      queryFn: async ({ signal }) => {
+        const res = await $fetch("@get/api/restaurants/destinations", {
+          signal,
+          auth: { type: "Bearer", token: cookieData.token },
+          throw: true,
+        });
+        return res.data;
+      },
+    })
+  );
+
   return (
     <BreadCrumbWrapper
       breadcrumbs={{
@@ -78,7 +92,11 @@ function Page({ searchParams }: PageProps) {
         ],
       }}
     >
-      <OrderPage foodItems={foodItems} currentBookings={currentBookings} />
+      <OrderPage
+        foodItems={foodItems}
+        currentBookings={currentBookings}
+        destinations={destinations}
+      />
     </BreadCrumbWrapper>
   );
 }

@@ -1385,6 +1385,41 @@ export const schema = createSchema({
       }),
     }),
   },
+  "@get/api/restaurants/destinations": {
+    output: ApiResponseObject.extend({
+      data: z
+        .object({
+          id: z.string(),
+          customId: z.string(),
+          name: z.string(),
+          description: z.string(),
+          hotelId: z.string(),
+          hotelName: z.string(),
+          isActive: z.boolean(),
+          createdAt: z.coerce.date(),
+          updatedAt: z.coerce.date(),
+        })
+        .array(),
+    }),
+  },
+  "@post/api/restaurants/destinations": {
+    input: z.object({
+      name: z.string(),
+    }),
+    output: ApiResponseObject.extend({
+      data: z.object({
+        id: z.string(),
+        customId: z.string(),
+        name: z.string(),
+        description: z.string(),
+        hotelId: z.string(),
+        hotelName: z.string(),
+        isActive: z.boolean(),
+        createdAt: z.coerce.date(),
+        updatedAt: z.coerce.date(),
+      }),
+    }),
+  },
 });
 
 export const $fetch = createFetch({
