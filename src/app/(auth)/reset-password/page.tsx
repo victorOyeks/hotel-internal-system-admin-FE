@@ -25,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useMutation } from "@tanstack/react-query";
 import { forceResetPassword, logout } from "@/lib/actions";
-import { redirect } from "next/navigation";
 import { toast } from "sonner";
 
 const formSchema = z
