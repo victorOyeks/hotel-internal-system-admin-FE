@@ -217,6 +217,7 @@ const UserInfoResponse = z.object({
   customId: z.string().nullable().optional(),
   parentUserCustomId: z.string().nullable().or(z.undefined()),
   verified: z.boolean(),
+  changedPassword: z.boolean(),
   hotelId: z.string().nullable().or(z.undefined()),
   createdAt: z.coerce.date(),
   hotels: z
