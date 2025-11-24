@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,10 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useMutation } from "@tanstack/react-query";
+import { forceResetPassword, logout } from "@/lib/actions";
+import { redirect } from "next/navigation";
+import { toast } from "sonner";
 
 const formSchema = z
 	.object({
@@ -50,10 +54,33 @@ function ResetPassword() {
 	const [showInitialPassword, setShowInitialPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-	const handleSubmit = useCallback((data: z.infer<typeof formSchema>) => {
-		console.log("Form submitted with data:", data);
-		// Handle form submission logic here, like updating the password
-	}, []);
+	const { mutateAsync: handleSubmit } = useMutation({
+		mutationKey: ["force-reset-password"],
+		mutationFn: async (payload: z.infer<typeof formSchema>) => {
+			const res = await forceResetPassword({
+				newPassword: payload.initialPassword,
+				confirmPassword: payload.confirmPassword,
+			});
+
+			if (!res.success) {
+				throw Error(res.error || "Failed to reset password, try again.");
+			}
+
+			return res.data?.data;
+		},
+		onError: (error) => {
+			toast.error("Something went wrong", {
+				description: error.message,
+			});
+		},
+		async onSuccess(data) {
+			toast.success("Password reset successfully", {
+				description: data,
+			});
+			await logout();
+			redirect("/auth");
+		},
+	});
 
 	return (
 		<Card className="w-full h-full md:h-auto md:max-w-[450px]">
@@ -72,7 +99,7 @@ function ResetPassword() {
 				<Form {...form}>
 					<form
 						id="reset-password-form"
-						onSubmit={form.handleSubmit(handleSubmit)}
+						onSubmit={form.handleSubmit((data) => handleSubmit(data))}
 						className="space-y-4"
 					>
 						<FormField
@@ -83,7 +110,7 @@ function ResetPassword() {
 									<FormLabel>New Password</FormLabel>
 									<div className="relative">
 										<Input
-											type="password"
+											type={showInitialPassword ? "text" : "password"}
 											{...field}
 											className="w-full"
 											placeholder="Enter new password"
@@ -142,8 +169,16 @@ function ResetPassword() {
 					type="submit"
 					form="reset-password-form"
 					className="w-full font-bold"
+					disabled={form.formState.isSubmitting}
 				>
-					Reset Password
+					{form.formState.isSubmitting ? (
+						<>
+							<LoaderCircle className="animate-spin" />
+							Resetting, Please wait...
+						</>
+					) : (
+						"Reset password"
+					)}
 				</Button>
 				<Button variant="link" asChild>
 					<Link href="/auth">Back to Login</Link>

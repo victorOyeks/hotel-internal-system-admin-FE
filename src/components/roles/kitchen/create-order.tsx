@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { DestinationCombobox } from "./destination-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +44,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
-import { placeOrder } from "@/lib/restaurant-actions";
+import { type OrderRequest, placeOrder } from "@/lib/restaurant-actions";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { Badge } from "@/components/ui/badge";
 
@@ -55,19 +56,6 @@ interface MenuItem extends FoodItemAPIResponse {}
 interface CartItem extends MenuItem {
   quantity: number;
   rate?: number;
-  note?: string;
-}
-
-interface OrderRequest {
-  destination: string;
-  orderItems: {
-    itemId: string;
-    itemType: "DRINK" | "FOOD";
-    quantity: number;
-    rate: number | undefined;
-    note: string | undefined;
-  }[];
-  bookingId?: string;
   note?: string;
 }
 
@@ -425,6 +413,7 @@ function CartItemRow({
 
 // Order Summary Component
 function OrderSummary({
+  destinations,
   cart,
   orderDetails,
   onOrderDetailsChange,
@@ -437,6 +426,7 @@ function OrderSummary({
   total,
   isCreatingOrder,
 }: {
+  destinations: Destination[];
   cart: CartItem[];
   orderDetails: OrderRequest;
   onOrderDetailsChange: (details: OrderRequest) => void;
@@ -459,17 +449,15 @@ function OrderSummary({
               <Label htmlFor="destination" className="text-xs">
                 Destination *
               </Label>
-              <Input
-                id="destination"
-                value={orderDetails.destination}
-                onChange={(e) =>
+              <DestinationCombobox
+                value={orderDetails.destinationId}
+                onValueChange={(value) =>
                   onOrderDetailsChange({
                     ...orderDetails,
-                    destination: e.target.value,
+                    destinationId: value,
                   })
                 }
-                placeholder="Room number or location"
-                className="mt-1 h-8 text-sm"
+                destinations={destinations}
               />
             </div>
 
@@ -600,12 +588,16 @@ function MenuGrid({
 type CurrentBooking =
   APIOutput<"@get/api/restaurants/current-bookings">["data"]["content"][number];
 
+type Destination = APIOutput<"@get/api/restaurants/destinations">["data"][number];
+
 export function OrderPage({
   foodItems,
   currentBookings,
+  destinations,
 }: {
   foodItems: MenuItem[];
   currentBookings: CurrentBooking[];
+  destinations: Destination[];
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -616,7 +608,7 @@ export function OrderPage({
     })
   );
   const [orderDetails, setOrderDetails] = useState<OrderRequest>({
-    destination: "",
+    destinationId: "",
     bookingId: undefined,
     orderItems: [],
     note: undefined,
@@ -652,7 +644,7 @@ export function OrderPage({
         throw new Error("Your cart is empty");
       }
 
-      if (!orderData.destination || orderData.destination.trim() === "") {
+      if (!orderData.destinationId || orderData.destinationId.trim() === "") {
         throw new Error("Please enter a destination");
       }
 
@@ -671,7 +663,7 @@ export function OrderPage({
       });
       setCart([]);
       setOrderDetails({
-        destination: "",
+        destinationId: "",
         bookingId: undefined,
         orderItems: [],
         note: undefined,
@@ -797,6 +789,7 @@ export function OrderPage({
                 </p>
               ) : (
                 <OrderSummary
+                destinations={destinations}
                   cart={cart}
                   orderDetails={orderDetails}
                   onOrderDetailsChange={setOrderDetails}

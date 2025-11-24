@@ -218,6 +218,7 @@ const UserInfoResponse = z.object({
   customId: z.string().nullable().optional(),
   parentUserCustomId: z.string().nullable().or(z.undefined()),
   verified: z.boolean(),
+  changedPassword: z.boolean(),
   hotelId: z.string().nullable().or(z.undefined()),
   createdAt: z.coerce.date(),
   hotels: z
@@ -1406,6 +1407,7 @@ export const schema = createSchema({
     }),
   },
   '@get/api/hotels/rentals/items/available': {
+  "@get/api/restaurants/destinations": {
     output: ApiResponseObject.extend({
       data: z
         .object({
@@ -1419,163 +1421,37 @@ export const schema = createSchema({
           depositAmount: z.number(),
           availableQuantity: z.number(),
           description: z.string().optional(),
+          customId: z.string(),
+          name: z.string(),
+          description: z.string(),
+          hotelId: z.string(),
+          hotelName: z.string(),
+          isActive: z.boolean(),
+          createdAt: z.coerce.date(),
+          updatedAt: z.coerce.date(),
         })
         .array(),
     }),
   },
-  '@get/api/hotels/rentals/orders': {
-    output: ApiResponseObject.extend({
-      data: Pagination.extend({
-        content: z
-          .object({
-            id: z.string(),
-            orderNumber: z.string(),
-            customerName: z.string(),
-            customerPhone: z.string(),
-            status: z.string(),
-            paymentStatus: z.string(),
-            totalAmount: z.number(),
-            rentalStartDate: z.string(),
-            rentalEndDate: z.string(),
-          })
-          .array(),
-      }),
+  "@post/api/restaurants/destinations": {
+    input: z.object({
+      name: z.string(),
     }),
-  },
-  '@get/api/hotels/rentals/orders/overdue': {
-    output: ApiResponseObject.extend({
-      data: Pagination.extend({
-        content: z
-          .object({
-            id: z.string(),
-            orderNumber: z.string(),
-            customerName: z.string(),
-            customerPhone: z.string(),
-            daysOverdue: z.number(),
-            lateFees: z.number(),
-            totalAmount: z.number(),
-            rentalEndDate: z.string(),
-          })
-          .array(),
-      }),
-    }),
-  },
-  '@get/api/hotels/rentals/payments': {
-    output: ApiResponseObject.extend({
-      data: Pagination.extend({
-        content: z
-          .object({
-            id: z.string(),
-            orderNumber: z.string(),
-            amount: z.number(),
-            paymentType: z.string(),
-            paymentMethod: z.string(),
-            paymentDate: z.string(),
-            customerName: z.string(),
-          })
-          .array(),
-      }),
-    }),
-  },
-  '@get/api/hotels/rentals/dashboard/stats': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        totalActiveItems: z.number(),
-        totalQuantity: z.number(),
-        currentlyRented: z.number(),
-        availableItems: z.number(),
-        totalOrders: z.number(),
-        activeRentals: z.number(),
-        overdueRentals: z.number(),
-        completedRentals: z.number(),
-        ordersToday: z.number(),
-        completedToday: z.number(),
-        totalRevenue: z.number(),
-        outstandingAmount: z.number(),
-        revenueToday: z.number(),
-        depositsHeld: z.number(),
-        pendingRefunds: z.number(),
-      }),
-    }),
-  },
-  '@post/api/hotels/rentals/payments': {
     output: ApiResponseObject.extend({
       data: z.object({
         id: z.string(),
-        receiptNumber: z.string(),
-        orderNumber: z.string(),
-        amount: z.number(),
-        paymentType: z.string(),
-        paymentMethod: z.string(),
-        paymentDate: z.string(),
-      }),
-    }),
-  },
-  '@post/api/hotels/rentals/orders': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
-        orderNumber: z.string(),
-        customerName: z.string(),
-        customerPhone: z.string(),
-        totalAmount: z.number(),
-        depositAmount: z.number(),
-        rentalStartDate: z.string(),
-        rentalEndDate: z.string(),
-        status: z.string(),
-      }),
-    }),
-  },
-  '@post/api/hotels/rentals/orders/:orderId/extend': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
-        orderNumber: z.string(),
-        newReturnDate: z.string(),
-        extensionFee: z.number(),
-      }),
-    }),
-  },
-  '@post/api/hotels/rentals/orders/:orderId/return': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
-        orderNumber: z.string(),
-        returnDate: z.string(),
-        refundAmount: z.number(),
-        damageFee: z.number(),
-      }),
-    }),
-  },
-  '@post/api/hotels/rentals/items': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
+        customId: z.string(),
         name: z.string(),
-        category: z.string(),
-        dailyRate: z.number(),
-        depositAmount: z.number(),
-        totalQuantity: z.number(),
-        availableQuantity: z.number(),
-        active: z.boolean(),
+        description: z.string(),
+        hotelId: z.string(),
+        hotelName: z.string(),
+        isActive: z.boolean(),
+        createdAt: z.coerce.date(),
+        updatedAt: z.coerce.date(),
       }),
     }),
   },
-  '@put/api/hotels/rentals/items/:itemId': {
-    output: ApiResponseObject.extend({
-      data: z.object({
-        id: z.string(),
-        name: z.string(),
-        category: z.string(),
-        dailyRate: z.number(),
-        depositAmount: z.number(),
-        totalQuantity: z.number(),
-        availableQuantity: z.number(),
-        active: z.boolean(),
-      }),
-    }),
-  },
-})
+});
 
 export const $fetch = createFetch({
   baseURL: env.NEXT_PUBLIC_API_URL,

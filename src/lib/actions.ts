@@ -62,6 +62,23 @@ export async function logout(): Promise<void> {
   redirect("/auth");
 }
 
+export async function forceResetPassword(payload: {
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  try {
+    const sessionData = await verifySession();
+    const response = await $fetch("@post/api/auth/reset-password", {
+      body: payload,
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true, data: response as { message: string; data: string } };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
 export async function forgotPassword(payload: {
   email: string;
 }): ServerActionResponse<{ message: string; data: string }> {
