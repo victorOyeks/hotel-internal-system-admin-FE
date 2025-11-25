@@ -16,6 +16,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
     redirect("/auth");
   }
 
+  if (!user.changedPassword) {
+    redirect("/reset-password");
+  }
+
   const activeHotel = use(getManagerCurrentHotel());
   return (
     <NuqsAdapter defaultOptions={{

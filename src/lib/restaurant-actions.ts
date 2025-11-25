@@ -60,8 +60,8 @@ export async function restockRequest(params: {
 }
 
 
-interface OrderRequest {
-  destination: string;
+export interface OrderRequest {
+  destinationId: string;
   orderItems: {
     itemType: "FOOD" | "DRINK";
     itemId: string;
@@ -234,5 +234,29 @@ export async function updateStockItem({
     return {
         success: true,
         data: "Stock item updated successfully",
+    };
+}
+
+export async function createDestination({
+    name,
+}: {
+    name: string;
+}) {
+    const sessionData = await verifySession("RESTAURANT");
+    const response = await $fetch("@post/api/restaurants/destinations", {
+        body: { name },
+        auth: { type: "Bearer", token: sessionData.token },
+    });
+    
+    if (response.error) {
+        return {
+            success: false,
+            error: response.error.message || "Failed to create destination",
+        };
+    }
+
+    return {
+        success: true,
+        data: response.data.data,
     };
 }
