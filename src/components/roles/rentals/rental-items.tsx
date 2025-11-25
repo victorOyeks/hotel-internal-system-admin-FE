@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { PlusCircleIcon, SearchIcon, PackageIcon } from "lucide-react";
 import type { Pagination } from "@/lib/fetch";
 import { RentalItemDialog } from "./rental-item-dialog";
+import { RentalItemDetailsDialog } from "./rental-item-details-dialog";
 
 type RentalItem = {
   id: string;
@@ -30,6 +32,9 @@ type RentalItemsPageProps = {
 };
 
 export function RentalItemsPage({ items, paginationMeta, breadcrumbs }: RentalItemsPageProps) {
+  const [selectedItem, setSelectedItem] = useState<RentalItem | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
   return (
     <BreadCrumbWrapper breadcrumbs={breadcrumbs}>
       <div className="flex flex-col gap-6 p-6">
@@ -58,17 +63,30 @@ export function RentalItemsPage({ items, paginationMeta, breadcrumbs }: RentalIt
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map((item) => (
-                <RentalItemCard key={item.id} item={item} />
+                <RentalItemCard
+                  key={item.id}
+                  item={item}
+                  onViewDetails={(item) => {
+                    setSelectedItem(item);
+                    setIsDetailsOpen(true);
+                  }}
+                />
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <RentalItemDetailsDialog
+        item={selectedItem}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </BreadCrumbWrapper>
   );
 }
 
-function RentalItemCard({ item }: { item: RentalItem }) {
+function RentalItemCard({ item, onViewDetails }: { item: RentalItem; onViewDetails: (item: RentalItem) => void }) {
   const isAvailable = item.availableQuantity > 0;
 
   return (
@@ -99,7 +117,7 @@ function RentalItemCard({ item }: { item: RentalItem }) {
             {item.availableQuantity} / {item.totalQuantity}
           </span>
         </div>
-        <Button variant="outline" className="w-full mt-2">
+        <Button variant="outline" className="w-full mt-2" onClick={() => onViewDetails(item)}>
           View Details
         </Button>
       </CardContent>
