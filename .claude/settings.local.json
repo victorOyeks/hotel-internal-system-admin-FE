@@ -12,7 +12,9 @@
       "Bash(powershell -c \"cd ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management''; C:\\Users\\Admin\\.bun\\bin\\bun.exe run build 2>&1 | Select-Object -First 100\")",
       "Bash(powershell -c \"cd ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management''; C:\\Users\\Admin\\.bun\\bin\\bun.exe run build 2>&1 | Select-Object -First 150\")",
       "Bash(powershell -c \"cd ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management''; C:\\Users\\Admin\\.bun\\bin\\bun.exe run build 2>&1\")",
-      "Bash(powershell -c \"cd ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management''; C:\\Users\\Admin\\.bun\\bin\\bun.exe run build\")"
+      "Bash(powershell -c \"cd ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management''; C:\\Users\\Admin\\.bun\\bin\\bun.exe run build\")",
+      "Bash(powershell -c \"Get-ChildItem -Path ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management\\src'' -Directory | Select-Object Name\")",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

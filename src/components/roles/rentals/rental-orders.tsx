@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ClipboardListIcon, EyeIcon } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RentalOrderDetailsDialog } from "./rental-order-details-dialog";
+import { EyeIcon } from "lucide-react";
 import type { Pagination } from "@/lib/fetch";
 
 type RentalOrder = {
@@ -29,6 +32,25 @@ type RentalOrdersPageProps = {
 };
 
 export function RentalOrdersPage({ orders, paginationMeta, breadcrumbs }: RentalOrdersPageProps) {
+  const [selectedOrder, setSelectedOrder] = useState<RentalOrder | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const statusColors: Record<string, string> = {
+    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    RESERVED: "bg-purple-100 text-purple-800 border-purple-200",
+    ACTIVE: "bg-blue-100 text-blue-800 border-blue-200",
+    COMPLETED: "bg-green-100 text-green-800 border-green-200",
+    OVERDUE: "bg-red-100 text-red-800 border-red-200",
+    CANCELLED: "bg-gray-100 text-gray-800 border-gray-200",
+  };
+
+  const paymentStatusColors: Record<string, string> = {
+    PAID: "bg-green-100 text-green-800 border-green-200",
+    PARTIAL: "bg-orange-100 text-orange-800 border-orange-200",
+    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    DEPOSIT_PAID: "bg-blue-100 text-blue-800 border-blue-200",
+  };
+
   return (
     <BreadCrumbWrapper breadcrumbs={breadcrumbs}>
       <div className="flex flex-col gap-6 p-6">
@@ -41,59 +63,78 @@ export function RentalOrdersPage({ orders, paginationMeta, breadcrumbs }: Rental
           </div>
         </div>
 
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">All Orders ({orders.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order Number</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((order) => (
+                  <TableRow key={order.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm">{order.customerName}</span>
+                        <span className="text-xs text-muted-foreground">{order.customerPhone}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col text-xs">
+                        <span>{new Date(order.rentalStartDate).toLocaleDateString()}</span>
+                        <span className="text-muted-foreground">to {new Date(order.rentalEndDate).toLocaleDateString()}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      ${order.totalAmount.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={statusColors[order.status] || "bg-gray-100 text-gray-800"}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={paymentStatusColors[order.paymentStatus]}>
+                        {order.paymentStatus.replace(/_/g, " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setIsDetailsOpen(true);
+                        }}
+                      >
+                        <EyeIcon className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
+
+      <RentalOrderDetailsDialog
+        order={selectedOrder}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </BreadCrumbWrapper>
-  );
-}
-
-function OrderCard({ order }: { order: RentalOrder }) {
-  const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800",
-    ACTIVE: "bg-blue-100 text-blue-800",
-    COMPLETED: "bg-green-100 text-green-800",
-    OVERDUE: "bg-red-100 text-red-800",
-    CANCELLED: "bg-gray-100 text-gray-800",
-  };
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <ClipboardListIcon className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">{order.orderNumber}</h3>
-              <p className="text-sm text-muted-foreground">
-                {order.customerName} • {order.customerPhone}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {new Date(order.rentalStartDate).toLocaleDateString()} - {new Date(order.rentalEndDate).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="font-semibold text-lg">${order.totalAmount.toLocaleString()}</p>
-              <div className="flex gap-2 mt-1">
-                <Badge className={statusColors[order.status] || "bg-gray-100 text-gray-800"}>
-                  {order.status}
-                </Badge>
-                <Badge variant="outline">{order.paymentStatus}</Badge>
-              </div>
-            </div>
-            <Button variant="outline" size="icon">
-              <EyeIcon className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
