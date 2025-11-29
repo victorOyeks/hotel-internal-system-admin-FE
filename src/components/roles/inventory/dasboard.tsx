@@ -240,6 +240,7 @@ function IssueStockItemForm({
 	const form = useForm({
 		resolver: zodResolver(issueStockItemFormSchema),
 		defaultValues: {
+			itemId: "",
 			quantity: 1,
 			department: "",
 			receivingStaff: "",

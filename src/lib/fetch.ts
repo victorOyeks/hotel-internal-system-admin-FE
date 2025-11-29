@@ -513,6 +513,33 @@ export type InventorySuppliers = z.infer<
 >["data"]["content"][number];
 export type InventorySupplierItem = InventorySuppliers["items"][number];
 
+const ApiResponseInventoryDelivery = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(
+			z.object({
+				id: z.string(),
+				customId: z.string(),
+				supplierId: z.string(),
+				supplierName: z.string(),
+				item: z.object({
+					id: z.string(),
+					customId: z.string(),
+					name: z.string(),
+				}),
+				unit: z.string(),
+				quantity: z.number(),
+				deliveryDate: z.string(), // yyyy-mm-dd
+				note: z.string(),
+				createdAt: z.coerce.date(),
+			}),
+		),
+	}),
+});
+
+export type InventoryDelivery = z.infer<
+	typeof ApiResponseInventoryDelivery
+>["data"]["content"][number];
+
 const ApiResponseLostItem = ApiResponseObject.extend({
 	data: Pagination.extend({
 		content: z.array(
@@ -1611,6 +1638,18 @@ export const schema = createSchema({
 				active: z.boolean(),
 			}),
 		}),
+	},
+	"@get/api/inventories/deliveries": {
+		query: z
+			.object({
+				search: z.string().nullable(),
+				startDate: z.iso.date().nullable(),
+				endDate: z.iso.date().nullable(),
+				page: z.coerce.number().default(0),
+				size: z.coerce.number().default(10),
+			})
+			.partial(),
+		output: ApiResponseInventoryDelivery,
 	},
 });
 
