@@ -51,7 +51,6 @@ import { atom, useAtom, useSetAtom } from "jotai";
 import { addToInventory, issueStockItem } from "@/lib/inventory-actions";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import Link from "next/link";
-import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import {
 	Popover,
 	PopoverContent,
@@ -175,6 +174,19 @@ function ItemSelectorCombobox({
 		"item:search",
 		parseAsString.withDefault(""),
 	);
+	const [sectionQuery, setSectionQuery] = useQueryState(
+		"section",
+		parseAsString.withDefault(""),
+	);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: explanation
+	useEffect(() => {
+		searchQuery && setSearchQuery("");
+		sectionQuery && setSectionQuery("");
+		return () => {
+			setSearchQuery("");
+		};
+	}, []);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -191,14 +203,14 @@ function ItemSelectorCombobox({
 					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-full p-0">
+			<PopoverContent className="w-full flex-1 p-0" align="start">
 				<Command shouldFilter={false}>
 					<CommandInput
 						placeholder="Search items..."
 						value={searchQuery}
 						onValueChange={(value) => setSearchQuery(value)}
 					/>
-					<CommandList className="w-full">
+					<CommandList>
 						<CommandEmpty>No item found.</CommandEmpty>
 						<CommandGroup>
 							{items.map((item) => (
@@ -573,18 +585,11 @@ function InventoryDashboardToolbar() {
 export function InventoryDashboard({
 	content,
 	paginationMeta,
-	breadcrumb,
 }: {
 	content: InventoryResponse[];
 	paginationMeta: Pagination;
-	breadcrumb: { title: string; breadcrumbs: Breadcrumb[] };
 }) {
 	const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
-	const setBreadcrumb = useSetAtom(breadcrumbAtom);
-
-	useEffect(() => {
-		setBreadcrumb(breadcrumb);
-	}, [setBreadcrumb, breadcrumb]);
 
 	return (
 		<div>

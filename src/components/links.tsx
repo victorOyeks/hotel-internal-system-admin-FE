@@ -100,10 +100,6 @@ export const inventoryOfficerLinks = [
 		title: "Stock takes",
 		url: "/dashboard/stock-takes",
 	},
-	{
-		title: "Stock takes",
-		url: "/dashboard/stock-takes",
-	},
 ];
 
 export const frontDeskLinks = [

@@ -3,6 +3,7 @@ import {
 	InventoryStat,
 	QuickActions,
 } from "@/components/roles/inventory/dasboard";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
@@ -85,15 +86,13 @@ function Page({ searchParams }: PageProps) {
 	};
 
 	return (
-		<div className="space-y-4 px-4 py-4">
-			<InventoryStat data={inventoryStatData} />
-			<QuickActions data={content} />
-			<InventoryDashboard
-				breadcrumb={breadcrumb}
-				content={content}
-				paginationMeta={paginationMeta}
-			/>
-		</div>
+		<BreadCrumbWrapper breadcrumbs={breadcrumb}>
+			<div className="space-y-4 px-4 py-4">
+				<InventoryStat data={inventoryStatData} />
+				<QuickActions data={content} />
+				<InventoryDashboard content={content} paginationMeta={paginationMeta} />
+			</div>
+		</BreadCrumbWrapper>
 	);
 }
 
