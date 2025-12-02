@@ -103,22 +103,6 @@ export function GRNPage() {
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [postedFilter, setPostedFilter] = useState<string>("all");
 
-	// Logic: Filter Data
-	const filteredGRNs = grns.filter((grn) => {
-		const matchesSearch =
-			grn.grnNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			grn.supplierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			grn.purchaseOrderNumber
-				?.toLowerCase()
-				.includes(searchQuery.toLowerCase());
-		const matchesStatus = statusFilter === "all" || grn.status === statusFilter;
-		const matchesPosted =
-			postedFilter === "all" ||
-			(postedFilter === "posted" && grn.isPosted) ||
-			(postedFilter === "unposted" && !grn.isPosted);
-		return matchesSearch && matchesStatus && matchesPosted;
-	});
-
 	// Logic: Calculate Stats
 	const unpostedValue = grns
 		.filter((g) => !g.isPosted)
@@ -154,7 +138,7 @@ export function GRNPage() {
 							<PlusIcon className="w-4 h-4 mr-2" /> Create GRN
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+					<DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>Create Goods Receipt Note</DialogTitle>
 						</DialogHeader>
