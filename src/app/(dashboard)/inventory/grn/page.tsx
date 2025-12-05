@@ -1,7 +1,57 @@
 import { GRNPage } from "@/components/roles/inventory/grn-page";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { $fetch } from "@/lib/fetch";
+import { getQueryClient } from "@/lib/queries";
+import { getCookieData } from "@/lib/server-fns";
+import { use } from "react";
 
 function Page() {
+	const { token } = use(getCookieData())!;
+	const queryClient = getQueryClient();
+
+	const { content: grns } = use(
+		queryClient.fetchQuery({
+			queryKey: ["inventory-grns"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/inventories/grn", {
+					query: {},
+					auth: {
+						type: "Bearer",
+						token: token,
+					},
+					signal,
+					throw: true,
+				});
+
+				return res.data;
+			},
+		}),
+	);
+
+	const { content: inventoryLocs } = use(
+		queryClient.fetchQuery({
+			queryKey: ["inventory-locs"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/inventories/locations", {
+					query: {},
+					auth: {
+						type: "Bearer",
+						token: token,
+					},
+					signal,
+					throw: true,
+				});
+
+				return res.data;
+			},
+		}),
+	);
+
+	console.log({
+		grns,
+		inventoryLocs,
+	});
+
 	return (
 		<BreadCrumbWrapper
 			breadcrumbs={{

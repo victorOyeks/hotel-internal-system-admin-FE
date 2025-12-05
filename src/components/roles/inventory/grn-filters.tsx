@@ -84,9 +84,9 @@ export function GRNToolbar({
 	table,
 	postedFilter,
 	searchQuery,
-	setPostedFilter,
+	// setPostedFilter,
+	// setStatusFilter,
 	setSearchQuery,
-	setStatusFilter,
 	statusFilter,
 }: {
 	table: TableType<GoodsReceiptNote>;

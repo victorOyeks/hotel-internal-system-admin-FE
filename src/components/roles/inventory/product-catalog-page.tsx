@@ -9,6 +9,7 @@ import {
 	Table,
 	TableBody,
 	TableCell,
+	TableFooter,
 	TableHead,
 	TableHeader,
 	TableRow,
@@ -40,166 +41,30 @@ import {
 	EyeIcon,
 	BarChart3Icon,
 	CalendarIcon,
+	MoreVerticalIcon,
 } from "lucide-react";
-
-// Product types based on FRD 3.4
-type Product = {
-	id: string;
-	sku: string;
-	name: string;
-	description: string;
-	category: string;
-	unitOfMeasure: string;
-	trackBatches: boolean;
-	trackExpiry: boolean;
-	minimumStockLevel: number;
-	maximumStockLevel: number;
-	reorderPoint: number;
-	standardCost: number;
-	status: "ACTIVE" | "INACTIVE" | "DISCONTINUED";
-	currentStock: number;
-	createdDate: string;
-};
+import { cn } from "@/lib/utils";
+import { ProductsToolbar } from "./products";
+import {
+	ColumnDef,
+	createColumnHelper,
+	flexRender,
+	getCoreRowModel,
+	getPaginationRowModel,
+	useReactTable,
+} from "@tanstack/react-table";
+import { InventoryProductResponse } from "@/lib/fetch";
+import { DataTablePagination } from "@/components/shared/pagination";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 
 // Mock data based on FRD requirements
-const mockProducts: Product[] = [
-	{
-		id: "1",
-		sku: "FD-001",
-		name: "Premium Coffee Beans",
-		description: "High-quality Arabica coffee beans",
-		category: "FOOD",
-		unitOfMeasure: "kg",
-		trackBatches: true,
-		trackExpiry: true,
-		minimumStockLevel: 50,
-		maximumStockLevel: 200,
-		reorderPoint: 75,
-		standardCost: 25.5,
-		status: "ACTIVE",
-		currentStock: 120,
-		createdDate: "2024-01-15",
-	},
-	{
-		id: "2",
-		sku: "BV-001",
-		name: "Orange Juice - Fresh",
-		description: "Freshly squeezed orange juice",
-		category: "BEVERAGE",
-		unitOfMeasure: "liters",
-		trackBatches: true,
-		trackExpiry: true,
-		minimumStockLevel: 30,
-		maximumStockLevel: 100,
-		reorderPoint: 40,
-		standardCost: 8.75,
-		status: "ACTIVE",
-		currentStock: 25,
-		createdDate: "2024-01-20",
-	},
-	{
-		id: "3",
-		sku: "SUP-001",
-		name: "Laundry Detergent - Industrial",
-		description: "Heavy-duty laundry detergent for hotel linens",
-		category: "SUPPLIES",
-		unitOfMeasure: "liters",
-		trackBatches: false,
-		trackExpiry: false,
-		minimumStockLevel: 20,
-		maximumStockLevel: 80,
-		reorderPoint: 30,
-		standardCost: 15.0,
-		status: "ACTIVE",
-		currentStock: 45,
-		createdDate: "2024-02-01",
-	},
-	{
-		id: "4",
-		sku: "LIN-001",
-		name: "Bath Towels - White",
-		description: "100% cotton bath towels, white, 600 GSM",
-		category: "LINEN",
-		unitOfMeasure: "pieces",
-		trackBatches: false,
-		trackExpiry: false,
-		minimumStockLevel: 100,
-		maximumStockLevel: 300,
-		reorderPoint: 150,
-		standardCost: 12.5,
-		status: "ACTIVE",
-		currentStock: 180,
-		createdDate: "2024-01-10",
-	},
-	{
-		id: "5",
-		sku: "AME-001",
-		name: "Shampoo Bottles - 30ml",
-		description: "Guest amenity shampoo bottles",
-		category: "AMENITIES",
-		unitOfMeasure: "pieces",
-		trackBatches: true,
-		trackExpiry: true,
-		minimumStockLevel: 500,
-		maximumStockLevel: 2000,
-		reorderPoint: 750,
-		standardCost: 0.85,
-		status: "ACTIVE",
-		currentStock: 1200,
-		createdDate: "2024-01-25",
-	},
-	{
-		id: "6",
-		sku: "EQ-001",
-		name: "Vacuum Cleaner Bags",
-		description: "Replacement bags for industrial vacuum cleaners",
-		category: "EQUIPMENT",
-		unitOfMeasure: "pieces",
-		trackBatches: false,
-		trackExpiry: false,
-		minimumStockLevel: 20,
-		maximumStockLevel: 50,
-		reorderPoint: 25,
-		standardCost: 8.0,
-		status: "ACTIVE",
-		currentStock: 15,
-		createdDate: "2024-02-10",
-	},
-	{
-		id: "7",
-		sku: "FD-002",
-		name: "Butter - Unsalted",
-		description: "Premium unsalted butter for cooking",
-		category: "FOOD",
-		unitOfMeasure: "kg",
-		trackBatches: true,
-		trackExpiry: true,
-		minimumStockLevel: 15,
-		maximumStockLevel: 50,
-		reorderPoint: 20,
-		standardCost: 12.0,
-		status: "ACTIVE",
-		currentStock: 8,
-		createdDate: "2024-01-18",
-	},
-	{
-		id: "8",
-		sku: "SUP-002",
-		name: "Toilet Paper - Commercial",
-		description: "Commercial grade toilet paper rolls",
-		category: "SUPPLIES",
-		unitOfMeasure: "rolls",
-		trackBatches: false,
-		trackExpiry: false,
-		minimumStockLevel: 200,
-		maximumStockLevel: 600,
-		reorderPoint: 300,
-		standardCost: 1.25,
-		status: "ACTIVE",
-		currentStock: 0,
-		createdDate: "2024-01-12",
-	},
-];
+const mockProducts: InventoryProductResponse[] = [];
 
 const categories = [
 	{ value: "FOOD", label: "Food" },
@@ -210,40 +75,156 @@ const categories = [
 	{ value: "AMENITIES", label: "Amenities" },
 ];
 
-export function ProductCatalogPage() {
-	const [products] = useState<Product[]>(mockProducts);
-	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
-	const [selectedStatus, setSelectedStatus] = useState<string>("all");
-	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+function StatCard({
+	icon,
+	bgClass,
+	title,
+	value,
+	subtitle,
+}: {
+	icon: React.ReactNode;
+	bgClass: string;
+	title: string;
+	value: string;
+	subtitle?: string;
+}) {
+	return (
+		<div className="flex flex-row items-center gap-x-2 bg-white p-2.5 rounded-2xl border border-primary-5/50">
+			<div
+				className={cn`size-10 aspect-square ${bgClass} rounded-full flex items-center justify-center`}
+			>
+				{icon}
+			</div>
+			<div className="flex flex-col flex-1">
+				<h3 className="text-xs text-muted-foreground">{title}</h3>
+				<p className="text-xl font-semibold leading-tight">
+					{value}{" "}
+					{subtitle && (
+						<span className="text-xs text-muted-foreground font-light">
+							{subtitle}
+						</span>
+					)}
+				</p>
+			</div>
+		</div>
+	);
+}
 
-	// Filter products
-	const filteredProducts = products.filter((product) => {
-		const matchesSearch =
-			product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			product.description.toLowerCase().includes(searchQuery.toLowerCase());
+const columnHelper = createColumnHelper<InventoryProductResponse>();
 
-		const matchesCategory =
-			selectedCategory === "all" || product.category === selectedCategory;
+const columns = [
+	columnHelper.accessor("sku", {
+		header: "SKU",
+		cell: (info) => info.getValue(),
+	}),
+	columnHelper.accessor("name", {
+		header: "Product Name",
+		cell: (info) => {
+			const product = info.row.original;
+			return (
+				<div>
+					<p className="font-medium">{product.name}</p>
+					<p className="text-xs text-muted-foreground line-clamp-1">
+						{product.description}
+					</p>
+				</div>
+			);
+		},
+	}),
+	columnHelper.accessor("category", {
+		header: "Category",
+		cell: (info) => {
+			const category = info.getValue().replaceAll("_", " ").toLocaleLowerCase();
+			return (
+				<Badge variant={"outline"} className="font-medium capitalize">
+					{category}
+				</Badge>
+			);
+		},
+	}),
+	columnHelper.accessor("currentStockAvailable", {
+		header: "Stock Status",
+		cell: (info) => Intl.NumberFormat().format(info.getValue()),
+	}),
+	columnHelper.accessor("currentStockAvailable", {
+		header: "Current Stock",
+		cell: (info) => Intl.NumberFormat().format(info.getValue()),
+	}),
+	columnHelper.accessor("brand", {
+		header: "Brand",
+		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+	}),
+	columnHelper.accessor("shelfLifeDays", {
+		header: "Shelf life",
+		cell: (info) => Intl.NumberFormat().format(info.getValue()),
+	}),
+	columnHelper.accessor("status", {
+		header: "Status",
+		cell: (info) => {
+			// Get stock status
+			const getStockStatus = (
+				product: InventoryProductResponse,
+			): {
+				label: string;
+				color: BadgeVariant;
+			} => {
+				if (product.currentStockAvailable === 0)
+					return { label: "Out of Stock", color: "destructive" };
+				if (product.currentStockAvailable <= product.reorderQuantity)
+					return { label: "Low Stock", color: "yellow" };
+				if (product.currentStockAvailable >= product.maxStockLevel)
+					return { label: "Overstock", color: "secondary" };
+				return { label: "In Stock", color: "green" };
+			};
 
-		const matchesStatus =
-			selectedStatus === "all" || product.status === selectedStatus;
+			const status = getStockStatus(info.row.original);
 
-		return matchesSearch && matchesCategory && matchesStatus;
+			return <Badge variant={status.color}>{status.label}</Badge>;
+		},
+	}),
+	columnHelper.display({
+		id: "actions",
+		header: "Actions",
+		cell: (info) => {
+			return (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant={"ghost"} size={"icon"}>
+							<MoreVerticalIcon />
+						</Button>
+					</DropdownMenuTrigger>
+
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem>
+							<EditIcon />
+							Edit
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			);
+		},
+	}),
+];
+
+export function ProductCatalogPage({
+	products,
+}: {
+	products: InventoryProductResponse[];
+}) {
+	const [pagination, setPagination] = usePaginationSearchParams();
+	const table = useReactTable({
+		data: products,
+		columns: columns,
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		onPaginationChange: setPagination,
+		state: {
+			pagination,
+		},
 	});
-
-	// Get stock status
-	const getStockStatus = (product: Product) => {
-		if (product.currentStock === 0)
-			return { label: "Out of Stock", color: "destructive" };
-		if (product.currentStock <= product.reorderPoint)
-			return { label: "Low Stock", color: "warning" };
-		if (product.currentStock >= product.maximumStockLevel)
-			return { label: "Overstock", color: "secondary" };
-		return { label: "In Stock", color: "success" };
-	};
+	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+	const [selectedProduct, setSelectedProduct] =
+		useState<InventoryProductResponse | null>(null);
 
 	return (
 		<div className="space-y-6 p-6">
@@ -275,72 +256,46 @@ export function ProductCatalogPage() {
 			</div>
 
 			{/* Stats Cards */}
-			<div className="grid gap-4 md:grid-cols-4">
-				<Card>
-					<CardContent className="pt-6">
-						<div className="flex items-center gap-4">
-							<div className="p-3 bg-blue-50 rounded-lg">
-								<PackageIcon className="w-5 h-5 text-blue-600" />
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">Total Products</p>
-								<p className="text-2xl font-bold">{products.length}</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+				<StatCard
+					icon={<PackageIcon />}
+					bgClass="bg-blue-600/10"
+					title="Total products"
+					value={Intl.NumberFormat("en-US", {
+						compactDisplay: "short",
+					}).format(products.length)}
+				/>
 
-				<Card>
-					<CardContent className="pt-6">
-						<div className="flex items-center gap-4">
-							<div className="p-3 bg-green-50 rounded-lg">
-								<BarChart3Icon className="w-5 h-5 text-green-600" />
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">Active Products</p>
-								<p className="text-2xl font-bold">
-									{products.filter((p) => p.status === "ACTIVE").length}
-								</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<StatCard
+					icon={<BarChart3Icon />}
+					bgClass="bg-green-600/10"
+					title="Active products"
+					value={Intl.NumberFormat("en-US", {
+						compactDisplay: "short",
+					}).format(products.filter((p) => p.status === "ACTIVE").length)}
+				/>
 
-				<Card>
-					<CardContent className="pt-6">
-						<div className="flex items-center gap-4">
-							<div className="p-3 bg-yellow-50 rounded-lg">
-								<CalendarIcon className="w-5 h-5 text-yellow-600" />
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">Batch Tracked</p>
-								<p className="text-2xl font-bold">
-									{products.filter((p) => p.trackBatches).length}
-								</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<StatCard
+					title="Batch tracked"
+					bgClass="bg-yellow-600/10"
+					icon={<CalendarIcon />}
+					value={Intl.NumberFormat("en-US", {
+						compactDisplay: "short",
+					}).format(products.filter((p) => p.trackBatches).length)}
+				/>
 
-				<Card>
-					<CardContent className="pt-6">
-						<div className="flex items-center gap-4">
-							<div className="p-3 bg-purple-50 rounded-lg">
-								<CalendarIcon className="w-5 h-5 text-purple-600" />
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">Expiry Tracked</p>
-								<p className="text-2xl font-bold">
-									{products.filter((p) => p.trackExpiry).length}
-								</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<StatCard
+					title="Expiry tracked"
+					bgClass="bg-purple-600/10"
+					icon={<CalendarIcon />}
+					value={Intl.NumberFormat("en-US", {
+						compactDisplay: "short",
+					}).format(products.filter((p) => p.trackExpiry).length)}
+				/>
 			</div>
 
 			{/* Filters and Search */}
-			<Card>
+			{/* <Card>
 				<CardHeader>
 					<CardTitle>Search & Filter Products</CardTitle>
 				</CardHeader>
@@ -389,116 +344,74 @@ export function ProductCatalogPage() {
 						</Select>
 					</div>
 				</CardContent>
-			</Card>
+			</Card> */}
+
+			<ProductsToolbar table={table} />
 
 			{/* Products Table */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Products ({filteredProducts.length})</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>SKU</TableHead>
-								<TableHead>Product Name</TableHead>
-								<TableHead>Category</TableHead>
-								<TableHead>Stock Status</TableHead>
-								<TableHead className="text-right">Current Stock</TableHead>
-								<TableHead className="text-center">Batch</TableHead>
-								<TableHead className="text-center">Expiry</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead className="text-right">Actions</TableHead>
+
+			<div className="overflow-hidden rounded-md border bg-card">
+				<Table>
+					<TableHeader className="bg-gray-100">
+						{table.getHeaderGroups().map((headerGroup) => (
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => {
+									return (
+										<TableHead key={header.id} className="text-gray-500">
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+										</TableHead>
+									);
+								})}
 							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredProducts.map((product) => {
-								const stockStatus = getStockStatus(product);
-								return (
-									<TableRow key={product.id}>
-										<TableCell className="font-mono text-sm">
-											{product.sku}
-										</TableCell>
-										<TableCell>
-											<div>
-												<p className="font-medium">{product.name}</p>
-												<p className="text-xs text-muted-foreground line-clamp-1">
-													{product.description}
-												</p>
-											</div>
-										</TableCell>
-										<TableCell>
-											<Badge variant="outline">{product.category}</Badge>
-										</TableCell>
-										<TableCell>
-											<Badge variant={stockStatus.color as BadgeVariant}>
-												{stockStatus.label}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-right">
-											<span className="font-semibold">
-												{product.currentStock}
-											</span>
-											<span className="text-muted-foreground text-sm ml-1">
-												{product.unitOfMeasure}
-											</span>
-										</TableCell>
-										<TableCell className="text-center">
-											{product.trackBatches ? (
-												<Badge variant="secondary" className="text-xs">
-													Yes
-												</Badge>
-											) : (
-												<span className="text-muted-foreground text-xs">
-													No
-												</span>
+						))}
+					</TableHeader>
+
+					<TableBody>
+						{table.getRowModel().rows?.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow key={row.id} className="hover:bg-gray-50">
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id} className="text-gray-600">
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext(),
 											)}
 										</TableCell>
-										<TableCell className="text-center">
-											{product.trackExpiry ? (
-												<Badge variant="secondary" className="text-xs">
-													Yes
-												</Badge>
-											) : (
-												<span className="text-muted-foreground text-xs">
-													No
-												</span>
-											)}
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													product.status === "ACTIVE"
-														? "default"
-														: product.status === "INACTIVE"
-															? "secondary"
-															: "outline"
-												}
-											>
-												{product.status}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-right">
-											<div className="flex gap-2 justify-end">
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() => setSelectedProduct(product)}
-												>
-													<EyeIcon className="w-4 h-4" />
-												</Button>
-												<Button variant="ghost" size="sm">
-													<EditIcon className="w-4 h-4" />
-												</Button>
-											</div>
-										</TableCell>
-									</TableRow>
-								);
-							})}
-						</TableBody>
-					</Table>
-				</CardContent>
-			</Card>
+									))}
+								</TableRow>
+							))
+						) : (
+							<TableRow>
+								<TableCell
+									colSpan={columns.length}
+									className="h-24 text-center"
+								>
+									No results.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+
+					<TableFooter>
+						<TableRow>
+							<TableCell colSpan={columns.length}>
+								<div className="w-full flex items-center justify-between">
+									<span className="text-sm text-gray-500">
+										Page {table.getState().pagination.pageIndex + 1} of{" "}
+										{table.getPageCount()}
+									</span>
+									<DataTablePagination table={table} />
+								</div>
+							</TableCell>
+						</TableRow>
+					</TableFooter>
+				</Table>
+			</div>
 
 			{/* Product Details Dialog */}
 			{selectedProduct && (
@@ -609,7 +522,11 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 }
 
 // Product Details View Component
-function ProductDetailsView({ product }: { product: Product }) {
+function ProductDetailsView({
+	product,
+}: {
+	product: InventoryProductResponse;
+}) {
 	return (
 		<div className="space-y-6">
 			<div className="grid grid-cols-2 gap-4">
@@ -632,8 +549,8 @@ function ProductDetailsView({ product }: { product: Product }) {
 				<div>
 					<p className="text-sm text-muted-foreground">Current Stock</p>
 					<p className="text-2xl font-bold">
-						{product.currentStock}{" "}
-						<span className="text-sm font-normal">{product.unitOfMeasure}</span>
+						{product.currentStockAvailable}{" "}
+						<span className="text-sm font-normal">{product.baseUnit}</span>
 					</p>
 				</div>
 				<div>
@@ -645,15 +562,15 @@ function ProductDetailsView({ product }: { product: Product }) {
 			<div className="grid grid-cols-3 gap-4">
 				<div>
 					<p className="text-sm text-muted-foreground">Minimum Stock</p>
-					<p className="font-semibold">{product.minimumStockLevel}</p>
+					<p className="font-semibold">{product.minStockLevel}</p>
 				</div>
 				<div>
 					<p className="text-sm text-muted-foreground">Reorder Point</p>
-					<p className="font-semibold">{product.reorderPoint}</p>
+					<p className="font-semibold">{product.reorderQuantity}</p>
 				</div>
 				<div>
 					<p className="text-sm text-muted-foreground">Maximum Stock</p>
-					<p className="font-semibold">{product.maximumStockLevel}</p>
+					<p className="font-semibold">{product.maxStockLevel}</p>
 				</div>
 			</div>
 

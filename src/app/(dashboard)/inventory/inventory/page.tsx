@@ -1,4 +1,5 @@
 import { QuickActions } from "@/components/roles/inventory/dasboard";
+import { EnhancedInventoryDashboard } from "@/components/roles/inventory/enhanced-dashboard";
 import { InventoryOfficerInventoryPage } from "@/components/roles/inventory/inventory-page";
 import { $fetch, type InventoryItemResponse } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
@@ -115,6 +116,7 @@ function InventoryPage({ searchParams }: PageProps) {
 				section={query.section}
 				paginationMeta={paginationMeta}
 			/>
+			<EnhancedInventoryDashboard />
 		</div>
 	);
 }
