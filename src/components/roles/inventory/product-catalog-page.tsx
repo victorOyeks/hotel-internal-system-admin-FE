@@ -28,7 +28,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -46,9 +46,26 @@ import {
 	getPaginationRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import type { InventoryProductResponse } from "@/lib/fetch";
+import {
+	ApiInputInventoryProduct,
+	type InventoryProductResponse,
+} from "@/lib/fetch";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { z } from "zod";
+import { toast } from "sonner";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMutation } from "@tanstack/react-query";
 
 const categories = [
 	{ value: "FOOD", label: "Food" },
@@ -391,88 +408,505 @@ export function ProductCatalogPage({
 
 // Add Product Form Component
 function AddProductForm({ onClose }: { onClose: () => void }) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
+			console.log(payload);
+		},
+		onSuccess: () => {
+			toast.success("Product created successfully");
+			onClose();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const form = useForm({
+		resolver: zodResolver(ApiInputInventoryProduct),
+		defaultValues: {
+			trackBatches: false,
+			trackExpiry: false,
+			trackSerialNumbers: false,
+			perishable: false,
+			valuationMethod: "FIFO",
+			category: "FOOD_FRESH",
+			baseUnit: "KG",
+		},
+	});
+
+	function onSubmit(values: z.infer<typeof ApiInputInventoryProduct>) {
+		mutate(values);
+	}
+
 	return (
-		<form className="space-y-4">
-			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="sku">SKU/Product Code *</Label>
-					<Input id="sku" placeholder="e.g., FD-001" required />
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="name">Product Name *</Label>
-					<Input id="name" placeholder="e.g., Premium Coffee Beans" required />
-				</div>
-			</div>
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+				<ScrollArea className="pr-4">
+					<div className="space-y-6">
+						{/* Basic Information */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Basic Information</h3>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="sku"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>SKU *</FormLabel>
+											<FormControl>
+												<Input placeholder="e.g., FD-001" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="barcode"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Barcode</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Scan barcode"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<FormField
+								control={form.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Name *</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="e.g., Premium Coffee Beans"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="description"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Product description"
+												rows={3}
+												{...field}
+												value={field.value || ""}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="brand"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Brand</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Brand name"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="manufacturer"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Manufacturer</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Manufacturer name"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						</div>
 
-			<div className="space-y-2">
-				<Label htmlFor="description">Description</Label>
-				<Textarea id="description" placeholder="Product description" rows={3} />
-			</div>
+						{/* Categorization */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Categorization</h3>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="category"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Category *</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select category" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{categories.map((cat) => (
+														<SelectItem key={cat.value} value={cat.value}>
+															{cat.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="subcategory"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Subcategory</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="e.g. Dairy"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<FormField
+								control={form.control}
+								name="tags"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Tags</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Comma separated tags"
+												{...field}
+												value={field.value || ""}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
 
-			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="category">Category *</Label>
-					<Select>
-						<SelectTrigger>
-							<SelectValue placeholder="Select category" />
-						</SelectTrigger>
-						<SelectContent>
-							{categories.map((cat) => (
-								<SelectItem key={cat.value} value={cat.value}>
-									{cat.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="unit">Unit of Measure *</Label>
-					<Input id="unit" placeholder="e.g., kg, liters, pieces" />
-				</div>
-			</div>
+						{/* Units & Pricing */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Units & Pricing</h3>
+							<div className="grid grid-cols-3 gap-4">
+								<FormField
+									control={form.control}
+									name="baseUnit"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Base Unit *</FormLabel>
+											<FormControl>
+												<Input placeholder="e.g., kg" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="purchaseUnit"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Purchase Unit</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="e.g., box"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="conversionFactor"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Conv. Factor</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													placeholder="1"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<div className="grid grid-cols-3 gap-4">
+								<FormField
+									control={form.control}
+									name="standardCost"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Standard Cost</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													step="0.01"
+													placeholder="0.00"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="sellingPrice"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Selling Price</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													step="0.01"
+													placeholder="0.00"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="taxRate"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Tax Rate (%)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													step="0.01"
+													placeholder="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						</div>
 
-			<div className="grid grid-cols-3 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="minStock">Minimum Stock</Label>
-					<Input id="minStock" type="number" placeholder="0" />
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="maxStock">Maximum Stock</Label>
-					<Input id="maxStock" type="number" placeholder="0" />
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="reorder">Reorder Point</Label>
-					<Input id="reorder" type="number" placeholder="0" />
-				</div>
-			</div>
+						{/* Inventory Control */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Inventory Control</h3>
+							<div className="grid grid-cols-3 gap-4">
+								<FormField
+									control={form.control}
+									name="minStockLevel"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Min Stock</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													placeholder="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="maxStockLevel"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Max Stock</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													placeholder="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="reorderQuantity"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Reorder Qty</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													placeholder="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						</div>
 
-			<div className="space-y-2">
-				<Label htmlFor="cost">Standard Cost</Label>
-				<Input id="cost" type="number" step="0.01" placeholder="0.00" />
-			</div>
+						{/* Tracking & Storage */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Tracking & Storage</h3>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="trackBatches"
+									render={({ field }) => (
+										<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+											<FormControl>
+												<Checkbox
+													checked={field.value}
+													onCheckedChange={field.onChange}
+												/>
+											</FormControl>
+											<div className="space-y-1 leading-none">
+												<FormLabel>Track Batches</FormLabel>
+											</div>
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="trackExpiry"
+									render={({ field }) => (
+										<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+											<FormControl>
+												<Checkbox
+													checked={field.value}
+													onCheckedChange={field.onChange}
+												/>
+											</FormControl>
+											<div className="space-y-1 leading-none">
+												<FormLabel>Track Expiry</FormLabel>
+											</div>
+										</FormItem>
+									)}
+								/>
+							</div>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="storageRequirements"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Storage Reqs</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="e.g. Dry place"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="shelfLifeDays"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Shelf Life (Days)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													placeholder="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						</div>
+					</div>
+				</ScrollArea>
 
-			<div className="space-y-4">
-				<div className="flex items-center space-x-2">
-					<Checkbox id="trackBatches" />
-					<Label htmlFor="trackBatches" className="cursor-pointer">
-						Track Batches (Enable batch number tracking)
-					</Label>
+				<div className="flex gap-2 justify-end pt-4">
+					<Button type="button" variant="outline" onClick={onClose}>
+						Cancel
+					</Button>
+					<Button type="submit" disabled={isPending}>
+						{isPending ? "Creating..." : "Create Product"}
+					</Button>
 				</div>
-				<div className="flex items-center space-x-2">
-					<Checkbox id="trackExpiry" />
-					<Label htmlFor="trackExpiry" className="cursor-pointer">
-						Track Expiry Dates (Enable expiry date tracking)
-					</Label>
-				</div>
-			</div>
-
-			<div className="flex gap-2 justify-end pt-4">
-				<Button type="button" variant="outline" onClick={onClose}>
-					Cancel
-				</Button>
-				<Button type="submit">Create Product</Button>
-			</div>
-		</form>
+			</form>
+		</Form>
 	);
 }
 

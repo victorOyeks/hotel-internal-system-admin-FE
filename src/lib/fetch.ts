@@ -764,6 +764,37 @@ export type InventoryGRNResponse = z.infer<
 	typeof ApiResponseInventoryGRNResponse
 >["data"]["content"][number];
 
+const InventoryProductsCategory = z.enum([
+	"FOOD_FRESH",
+	"FOOD_FROZEN",
+	"FOOD_DRY_GOODS",
+	"BEVERAGES_ALCOHOLIC",
+	"BEVERAGES_NON_ALCOHOLIC",
+	"BEVERAGES_HOT",
+	"CLEANING_SUPPLIES",
+	"LAUNDRY_SUPPLIES",
+	"GUEST_AMENITIES",
+	"LINENS_TOWELS",
+	"MAINTENANCE_SUPPLIES",
+	"ELECTRICAL_SUPPLIES",
+	"PLUMBING_SUPPLIES",
+	"HVAC_SUPPLIES",
+	"STATIONERY",
+	"OFFICE_EQUIPMENT",
+	"PRINTING_SUPPLIES",
+	"MINIBAR_ITEMS",
+	"ROOM_SUPPLIES",
+	"WELCOME_ITEMS",
+	"KITCHEN_EQUIPMENT",
+	"TABLEWARE",
+	"DISPOSABLES",
+	"UNIFORMS",
+	"SAFETY_EQUIPMENT",
+	"MARKETING_MATERIALS",
+	"GENERAL_SUPPLIES",
+	"OTHER",
+]);
+
 export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
 		content: z
@@ -776,7 +807,7 @@ export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 				description: z.string(),
 				brand: z.string(),
 				manufacturer: z.string(),
-				category: z.string(),
+				category: InventoryProductsCategory,
 				subcategory: z.string(),
 				status: z.string(),
 				baseUnit: z.string(),
@@ -834,6 +865,53 @@ export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 export type InventoryProductResponse = z.infer<
 	typeof ApiResponseInventoryProductResponse
 >["data"]["content"][number];
+
+export const ApiInputInventoryProduct = z.object({
+	sku: z.string().min(1, "SKU is required"),
+	barcode: z.string().optional(),
+	name: z.string().min(1, "Name is required"),
+	description: z.string().optional(),
+	brand: z.string().optional(),
+	manufacturer: z.string().optional(),
+	category: InventoryProductsCategory,
+	subcategory: z.string().optional(),
+	baseUnit: z.string().min(1, "Base unit is required"),
+	purchaseUnit: z.string().optional(),
+	consumptionUnit: z.string().optional(),
+	conversionFactor: z.number().min(0).optional(),
+	standardCost: z.number().min(0).optional(),
+	lastPurchasePrice: z.number().min(0).optional(),
+	sellingPrice: z.number().min(0).optional(),
+	valuationMethod: z.enum(["FIFO", "LIFO", "WEIGHTED_AVERAGE"]).default("FIFO"),
+	reorderLevel: z.number().min(0).optional(),
+	reorderQuantity: z.number().min(0).optional(),
+	minStockLevel: z.number().min(0).optional(),
+	maxStockLevel: z.number().min(0).optional(),
+	safetyStock: z.number().min(0).optional(),
+	leadTimeDays: z.number().int().min(0).optional(),
+	trackBatches: z.boolean().default(false),
+	trackExpiry: z.boolean().default(false),
+	trackSerialNumbers: z.boolean().default(false),
+	perishable: z.boolean().default(false),
+	storageRequirements: z.string().optional(),
+	temperatureMin: z.number().optional(),
+	temperatureMax: z.number().optional(),
+	shelfLifeDays: z.number().int().min(0).optional(),
+	weight: z.number().min(0).optional(),
+	length: z.number().min(0).optional(),
+	width: z.number().min(0).optional(),
+	height: z.number().min(0).optional(),
+	preferredSupplierId: z.string().optional(),
+	supplierPartNumber: z.string().optional(),
+	imageUrl: z.string().url().optional().or(z.literal("")),
+	notes: z.string().optional(),
+	internalNotes: z.string().optional(),
+	tags: z.string().optional(),
+	taxRate: z.number().min(0).optional(),
+	taxCategory: z.string().optional(),
+	accountCode: z.string().optional(),
+	costCenter: z.string().optional(),
+});
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -1234,36 +1312,7 @@ export const schema = createSchema({
 					"DRAFT",
 					"ARCHIVED",
 				]),
-				category: z.enum([
-					"FOOD_FRESH",
-					"FOOD_FROZEN",
-					"FOOD_DRY_GOODS",
-					"BEVERAGES_ALCOHOLIC",
-					"BEVERAGES_NON_ALCOHOLIC",
-					"BEVERAGES_HOT",
-					"CLEANING_SUPPLIES",
-					"LAUNDRY_SUPPLIES",
-					"GUEST_AMENITIES",
-					"LINENS_TOWELS",
-					"MAINTENANCE_SUPPLIES",
-					"ELECTRICAL_SUPPLIES",
-					"PLUMBING_SUPPLIES",
-					"HVAC_SUPPLIES",
-					"STATIONERY",
-					"OFFICE_EQUIPMENT",
-					"PRINTING_SUPPLIES",
-					"MINIBAR_ITEMS",
-					"ROOM_SUPPLIES",
-					"WELCOME_ITEMS",
-					"KITCHEN_EQUIPMENT",
-					"TABLEWARE",
-					"DISPOSABLES",
-					"UNIFORMS",
-					"SAFETY_EQUIPMENT",
-					"MARKETING_MATERIALS",
-					"GENERAL_SUPPLIES",
-					"OTHER",
-				]),
+				category: InventoryProductsCategory,
 				search: z.string(),
 				trackBatches: z.boolean(),
 				trackExpiry: z.boolean(),
@@ -1272,6 +1321,24 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseInventoryProductResponse,
+	},
+	"@get/api/inventories/deliveries": {
+		query: z
+			.object({
+				search: z.string().nullable(),
+				startDate: z.iso.date().nullable(),
+				endDate: z.iso.date().nullable(),
+				page: z.coerce.number().default(0),
+				size: z.coerce.number().default(10),
+			})
+			.partial(),
+		output: ApiResponseInventoryDelivery,
+	},
+	"@post/api/inventories/products": {
+		input: ApiInputInventoryProduct,
+		output: ApiResponseObject.extend({
+			data: InventoryResponse,
+		}),
 	},
 
 	// Front Desk API
@@ -1951,18 +2018,6 @@ export const schema = createSchema({
 				active: z.boolean(),
 			}),
 		}),
-	},
-	"@get/api/inventories/deliveries": {
-		query: z
-			.object({
-				search: z.string().nullable(),
-				startDate: z.iso.date().nullable(),
-				endDate: z.iso.date().nullable(),
-				page: z.coerce.number().default(0),
-				size: z.coerce.number().default(10),
-			})
-			.partial(),
-		output: ApiResponseInventoryDelivery,
 	},
 });
 
