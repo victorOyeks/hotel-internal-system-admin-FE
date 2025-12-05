@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -34,37 +33,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	PlusIcon,
-	SearchIcon,
-	FilterIcon,
 	PackageIcon,
-	EditIcon,
-	EyeIcon,
 	BarChart3Icon,
 	CalendarIcon,
-	MoreVerticalIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { ProductsToolbar } from "./products";
 import {
-	ColumnDef,
 	createColumnHelper,
 	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { InventoryProductResponse } from "@/lib/fetch";
+import type { InventoryProductResponse } from "@/lib/fetch";
 import { DataTablePagination } from "@/components/shared/pagination";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-
-// Mock data based on FRD requirements
-const mockProducts: InventoryProductResponse[] = [];
 
 const categories = [
 	{ value: "FOOD", label: "Food" },
@@ -122,12 +106,25 @@ const columns = [
 		cell: (info) => {
 			const product = info.row.original;
 			return (
-				<div>
-					<p className="font-medium">{product.name}</p>
-					<p className="text-xs text-muted-foreground line-clamp-1">
-						{product.description}
-					</p>
-				</div>
+				<Dialog>
+					<DialogTrigger asChild>
+						<div className="hover:cursor-pointer hover:underline">
+							<p className="font-medium">{product.name}</p>
+							<p className="text-xs text-muted-foreground line-clamp-1">
+								{product.description}
+							</p>
+						</div>
+					</DialogTrigger>
+					<DialogContent className="max-w-2xl">
+						<DialogHeader>
+							<DialogTitle>{product.name}</DialogTitle>
+							<DialogDescription>
+								Product Details and Specifications
+							</DialogDescription>
+						</DialogHeader>
+						<ProductDetailsView product={product} />
+					</DialogContent>
+				</Dialog>
 			);
 		},
 	}),
@@ -182,28 +179,6 @@ const columns = [
 			return <Badge variant={status.color}>{status.label}</Badge>;
 		},
 	}),
-	columnHelper.display({
-		id: "actions",
-		header: "Actions",
-		cell: (info) => {
-			return (
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant={"ghost"} size={"icon"}>
-							<MoreVerticalIcon />
-						</Button>
-					</DropdownMenuTrigger>
-
-					<DropdownMenuContent align="end">
-						<DropdownMenuItem>
-							<EditIcon />
-							Edit
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			);
-		},
-	}),
 ];
 
 export function ProductCatalogPage({
@@ -223,8 +198,6 @@ export function ProductCatalogPage({
 		},
 	});
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-	const [selectedProduct, setSelectedProduct] =
-		useState<InventoryProductResponse | null>(null);
 
 	return (
 		<div className="space-y-6 p-6">
@@ -412,24 +385,6 @@ export function ProductCatalogPage({
 					</TableFooter>
 				</Table>
 			</div>
-
-			{/* Product Details Dialog */}
-			{selectedProduct && (
-				<Dialog
-					open={!!selectedProduct}
-					onOpenChange={() => setSelectedProduct(null)}
-				>
-					<DialogContent className="max-w-2xl">
-						<DialogHeader>
-							<DialogTitle>{selectedProduct.name}</DialogTitle>
-							<DialogDescription>
-								Product Details and Specifications
-							</DialogDescription>
-						</DialogHeader>
-						<ProductDetailsView product={selectedProduct} />
-					</DialogContent>
-				</Dialog>
-			)}
 		</div>
 	);
 }
@@ -555,7 +510,9 @@ function ProductDetailsView({
 				</div>
 				<div>
 					<p className="text-sm text-muted-foreground">Standard Cost</p>
-					<p className="text-2xl font-bold">${product.standardCost}</p>
+					<p className="text-2xl font-bold">
+						{formatCurrency(product.standardCost)}
+					</p>
 				</div>
 			</div>
 
@@ -577,13 +534,13 @@ function ProductDetailsView({
 			<div className="grid grid-cols-2 gap-4">
 				<div>
 					<p className="text-sm text-muted-foreground">Batch Tracking</p>
-					<Badge variant={product.trackBatches ? "default" : "secondary"}>
+					<Badge variant={product.trackBatches ? "green" : "red"}>
 						{product.trackBatches ? "Enabled" : "Disabled"}
 					</Badge>
 				</div>
 				<div>
 					<p className="text-sm text-muted-foreground">Expiry Tracking</p>
-					<Badge variant={product.trackExpiry ? "default" : "secondary"}>
+					<Badge variant={product.trackExpiry ? "green" : "red"}>
 						{product.trackExpiry ? "Enabled" : "Disabled"}
 					</Badge>
 				</div>
@@ -591,7 +548,7 @@ function ProductDetailsView({
 
 			<div>
 				<p className="text-sm text-muted-foreground">Status</p>
-				<Badge variant={product.status === "ACTIVE" ? "default" : "secondary"}>
+				<Badge variant={product.status === "ACTIVE" ? "green" : "red"}>
 					{product.status}
 				</Badge>
 			</div>
