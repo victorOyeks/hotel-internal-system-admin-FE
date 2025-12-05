@@ -160,10 +160,6 @@ const columns = [
 		header: "Stock Status",
 		cell: (info) => Intl.NumberFormat().format(info.getValue()),
 	}),
-	columnHelper.accessor("currentStockAvailable", {
-		header: "Current Stock",
-		cell: (info) => Intl.NumberFormat().format(info.getValue()),
-	}),
 	columnHelper.accessor("brand", {
 		header: "Brand",
 		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
