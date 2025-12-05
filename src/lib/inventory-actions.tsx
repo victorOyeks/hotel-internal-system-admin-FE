@@ -1,8 +1,12 @@
 "use server";
 
-import type { ServerActionResponse } from "./action-utils";
+import type z from "zod";
+import type {
+	ServerActionResponse,
+	ServerActionResponseFromEndpoint,
+} from "./action-utils";
 import { verifySession } from "./dal";
-import { $fetch } from "./fetch";
+import { $fetch, type ApiInputInventoryProduct } from "./fetch";
 
 export async function addToInventory(payload: {
 	name: string;
@@ -59,4 +63,31 @@ export async function issueStockItem({
 		success: true,
 		data: (response.data as { message: string }).message,
 	};
+}
+
+export async function addProduct(
+	payload: z.infer<typeof ApiInputInventoryProduct>,
+): ServerActionResponseFromEndpoint<"@post/api/inventories/products"> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/products", {
+			body: {
+				...payload,
+				itemId: crypto.randomUUID(),
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to add product",
+		};
+	}
 }

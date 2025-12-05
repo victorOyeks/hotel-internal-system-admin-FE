@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
+import { addProduct } from "@/lib/inventory-actions";
 
 const categories = [
 	{ value: "FOOD", label: "Food" },
@@ -406,7 +407,11 @@ export function ProductCatalogPage({
 function AddProductForm({ onClose }: { onClose: () => void }) {
 	const { mutate, isPending } = useMutation({
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
-			console.log(payload);
+			const response = await addProduct(payload);
+
+			if (!response.success) {
+				throw Error(response.error);
+			}
 		},
 		onSuccess: () => {
 			toast.success("Product created successfully");
