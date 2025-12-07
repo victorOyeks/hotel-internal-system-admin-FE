@@ -132,7 +132,7 @@ export function GRNPage({
 					</p>
 				</div>
 
-				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen} modal>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" /> Create GRN
