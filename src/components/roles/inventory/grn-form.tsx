@@ -40,11 +40,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { mockSuppliers, mockStorageLocations } from "./grn-mock";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { addGRNItem } from "@/lib/inventory-actions";
 import { revalidateRoute } from "@/lib/actions";
+import type {
+	InventoryLocationResponse,
+	InventorySuppliers,
+} from "@/lib/fetch";
 
 // --- Schema Definition ---
 
@@ -94,7 +97,15 @@ type GrnFormValues = z.infer<typeof grnSchema>;
 
 // --- Component ---
 
-export function CreateGRNForm({ onClose }: { onClose: () => void }) {
+export function CreateGRNForm({
+	onClose,
+	grnLocations,
+	suppliers,
+}: {
+	grnLocations: InventoryLocationResponse[];
+	suppliers: InventorySuppliers[];
+	onClose: () => void;
+}) {
 	const form = useForm({
 		resolver: zodResolver(grnSchema),
 		defaultValues: {
@@ -158,7 +169,7 @@ export function CreateGRNForm({ onClose }: { onClose: () => void }) {
 										</SelectTrigger>
 									</FormControl>
 									<SelectContent>
-										{mockSuppliers.map((s) => (
+										{suppliers.map((s) => (
 											<SelectItem key={s.id} value={s.id} className="text-xs">
 												{s.name}
 											</SelectItem>
@@ -204,9 +215,9 @@ export function CreateGRNForm({ onClose }: { onClose: () => void }) {
 										</SelectTrigger>
 									</FormControl>
 									<SelectContent>
-										{mockStorageLocations.map((l) => (
+										{grnLocations.map((l) => (
 											<SelectItem key={l.id} value={l.id} className="text-xs">
-												{l.name}
+												{l.locationName}
 											</SelectItem>
 										))}
 									</SelectContent>

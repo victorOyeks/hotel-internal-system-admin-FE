@@ -24,7 +24,12 @@ import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import type { InventoryGRNResponse, InventoryGRNStatistics } from "@/lib/fetch";
+import type {
+	InventoryGRNResponse,
+	InventoryGRNStatistics,
+	InventoryLocationResponse,
+	InventorySuppliers,
+} from "@/lib/fetch";
 
 const selectedGRNAtom = atom<InventoryGRNResponse | null>(null);
 
@@ -85,9 +90,13 @@ const columnDefs = [
 export function GRNPage({
 	grnsData,
 	statsData,
+	grnLocations,
+	suppliers,
 }: {
 	grnsData: InventoryGRNResponse[];
 	statsData: InventoryGRNStatistics;
+	grnLocations: InventoryLocationResponse[];
+	suppliers: InventorySuppliers[];
 }) {
 	const table = useReactTable({
 		columns: columnDefs,
@@ -133,7 +142,11 @@ export function GRNPage({
 						<DialogHeader>
 							<DialogTitle>Create Goods Receipt Note</DialogTitle>
 						</DialogHeader>
-						<CreateGRNForm onClose={() => setIsCreateOpen(false)} />
+						<CreateGRNForm
+							grnLocations={grnLocations}
+							suppliers={suppliers}
+							onClose={() => setIsCreateOpen(false)}
+						/>
 					</DialogContent>
 				</Dialog>
 			</div>

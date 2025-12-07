@@ -65,6 +65,25 @@ function Page() {
 		}),
 	);
 
+	const { content: suppliers } = use(
+		queryClient.ensureQueryData({
+			queryKey: ["suppliers"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/inventories/suppliers", {
+					query: {},
+					auth: {
+						type: "Bearer",
+						token,
+					},
+					signal,
+					throw: true,
+				});
+
+				return res.data;
+			},
+		}),
+	);
+
 	console.log({
 		grns,
 		inventoryLocs,
@@ -86,7 +105,12 @@ function Page() {
 				],
 			}}
 		>
-			<GRNPage statsData={statsData} grnsData={grns} />
+			<GRNPage
+				statsData={statsData}
+				grnsData={grns}
+				grnLocations={inventoryLocs}
+				suppliers={suppliers}
+			/>
 		</BreadCrumbWrapper>
 	);
 }
