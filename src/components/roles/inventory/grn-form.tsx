@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CalendarIcon, Loader2Icon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +43,8 @@ import {
 import { mockSuppliers, mockStorageLocations } from "./grn-mock";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { addGRNItem } from "@/lib/inventory-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 // --- Schema Definition ---
 
@@ -109,10 +111,26 @@ export function CreateGRNForm({ onClose }: { onClose: () => void }) {
 
 	const { mutateAsync } = useMutation({
 		mutationKey: ["grn-form"],
-		mutationFn: async (payload: z.infer<typeof grnSchema>) => {},
-		onSuccess() {
-			toast.success("");
+		mutationFn: async (payload: GrnFormValues) => {
+			const response = await addGRNItem(payload);
+
+			if (!response.success) {
+				throw Error(response.error);
+			}
+
+			return response.data!;
+		},
+		async onSuccess(message) {
+			toast.success("GRN added succesfully", {
+				description: message,
+			});
+			await revalidateRoute("/dashboard/grn");
 			onClose();
+		},
+		onError(error) {
+			toast.error("Something went wrong!", {
+				description: error.message,
+			});
 		},
 	});
 
@@ -514,11 +532,27 @@ export function CreateGRNForm({ onClose }: { onClose: () => void }) {
 				</div>
 
 				<div className="flex justify-end gap-2 pt-2">
-					<Button variant="outline" onClick={onClose} size="sm">
+					<Button
+						variant="outline"
+						disabled={form.formState.isSubmitting}
+						onClick={onClose}
+						size="sm"
+					>
 						Cancel
 					</Button>
-					<Button type="submit" size="sm">
-						Create GRN
+					<Button
+						type="submit"
+						disabled={form.formState.isSubmitting}
+						size="sm"
+					>
+						{form.formState.isSubmitting ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								Creating...
+							</>
+						) : (
+							"Create GRN"
+						)}
 					</Button>
 				</div>
 			</form>

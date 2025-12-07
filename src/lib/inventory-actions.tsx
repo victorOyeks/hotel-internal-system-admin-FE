@@ -91,3 +91,25 @@ export async function addProduct(
 		};
 	}
 }
+
+export async function addGRNItem(payload: unknown) {
+	try {
+		const sessionData = await verifySession();
+
+		const response = await $fetch("@post/api/inventories/grn", {
+			auth: { type: "Bearer", token: sessionData.token },
+			body: payload,
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: (response as { message: string }).message,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to add GRN",
+		};
+	}
+}
