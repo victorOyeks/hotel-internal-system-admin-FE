@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Table as TableType } from "@tanstack/react-table";
-import type { GoodsReceiptNote } from "./grn-types";
 import {
 	type ExportData,
 	ExportDialog,
@@ -18,6 +17,7 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { atom, useSetAtom } from "jotai";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import type { InventoryGRNResponse } from "@/lib/fetch";
 
 interface GRNFiltersProps {
 	searchQuery: string;
@@ -89,7 +89,7 @@ export function GRNToolbar({
 	setSearchQuery,
 	statusFilter,
 }: {
-	table: TableType<GoodsReceiptNote>;
+	table: TableType<InventoryGRNResponse>;
 } & GRNFiltersProps) {
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const setSuccessDialogOpen = useSetAtom(successDialogAtom);

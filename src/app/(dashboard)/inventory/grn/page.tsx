@@ -47,6 +47,24 @@ function Page() {
 		}),
 	);
 
+	const statsData = use(
+		queryClient.ensureQueryData({
+			queryKey: ["stats-data"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/inventories/grn/statistics", {
+					signal,
+					auth: {
+						type: "Bearer",
+						token,
+					},
+					throw: true,
+				});
+
+				return res.data;
+			},
+		}),
+	);
+
 	console.log({
 		grns,
 		inventoryLocs,
@@ -68,7 +86,7 @@ function Page() {
 				],
 			}}
 		>
-			<GRNPage />
+			<GRNPage statsData={statsData} grnsData={grns} />
 		</BreadCrumbWrapper>
 	);
 }

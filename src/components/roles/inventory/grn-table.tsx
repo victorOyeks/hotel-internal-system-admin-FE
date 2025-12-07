@@ -7,11 +7,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { GoodsReceiptNote } from "./grn-types";
 import { flexRender, type Table as TableType } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/shared/pagination";
+import type { InventoryGRNResponse } from "@/lib/fetch";
 interface GRNTableProps {
-	table: TableType<GoodsReceiptNote>;
+	table: TableType<InventoryGRNResponse>;
 }
 
 export function GRNTable({ table }: GRNTableProps) {

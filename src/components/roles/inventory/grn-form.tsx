@@ -41,6 +41,8 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { mockSuppliers, mockStorageLocations } from "./grn-mock";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 // --- Schema Definition ---
 
@@ -105,15 +107,21 @@ export function CreateGRNForm({ onClose }: { onClose: () => void }) {
 		name: "items",
 	});
 
-	function onSubmit(data: GrnFormValues) {
-		console.log("Form Data:", data);
-		// TODO: Implement API call
-		onClose();
-	}
+	const { mutateAsync } = useMutation({
+		mutationKey: ["grn-form"],
+		mutationFn: async (payload: z.infer<typeof grnSchema>) => {},
+		onSuccess() {
+			toast.success("");
+			onClose();
+		},
+	});
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+			<form
+				onSubmit={form.handleSubmit((data) => mutateAsync(data))}
+				className="space-y-4"
+			>
 				{/* Header Section */}
 				<div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
 					<FormField

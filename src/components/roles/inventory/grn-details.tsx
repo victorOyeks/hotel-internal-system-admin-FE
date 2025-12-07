@@ -20,12 +20,12 @@ import {
 	AlertCircleIcon,
 	PackageCheckIcon,
 } from "lucide-react";
-import type { GoodsReceiptNote } from "./grn-types";
+import type { InventoryGRNResponse } from "@/lib/fetch";
 
 interface GRNDetailsProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	grn: GoodsReceiptNote | null;
+	grn: InventoryGRNResponse | null;
 	onPostToStock: (id: string) => void;
 }
 
@@ -50,7 +50,7 @@ export function GRNDetails({
 							>
 								{grn.status}
 							</Badge>
-							{grn.isPosted ? (
+							{grn.stockPosted ? (
 								<Badge
 									variant="outline"
 									className="bg-green-50 text-green-700 border-green-200"
@@ -132,7 +132,7 @@ export function GRNDetails({
 					</div>
 
 					{/* Action Footer */}
-					{!grn.isPosted && (
+					{!grn.stockPosted && (
 						<div className="flex justify-end gap-2 pt-4 border-t">
 							<Button variant="outline" onClick={() => onOpenChange(false)}>
 								Close

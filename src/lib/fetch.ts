@@ -913,6 +913,28 @@ export const ApiInputInventoryProduct = z.object({
 	costCenter: z.string().optional(),
 });
 
+const ApiResponseInventoryGRNStatistics = ApiResponseObject.extend({
+	data: z.object({
+		totalGRNs: z.number(),
+		draftGRNs: z.number(),
+		pendingInspectionGRNs: z.number(),
+		acceptedGRNs: z.number(),
+		grnsWithRejectedItems: z.number(),
+		stockPostedGRNs: z.number(),
+		totalValue: z.number(),
+		totalQuantityReceived: z.number(),
+		totalQuantityAccepted: z.number(),
+		totalQuantityRejected: z.number(),
+		grnsToday: z.number(),
+		valueToday: z.number(),
+		uniqueSuppliers: z.number(),
+	}),
+});
+
+export type InventoryGRNStatistics = z.infer<
+	typeof ApiResponseInventoryGRNStatistics
+>["data"];
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -1301,6 +1323,9 @@ export const schema = createSchema({
 				size: z.coerce.number().default(10),
 			})
 			.partial(),
+	},
+	"@get/api/inventories/grn/statistics": {
+		output: ApiResponseInventoryGRNStatistics,
 	},
 	"@get/api/inventories/products": {
 		query: z

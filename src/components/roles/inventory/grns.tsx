@@ -2,13 +2,13 @@ import { FileTextIcon, PackageCheckIcon, TruckIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface GRNStatsProps {
-	unpostedValue: number;
+	totalValue: number;
 	postedCount: number;
 	recentCount: number;
 }
 
 export function GRNStats({
-	unpostedValue,
+	totalValue,
 	postedCount,
 	recentCount,
 }: GRNStatsProps) {
@@ -17,8 +17,8 @@ export function GRNStats({
 			<StatCard
 				icon={<FileTextIcon className="size-6 text-orange-600" />}
 				bgClass="bg-orange-600/10"
-				title="Unposted GRNs"
-				value={formatCurrency(unpostedValue)}
+				title="Total GRNs"
+				value={formatCurrency(totalValue)}
 			/>
 			<StatCard
 				icon={<PackageCheckIcon className="size-5 text-green-600" />}

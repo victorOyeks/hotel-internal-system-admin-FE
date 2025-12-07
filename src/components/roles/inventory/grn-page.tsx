@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -10,8 +10,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlusIcon } from "lucide-react";
-import type { GoodsReceiptNote } from "./grn-types";
-import { mockGRNs } from "./grn-mock";
 import { GRNDetails } from "./grn-details";
 import { CreateGRNForm } from "./grn-form";
 import { GRNStats } from "./grns";
@@ -26,10 +24,11 @@ import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { atom, useAtomValue, useSetAtom } from "jotai";
+import type { InventoryGRNResponse, InventoryGRNStatistics } from "@/lib/fetch";
 
-const selectedGRNAtom = atom<GoodsReceiptNote | null>(null);
+const selectedGRNAtom = atom<InventoryGRNResponse | null>(null);
 
-const columnHelper = createColumnHelper<GoodsReceiptNote>();
+const columnHelper = createColumnHelper<InventoryGRNResponse>();
 
 const columnDefs = [
 	columnHelper.accessor("grnNumber", {
@@ -64,7 +63,7 @@ const columnDefs = [
 			return <Badge variant={"yellow"}>Draft</Badge>;
 		},
 	}),
-	columnHelper.accessor("isPosted", {
+	columnHelper.accessor("stockPosted", {
 		header: "Posted",
 		cell: (info) => info.getValue(),
 	}),
@@ -72,7 +71,7 @@ const columnDefs = [
 		header: "Total Amount",
 		cell: (info) => formatCurrency(info.getValue()),
 	}),
-	columnHelper.accessor("createdDate", {
+	columnHelper.accessor("updatedAt", {
 		header: "Created Date",
 		cell: (info) => {
 			// e.g 21st oct, 2025. 7:30 pm
@@ -83,35 +82,27 @@ const columnDefs = [
 	}),
 ];
 
-export function GRNPage() {
+export function GRNPage({
+	grnsData,
+	statsData,
+}: {
+	grnsData: InventoryGRNResponse[];
+	statsData: InventoryGRNStatistics;
+}) {
 	const table = useReactTable({
 		columns: columnDefs,
-		data: mockGRNs,
+		data: grnsData,
 		getCoreRowModel: getCoreRowModel(),
 	});
 	// UI State
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-	const selectedGRN = useAtomValue<GoodsReceiptNote | null>(selectedGRNAtom);
-	const grns = useMemo(
-		() => table.getFilteredRowModel().rows.map((row) => row.original),
-		[table],
-	);
+	const selectedGRN = useAtomValue(selectedGRNAtom);
 
 	// Filter State
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [postedFilter, setPostedFilter] = useState<string>("all");
-
-	// Logic: Calculate Stats
-	const unpostedValue = grns
-		.filter((g) => !g.isPosted)
-		.reduce((sum, g) => sum + g.totalAmount, 0);
-	const postedCount = grns.filter((g) => g.isPosted).length;
-	const recentCount = grns.filter(
-		(g) =>
-			new Date(g.createdDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-	).length;
 
 	const handlePostToStock = (grnId: string) => {
 		console.log("Posting GRN to stock:", grnId);
@@ -149,9 +140,9 @@ export function GRNPage() {
 
 			{/* Stats */}
 			<GRNStats
-				unpostedValue={unpostedValue}
-				postedCount={postedCount}
-				recentCount={recentCount}
+				totalValue={statsData.totalValue}
+				postedCount={statsData.stockPostedGRNs}
+				recentCount={statsData.grnsToday}
 			/>
 
 			{/* Filters */}
