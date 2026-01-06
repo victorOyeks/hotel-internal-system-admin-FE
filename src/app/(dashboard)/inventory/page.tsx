@@ -42,37 +42,23 @@ const loadSearchParams = createLoader(
 
 function Page({ searchParams }: PageProps) {
 	const { token } = use(getCookieData())!;
-	const query = use(loadSearchParams(searchParams));
+	const _query = use(loadSearchParams(searchParams));
 
 	const queryClient = getQueryClient();
-	const { content, ...paginationMeta } = use(
+	const { data } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["inventory-items"],
+			queryKey: ["inventory-dashboard"],
 			queryFn: async () => {
-				const response = await $fetch("@get/api/inventories/items", {
+				const response = await $fetch("@get/api/inventories/dashboard", {
 					auth: { type: "Bearer", token },
 					query: {
-						...query,
-						page: 0,
-						size: 10,
 					},
 					throw: true,
-				});
+				})
 
-				return response.data;
-			},
-		}),
-	);
-	const inventoryStatData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["inventory-stat"],
-			queryFn: async () => {
-				const response = await $fetch("@get/api/inventories/summary", {
-					auth: { type: "Bearer", token },
-					throw: true,
-				});
+				console.log({ response })
 
-				return response.data;
+				return response;
 			},
 		}),
 	);
@@ -88,9 +74,21 @@ function Page({ searchParams }: PageProps) {
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumb}>
 			<div className="space-y-4 px-4 py-4">
-				<InventoryStat data={inventoryStatData} />
-				<QuickActions data={content} />
-				<InventoryDashboard content={content} paginationMeta={paginationMeta} />
+				<InventoryStat data={{
+					totalItems: data.totalInventoryValue,
+					available: data.totalAvailableStock,
+					lowInStock: data.lowStockProductsCount,
+					outOfStock: data.outOfStockProducts,
+				}} />
+				<QuickActions data={[]} />
+				<InventoryDashboard content={[]} paginationMeta={{
+					first: true,
+					last: true,
+					pageNumber: 0,
+					pageSize: 0,
+					totalElements: 0,
+					totalPages: 0
+				}} />
 			</div>
 		</BreadCrumbWrapper>
 	);

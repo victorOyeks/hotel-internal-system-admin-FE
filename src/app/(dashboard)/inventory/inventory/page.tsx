@@ -1,7 +1,7 @@
 import { QuickActions } from "@/components/roles/inventory/dasboard";
 import { EnhancedInventoryDashboard } from "@/components/roles/inventory/enhanced-dashboard";
 import { InventoryOfficerInventoryPage } from "@/components/roles/inventory/inventory-page";
-import { $fetch, type InventoryItemResponse } from "@/lib/fetch";
+import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
@@ -59,54 +59,23 @@ function InventoryPage({ searchParams }: PageProps) {
 		queryClient.ensureQueryData({
 			queryKey: [query.section ?? "all", query],
 			queryFn: async () => {
-				switch (query.section) {
-					case "issued": {
-						const response = await $fetch("@get/api/inventories/issued", {
-							auth: { type: "Bearer", token },
-							query: {
-								...query,
-								page: query.page ? query.page - 1 : 0,
-							},
-							throw: true,
-						});
+				const response = await $fetch("@get/api/inventories/products", {
+					auth: { type: "Bearer", token },
+					query: {
+						page: query.page ? query.page - 1 : 0,
+					},
+					throw: true,
+				});
 
-						return response.data;
-					}
-					case "stock-request": {
-						const response = await $fetch(
-							"@get/api/inventories/items/restock-requests",
-							{
-								auth: { type: "Bearer", token },
-								query: {
-									...query,
-									page: query.page ? query.page - 1 : 0,
-								},
-								throw: true,
-							},
-						);
-
-						return response.data;
-					}
-					default: {
-						const response = await $fetch("@get/api/inventories/items", {
-							auth: { type: "Bearer", token },
-							query: {
-								...query,
-								page: query.page ? query.page - 1 : 0,
-							},
-							throw: true,
-						});
-
-						return response.data;
-					}
-				}
-			},
-		}),
+				return response.data;
+			}
+		},
+		),
 	);
 
 	return (
 		<div className="space-y-4 px-4 py-4">
-			<QuickActions data={content as InventoryItemResponse[]} />
+			<QuickActions data={content} />
 			<InventoryOfficerInventoryPage
 				breadcrumb={{
 					breadcrumbs: [],

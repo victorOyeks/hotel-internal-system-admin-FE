@@ -4,7 +4,7 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 
 import type {
-  InventoryItemResponse,
+  InventoryProductResponse,
   InventoryRestockRequest,
   Pagination,
 } from "@/lib/fetch";
@@ -92,7 +92,7 @@ const InventoryFilter = ({
     const hasActiveFilters = !!(tempFilters.category || tempFilters.availability || tempFilters.department);
     const hasAppliedFilters = !!(queryState.category || queryState.availability || queryState.department);
     const appliedFiltersCount = [queryState.category, queryState.availability, queryState.department].filter(Boolean).length;
-    
+
     return {
       hasActiveFilters,
       hasAppliedFilters,
@@ -279,7 +279,7 @@ function InventoryTableToolbar({
     category: ParserBuilder<string>;
     availability: ParserBuilder<string>;
     department: ParserBuilder<string>;
-}>;
+  }>;
 }) {
 
   const resetToSection = (section: SectionType) => {
@@ -355,7 +355,7 @@ function InventoryTableToolbar({
               setQueryState={setQuery}
             />
           </TableFilter>
-          
+
           {/* Applied Filters Display */}
           {(query.category || query.availability || query.department) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -420,7 +420,7 @@ function InventoryOfficerInventoryTable({
   serverSection,
   paginationMeta,
 }: {
-  data: InventoryItemResponse[] | InventoryRestockRequest[];
+  data: InventoryProductResponse[] | InventoryRestockRequest[];
   paginationMeta: Pagination;
   serverSection: SectionType;
 }) {
@@ -480,7 +480,7 @@ function InventoryOfficerInventoryTable({
       case "issued": {
         return (
           <IssuedItemsTable
-            data={data as InventoryItemResponse[]}
+            data={data as InventoryProductResponse[]}
             paginationMeta={paginationMeta}
           />
         );
@@ -496,7 +496,7 @@ function InventoryOfficerInventoryTable({
       default: {
         return (
           <AllItemsTable
-            data={data as InventoryItemResponse[]}
+            data={data as InventoryProductResponse[]}
             paginationMeta={paginationMeta}
           />
         );
@@ -527,7 +527,7 @@ export function InventoryOfficerInventoryPage({
     title: string;
     breadcrumbs: Breadcrumb[];
   };
-  data: InventoryItemResponse[] | InventoryRestockRequest[];
+  data: InventoryProductResponse[] | InventoryRestockRequest[];
   paginationMeta: Pagination;
 }) {
   const setBreadcrumb = useSetAtom(breadcrumbAtom);

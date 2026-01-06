@@ -3,6 +3,7 @@
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import type {
+	InventoryProductResponse,
 	InventoryResponse,
 	InventorySummaryResponse,
 	Pagination,
@@ -247,7 +248,7 @@ function IssueStockItemForm({
 	setOpen,
 }: {
 	setOpen: (open: boolean) => void;
-	data: InventoryResponse[];
+	data: InventoryProductResponse[];
 }) {
 	const form = useForm({
 		resolver: zodResolver(issueStockItemFormSchema),
@@ -304,7 +305,7 @@ function IssueStockItemForm({
 							<FormLabel>Item</FormLabel>
 							<FormControl>
 								<ItemSelectorCombobox
-									items={data}
+									items={[]}
 									value={field.value}
 									onValueChange={field.onChange}
 								/>
@@ -497,7 +498,7 @@ function AddNewItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	);
 }
 
-export function QuickActions({ data }: { data: InventoryResponse[] }) {
+export function QuickActions({ data }: { data: InventoryProductResponse[] }) {
 	const [open, setOpen] = useState<false | string>(false);
 	return (
 		<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

@@ -935,6 +935,67 @@ export type InventoryGRNStatistics = z.infer<
 	typeof ApiResponseInventoryGRNStatistics
 >["data"];
 
+// Reusable schema for product entries
+const productSummarySchema = z.object({
+	productId: z.string(),
+	sku: z.string(),
+	name: z.string(),
+	category: z.string(),
+	currentStock: z.number().min(0),
+	reorderLevel: z.number().min(0),
+	locationCode: z.string(),
+	value: z.number().nonnegative(),
+});
+
+// Reusable schema for activity entries
+const recentActivitySchema = z.object({
+	activityType: z.string(),
+	referenceNumber: z.string(),
+	description: z.string(),
+	activityDate: z.string().datetime(), // Validates ISO 8601 strings
+	performedBy: z.string(),
+});
+
+// Main Inventory Dashboard Schema
+export const inventoryDashboardSchema = z.object({
+	// Summary Metrics
+	totalProducts: z.number().int().nonnegative(),
+	activeProducts: z.number().int().nonnegative(),
+	lowStockProductsCount: z.number().int().nonnegative(),
+	outOfStockProducts: z.number().int().nonnegative(),
+	expiringSoonProductsCount: z.number().int().nonnegative(),
+
+	// Financials & Stock Totals
+	totalInventoryValue: z.number().nonnegative(),
+	totalStockOnHand: z.number().nonnegative(),
+	totalReservedStock: z.number().nonnegative(),
+	totalAvailableStock: z.number().nonnegative(),
+
+	// Purchase & GRNs
+	pendingPurchaseOrders: z.number().int().nonnegative(),
+	approvedPurchaseOrders: z.number().int().nonnegative(),
+	totalPurchaseOrderValue: z.number().nonnegative(),
+	pendingGRNs: z.number().int().nonnegative(),
+	todayGRNsReceived: z.number().int().nonnegative(),
+	todayGRNsValue: z.number().nonnegative(),
+
+	// Operations
+	pendingAdjustments: z.number().int().nonnegative(),
+	todayAdjustments: z.number().int().nonnegative(),
+	scheduledStockTakes: z.number().int().nonnegative(),
+	inProgressStockTakes: z.number().int().nonnegative(),
+	pendingReviewStockTakes: z.number().int().nonnegative(),
+
+	// Arrays
+	lowStockProducts: z.array(productSummarySchema),
+	fastMovingProducts: z.array(productSummarySchema),
+	slowMovingProducts: z.array(productSummarySchema),
+	expiringSoonProducts: z.array(productSummarySchema),
+	recentActivities: z.array(recentActivitySchema),
+});
+
+export type InventoryDashboard = z.infer<typeof inventoryDashboardSchema>;
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -1210,19 +1271,10 @@ export const schema = createSchema({
 	},
 
 	// Inventory Officer APIs
-	"@get/api/inventories/items": {
-		query: z
-			.object({
-				searchName: z.string().nullable(),
-				customId: z.string().nullable(),
-				category: z.string().nullable(),
-				unit: z.string().nullable(),
-				availability: z.string().nullable(),
-				page: z.coerce.number().default(0),
-				size: z.coerce.number().default(10),
-			})
-			.partial(),
-		output: ApiResponseInventoryItemResponse,
+	"@get/api/inventories/dashboard": {
+		output: ApiResponseObject.extend({
+			data: inventoryDashboardSchema,
+		}),
 	},
 	"@post/api/inventories/items": {
 		input: z.object({
@@ -2057,8 +2109,8 @@ export const $fetch = createFetch({
 				? typeof error.data === "string"
 					? error.data
 					: error.data.message ||
-						(error.cause as Error)?.message ||
-						String(error)
+					(error.cause as Error)?.message ||
+					String(error)
 				: error.error,
 			{
 				cause: error,
