@@ -1,6 +1,5 @@
 import {
 	InventoryDashboard,
-	InventoryStat,
 	QuickActions,
 } from "@/components/roles/inventory/dasboard";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
@@ -74,21 +73,8 @@ function Page({ searchParams }: PageProps) {
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumb}>
 			<div className="space-y-4 px-4 py-4">
-				<InventoryStat data={{
-					totalItems: data.totalInventoryValue,
-					available: data.totalAvailableStock,
-					lowInStock: data.lowStockProductsCount,
-					outOfStock: data.outOfStockProducts,
-				}} />
 				<QuickActions data={[]} />
-				<InventoryDashboard content={[]} paginationMeta={{
-					first: true,
-					last: true,
-					pageNumber: 0,
-					pageSize: 0,
-					totalElements: 0,
-					totalPages: 0
-				}} />
+				<InventoryDashboard dashboardData={data} />
 			</div>
 		</BreadCrumbWrapper>
 	);

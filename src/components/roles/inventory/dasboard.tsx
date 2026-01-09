@@ -1,12 +1,11 @@
 "use client";
 
-import { TableFilter } from "@/components/shared/table-filter";
+
 import { Button } from "@/components/ui/button";
 import type {
 	InventoryProductResponse,
 	InventoryResponse,
 	InventorySummaryResponse,
-	Pagination,
 } from "@/lib/fetch";
 import {
 	ArchiveIcon,
@@ -21,7 +20,7 @@ import {
 	TriangleAlert,
 	TruckIcon,
 } from "lucide-react";
-import { InventoryOfficerInventoryTable } from "./dashboard-table";
+
 import {
 	useEffect,
 	useState,
@@ -53,7 +52,7 @@ import { toast } from "sonner";
 import { atom, useAtom, useSetAtom } from "jotai";
 import { addToInventory, issueStockItem } from "@/lib/inventory-actions";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
-import Link from "next/link";
+
 import {
 	Popover,
 	PopoverContent,
@@ -69,7 +68,7 @@ import {
 	CommandItem,
 } from "@/components/ui/command";
 import { useQueryState, parseAsString } from "nuqs";
-import { EnhancedInventoryDashboard } from "./enhanced-dashboard";
+
 
 const successDialogAtom = atom({
 	show: false,
@@ -273,11 +272,11 @@ function ItemSelectorCombobox({
 }
 
 function IssueStockItemForm({
-	data,
+	_data,
 	setOpen,
 }: {
 	setOpen: (open: boolean) => void;
-	data: InventoryProductResponse[];
+	_data: InventoryProductResponse[];
 }) {
 	const form = useForm({
 		resolver: zodResolver(issueStockItemFormSchema),
@@ -555,7 +554,7 @@ export function QuickActions({ data }: { data: InventoryProductResponse[] }) {
 						<DialogDescription className="sr-only">{title}</DialogDescription>
 						{Component && (
 							<Component
-								data={data}
+								_data={data}
 								setOpen={(open) => setOpen(open ? key : false)}
 							/>
 						)}
@@ -585,46 +584,359 @@ function BaseModal({
 	);
 }
 
-function InventoryDashboardToolbar() {
+// Helper component for stat cards
+function StatCard({
+	icon,
+	label,
+	value,
+	bgColor,
+	iconColor,
+}: {
+	icon: ReactNode;
+	label: string;
+	value: string | number;
+	bgColor: string;
+	iconColor: string;
+}) {
 	return (
-		<section className="flex flex-row items-center justify-between mb-4">
-			<div className="flex items-center gap-x-2">
-				<h2 className="text-lg font-semibold">Inventory</h2>
-				<TableFilter>
-					<form className="flex flex-col gap-2">
-						<label htmlFor="" className="text-sm font-medium">
-							Status
-						</label>
-						<select className="border border-gray-300 rounded-md p-1">
-							<option value="all">All</option>
-							<option value="available">Available</option>
-							<option value="low-in-stock">Low in Stock</option>
-							<option value="out-of-stock">Out of Stock</option>
-						</select>
-					</form>
-				</TableFilter>
+		<div className="flex flex-row items-center gap-x-2 bg-white p-2.5 rounded-2xl border border-primary-5/50">
+			<div
+				className={`size-10 aspect-square ${bgColor} rounded-full flex items-center justify-center`}
+			>
+				<div className={iconColor}>{icon}</div>
 			</div>
+			<div className="flex flex-col flex-1">
+				<h3 className="text-xs text-muted-foreground">{label}</h3>
+				<p className="text-xl font-semibold leading-tight">{value}</p>
+			</div>
+		</div>
+	);
+}
 
-			<Button variant={"link"} size={"sm"} asChild>
-				<Link href="/dashboard/inventory">View All</Link>
-			</Button>
+// Helper component for product lists
+function ProductListCard({
+	title,
+	products,
+	emptyMessage,
+}: {
+	title: string;
+	products: Array<{
+		productId: string;
+		sku: string;
+		name: string;
+		category: string;
+		currentStock: number;
+		reorderLevel: number;
+		locationCode: string;
+		value: number;
+	}>;
+	emptyMessage: string;
+}) {
+	return (
+		<section className="bg-white rounded-2xl border border-primary-5/50 overflow-hidden">
+			<div className="px-4 py-3 border-b bg-gray-50">
+				<h3 className="text-sm font-semibold">{title}</h3>
+			</div>
+			<div className="divide-y max-h-80 overflow-y-auto">
+				{products.length === 0 ? (
+					<div className="p-4 text-sm text-gray-500 text-center">
+						{emptyMessage}
+					</div>
+				) : (
+					products.map((product) => (
+						<div
+							key={product.productId}
+							className="p-3 hover:bg-gray-50 transition-colors"
+						>
+							<div className="flex items-start justify-between gap-2">
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center gap-2 mb-1">
+										<span className="text-xs font-medium text-gray-900 truncate">
+											{product.name}
+										</span>
+										<span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+											{product.sku}
+										</span>
+									</div>
+									<p className="text-xs text-gray-500">{product.category}</p>
+									<div className="flex items-center gap-3 mt-1">
+										<span className="text-xs text-gray-600">
+											Stock: <span className="font-medium">{product.currentStock}</span>
+										</span>
+										<span className="text-xs text-gray-600">
+											Reorder: <span className="font-medium">{product.reorderLevel}</span>
+										</span>
+										<span className="text-xs text-gray-600">
+											Loc: <span className="font-medium">{product.locationCode}</span>
+										</span>
+									</div>
+								</div>
+								<div className="text-right">
+									<p className="text-sm font-semibold text-gray-900">
+										${product.value.toLocaleString()}
+									</p>
+								</div>
+							</div>
+						</div>
+					))
+				)}
+			</div>
 		</section>
 	);
 }
 
+
+
 export function InventoryDashboard({
-	content,
-	paginationMeta,
+	dashboardData,
 }: {
-	content: InventoryResponse[];
-	paginationMeta: Pagination;
+	dashboardData: import("@/lib/fetch").InventoryDashboard;
 }) {
 	const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
 
 	return (
-		<div>
-			<InventoryDashboardToolbar />
-			<EnhancedInventoryDashboard />
+		<div className="space-y-6">
+			{/* Summary Metrics */}
+			<section>
+				<h2 className="text-lg font-semibold mb-4">Inventory Overview</h2>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+					<StatCard
+						icon={<ArchiveIcon className="size-5" />}
+						label="Total Products"
+						value={dashboardData.totalProducts}
+						bgColor="bg-blue-600/10"
+						iconColor="text-blue-600"
+					/>
+					<StatCard
+						icon={<CheckIcon className="size-5" />}
+						label="Active Products"
+						value={dashboardData.activeProducts}
+						bgColor="bg-green-600/10"
+						iconColor="text-green-600"
+					/>
+					<StatCard
+						icon={<TriangleAlert className="size-5" />}
+						label="Low Stock"
+						value={dashboardData.lowStockProductsCount}
+						bgColor="bg-yellow-600/10"
+						iconColor="text-yellow-600"
+					/>
+					<StatCard
+						icon={<TriangleAlert className="size-5" />}
+						label="Out of Stock"
+						value={dashboardData.outOfStockProducts}
+						bgColor="bg-red-600/10"
+						iconColor="text-red-600"
+					/>
+				</div>
+			</section>
+
+			{/* Stock Totals */}
+			<section>
+				<h2 className="text-lg font-semibold mb-4">Stock Summary</h2>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+					<StatCard
+						icon={<ArchiveIcon className="size-5" />}
+						label="Total Value"
+						value={`$${dashboardData.totalInventoryValue.toLocaleString()}`}
+						bgColor="bg-purple-600/10"
+						iconColor="text-purple-600"
+					/>
+					<StatCard
+						icon={<PackageCheckIcon className="size-5" />}
+						label="Stock on Hand"
+						value={dashboardData.totalStockOnHand.toLocaleString()}
+						bgColor="bg-indigo-600/10"
+						iconColor="text-indigo-600"
+					/>
+					<StatCard
+						icon={<ClipboardListIcon className="size-5" />}
+						label="Reserved Stock"
+						value={dashboardData.totalReservedStock.toLocaleString()}
+						bgColor="bg-orange-600/10"
+						iconColor="text-orange-600"
+					/>
+					<StatCard
+						icon={<CheckIcon className="size-5" />}
+						label="Available Stock"
+						value={dashboardData.totalAvailableStock.toLocaleString()}
+						bgColor="bg-green-600/10"
+						iconColor="text-green-600"
+					/>
+				</div>
+			</section>
+
+			{/* Purchase Orders & GRNs */}
+			<section>
+				<h2 className="text-lg font-semibold mb-4">Purchase Orders & GRNs</h2>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+					<StatCard
+						icon={<FileTextIcon className="size-5" />}
+						label="Pending POs"
+						value={dashboardData.pendingPurchaseOrders}
+						bgColor="bg-amber-600/10"
+						iconColor="text-amber-600"
+					/>
+					<StatCard
+						icon={<CheckIcon className="size-5" />}
+						label="Approved POs"
+						value={dashboardData.approvedPurchaseOrders}
+						bgColor="bg-green-600/10"
+						iconColor="text-green-600"
+					/>
+					<StatCard
+						icon={<TruckIcon className="size-5" />}
+						label="Total PO Value"
+						value={`$${dashboardData.totalPurchaseOrderValue.toLocaleString()}`}
+						bgColor="bg-blue-600/10"
+						iconColor="text-blue-600"
+					/>
+					<StatCard
+						icon={<ClipboardListIcon className="size-5" />}
+						label="Pending GRNs"
+						value={dashboardData.pendingGRNs}
+						bgColor="bg-yellow-600/10"
+						iconColor="text-yellow-600"
+					/>
+					<StatCard
+						icon={<PackageCheckIcon className="size-5" />}
+						label="Today's GRNs"
+						value={dashboardData.todayGRNsReceived}
+						bgColor="bg-green-600/10"
+						iconColor="text-green-600"
+					/>
+					<StatCard
+						icon={<FileTextIcon className="size-5" />}
+						label="Today's GRN Value"
+						value={`$${dashboardData.todayGRNsValue.toLocaleString()}`}
+						bgColor="bg-purple-600/10"
+						iconColor="text-purple-600"
+					/>
+				</div>
+			</section>
+
+			{/* Operations */}
+			<section>
+				<h2 className="text-lg font-semibold mb-4">Operations</h2>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+					<StatCard
+						icon={<ClipboardListIcon className="size-5" />}
+						label="Pending Adjustments"
+						value={dashboardData.pendingAdjustments}
+						bgColor="bg-pink-600/10"
+						iconColor="text-pink-600"
+					/>
+					<StatCard
+						icon={<CheckIcon className="size-5" />}
+						label="Today's Adjustments"
+						value={dashboardData.todayAdjustments}
+						bgColor="bg-cyan-600/10"
+						iconColor="text-cyan-600"
+					/>
+					<StatCard
+						icon={<ClipboardListIcon className="size-5" />}
+						label="Scheduled Stock Takes"
+						value={dashboardData.scheduledStockTakes}
+						bgColor="bg-teal-600/10"
+						iconColor="text-teal-600"
+					/>
+					<StatCard
+						icon={<Loader2Icon className="size-5" />}
+						label="In Progress Stock Takes"
+						value={dashboardData.inProgressStockTakes}
+						bgColor="bg-orange-600/10"
+						iconColor="text-orange-600"
+					/>
+					<StatCard
+						icon={<FileTextIcon className="size-5" />}
+						label="Pending Review"
+						value={dashboardData.pendingReviewStockTakes}
+						bgColor="bg-violet-600/10"
+						iconColor="text-violet-600"
+					/>
+					<StatCard
+						icon={<TriangleAlert className="size-5" />}
+						label="Expiring Soon"
+						value={dashboardData.expiringSoonProductsCount}
+						bgColor="bg-red-600/10"
+						iconColor="text-red-600"
+					/>
+				</div>
+			</section>
+
+			{/* Product Lists in Grid */}
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+				{/* Low Stock Products */}
+				{dashboardData.lowStockProducts.length > 0 && (
+					<ProductListCard
+						title="Low Stock Products"
+						products={dashboardData.lowStockProducts}
+						emptyMessage="No low stock products"
+					/>
+				)}
+
+				{/* Fast Moving Products */}
+				{(dashboardData.fastMovingProducts ?? []).length > 0 && (
+					<ProductListCard
+						title="Fast Moving Products"
+						products={(dashboardData.fastMovingProducts ?? [])}
+						emptyMessage="No fast moving products"
+					/>
+				)}
+
+				{/* Slow Moving Products */}
+				{(dashboardData.slowMovingProducts ?? []).length > 0 && (
+					<ProductListCard
+						title="Slow Moving Products"
+						products={(dashboardData.slowMovingProducts ?? [])}
+						emptyMessage="No slow moving products"
+					/>
+				)}
+
+				{/* Expiring Soon Products */}
+				{dashboardData.expiringSoonProducts.length > 0 && (
+					<ProductListCard
+						title="Expiring Soon"
+						products={dashboardData.expiringSoonProducts}
+						emptyMessage="No products expiring soon"
+					/>
+				)}
+			</div>
+
+			{/* Recent Activities */}
+			{(dashboardData.recentActivities ?? []).length > 0 && (
+				<section>
+					<h2 className="text-lg font-semibold mb-4">Recent Activities</h2>
+					<div className="bg-white rounded-2xl border border-primary-5/50 overflow-hidden">
+						<div className="divide-y">
+							{dashboardData.recentActivities.map((activity, index) => (
+								<div key={index} className="p-4 hover:bg-gray-50 transition-colors">
+									<div className="flex items-start justify-between gap-4">
+										<div className="flex-1">
+											<div className="flex items-center gap-2 mb-1">
+												<span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+													{activity.activityType}
+												</span>
+												<span className="text-xs text-gray-500">
+													{activity.referenceNumber}
+												</span>
+											</div>
+											<p className="text-sm text-gray-900">{activity.description}</p>
+											<p className="text-xs text-gray-500 mt-1">
+												By {activity.performedBy}
+											</p>
+										</div>
+										<div className="text-xs text-gray-400 whitespace-nowrap">
+											{new Date(activity.activityDate).toLocaleString()}
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				</section>
+			)}
+
 			<SuccessDialog
 				open={successDialogOpen.show}
 				setOpenAction={(show) =>
