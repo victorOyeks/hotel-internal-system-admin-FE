@@ -68,7 +68,12 @@ export const managerOwnerLinks = [
 
 export const inventoryOfficerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
+	{
+		title: "Products",
+		icon: <PackageIcon />,
+		url: "/dashboard/products",
+	},
+	// { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Supplies & Deliveries",
@@ -85,11 +90,6 @@ export const inventoryOfficerLinks = [
 		title: "Locations",
 		icon: <PinIcon />,
 		url: "/dashboard/locations",
-	},
-	{
-		title: "Products",
-		icon: <PackageIcon />,
-		url: "/dashboard/products",
 	},
 	{
 		title: "Purchase Orders",

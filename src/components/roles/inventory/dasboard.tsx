@@ -13,6 +13,8 @@ import {
 	CheckIcon,
 	ChevronRightIcon,
 	ChevronsUpDownIcon,
+	ClipboardListIcon,
+	FileTextIcon,
 	Loader2Icon,
 	PackageCheckIcon,
 	PlusIcon,
@@ -67,6 +69,7 @@ import {
 	CommandItem,
 } from "@/components/ui/command";
 import { useQueryState, parseAsString } from "nuqs";
+import { EnhancedInventoryDashboard } from "./enhanced-dashboard";
 
 const successDialogAtom = atom({
 	show: false,
@@ -127,14 +130,40 @@ export function InventoryStat({ data }: { data: InventorySummaryResponse }) {
 					</p>
 				</div>
 			</div>
+
+			<div className="flex flex-row items-center gap-x-2 bg-white p-2.5 rounded-2xl border border-primary-5/50">
+				<div className="size-10 aspect-square bg-purple-600/10 rounded-full flex items-center justify-center">
+					<ClipboardListIcon className="size-6 text-purple-600" />
+				</div>
+
+				<div className="flex flex-col flex-1">
+					<h3 className="text-xs text-muted-foreground">Pending PO Approvals</h3>
+					<p className="text-xl font-semibold leading-tight">
+						{data.outOfStock}
+					</p>
+				</div>
+			</div>
+
+			<div className="flex flex-row items-center gap-x-2 bg-white p-2.5 rounded-2xl border border-primary-5/50">
+				<div className="size-10 aspect-square bg-pink-600/10 rounded-full flex items-center justify-center">
+					<FileTextIcon className="size-6 text-pink-600" />
+				</div>
+
+				<div className="flex flex-col flex-1">
+					<h3 className="text-xs text-muted-foreground">Unposted GRNs</h3>
+					<p className="text-xl font-semibold leading-tight">
+						{data.outOfStock}
+					</p>
+				</div>
+			</div>
 		</div>
 	);
 }
 
 const actions = [
 	{
-		title: "Add New Stock Item",
-		heading: "Add new item",
+		title: "Add New Product",
+		heading: "Add new Product",
 		Component: AddNewItemForm,
 		icon: PlusIcon,
 		key: "add-stock-item",
@@ -595,10 +624,7 @@ export function InventoryDashboard({
 	return (
 		<div>
 			<InventoryDashboardToolbar />
-			<InventoryOfficerInventoryTable
-				data={content}
-				paginationMeta={paginationMeta}
-			/>
+			<EnhancedInventoryDashboard />
 			<SuccessDialog
 				open={successDialogOpen.show}
 				setOpenAction={(show) =>

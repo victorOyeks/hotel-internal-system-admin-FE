@@ -952,9 +952,11 @@ const recentActivitySchema = z.object({
 	activityType: z.string(),
 	referenceNumber: z.string(),
 	description: z.string(),
-	activityDate: z.string().datetime(), // Validates ISO 8601 strings
+	activityDate: z.iso.datetime(), // Validates ISO 8601 strings
 	performedBy: z.string(),
-});
+})
+
+export type RecentActivity = z.infer<typeof recentActivitySchema>
 
 // Main Inventory Dashboard Schema
 export const inventoryDashboardSchema = z.object({
