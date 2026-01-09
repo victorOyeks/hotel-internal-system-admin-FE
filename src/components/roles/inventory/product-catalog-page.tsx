@@ -48,6 +48,8 @@ import {
 } from "@tanstack/react-table";
 import {
 	ApiInputInventoryProduct,
+	type InventoryProductStatistics,
+	type Pagination,
 	type InventoryProductResponse,
 } from "@/lib/fetch";
 import { DataTablePagination } from "@/components/shared/pagination";
@@ -196,9 +198,13 @@ const columns = [
 ];
 
 export function ProductCatalogPage({
+	productsStats,
 	products,
+	paginationMeta,
 }: {
 	products: InventoryProductResponse[];
+	productsStats: InventoryProductStatistics;
+	paginationMeta: Pagination
 }) {
 	const [pagination, setPagination] = usePaginationSearchParams();
 	const table = useReactTable({
@@ -207,6 +213,8 @@ export function ProductCatalogPage({
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		onPaginationChange: setPagination,
+		manualPagination: true,
+		pageCount: paginationMeta.totalPages,
 		state: {
 			pagination,
 		},
@@ -250,7 +258,7 @@ export function ProductCatalogPage({
 					title="Total products"
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(products.length)}
+					}).format(productsStats.totalProducts)}
 				/>
 
 				<StatCard
@@ -259,7 +267,7 @@ export function ProductCatalogPage({
 					title="Active products"
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(products.filter((p) => p.status === "ACTIVE").length)}
+					}).format(productsStats.activeProducts)}
 				/>
 
 				<StatCard
@@ -268,7 +276,7 @@ export function ProductCatalogPage({
 					icon={<CalendarIcon />}
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(products.filter((p) => p.trackBatches).length)}
+					}).format(productsStats.batchTrackedProducts)}
 				/>
 
 				<StatCard
@@ -277,7 +285,7 @@ export function ProductCatalogPage({
 					icon={<CalendarIcon />}
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(products.filter((p) => p.trackExpiry).length)}
+					}).format(productsStats.expiryTrackedProducts)}
 				/>
 			</div>
 
@@ -348,9 +356,9 @@ export function ProductCatalogPage({
 											{header.isPlaceholder
 												? null
 												: flexRender(
-														header.column.columnDef.header,
-														header.getContext(),
-													)}
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
 										</TableHead>
 									);
 								})}

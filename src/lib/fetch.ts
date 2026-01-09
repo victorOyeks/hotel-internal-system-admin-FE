@@ -866,6 +866,26 @@ export type InventoryProductResponse = z.infer<
 	typeof ApiResponseInventoryProductResponse
 >["data"]["content"][number];
 
+const InventoryProductsStatistics = z.object({
+	totalProducts: z.number(),
+	activeProducts: z.number(),
+	inactiveProducts: z.number(),
+	discontinuedProducts: z.number(),
+	batchTrackedProducts: z.number(),
+	expiryTrackedProducts: z.number(),
+	serialTrackedProducts: z.number(),
+	perishableProducts: z.number(),
+	categoryBreakdown: z.record(z.string(), z.number()),
+})
+
+const ApiResponseInventoryProductStatistics = ApiResponseObject.extend({
+	data: InventoryProductsStatistics
+})
+
+export type InventoryProductStatistics = z.infer<
+	typeof InventoryProductsStatistics
+>;
+
 export const ApiInputInventoryProduct = z.object({
 	sku: z.string().min(1, "SKU is required"),
 	barcode: z.string().optional(),
@@ -1400,6 +1420,9 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseInventoryProductResponse,
+	},
+	"@get/api/inventories/products/statistics": {
+		output: ApiResponseInventoryProductStatistics,
 	},
 	"@get/api/inventories/deliveries": {
 		query: z
