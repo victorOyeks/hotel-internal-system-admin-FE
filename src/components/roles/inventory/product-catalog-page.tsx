@@ -253,7 +253,7 @@ export function ProductCatalogPage({
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Product Catalog</h1>
+					<h1 className="text-3xl font-semibold tracking-tight">Product Catalog</h1>
 					<p className="text-muted-foreground mt-1">
 						Manage your product inventory and track batches
 					</p>
@@ -261,7 +261,7 @@ export function ProductCatalogPage({
 				<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
 					<DialogTrigger asChild>
 						<Button>
-							<PlusIcon className="w-4 h-4 mr-2" />
+							<PlusIcon />
 							Add Product
 						</Button>
 					</DialogTrigger>
@@ -1030,25 +1030,32 @@ function ProductDetailsView({
 function ProductActions({ product }: { product: InventoryProductResponse }) {
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 
 	return (
 		<>
-			<DropdownMenu>
+			<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
 				<DropdownMenuTrigger asChild>
-					<Button variant="ghost" size="sm">
-						<MoreVerticalIcon className="h-4 w-4" />
+					<Button variant="ghost" size="icon">
+						<MoreVerticalIcon />
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-						<EditIcon className="mr-2 h-4 w-4" />
+					<DropdownMenuItem onClick={() => {
+						setIsMenuOpen(false)
+						setIsEditOpen(true)
+					}}>
+						<EditIcon />
 						Edit
 					</DropdownMenuItem>
 					<DropdownMenuItem
-						onClick={() => setIsDeleteOpen(true)}
-						className="text-destructive focus:text-destructive"
+						onClick={() => {
+							setIsMenuOpen(false)
+							setIsDeleteOpen(true)
+						}}
+						variant="destructive"
 					>
-						<TrashIcon className="mr-2 h-4 w-4" />
+						<TrashIcon />
 						Delete
 					</DropdownMenuItem>
 				</DropdownMenuContent>
@@ -1056,7 +1063,7 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 
 			{/* Edit Modal */}
 			<Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>Edit Product</DialogTitle>
 						<DialogDescription>
@@ -1155,7 +1162,7 @@ function EditProductForm({
 	return (
 		<Form {...form}>
 			<form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
-				<ScrollArea className="pr-4 max-h-[60vh]">
+				<ScrollArea className="max-h-[60vh]">
 					<div className="space-y-6">
 						{/* Basic Information */}
 						<div className="space-y-4">
@@ -1232,7 +1239,7 @@ function EditProductForm({
 						Cancel
 					</Button>
 					<Button type="submit" disabled={isPending}>
-						{isPending && <span className="mr-2">Updating...</span>}
+						{isPending && <span>Updating...</span>}
 						{!isPending && "Update Product"}
 					</Button>
 				</div>
