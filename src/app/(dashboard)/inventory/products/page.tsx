@@ -26,7 +26,10 @@ function Page({ searchParams }: PageProps) {
 			queryKey: ["inventory", "products"],
 			queryFn: async ({ signal }) => {
 				const response = await $fetch("@get/api/inventories/products", {
-					query,
+					query: {
+						...query,
+						page: query.page < 1 ? query.page : query.page - 1
+					},
 					auth: {
 						type: "Bearer",
 						token,
