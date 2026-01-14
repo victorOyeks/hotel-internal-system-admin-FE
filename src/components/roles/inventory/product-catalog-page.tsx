@@ -1152,13 +1152,9 @@ function EditProductForm({
 		},
 	});
 
-	function onSubmit(values: z.infer<typeof ApiInputInventoryProduct>) {
-		mutate(values);
-	}
-
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+			<form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
 				<ScrollArea className="pr-4 max-h-[60vh]">
 					<div className="space-y-6">
 						{/* Basic Information */}
