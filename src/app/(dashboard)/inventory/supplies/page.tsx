@@ -8,6 +8,7 @@ import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
 import {
 	createLoader,
+	parseAsString,
 	type SearchParams,
 } from "nuqs/server";
 import { use } from "react";
@@ -25,7 +26,12 @@ type PageProps = {
 };
 
 const loadSearchParams = createLoader({
+	search: parseAsString,
 	...paginationSearchParams,
+}, {
+	urlKeys: {
+		search: "product-list:search"
+	}
 });
 
 function Page({ searchParams }: PageProps) {
@@ -49,11 +55,28 @@ function Page({ searchParams }: PageProps) {
 			},
 		}),
 	);
+
+	const { data: productsList } = use(
+		queryClient.ensureQueryData({
+			queryKey: ["products"],
+			queryFn: async () => {
+				const response = await $fetch("@get/api/inventories/products/list", {
+					auth: { type: "Bearer", token },
+					throw: true,
+					query: {
+						search: query.search,
+					},
+				});
+				return response;
+			},
+		}),
+	)
 	return (
 		<SuppliesPage
 			breadcrumb={breadcrumb}
 			data={content}
 			paginationMeta={paginationMeta}
+			productsList={productsList}
 		/>
 	);
 }

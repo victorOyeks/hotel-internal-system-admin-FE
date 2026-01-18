@@ -113,3 +113,30 @@ export async function addGRNItem(payload: unknown) {
 		};
 	}
 }
+
+export async function addSupplier(payload: {
+	name: string;
+	email: string;
+	phone: string;
+	productIds: string[];
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/suppliers", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to add supplier",
+		};
+	}
+}

@@ -1038,6 +1038,13 @@ export const inventoryDashboardSchema = z.object({
 
 export type InventoryDashboard = z.infer<typeof inventoryDashboardSchema>;
 
+export type InventoryProduct = {
+	id: string,
+	sku: string,
+	name: string,
+	category: z.infer<typeof InventoryProductsCategory>
+}
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -1378,6 +1385,15 @@ export const schema = createSchema({
 			.partial(),
 		output: ApiResponseInventorySuppliers,
 	},
+	"@post/api/inventories/suppliers": {
+		input: z.object({
+			name: z.string(),
+			email: z.string(),
+			phone: z.string(),
+			productIds: z.string().array(),
+		}),
+		output: ApiResponseInventorySupplierResponse,
+	},
 	"@get/api/inventories/suppliers/:supplierId": {
 		params: z.object({ supplierId: z.string() }),
 		output: ApiResponseInventorySupplierResponse,
@@ -1460,6 +1476,21 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseInventoryProductResponse,
+	},
+	"@get/api/inventories/products/list": {
+		query: z
+			.object({
+				search: z.string().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				id: z.string(),
+				sku: z.string(),
+				name: z.string(),
+				category: InventoryProductsCategory
+			}).array(),
+		}),
 	},
 	"@get/api/inventories/products/statistics": {
 		output: ApiResponseInventoryProductStatistics,
