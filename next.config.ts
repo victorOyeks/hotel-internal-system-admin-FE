@@ -1,4 +1,4 @@
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+// import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -14,5 +14,5 @@ const nextConfig: NextConfig = {
         ]
     }
 };
-initOpenNextCloudflareForDev();
+// initOpenNextCloudflareForDev();
 export default nextConfig;
