@@ -513,6 +513,57 @@ export type InventorySuppliers = z.infer<
 >["data"]["content"][number];
 export type InventorySupplierItem = InventorySuppliers["items"][number];
 
+const InventoryProductsCategory = z.enum([
+	"FOOD_FRESH",
+	"FOOD_FROZEN",
+	"FOOD_DRY_GOODS",
+	"BEVERAGES_ALCOHOLIC",
+	"BEVERAGES_NON_ALCOHOLIC",
+	"BEVERAGES_HOT",
+	"CLEANING_SUPPLIES",
+	"LAUNDRY_SUPPLIES",
+	"GUEST_AMENITIES",
+	"LINENS_TOWELS",
+	"MAINTENANCE_SUPPLIES",
+	"ELECTRICAL_SUPPLIES",
+	"PLUMBING_SUPPLIES",
+	"HVAC_SUPPLIES",
+	"STATIONERY",
+	"OFFICE_EQUIPMENT",
+	"PRINTING_SUPPLIES",
+	"MINIBAR_ITEMS",
+	"ROOM_SUPPLIES",
+	"WELCOME_ITEMS",
+	"KITCHEN_EQUIPMENT",
+	"TABLEWARE",
+	"DISPOSABLES",
+	"UNIFORMS",
+	"SAFETY_EQUIPMENT",
+	"MARKETING_MATERIALS",
+	"GENERAL_SUPPLIES",
+	"OTHER",
+]);
+
+const InventorySupplier = z.object({
+	id: z.string(),
+	name: z.string(),
+	email: z.string(),
+	phone: z.string(),
+	hotelId: z.string(),
+	productIds: z.string().array(),
+	products: z.object({
+		id: z.string(),
+		sku: z.string(),
+		name: z.string(),
+		category: InventoryProductsCategory
+	}).array()
+
+})
+
+const ApiResponseInventorySupplierResponse = ApiResponseObject.extend({
+	data: InventorySupplier
+});
+
 const ApiResponseInventoryDelivery = ApiResponseObject.extend({
 	data: Pagination.extend({
 		content: z.array(
@@ -763,37 +814,6 @@ const ApiResponseInventoryGRNResponse = ApiResponseObject.extend({
 export type InventoryGRNResponse = z.infer<
 	typeof ApiResponseInventoryGRNResponse
 >["data"]["content"][number];
-
-const InventoryProductsCategory = z.enum([
-	"FOOD_FRESH",
-	"FOOD_FROZEN",
-	"FOOD_DRY_GOODS",
-	"BEVERAGES_ALCOHOLIC",
-	"BEVERAGES_NON_ALCOHOLIC",
-	"BEVERAGES_HOT",
-	"CLEANING_SUPPLIES",
-	"LAUNDRY_SUPPLIES",
-	"GUEST_AMENITIES",
-	"LINENS_TOWELS",
-	"MAINTENANCE_SUPPLIES",
-	"ELECTRICAL_SUPPLIES",
-	"PLUMBING_SUPPLIES",
-	"HVAC_SUPPLIES",
-	"STATIONERY",
-	"OFFICE_EQUIPMENT",
-	"PRINTING_SUPPLIES",
-	"MINIBAR_ITEMS",
-	"ROOM_SUPPLIES",
-	"WELCOME_ITEMS",
-	"KITCHEN_EQUIPMENT",
-	"TABLEWARE",
-	"DISPOSABLES",
-	"UNIFORMS",
-	"SAFETY_EQUIPMENT",
-	"MARKETING_MATERIALS",
-	"GENERAL_SUPPLIES",
-	"OTHER",
-]);
 
 export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
@@ -1357,6 +1377,26 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseInventorySuppliers,
+	},
+	"@get/api/inventories/suppliers/:supplierId": {
+		params: z.object({ supplierId: z.string() }),
+		output: ApiResponseInventorySupplierResponse,
+	},
+	"@put/api/inventories/suppliers/:supplierId": {
+		params: z.object({ supplierId: z.string() }),
+		input: z.object({
+			name: z.string(),
+			email: z.string(),
+			phone: z.string(),
+			productIds: z.string().array(),
+		}),
+		output: ApiResponseInventorySupplierResponse,
+	},
+	"@delete/api/inventories/suppliers/:supplierId": {
+		params: z.object({ supplierId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: z.string(),
+		}),
 	},
 	"@get/api/inventories/locations": {
 		output: ApiResponseInventoryLocationResponse,

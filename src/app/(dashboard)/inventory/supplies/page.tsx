@@ -1,8 +1,6 @@
 import { SuppliesPage } from "@/components/roles/inventory/supplies-page";
 import {
 	$fetch,
-	type InventoryDelivery,
-	type InventorySuppliers,
 } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
@@ -10,7 +8,6 @@ import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
 import {
 	createLoader,
-	parseAsStringLiteral,
 	type SearchParams,
 } from "nuqs/server";
 import { use } from "react";
@@ -29,7 +26,6 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
-	section: parseAsStringLiteral(["DELIVERY-HISTORY"]),
 });
 
 function Page({ searchParams }: PageProps) {
@@ -37,23 +33,10 @@ function Page({ searchParams }: PageProps) {
 	const { token } = use(getCookieData())!;
 	const queryClient = getQueryClient();
 
-	const isDeliveryHistory = query.section === "DELIVERY-HISTORY";
-
 	const { content, ...paginationMeta } = use(
 		queryClient.ensureQueryData({
-			queryKey: [isDeliveryHistory ? "deliveries" : "supplies", query],
+			queryKey: ["supplies", query],
 			queryFn: async () => {
-				if (isDeliveryHistory) {
-					const response = await $fetch("@get/api/inventories/deliveries", {
-						auth: { type: "Bearer", token },
-						query: {
-							...query,
-							page: query.page ? query.page - 1 : 0,
-						},
-						throw: true,
-					});
-					return response.data;
-				}
 				const response = await $fetch("@get/api/inventories/suppliers", {
 					auth: { type: "Bearer", token },
 					query: {
@@ -69,10 +52,8 @@ function Page({ searchParams }: PageProps) {
 	return (
 		<SuppliesPage
 			breadcrumb={breadcrumb}
-			data={!isDeliveryHistory ? (content as InventorySuppliers[]) : []}
+			data={content}
 			paginationMeta={paginationMeta}
-			deliveries={isDeliveryHistory ? (content as InventoryDelivery[]) : []}
-			deliveriesPagination={isDeliveryHistory ? paginationMeta : undefined}
 		/>
 	);
 }
