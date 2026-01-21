@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,20 +34,15 @@ import {
 	PlusIcon,
 	ThermometerIcon,
 	DropletIcon,
-	UserIcon,
-	ClockIcon,
-	ShieldIcon,
 	EyeIcon,
 } from "lucide-react";
 import { StatSection } from "./locations";
 import {
-	LocationFilters,
 	LocationsToolbar,
 	type LocationType,
 	type StorageLocation,
 } from "./locations-filters";
 import {
-	type ColumnDef,
 	createColumnHelper,
 	getCoreRowModel,
 	getPaginationRowModel,

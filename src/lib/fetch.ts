@@ -817,6 +817,90 @@ export type InventoryGRNResponse = z.infer<
 	typeof ApiResponseInventoryGRNResponse
 >["data"]["content"][number];
 
+const ApiResponseInventoryPurchaseOrderResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(
+			z.object({
+				id: z.string(),
+				customId: z.string(),
+				hotelId: z.string(),
+				poNumber: z.string(),
+				status: z.enum([
+					"DRAFT",
+					"PENDING_APPROVAL",
+					"APPROVED",
+					"REJECTED",
+					"SENT",
+					"PARTIALLY_RECEIVED",
+					"COMPLETED",
+					"CANCELLED",
+				]),
+				supplierId: z.string(),
+				supplierName: z.string(),
+				supplierEmail: z.string().optional(),
+				orderDate: z.string(),
+				expectedDeliveryDate: z.string(),
+				paymentTerms: z.string().optional(),
+				shippingAddress: z.string().optional(),
+				billingAddress: z.string().optional(),
+				notes: z.string().optional(),
+				subtotal: z.number(),
+				taxAmount: z.number(),
+				shippingCost: z.number(),
+				discountAmount: z.number(),
+				totalAmount: z.number(),
+				currency: z.string().default("USD"),
+				items: z.array(
+					z.object({
+						id: z.string(),
+						productId: z.string(),
+						productSku: z.string(),
+						productName: z.string(),
+						quantityOrdered: z.number(),
+						quantityReceived: z.number(),
+						unit: z.string(),
+						unitPrice: z.number(),
+						taxRate: z.number(),
+						taxAmount: z.number(),
+						lineTotal: z.number(),
+						notes: z.string().optional(),
+					}),
+				),
+				createdBy: z.string(),
+				createdAt: z.string(),
+				updatedAt: z.string(),
+				approvedBy: z.string().optional(),
+				approvedAt: z.string().optional(),
+			}),
+		),
+	}),
+});
+
+export type InventoryPurchaseOrderResponse = z.infer<
+	typeof ApiResponseInventoryPurchaseOrderResponse
+>["data"]["content"][number];
+
+export type InventoryPurchaseOrderItem =
+	InventoryPurchaseOrderResponse["items"][number];
+
+const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
+	data: z.object({
+		totalPOs: z.number(),
+		draftPOs: z.number(),
+		pendingApprovalPOs: z.number(),
+		approvedPOs: z.number(),
+		completedPOs: z.number(),
+		cancelledPOs: z.number(),
+		totalValue: z.number(),
+		posToday: z.number(),
+		valueToday: z.number(),
+	}),
+});
+
+export type InventoryPurchaseOrderStatistics = z.infer<
+	typeof ApiResponseInventoryPurchaseOrderStatistics
+>["data"];
+
 export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
 		content: z
@@ -2199,6 +2283,35 @@ export const schema = createSchema({
 				active: z.boolean(),
 			}),
 		}),
+	},
+	// Purchase Order APIs
+	"@get/api/inventories/purchase-orders": {
+		output: ApiResponseInventoryPurchaseOrderResponse,
+		query: z
+			.object({
+				status: z
+					.enum([
+						"DRAFT",
+						"PENDING_APPROVAL",
+						"APPROVED",
+						"REJECTED",
+						"SENT",
+						"PARTIALLY_RECEIVED",
+						"COMPLETED",
+						"CANCELLED",
+					])
+					.nullable(),
+				supplierId: z.string().nullable(),
+				startDate: z.iso.date().nullable(),
+				endDate: z.iso.date().nullable(),
+				search: z.string().nullable(),
+				page: z.coerce.number().default(0),
+				size: z.coerce.number().default(10),
+			})
+			.partial(),
+	},
+	"@get/api/inventories/purchase-orders/statistics": {
+		output: ApiResponseInventoryPurchaseOrderStatistics,
 	},
 });
 
