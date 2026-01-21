@@ -488,31 +488,6 @@ export type InventoryItemResponse = z.infer<
 	typeof ApiResponseInventoryItemResponse
 >["data"]["content"][number];
 
-const ApiResponseInventorySuppliers = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(
-			z.object({
-				id: z.string(),
-				name: z.string(),
-				email: z.email().nullable(),
-				phone: z.string().nullable(),
-				items: z.array(
-					z.object({
-						id: z.string(),
-						customId: z.string(),
-						name: z.string(),
-					}),
-				),
-			}),
-		),
-	}),
-});
-
-export type InventorySuppliers = z.infer<
-	typeof ApiResponseInventorySuppliers
->["data"]["content"][number];
-export type InventorySupplierItem = InventorySuppliers["items"][number];
-
 const InventoryProductsCategory = z.enum([
 	"FOOD_FRESH",
 	"FOOD_FROZEN",
@@ -544,6 +519,32 @@ const InventoryProductsCategory = z.enum([
 	"OTHER",
 ]);
 
+const ApiResponseInventorySuppliers = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string(),
+				email: z.email().nullable(),
+				phone: z.string().nullable(),
+				products: z
+					.object({
+						id: z.string(),
+						sku: z.string(),
+						name: z.string(),
+						category: InventoryProductsCategory,
+					})
+					.array(),
+			}),
+		),
+	}),
+});
+
+export type InventorySuppliers = z.infer<
+	typeof ApiResponseInventorySuppliers
+>["data"]["content"][number];
+export type InventorySupplierItem = InventorySuppliers["products"][number];
+
 const InventorySupplier = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -551,17 +552,18 @@ const InventorySupplier = z.object({
 	phone: z.string(),
 	hotelId: z.string(),
 	productIds: z.string().array(),
-	products: z.object({
-		id: z.string(),
-		sku: z.string(),
-		name: z.string(),
-		category: InventoryProductsCategory
-	}).array()
-
-})
+	products: z
+		.object({
+			id: z.string(),
+			sku: z.string(),
+			name: z.string(),
+			category: InventoryProductsCategory,
+		})
+		.array(),
+});
 
 const ApiResponseInventorySupplierResponse = ApiResponseObject.extend({
-	data: InventorySupplier
+	data: InventorySupplier,
 });
 
 const ApiResponseInventoryDelivery = ApiResponseObject.extend({
@@ -896,11 +898,11 @@ const InventoryProductsStatistics = z.object({
 	serialTrackedProducts: z.number(),
 	perishableProducts: z.number(),
 	categoryBreakdown: z.record(z.string(), z.number()),
-})
+});
 
 const ApiResponseInventoryProductStatistics = ApiResponseObject.extend({
-	data: InventoryProductsStatistics
-})
+	data: InventoryProductsStatistics,
+});
 
 export type InventoryProductStatistics = z.infer<
 	typeof InventoryProductsStatistics
@@ -994,9 +996,9 @@ const recentActivitySchema = z.object({
 	description: z.string(),
 	activityDate: z.iso.datetime(), // Validates ISO 8601 strings
 	performedBy: z.string(),
-})
+});
 
-export type RecentActivity = z.infer<typeof recentActivitySchema>
+export type RecentActivity = z.infer<typeof recentActivitySchema>;
 
 // Main Inventory Dashboard Schema
 export const inventoryDashboardSchema = z.object({
@@ -1039,11 +1041,11 @@ export const inventoryDashboardSchema = z.object({
 export type InventoryDashboard = z.infer<typeof inventoryDashboardSchema>;
 
 export type InventoryProduct = {
-	id: string,
-	sku: string,
-	name: string,
-	category: z.infer<typeof InventoryProductsCategory>
-}
+	id: string;
+	sku: string;
+	name: string;
+	category: z.infer<typeof InventoryProductsCategory>;
+};
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -1454,6 +1456,10 @@ export const schema = createSchema({
 			})
 			.partial(),
 	},
+	"@post/api/inventories/grn/:grnId/post-to-stock": {
+		params: z.object({ grnId: z.string() }),
+		output: ApiResponseInventoryGRNResponse,
+	},
 	"@get/api/inventories/grn/statistics": {
 		output: ApiResponseInventoryGRNStatistics,
 	},
@@ -1484,12 +1490,14 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseObject.extend({
-			data: z.object({
-				id: z.string(),
-				sku: z.string(),
-				name: z.string(),
-				category: InventoryProductsCategory
-			}).array(),
+			data: z
+				.object({
+					id: z.string(),
+					sku: z.string(),
+					name: z.string(),
+					category: InventoryProductsCategory,
+				})
+				.array(),
 		}),
 	},
 	"@get/api/inventories/products/statistics": {
@@ -2205,8 +2213,8 @@ export const $fetch = createFetch({
 				? typeof error.data === "string"
 					? error.data
 					: error.data.message ||
-					(error.cause as Error)?.message ||
-					String(error)
+						(error.cause as Error)?.message ||
+						String(error)
 				: error.error,
 			{
 				cause: error,

@@ -140,3 +140,29 @@ export async function addSupplier(payload: {
 		};
 	}
 }
+
+export async function postGRNToStock(grnId: string) {
+	try {
+		const sessionData = await verifySession();
+
+		const response = await $fetch(
+			"@post/api/inventories/grn/:grnId/post-to-stock",
+			{
+				params: { grnId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to post GRN to stock",
+		};
+	}
+}

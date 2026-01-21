@@ -271,12 +271,15 @@ const suppliesPageColumns = [
 		header: "Phone Number",
 		cell: (info) => info.getValue(),
 	}),
-	suppliesPageColumnHelper.accessor("items", {
-		id: "items",
-		header: "Associated Items",
+	suppliesPageColumnHelper.accessor("products", {
+		id: "products",
+		header: "Associated products",
 		cell: (info) => {
 			const items = info.getValue();
-			return items.map((item) => item.name).join(", ");
+			return items ?
+				<span className="text-wrap">
+					{items.map((item) => item.name).join(", ")}
+				</span> : "N/A"
 		},
 	}),
 	suppliesPageColumnHelper.display({
