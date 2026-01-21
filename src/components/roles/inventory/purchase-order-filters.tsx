@@ -27,19 +27,23 @@ export function PurchaseOrderToolbar({
     const isFiltered = searchQuery !== "" || statusFilter !== "all";
 
     return (
-        <div className="flex items-center justify-between">
-            <div className="flex flex-1 items-center space-x-2">
+        <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-background">
+            <div className="px-2">
+                <p className="font-medium">Purchase Orders</p>
+            </div>
+
+            <div className="flex items-center gap-x-2">
                 <div className="relative w-[250px]">
-                    <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                         placeholder="Search POs..."
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
-                        className="pl-8"
+                        className="pl-9 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full border-none"
                     />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-[180px] rounded-md md:rounded-full border-primary-5/20 bg-primary-5/15">
                         <SelectValue placeholder="Filter by Status" />
                     </SelectTrigger>
                     <SelectContent>

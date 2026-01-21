@@ -901,6 +901,89 @@ export type InventoryPurchaseOrderStatistics = z.infer<
 	typeof ApiResponseInventoryPurchaseOrderStatistics
 >["data"];
 
+const ApiResponseInventoryStockTakeResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(
+			z.object({
+				id: z.string(),
+				stockTakeNumber: z.string(),
+				locationId: z.string(),
+				locationName: z.string(),
+				scheduledDate: z.string(),
+				stockTakeType: z.enum(["FULL", "PARTIAL", "CYCLE_COUNT"]),
+				supervisorId: z.string(),
+				supervisorName: z.string(),
+				acceptableVariancePercentage: z.number(),
+				status: z.enum([
+					"SCHEDULED",
+					"IN_PROGRESS",
+					"PENDING_REVIEW",
+					"REVIEWED",
+					"COMPLETED",
+				]),
+				items: z.array(
+					z.object({
+						id: z.string(),
+						productId: z.string(),
+						productName: z.string(),
+						productSku: z.string(),
+						systemQuantity: z.number(),
+						actualQuantity: z.number().nullable(),
+						unitCost: z.number(),
+						variance: z.number(),
+						variancePercentage: z.number(),
+						varianceValue: z.number(),
+						isCounted: z.boolean(),
+						countedBy: z.string().optional(),
+						countedDate: z.string().optional(),
+						requiresInvestigation: z.boolean(),
+						notes: z.string().optional(),
+						damagedItemsFound: z.boolean(),
+						expiredItemsFound: z.boolean(),
+					}),
+				),
+				totalItems: z.number(),
+				countedItems: z.number(),
+				itemsWithVariance: z.number(),
+				totalSystemValue: z.number(),
+				totalActualValue: z.number(),
+				totalVarianceValue: z.number(),
+				completedDate: z.string().optional(),
+				reviewedBy: z.string().optional(),
+				reviewedDate: z.string().optional(),
+				adjustmentsCreated: z.number(),
+				adjustmentsPostedDate: z.string().optional(),
+				notes: z.string().optional(),
+				createdBy: z.string(),
+				createdDate: z.string(),
+			}),
+		),
+	}),
+});
+
+export type InventoryStockTakeResponse = z.infer<
+	typeof ApiResponseInventoryStockTakeResponse
+>["data"]["content"][number];
+
+export type InventoryStockTakeItem =
+	InventoryStockTakeResponse["items"][number];
+
+const ApiResponseInventoryStockTakeStatistics = ApiResponseObject.extend({
+	data: z.object({
+		totalStockTakes: z.number(),
+		scheduledStockTakes: z.number(),
+		inProgressStockTakes: z.number(),
+		pendingReviewStockTakes: z.number(),
+		completedStockTakes: z.number(),
+		totalVarianceValue: z.number(),
+		accuracyRate: z.number(),
+	}),
+});
+
+export type InventoryStockTakeStatistics = z.infer<
+	typeof ApiResponseInventoryStockTakeStatistics
+>["data"];
+
 export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
 		content: z
@@ -2312,6 +2395,29 @@ export const schema = createSchema({
 	},
 	"@get/api/inventories/purchase-orders/statistics": {
 		output: ApiResponseInventoryPurchaseOrderStatistics,
+	},
+	// Stock Take APIs
+	"@get/api/inventories/stock-takes": {
+		output: ApiResponseInventoryStockTakeResponse,
+		query: z
+			.object({
+				status: z
+					.enum([
+						"SCHEDULED",
+						"IN_PROGRESS",
+						"PENDING_REVIEW",
+						"REVIEWED",
+						"COMPLETED",
+					])
+					.nullable(),
+				search: z.string().nullable(),
+				page: z.coerce.number().default(0),
+				size: z.coerce.number().default(10),
+			})
+			.partial(),
+	},
+	"@get/api/inventories/stock-takes/statistics": {
+		output: ApiResponseInventoryStockTakeStatistics,
 	},
 });
 
