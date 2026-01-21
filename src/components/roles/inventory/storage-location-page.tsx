@@ -38,6 +38,7 @@ import {
 	UserIcon,
 	ClockIcon,
 	ShieldIcon,
+	EyeIcon,
 } from "lucide-react";
 import { StatSection } from "./locations";
 import {
@@ -48,9 +49,12 @@ import {
 } from "./locations-filters";
 import {
 	type ColumnDef,
+	createColumnHelper,
 	getCoreRowModel,
+	getPaginationRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
+import { LocationDetails } from "./location-details";
 
 // Mock data
 const mockLocations: StorageLocation[] = [
@@ -203,20 +207,166 @@ const mockLocations: StorageLocation[] = [
 	},
 ];
 
+
+const columnHelper = createColumnHelper<StorageLocation>();
+
+const columnDefs = [
+	columnHelper.accessor("code", {
+		header: "Location Code",
+		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+	}),
+	columnHelper.accessor("name", {
+		header: "Name",
+		cell: (info) => {
+			const location = info.row.original;
+			return (
+				<div>
+					<p className="font-medium">{location.name}</p>
+					{location.description && (
+						<p className="text-xs text-muted-foreground">
+							{location.description.substring(0, 40)}
+							{location.description.length > 40 ? "..." : ""}
+						</p>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.accessor("locationType", {
+		header: "Type",
+		cell: (info) => (
+			<Badge variant="outline">{info.getValue().replace(/_/g, " ")}</Badge>
+		),
+	}),
+	columnHelper.accessor("building", {
+		header: "Building/Floor",
+		cell: (info) => {
+			const location = info.row.original;
+			return (
+				<div className="text-sm">
+					<p>{location.building}</p>
+					{location.floor && (
+						<p className="text-xs text-muted-foreground">{location.floor}</p>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.display({
+		id: "climateControl",
+		header: "Climate Control",
+		cell: (info) => {
+			const location = info.row.original;
+			return (
+				<div className="flex flex-col gap-y-1">
+					{location.temperatureControlled && (
+						<Badge
+							variant="outline"
+							className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+						>
+							<ThermometerIcon className="w-3 h-3 mr-1" />
+							{location.temperatureMin}°C - {location.temperatureMax}°C
+						</Badge>
+					)}
+					{location.humidityControlled && (
+						<Badge
+							variant="outline"
+							className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
+						>
+							<DropletIcon className="w-3 h-3 mr-1" />
+							{location.humidityMin}% - {location.humidityMax}%
+						</Badge>
+					)}
+					{!location.temperatureControlled && !location.humidityControlled && (
+						<span className="text-xs text-muted-foreground">Ambient</span>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.display({
+		id: "occupancy",
+		header: "Occupancy",
+		cell: (info) => {
+			const location = info.row.original;
+			return (
+				<div className="space-y-1 min-w-[120px]">
+					<div className="flex justify-between text-xs">
+						<span>{location.itemsStored} items</span>
+						<span>{location.currentOccupancy}%</span>
+					</div>
+					<div className="w-full bg-gray-200 rounded-full h-2">
+						<div
+							className={`h-2 rounded-full ${(location.currentOccupancy || 0) > 80
+								? "bg-red-500"
+								: (location.currentOccupancy || 0) > 60
+									? "bg-orange-500"
+									: "bg-green-500"
+								}`}
+							style={{ width: `${location.currentOccupancy}%` }}
+						/>
+					</div>
+				</div>
+			);
+		},
+	}),
+	columnHelper.accessor("managerName", {
+		header: "Manager",
+		cell: (info) => {
+			const location = info.row.original;
+			return (
+				<div className="text-sm">
+					<p className="font-medium">{location.managerName}</p>
+					{location.contactPhone && (
+						<p className="text-xs text-muted-foreground">
+							{location.contactPhone}
+						</p>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.accessor("isActive", {
+		header: "Status",
+		cell: (info) => (
+			<Badge variant={info.getValue() ? "default" : "secondary"}>
+				{info.getValue() ? "Active" : "Inactive"}
+			</Badge>
+		),
+	}),
+	columnHelper.display({
+		id: "actions",
+		header: "Actions",
+		cell: (info) => {
+			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+			const location = info.row.original;
+			return (
+
+				<LocationDetails
+					open={isDetailsOpen}
+					onOpenChange={setIsDetailsOpen}
+					location={location}
+				>
+					<Button
+						variant="outline"
+						size="icon"
+						onClick={() => setIsDetailsOpen(true)}
+						asChild
+					>
+						<EyeIcon />
+					</Button>
+				</LocationDetails>
+			);
+		},
+	}),
+];
+
 export function StorageLocationPage() {
-	const table = useReactTable({
-		data: mockLocations,
-		columns: [] as unknown as ColumnDef<StorageLocation>[],
-		getCoreRowModel: getCoreRowModel(),
-	});
 	const [locations] = useState<StorageLocation[]>(mockLocations);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [typeFilter, setTypeFilter] = useState<string>("all");
 	const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
-	const [selectedLocation, setSelectedLocation] =
-		useState<StorageLocation | null>(null);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
-	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
 	// Filter locations
 	const filteredLocations = locations.filter((loc) => {
@@ -234,6 +384,13 @@ export function StorageLocationPage() {
 		return matchesSearch && matchesType && matchesTemp;
 	});
 
+	const table = useReactTable({
+		data: filteredLocations,
+		columns: columnDefs,
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+	});
+
 	// Calculate stats
 	const activeCount = locations.filter((l) => l.isActive).length;
 	const temperatureControlledCount = locations.filter(
@@ -246,11 +403,6 @@ export function StorageLocationPage() {
 	const avgOccupancy =
 		locations.reduce((sum, l) => sum + (l.currentOccupancy || 0), 0) /
 		locations.length;
-
-	const handleViewDetails = (location: StorageLocation) => {
-		setSelectedLocation(location);
-		setIsDetailsOpen(true);
-	};
 
 	return (
 		<div className="space-y-6 p-6">
@@ -300,404 +452,143 @@ export function StorageLocationPage() {
 			/>
 
 			{/* Locations Table */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Storage Locations ({filteredLocations.length})</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<Table>
-						<TableHeader>
+			<div className="overflow-hidden rounded-md border bg-card">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Location Code</TableHead>
+							<TableHead>Name</TableHead>
+							<TableHead>Type</TableHead>
+							<TableHead>Building/Floor</TableHead>
+							<TableHead>Climate Control</TableHead>
+							<TableHead>Occupancy</TableHead>
+							<TableHead>Manager</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead>Actions</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{filteredLocations.length === 0 ? (
 							<TableRow>
-								<TableHead>Location Code</TableHead>
-								<TableHead>Name</TableHead>
-								<TableHead>Type</TableHead>
-								<TableHead>Building/Floor</TableHead>
-								<TableHead>Climate Control</TableHead>
-								<TableHead>Occupancy</TableHead>
-								<TableHead>Manager</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead>Actions</TableHead>
+								<TableCell
+									colSpan={9}
+									className="text-center text-muted-foreground py-8"
+								>
+									No locations found
+								</TableCell>
 							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredLocations.length === 0 ? (
-								<TableRow>
-									<TableCell
-										colSpan={9}
-										className="text-center text-muted-foreground py-8"
-									>
-										No locations found
+						) : (
+							filteredLocations.map((location) => (
+								<TableRow key={location.id}>
+									<TableCell className="font-medium">
+										{location.code}
+									</TableCell>
+									<TableCell>
+										<div>
+											<p className="font-medium">{location.name}</p>
+											{location.description && (
+												<p className="text-xs text-muted-foreground">
+													{location.description.substring(0, 40)}
+													{location.description.length > 40 ? "..." : ""}
+												</p>
+											)}
+										</div>
+									</TableCell>
+									<TableCell>
+										<Badge variant="outline">
+											{location.locationType.replace(/_/g, " ")}
+										</Badge>
+									</TableCell>
+									<TableCell>
+										<div className="text-sm">
+											<p>{location.building}</p>
+											{location.floor && (
+												<p className="text-xs text-muted-foreground">
+													{location.floor}
+												</p>
+											)}
+										</div>
+									</TableCell>
+									<TableCell>
+										<div className="space-y-1">
+											{location.temperatureControlled && (
+												<Badge
+													variant="outline"
+													className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+												>
+													<ThermometerIcon className="w-3 h-3 mr-1" />
+													{location.temperatureMin}°C -{" "}
+													{location.temperatureMax}°C
+												</Badge>
+											)}
+											{location.humidityControlled && (
+												<Badge
+													variant="outline"
+													className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
+												>
+													<DropletIcon className="w-3 h-3 mr-1" />
+													{location.humidityMin}% - {location.humidityMax}%
+												</Badge>
+											)}
+											{!location.temperatureControlled &&
+												!location.humidityControlled && (
+													<span className="text-xs text-muted-foreground">
+														Ambient
+													</span>
+												)}
+										</div>
+									</TableCell>
+									<TableCell>
+										<div className="space-y-1">
+											<div className="flex justify-between text-xs">
+												<span>{location.itemsStored} items</span>
+												<span>{location.currentOccupancy}%</span>
+											</div>
+											<div className="w-full bg-gray-200 rounded-full h-2">
+												<div
+													className={`h-2 rounded-full ${(location.currentOccupancy || 0) > 80
+														? "bg-red-500"
+														: (location.currentOccupancy || 0) > 60
+															? "bg-orange-500"
+															: "bg-green-500"
+														}`}
+													style={{ width: `${location.currentOccupancy}%` }}
+												/>
+											</div>
+										</div>
+									</TableCell>
+									<TableCell>
+										<div className="text-sm">
+											<p className="font-medium">{location.managerName}</p>
+											{location.contactPhone && (
+												<p className="text-xs text-muted-foreground">
+													{location.contactPhone}
+												</p>
+											)}
+										</div>
+									</TableCell>
+									<TableCell>
+										<Badge
+											variant={location.isActive ? "default" : "secondary"}
+										>
+											{location.isActive ? "Active" : "Inactive"}
+										</Badge>
+									</TableCell>
+									<TableCell>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => console.log(location)}
+										>
+											View Details
+										</Button>
 									</TableCell>
 								</TableRow>
-							) : (
-								filteredLocations.map((location) => (
-									<TableRow key={location.id}>
-										<TableCell className="font-medium">
-											{location.code}
-										</TableCell>
-										<TableCell>
-											<div>
-												<p className="font-medium">{location.name}</p>
-												{location.description && (
-													<p className="text-xs text-muted-foreground">
-														{location.description.substring(0, 40)}
-														{location.description.length > 40 ? "..." : ""}
-													</p>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<Badge variant="outline">
-												{location.locationType.replace(/_/g, " ")}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											<div className="text-sm">
-												<p>{location.building}</p>
-												{location.floor && (
-													<p className="text-xs text-muted-foreground">
-														{location.floor}
-													</p>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="space-y-1">
-												{location.temperatureControlled && (
-													<Badge
-														variant="outline"
-														className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
-													>
-														<ThermometerIcon className="w-3 h-3 mr-1" />
-														{location.temperatureMin}°C -{" "}
-														{location.temperatureMax}°C
-													</Badge>
-												)}
-												{location.humidityControlled && (
-													<Badge
-														variant="outline"
-														className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
-													>
-														<DropletIcon className="w-3 h-3 mr-1" />
-														{location.humidityMin}% - {location.humidityMax}%
-													</Badge>
-												)}
-												{!location.temperatureControlled &&
-													!location.humidityControlled && (
-														<span className="text-xs text-muted-foreground">
-															Ambient
-														</span>
-													)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="space-y-1">
-												<div className="flex justify-between text-xs">
-													<span>{location.itemsStored} items</span>
-													<span>{location.currentOccupancy}%</span>
-												</div>
-												<div className="w-full bg-gray-200 rounded-full h-2">
-													<div
-														className={`h-2 rounded-full ${
-															(location.currentOccupancy || 0) > 80
-																? "bg-red-500"
-																: (location.currentOccupancy || 0) > 60
-																	? "bg-orange-500"
-																	: "bg-green-500"
-														}`}
-														style={{ width: `${location.currentOccupancy}%` }}
-													/>
-												</div>
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="text-sm">
-												<p className="font-medium">{location.managerName}</p>
-												{location.contactPhone && (
-													<p className="text-xs text-muted-foreground">
-														{location.contactPhone}
-													</p>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={location.isActive ? "default" : "secondary"}
-											>
-												{location.isActive ? "Active" : "Inactive"}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => handleViewDetails(location)}
-											>
-												View Details
-											</Button>
-										</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
-				</CardContent>
-			</Card>
-
-			{/* Location Details Dialog */}
-			<Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-				<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-					{selectedLocation && (
-						<>
-							<DialogHeader>
-								<div className="flex items-center justify-between">
-									<DialogTitle>
-										{selectedLocation.code} - {selectedLocation.name}
-									</DialogTitle>
-									<Badge
-										variant={
-											selectedLocation.isActive ? "default" : "secondary"
-										}
-									>
-										{selectedLocation.isActive ? "Active" : "Inactive"}
-									</Badge>
-								</div>
-							</DialogHeader>
-
-							<div className="space-y-6">
-								{/* Basic Information */}
-								<div className="grid grid-cols-2 gap-6">
-									<div className="space-y-3">
-										<div>
-											<p className="text-sm font-medium text-muted-foreground">
-												Location Type
-											</p>
-											<Badge variant="outline" className="mt-1">
-												{selectedLocation.locationType.replace(/_/g, " ")}
-											</Badge>
-										</div>
-										<div>
-											<p className="text-sm font-medium text-muted-foreground">
-												Description
-											</p>
-											<p className="text-base">
-												{selectedLocation.description || "N/A"}
-											</p>
-										</div>
-										<div>
-											<p className="text-sm font-medium text-muted-foreground">
-												Physical Location
-											</p>
-											<div className="text-sm">
-												{selectedLocation.building && (
-													<p>{selectedLocation.building}</p>
-												)}
-												{selectedLocation.floor && (
-													<p>{selectedLocation.floor}</p>
-												)}
-												{selectedLocation.room && (
-													<p>{selectedLocation.room}</p>
-												)}
-												{selectedLocation.physicalAddress && (
-													<p className="text-muted-foreground mt-1">
-														{selectedLocation.physicalAddress}
-													</p>
-												)}
-											</div>
-										</div>
-									</div>
-									<div className="space-y-3">
-										<div>
-											<p className="text-sm font-medium text-muted-foreground">
-												Capacity
-											</p>
-											<div className="text-sm space-y-1 mt-1">
-												{selectedLocation.capacityVolume && (
-													<p>Volume: {selectedLocation.capacityVolume} m³</p>
-												)}
-												{selectedLocation.capacityWeight && (
-													<p>Weight: {selectedLocation.capacityWeight} kg</p>
-												)}
-												{selectedLocation.capacityUnits && (
-													<p>Units: {selectedLocation.capacityUnits} pallets</p>
-												)}
-											</div>
-										</div>
-										<div>
-											<p className="text-sm font-medium text-muted-foreground">
-												Current Status
-											</p>
-											<div className="text-sm space-y-1 mt-1">
-												<p>Items Stored: {selectedLocation.itemsStored}</p>
-												<p>Occupancy: {selectedLocation.currentOccupancy}%</p>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<Separator />
-
-								{/* Climate Control */}
-								<div>
-									<h3 className="text-lg font-semibold mb-3">
-										Climate Control
-									</h3>
-									<div className="grid grid-cols-2 gap-4">
-										<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-											<div className="flex items-center gap-2 mb-2">
-												<ThermometerIcon className="w-5 h-5 text-blue-600" />
-												<h4 className="font-medium text-blue-900">
-													Temperature
-												</h4>
-											</div>
-											{selectedLocation.temperatureControlled ? (
-												<div>
-													<p className="text-sm text-blue-700">
-														Controlled: {selectedLocation.temperatureMin}°C -{" "}
-														{selectedLocation.temperatureMax}°C
-													</p>
-													<Badge
-														variant="outline"
-														className="bg-blue-100 text-blue-800 border-blue-300 mt-2"
-													>
-														Active Monitoring
-													</Badge>
-												</div>
-											) : (
-												<p className="text-sm text-muted-foreground">
-													Not controlled
-												</p>
-											)}
-										</div>
-
-										<div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-											<div className="flex items-center gap-2 mb-2">
-												<DropletIcon className="w-5 h-5 text-purple-600" />
-												<h4 className="font-medium text-purple-900">
-													Humidity
-												</h4>
-											</div>
-											{selectedLocation.humidityControlled ? (
-												<div>
-													<p className="text-sm text-purple-700">
-														Controlled: {selectedLocation.humidityMin}% -{" "}
-														{selectedLocation.humidityMax}%
-													</p>
-													<Badge
-														variant="outline"
-														className="bg-purple-100 text-purple-800 border-purple-300 mt-2"
-													>
-														Active Monitoring
-													</Badge>
-												</div>
-											) : (
-												<p className="text-sm text-muted-foreground">
-													Not controlled
-												</p>
-											)}
-										</div>
-									</div>
-								</div>
-
-								<Separator />
-
-								{/* Management & Access */}
-								<div className="grid grid-cols-2 gap-6">
-									<div className="space-y-3">
-										<div>
-											<div className="flex items-center gap-2 mb-2">
-												<UserIcon className="w-4 h-4 text-muted-foreground" />
-												<p className="text-sm font-medium text-muted-foreground">
-													Manager
-												</p>
-											</div>
-											<p className="text-base font-semibold">
-												{selectedLocation.managerName}
-											</p>
-											{selectedLocation.contactPhone && (
-												<p className="text-sm text-muted-foreground">
-													{selectedLocation.contactPhone}
-												</p>
-											)}
-											{selectedLocation.contactEmail && (
-												<p className="text-sm text-muted-foreground">
-													{selectedLocation.contactEmail}
-												</p>
-											)}
-										</div>
-										<div>
-											<div className="flex items-center gap-2 mb-2">
-												<ClockIcon className="w-4 h-4 text-muted-foreground" />
-												<p className="text-sm font-medium text-muted-foreground">
-													Operating Hours
-												</p>
-											</div>
-											<p className="text-base">
-												{selectedLocation.operatingHours || "N/A"}
-											</p>
-										</div>
-									</div>
-									<div className="space-y-3">
-										<div>
-											<div className="flex items-center gap-2 mb-2">
-												<ShieldIcon className="w-4 h-4 text-muted-foreground" />
-												<p className="text-sm font-medium text-muted-foreground">
-													Access Restrictions
-												</p>
-											</div>
-											<p className="text-sm bg-gray-50 p-3 rounded border">
-												{selectedLocation.accessRestrictions ||
-													"No restrictions"}
-											</p>
-										</div>
-									</div>
-								</div>
-
-								{/* Special Instructions */}
-								{selectedLocation.specialInstructions && (
-									<div>
-										<p className="text-sm font-medium text-muted-foreground mb-2">
-											Special Instructions
-										</p>
-										<p className="text-sm bg-yellow-50 p-3 rounded border border-yellow-200">
-											{selectedLocation.specialInstructions}
-										</p>
-									</div>
-								)}
-
-								<Separator />
-
-								{/* Metadata */}
-								<div className="text-xs text-muted-foreground">
-									<p>
-										Created by {selectedLocation.createdBy} on{" "}
-										{new Date(selectedLocation.createdDate).toLocaleString()}
-									</p>
-									{selectedLocation.lastModifiedBy && (
-										<p>
-											Last modified by {selectedLocation.lastModifiedBy} on{" "}
-											{new Date(
-												selectedLocation.lastModifiedDate!,
-											).toLocaleString()}
-										</p>
-									)}
-								</div>
-
-								{/* Actions */}
-								<div className="flex justify-end gap-2 pt-4 border-t">
-									<Button
-										variant="outline"
-										onClick={() => setIsDetailsOpen(false)}
-									>
-										Close
-									</Button>
-									<Button>Edit Location</Button>
-								</div>
-							</div>
-						</>
-					)}
-				</DialogContent>
-			</Dialog>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }
