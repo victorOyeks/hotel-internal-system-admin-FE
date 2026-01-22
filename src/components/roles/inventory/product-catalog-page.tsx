@@ -36,9 +36,28 @@ import {
 	PackageIcon,
 	BarChart3Icon,
 	CalendarIcon,
+	MoreVerticalIcon,
+	EditIcon,
+	TrashIcon,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ProductsToolbar } from "./products";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
 	createColumnHelper,
 	flexRender,
@@ -195,6 +214,14 @@ const columns = [
 			return <Badge variant={status.color}>{status.label}</Badge>;
 		},
 	}),
+	columnHelper.display({
+		id: "actions",
+		header: "Actions",
+		cell: ({ row }) => {
+			const product = row.original;
+			return <ProductActions product={product} />;
+		},
+	}),
 ];
 
 export function ProductCatalogPage({
@@ -226,7 +253,7 @@ export function ProductCatalogPage({
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Product Catalog</h1>
+					<h1 className="text-3xl font-semibold tracking-tight">Product Catalog</h1>
 					<p className="text-muted-foreground mt-1">
 						Manage your product inventory and track batches
 					</p>
@@ -234,7 +261,7 @@ export function ProductCatalogPage({
 				<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
 					<DialogTrigger asChild>
 						<Button>
-							<PlusIcon className="w-4 h-4 mr-2" />
+							<PlusIcon />
 							Add Product
 						</Button>
 					</DialogTrigger>
@@ -996,5 +1023,262 @@ function ProductDetailsView({
 				</Badge>
 			</div>
 		</div>
+	);
+}
+
+// Product Actions Component with Edit and Delete
+function ProductActions({ product }: { product: InventoryProductResponse }) {
+	const [isEditOpen, setIsEditOpen] = useState(false);
+	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+	return (
+		<>
+			<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size="icon">
+						<MoreVerticalIcon />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={() => {
+						setIsMenuOpen(false)
+						setIsEditOpen(true)
+					}}>
+						<EditIcon />
+						Edit
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => {
+							setIsMenuOpen(false)
+							setIsDeleteOpen(true)
+						}}
+						variant="destructive"
+					>
+						<TrashIcon />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			{/* Edit Modal */}
+			<Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+				<DialogContent className="max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Edit Product</DialogTitle>
+						<DialogDescription>
+							Update product details and specifications
+						</DialogDescription>
+					</DialogHeader>
+					<EditProductForm
+						product={product}
+						onClose={() => setIsEditOpen(false)}
+					/>
+				</DialogContent>
+			</Dialog>
+
+			{/* Delete Confirmation Dialog */}
+			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Product</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete "{product.name}"? This action
+							cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<DeleteProductAction
+							productId={product.id}
+							onClose={() => setIsDeleteOpen(false)}
+						/>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
+	);
+}
+
+// Edit Product Form Component
+function EditProductForm({
+	product,
+	onClose,
+}: {
+	product: InventoryProductResponse;
+	onClose: () => void;
+}) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
+			// TODO: Replace with actual update endpoint
+			const response = await addProduct(payload);
+
+			if (!response.success) {
+				throw Error(response.error);
+			}
+		},
+		onSuccess: () => {
+			toast.success("Product updated successfully");
+			onClose();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const form = useForm({
+		resolver: zodResolver(ApiInputInventoryProduct),
+		defaultValues: {
+			sku: product.sku,
+			name: product.name,
+			description: product.description || "",
+			barcode: product.barcode || "",
+			brand: product.brand || "",
+			manufacturer: product.manufacturer || "",
+			category: product.category as z.infer<
+				typeof ApiInputInventoryProduct
+			>["category"],
+			subcategory: product.subcategory || "",
+			tags: product.tags || "",
+			baseUnit: product.baseUnit,
+			purchaseUnit: product.purchaseUnit || "",
+			conversionFactor: product.conversionFactor || 1,
+			standardCost: product.standardCost || 0,
+			sellingPrice: product.sellingPrice || 0,
+			taxRate: product.taxRate || 0,
+			minStockLevel: product.minStockLevel || 0,
+			maxStockLevel: product.maxStockLevel || 0,
+			reorderQuantity: product.reorderQuantity || 0,
+			shelfLifeDays: product.shelfLifeDays || 0,
+			storageRequirements: product.storageRequirements || "",
+			trackBatches: product.trackBatches,
+			trackExpiry: product.trackExpiry,
+			trackSerialNumbers: product.trackSerialNumbers || false,
+			perishable: product.perishable,
+			valuationMethod: (product.valuationMethod as z.infer<typeof ApiInputInventoryProduct>["valuationMethod"]) || "FIFO",
+		},
+	});
+
+	return (
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
+				<ScrollArea className="max-h-[60vh]">
+					<div className="space-y-6">
+						{/* Basic Information */}
+						<div className="space-y-4">
+							<h3 className="text-lg font-medium">Basic Information</h3>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="sku"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>SKU *</FormLabel>
+											<FormControl>
+												<Input placeholder="e.g., FD-001" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="barcode"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Barcode</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Scan barcode"
+													{...field}
+													value={field.value || ""}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<FormField
+								control={form.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Name *</FormLabel>
+										<FormControl>
+											<Input placeholder="e.g., Premium Coffee Beans" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="description"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Product description"
+												rows={3}
+												{...field}
+												value={field.value || ""}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
+				</ScrollArea>
+
+				<div className="flex justify-end gap-2">
+					<Button type="button" variant="outline" onClick={onClose}>
+						Cancel
+					</Button>
+					<Button type="submit" disabled={isPending}>
+						{isPending && <span>Updating...</span>}
+						{!isPending && "Update Product"}
+					</Button>
+				</div>
+			</form>
+		</Form>
+	);
+}
+
+// Delete Product Action Component
+function DeleteProductAction({
+	productId,
+	onClose,
+}: {
+	productId: string;
+	onClose: () => void;
+}) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async () => {
+			// TODO: Replace with actual delete endpoint
+			// For now, simulate a delete operation
+			console.log("Deleting product", productId);
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		},
+		onSuccess: () => {
+			toast.success("Product deleted successfully");
+			onClose();
+		},
+		onError: (_error) => {
+			toast.error("Failed to delete product");
+		},
+	});
+
+	return (
+		<AlertDialogAction
+			onClick={() => mutate()}
+			disabled={isPending}
+			className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+		>
+			{isPending ? "Deleting..." : "Delete"}
+		</AlertDialogAction>
 	);
 }

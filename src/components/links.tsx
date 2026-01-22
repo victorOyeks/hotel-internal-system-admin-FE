@@ -76,7 +76,7 @@ export const inventoryOfficerLinks = [
 	// { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
-		title: "Supplies & Deliveries",
+		title: "Supplies",
 		icon: <TruckIcon />,
 		url: "/dashboard/supplies",
 	},

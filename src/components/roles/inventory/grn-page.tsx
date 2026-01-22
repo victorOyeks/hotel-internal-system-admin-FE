@@ -23,7 +23,6 @@ import { GRNTable } from "./grn-table";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { atom, useAtomValue, useSetAtom } from "jotai";
 import type {
 	InventoryGRNResponse,
 	InventoryGRNStatistics,
@@ -31,7 +30,6 @@ import type {
 	InventorySuppliers,
 } from "@/lib/fetch";
 
-const selectedGRNAtom = atom<InventoryGRNResponse | null>(null);
 
 const columnHelper = createColumnHelper<InventoryGRNResponse>();
 
@@ -43,12 +41,15 @@ const columnDefs = [
 	columnHelper.accessor("supplierName", {
 		header: "Supplier",
 		cell: (info) => {
-			const setGrn = useSetAtom(selectedGRNAtom);
+			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+			const selectedGRN = info.row.original;
 
 			return (
-				<Button variant={"link"} onClick={() => setGrn(info.row.original)}>
-					{info.getValue()}
-				</Button>
+				<GRNDetails
+					open={isDetailsOpen}
+					onOpenChange={setIsDetailsOpen}
+					grn={selectedGRN}
+				/>
 			);
 		},
 	}),
@@ -105,19 +106,11 @@ export function GRNPage({
 	});
 	// UI State
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
-	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-	const selectedGRN = useAtomValue(selectedGRNAtom);
 
 	// Filter State
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [postedFilter, setPostedFilter] = useState<string>("all");
-
-	const handlePostToStock = (grnId: string) => {
-		console.log("Posting GRN to stock:", grnId);
-		alert("GRN posted to stock successfully!");
-		setIsDetailsOpen(false);
-	};
 
 	return (
 		<div className="space-y-6 p-6">
@@ -171,14 +164,6 @@ export function GRNPage({
 
 			{/* Table */}
 			<GRNTable table={table} />
-
-			{/* Details Modal */}
-			<GRNDetails
-				open={isDetailsOpen}
-				onOpenChange={setIsDetailsOpen}
-				grn={selectedGRN}
-				onPostToStock={handlePostToStock}
-			/>
 		</div>
 	);
 }

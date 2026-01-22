@@ -113,3 +113,56 @@ export async function addGRNItem(payload: unknown) {
 		};
 	}
 }
+
+export async function addSupplier(payload: {
+	name: string;
+	email: string;
+	phone: string;
+	productIds: string[];
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/suppliers", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to add supplier",
+		};
+	}
+}
+
+export async function postGRNToStock(grnId: string) {
+	try {
+		const sessionData = await verifySession();
+
+		const response = await $fetch(
+			"@post/api/inventories/grn/:grnId/post-to-stock",
+			{
+				params: { grnId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to post GRN to stock",
+		};
+	}
+}

@@ -218,9 +218,9 @@ export function MultiSelectValue({
             onClick={
               clickToRemove
                 ? e => {
-                    e.stopPropagation()
-                    toggleValue(value)
-                  }
+                  e.stopPropagation()
+                  toggleValue(value)
+                }
                 : undefined
             }
           >
@@ -246,9 +246,13 @@ export function MultiSelectValue({
 export function MultiSelectContent({
   search = true,
   children,
+  searchValue,
+  onSearchValueChange,
   ...props
 }: {
   search?: boolean | { placeholder?: string; emptyMessage?: string }
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
   children: ReactNode
 } & Omit<ComponentPropsWithoutRef<typeof Command>, "children">) {
   const canSearch = typeof search === "object" ? true : search
@@ -260,13 +264,15 @@ export function MultiSelectContent({
           <CommandList>{children}</CommandList>
         </Command>
       </div>
-      <PopoverContent className="min-w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent align="start" className="min-w-[var(--radix-popover-trigger-width)] p-0">
         <Command {...props}>
           {canSearch ? (
             <CommandInput
               placeholder={
                 typeof search === "object" ? search.placeholder : undefined
               }
+              value={searchValue}
+              onValueChange={onSearchValueChange}
             />
           ) : (
             <button autoFocus className="sr-only" />
