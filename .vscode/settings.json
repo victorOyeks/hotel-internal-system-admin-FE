@@ -1,5 +1,5 @@
 {
-    "typescript.tsdk": "node_modules/typescript/lib",
-    "files.autoSave": "off",
-    "npm.packageManager": "bun"
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"files.autoSave": "off",
+	"npm.packageManager": "bun"
 }

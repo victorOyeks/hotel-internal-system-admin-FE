@@ -6,43 +6,43 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(
-  value: number,
-  type: "short" | "float" | "default" = "default"
+	value: number,
+	type: "short" | "float" | "default" = "default",
 ) {
-  // cross-check at runtime if value is a number
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return value;
-  }
+	// cross-check at runtime if value is a number
+	if (typeof value !== "number" || Number.isNaN(value)) {
+		return value;
+	}
 
-  // Define the options based on the type
-  const options: Intl.NumberFormatOptions = {};
+	// Define the options based on the type
+	const options: Intl.NumberFormatOptions = {};
 
-  switch (type) {
-    case "short":
-      // Example: N1.5M
-      options.style = "currency";
-      options.currency = "NGN";
-      options.notation = "compact";
-      options.maximumFractionDigits = 1; // Looks cleaner (N1.5M vs N1.50M)
-      break;
-      
-    case "float":
-      // Example: 1,500.00 (no currency symbol)
-      options.style = "decimal";
-      options.minimumFractionDigits = 2;
-      options.maximumFractionDigits = 2;
-      break;
-      
-    case "default":
-    default:
-      // Example: N1,500.00
-      options.style = "currency";
-      options.currency = "NGN";
-      options.minimumFractionDigits = 2; // Ensures we always see decimals
-      break;
-  }
+	switch (type) {
+		case "short":
+			// Example: N1.5M
+			options.style = "currency";
+			options.currency = "NGN";
+			options.notation = "compact";
+			options.maximumFractionDigits = 1; // Looks cleaner (N1.5M vs N1.50M)
+			break;
 
-  return Intl.NumberFormat("en-NG", options).format(value);
+		case "float":
+			// Example: 1,500.00 (no currency symbol)
+			options.style = "decimal";
+			options.minimumFractionDigits = 2;
+			options.maximumFractionDigits = 2;
+			break;
+
+		case "default":
+		default:
+			// Example: N1,500.00
+			options.style = "currency";
+			options.currency = "NGN";
+			options.minimumFractionDigits = 2; // Ensures we always see decimals
+			break;
+	}
+
+	return Intl.NumberFormat("en-NG", options).format(value);
 }
 
 /**
@@ -54,24 +54,24 @@ export function formatCurrency(
  * Configuration for a single path within the matcher.
  */
 export interface PathConfig {
-  /** The path pattern to match against (e.g., '/dashboard'). */
-  path: string;
-  /**
-   * If true, the pathname must match the path exactly.
-   * If false (default), the pathname only needs to start with the path.
-   * @default false
-   */
-  exact?: boolean;
+	/** The path pattern to match against (e.g., '/dashboard'). */
+	path: string;
+	/**
+	 * If true, the pathname must match the path exactly.
+	 * If false (default), the pathname only needs to start with the path.
+	 * @default false
+	 */
+	exact?: boolean;
 }
 
 /**
  * The result of a successful match operation.
  */
 export interface MatcherResult {
-  /** The path from the original list that was matched. */
-  path: string;
-  /** The pathname that was tested. */
-  pathname: string;
+	/** The path from the original list that was matched. */
+	path: string;
+	/** The pathname that was tested. */
+	pathname: string;
 }
 
 /**
@@ -83,24 +83,24 @@ export interface MatcherResult {
  * @internal
  */
 function isPathMatch(pathname: string, path: string, exact: boolean): boolean {
-  // Sanitize paths by removing any trailing slashes for consistent matching.
-  const sanitizedPathname = pathname.endsWith('/') && pathname.length > 1 
-    ? pathname.slice(0, -1) 
-    : pathname;
-  const sanitizedPath = path.endsWith('/') && path.length > 1 
-    ? path.slice(0, -1) 
-    : path;
+	// Sanitize paths by removing any trailing slashes for consistent matching.
+	const sanitizedPathname =
+		pathname.endsWith("/") && pathname.length > 1
+			? pathname.slice(0, -1)
+			: pathname;
+	const sanitizedPath =
+		path.endsWith("/") && path.length > 1 ? path.slice(0, -1) : path;
 
-  if (exact) {
-    return sanitizedPathname === sanitizedPath;
-  }
+	if (exact) {
+		return sanitizedPathname === sanitizedPath;
+	}
 
-  // For non-exact, it must be an identical match or a prefix match.
-  // This prevents '/users-other' from matching '/users'.
-  return (
-    sanitizedPathname === sanitizedPath ||
-    sanitizedPathname.startsWith(`${sanitizedPath}/`)
-  );
+	// For non-exact, it must be an identical match or a prefix match.
+	// This prevents '/users-other' from matching '/users'.
+	return (
+		sanitizedPathname === sanitizedPath ||
+		sanitizedPathname.startsWith(`${sanitizedPath}/`)
+	);
 }
 
 /**
@@ -115,43 +115,43 @@ function isPathMatch(pathname: string, path: string, exact: boolean): boolean {
  * // result: { path: '/users', pathname: '/users/456' }
  */
 export function createPathMatcher(paths: Array<string | PathConfig>) {
-  // "Precompile" by normalizing all path inputs into a consistent object structure.
-  const compiledPaths: Required<PathConfig>[] = paths.map(p => {
-    if (typeof p === 'string') {
-      return { path: p, exact: false };
-    }
-    return { path: p.path, exact: p.exact ?? false };
-  });
+	// "Precompile" by normalizing all path inputs into a consistent object structure.
+	const compiledPaths: Required<PathConfig>[] = paths.map((p) => {
+		if (typeof p === "string") {
+			return { path: p, exact: false };
+		}
+		return { path: p.path, exact: p.exact ?? false };
+	});
 
-  return {
-    /**
-     * Finds the best match for a given pathname from the preconfigured list of paths.
-     * @param pathname - The URL pathname to test (e.g., '/dashboard/settings').
-     * @returns A `MatcherResult` object for the best match, or `null` if no match is found.
-     */
-    match: (pathname: string): MatcherResult | null => {
-      let bestMatch: { path: string; score: number } | null = null;
+	return {
+		/**
+		 * Finds the best match for a given pathname from the preconfigured list of paths.
+		 * @param pathname - The URL pathname to test (e.g., '/dashboard/settings').
+		 * @returns A `MatcherResult` object for the best match, or `null` if no match is found.
+		 */
+		match: (pathname: string): MatcherResult | null => {
+			let bestMatch: { path: string; score: number } | null = null;
 
-      for (const route of compiledPaths) {
-        if (isPathMatch(pathname, route.path, route.exact)) {
-          // Score is based on path length, with a small bonus for exact matches
-          // to ensure they are preferred over non-exact matches of the same length.
-          const score = route.path.length + (route.exact ? 0.5 : 0);
+			for (const route of compiledPaths) {
+				if (isPathMatch(pathname, route.path, route.exact)) {
+					// Score is based on path length, with a small bonus for exact matches
+					// to ensure they are preferred over non-exact matches of the same length.
+					const score = route.path.length + (route.exact ? 0.5 : 0);
 
-          if (!bestMatch || score > bestMatch.score) {
-            bestMatch = { path: route.path, score: score };
-          }
-        }
-      }
+					if (!bestMatch || score > bestMatch.score) {
+						bestMatch = { path: route.path, score: score };
+					}
+				}
+			}
 
-      if (bestMatch) {
-        return {
-          path: bestMatch.path,
-          pathname: pathname,
-        };
-      }
+			if (bestMatch) {
+				return {
+					path: bestMatch.path,
+					pathname: pathname,
+				};
+			}
 
-      return null;
-    },
-  };
+			return null;
+		},
+	};
 }

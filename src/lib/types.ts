@@ -21,15 +21,15 @@ export interface ApiResponse<Data> {
 export type HotelRole = z.infer<typeof Role>;
 
 export type UserPayload = {
-  userId: string;
-  userCustomId: string;
-  email: string;
-  fullName: string;
-  phone: string;
-  staffId: string;
-  status: "ACTIVE" | "INACTIVE" | string & {};
-  role: HotelRole;
-  sub: string;
-  iat: number;
-  exp: number;
+	userId: string;
+	userCustomId: string;
+	email: string;
+	fullName: string;
+	phone: string;
+	staffId: string;
+	status: "ACTIVE" | "INACTIVE" | (string & {});
+	role: HotelRole;
+	sub: string;
+	iat: number;
+	exp: number;
 };

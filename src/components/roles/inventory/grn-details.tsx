@@ -43,7 +43,6 @@ interface GRNDetailsProps {
 }
 
 export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
-
 	const { mutate: postToStock, isPending } = useMutation({
 		mutationFn: async (grnId: string) => {
 			const response = await postGRNToStock(grnId);
@@ -138,13 +137,17 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 						{/* Summary Section - Simplified */}
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-6">
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">Total Value</p>
+								<p className="text-sm text-muted-foreground mb-1">
+									Total Value
+								</p>
 								<div className="text-2xl font-medium">
 									{formatCurrency(grn.netAmount)}
 								</div>
 							</div>
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">Items Summary</p>
+								<p className="text-sm text-muted-foreground mb-1">
+									Items Summary
+								</p>
 								<div className="flex items-baseline gap-2">
 									<span className="text-2xl font-medium">
 										{grn.totalQuantityAccepted}
@@ -161,7 +164,10 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 							</div>
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Supplier</p>
-								<div className="font-semimedium truncate" title={grn.supplierName}>
+								<div
+									className="font-semimedium truncate"
+									title={grn.supplierName}
+								>
 									{grn.supplierName}
 								</div>
 								<p className="text-xs text-muted-foreground truncate">
@@ -354,7 +360,8 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 									<div className="space-y-6">
 										<div>
 											<h3 className="text-lg font-semimedium flex items-center gap-2 mb-4">
-												<FileTextIcon className="w-5 h-5" /> Notes & Discrepancies
+												<FileTextIcon className="w-5 h-5" /> Notes &
+												Discrepancies
 											</h3>
 											<div className="space-y-4">
 												{grn.discrepancies && (
@@ -397,7 +404,9 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 									</h3>
 									<div className="space-y-4">
 										<div className="flex justify-between items-center py-2 border-b">
-											<span className="text-muted-foreground">Total Amount</span>
+											<span className="text-muted-foreground">
+												Total Amount
+											</span>
 											<span className="font-medium">
 												{formatCurrency(grn.totalAmount)}
 											</span>

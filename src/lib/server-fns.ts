@@ -7,19 +7,19 @@ import { decrypt } from "./session";
 export const tokenKey = "hms.jwt.session_token";
 
 export const getCookieData = cache(async () => {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(tokenKey)?.value;
+	const cookieStore = await cookies();
+	const token = cookieStore.get(tokenKey)?.value;
 
-  if (!token) {
-    return null;
-  }
+	if (!token) {
+		return null;
+	}
 
-  const cookieData = decrypt(token);
+	const cookieData = decrypt(token);
 
-  return cookieData
-    ? {
-        ...cookieData,
-        token,
-      }
-    : null;
+	return cookieData
+		? {
+				...cookieData,
+				token,
+			}
+		: null;
 });

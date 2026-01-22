@@ -43,7 +43,6 @@ export function SuccessDialog({
 	message?: string;
 	setOpenAction: (open: boolean) => void;
 }) {
-
 	useEffect(() => {
 		const t = setTimeout(() => setOpen(false), 3000);
 		return () => clearTimeout(t);

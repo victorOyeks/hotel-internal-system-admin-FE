@@ -6,78 +6,77 @@ import type { Breadcrumb } from "@/lib/store";
 import { use } from "react";
 
 function HomePage() {
-  const cookieData = use(getCookieData())!;
-  const queryClient = getQueryClient();
+	const cookieData = use(getCookieData())!;
+	const queryClient = getQueryClient();
 
-  const breadcrumbs: Breadcrumb[] = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-    },
-  ];
+	const breadcrumbs: Breadcrumb[] = [
+		{
+			label: "Dashboard",
+			href: "/dashboard",
+		},
+	];
 
-  const graphData = use(
-    queryClient.ensureQueryData({
-      queryKey: ["hotel-owner", "dashboard-graph"],
-      queryFn: async ({ signal }) => {
-        const res = await $fetch("@get/api/hotel-owners/dashboard/graph", {
-          signal,
-          auth: {
-            type: "Bearer",
-            token: cookieData.token,
-          },
-          throw: true,
-        });
+	const graphData = use(
+		queryClient.ensureQueryData({
+			queryKey: ["hotel-owner", "dashboard-graph"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/hotel-owners/dashboard/graph", {
+					signal,
+					auth: {
+						type: "Bearer",
+						token: cookieData.token,
+					},
+					throw: true,
+				});
 
-        return res.data;
-      },
-    })
-  );
+				return res.data;
+			},
+		}),
+	);
 
-  const overviewData = use(
-    queryClient.ensureQueryData({
-      queryKey: ["hotel-owner", "dashboard-overview"],
-      queryFn: async ({ signal }) => {
-        const res = await $fetch("@get/api/hotel-owners/dashboard/overview", {
-          query: {},
-          signal,
-          auth: { type: "Bearer", token: cookieData.token },
-          throw: true,
-        });
+	const overviewData = use(
+		queryClient.ensureQueryData({
+			queryKey: ["hotel-owner", "dashboard-overview"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/hotel-owners/dashboard/overview", {
+					query: {},
+					signal,
+					auth: { type: "Bearer", token: cookieData.token },
+					throw: true,
+				});
 
-        return res.data;
-      },
-    })
-  );
+				return res.data;
+			},
+		}),
+	);
 
+	const dashboardPerformanceData = use(
+		queryClient.ensureQueryData({
+			queryKey: ["hotel-owner", "dashboard-performance"],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch(
+					"@get/api/hotel-owners/dashboard-performance",
+					{
+						query: {},
+						signal,
+						auth: { type: "Bearer", token: cookieData.token },
+						throw: true,
+					},
+				);
 
-  const dashboardPerformanceData = use(
-    queryClient.ensureQueryData({
-      queryKey: ["hotel-owner", "dashboard-performance"],
-      queryFn: async ({ signal }) => {
-        const res = await $fetch(
-          "@get/api/hotel-owners/dashboard-performance",
-          {
-            query: {},
-            signal,
-            auth: { type: "Bearer", token: cookieData.token },
-            throw: true,
-          }
-        );
+				return res.data;
+			},
+		}),
+	);
 
-        return res.data;
-      },
-    })
-  );
-
-  return (
-    <HotelOwnerDashboard
-      overviewData={overviewData}
-      breadcrumbs={breadcrumbs}
-      graphData={graphData}
-      performanceData={dashboardPerformanceData}
-    />
-  );
+	return (
+		<HotelOwnerDashboard
+			overviewData={overviewData}
+			breadcrumbs={breadcrumbs}
+			graphData={graphData}
+			performanceData={dashboardPerformanceData}
+		/>
+	);
 }
 
 export default HomePage;

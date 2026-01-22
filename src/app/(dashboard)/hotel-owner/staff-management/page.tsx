@@ -5,81 +5,81 @@ import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import {
-  createLoader,
-  parseAsString,
-  parseAsStringLiteral,
-  type SearchParams,
+	createLoader,
+	parseAsString,
+	parseAsStringLiteral,
+	type SearchParams,
 } from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
-  searchParams: Promise<SearchParams>;
+	searchParams: Promise<SearchParams>;
 };
 
 const hotelRoles = [
-  "HOTEL_OWNER",
-  "MANAGER",
-  "FRONT_DESK",
-  "MAINTENANCE",
-  "INVENTORY",
-  "RESTAURANT",
-  "SUPER_ADMIN",
+	"HOTEL_OWNER",
+	"MANAGER",
+	"FRONT_DESK",
+	"MAINTENANCE",
+	"INVENTORY",
+	"RESTAURANT",
+	"SUPER_ADMIN",
 ] as const;
 
 const loadSearchParams = createLoader({
-  ...paginationSearchParams,
-  search: parseAsString.withDefault(""),
-  role: parseAsStringLiteral(hotelRoles),
-  status: parseAsString.withDefault(""),
+	...paginationSearchParams,
+	search: parseAsString.withDefault(""),
+	role: parseAsStringLiteral(hotelRoles),
+	status: parseAsString.withDefault(""),
 });
 
 function StaffManagementPage({ searchParams }: PageProps) {
-  const session = use(verifySession());
-  const query = use(loadSearchParams(searchParams));
-  const queryClient = getQueryClient();
-  const breadcrumb = {
-    title: "Staff Management",
-    breadcrumbs: [
-      { label: "Dashboard", href: "/dashboard" },
-      { label: "Staff Management", href: "/dashboard/staff-management" },
-    ],
-  };
+	const session = use(verifySession());
+	const query = use(loadSearchParams(searchParams));
+	const queryClient = getQueryClient();
+	const breadcrumb = {
+		title: "Staff Management",
+		breadcrumbs: [
+			{ label: "Dashboard", href: "/dashboard" },
+			{ label: "Staff Management", href: "/dashboard/staff-management" },
+		],
+	};
 
-  const { content, ...paginationMeta } = use(
-    queryClient.ensureQueryData({
-      queryKey: ["staffs", query],
-      queryFn: async () => {
-        const response = await $fetch("@get/api/hotel-owners/staff", {
-          query: {
-            ...query,
-            page: query.page ? query.page - 1 : 0
-          },
-          auth: {
-            type: "Bearer",
-            token: session.token,
-          },
-          throw: true,
-        });
-        return response.data;
-      },
-    })
-  );
+	const { content, ...paginationMeta } = use(
+		queryClient.ensureQueryData({
+			queryKey: ["staffs", query],
+			queryFn: async () => {
+				const response = await $fetch("@get/api/hotel-owners/staff", {
+					query: {
+						...query,
+						page: query.page ? query.page - 1 : 0,
+					},
+					auth: {
+						type: "Bearer",
+						token: session.token,
+					},
+					throw: true,
+				});
+				return response.data;
+			},
+		}),
+	);
 
-  console.log({
-    query,
-    content,
-    paginationMeta,
-  })
+	console.log({
+		query,
+		content,
+		paginationMeta,
+	});
 
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <HotelOwnerStaff
-        breadcrumb={breadcrumb}
-        staffs={content}
-        paginationMeta={paginationMeta}
-      />
-    </HydrationBoundary>
-  );
+	return (
+		<HydrationBoundary state={dehydrate(queryClient)}>
+			<HotelOwnerStaff
+				breadcrumb={breadcrumb}
+				staffs={content}
+				paginationMeta={paginationMeta}
+			/>
+		</HydrationBoundary>
+	);
 }
 
 export default StaffManagementPage;

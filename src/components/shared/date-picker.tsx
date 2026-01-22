@@ -1,6 +1,10 @@
-"use client"
+"use client";
 
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+} from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -8,111 +12,109 @@ import { Calendar } from "../ui/calendar";
 import { useState } from "react";
 
 function formatDate(date: Date | undefined) {
-  if (!date) {
-    return "";
-  }
+	if (!date) {
+		return "";
+	}
 
-  return date.toLocaleDateString("en-US", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+	return date.toLocaleDateString("en-US", {
+		day: "2-digit",
+		month: "long",
+		year: "numeric",
+	});
 }
 
 function isValidDate(date: Date | undefined) {
-  if (!date) {
-    return false;
-  }
-  return !Number.isNaN(date.getTime());
+	if (!date) {
+		return false;
+	}
+	return !Number.isNaN(date.getTime());
 }
 
 export function DatePicker({
-  initialDate,
-  onChange,
-  placeholder = "Select date",
-  minDate,
+	initialDate,
+	onChange,
+	placeholder = "Select date",
+	minDate,
 }: {
-  initialDate: string;
-  onChange: (date: string) => void;
-  placeholder?: string;
-  minDate?: Date;
+	initialDate: string;
+	onChange: (date: string) => void;
+	placeholder?: string;
+	minDate?: Date;
 }) {
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState<Date | undefined>(
-    initialDate ? new Date(initialDate) : undefined
-  );
-  const [month, setMonth] = useState<Date | undefined>(
-    date || new Date()
-  );
-  const [value, setValue] = useState(
-    initialDate ? formatDate(new Date(initialDate)) : ""
-  );
+	const [open, setOpen] = useState(false);
+	const [date, setDate] = useState<Date | undefined>(
+		initialDate ? new Date(initialDate) : undefined,
+	);
+	const [month, setMonth] = useState<Date | undefined>(date || new Date());
+	const [value, setValue] = useState(
+		initialDate ? formatDate(new Date(initialDate)) : "",
+	);
 
-  // Update form when date changes
-  const handleDateChange = (newDate: Date | undefined) => {
-    if (newDate && isValidDate(newDate)) {
-      const dateString = newDate.toISOString().split("T")[0];
-      onChange(dateString);
-    }
-  };
+	// Update form when date changes
+	const handleDateChange = (newDate: Date | undefined) => {
+		if (newDate && isValidDate(newDate)) {
+			const dateString = newDate.toISOString().split("T")[0];
+			onChange(dateString);
+		}
+	};
 
-  return (
-    <div>
-      {" "}
-      <div className="relative h-auto">
-        <Input
-          value={value}
-          placeholder={placeholder}
-          className="bg-background pr-10"
-          onChange={(e) => {
-            const newDate = new Date(e.target.value);
-            setValue(e.target.value);
-            if (isValidDate(newDate)) {
-              setDate(newDate);
-              setMonth(newDate);
-              handleDateChange(newDate);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setOpen(true);
-            }
-          }}
-        />
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
-            >
-              <CalendarIcon className="size-3.5" />
-              <span className="sr-only">Select date</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-auto overflow-hidden p-0"
-            align="end"
-            alignOffset={-8}
-            sideOffset={10}
-          >
-            <Calendar
-              mode="single"
-              selected={date}
-              captionLayout="dropdown"
-              month={month}
-              onMonthChange={setMonth}
-              disabled={(date) => (minDate ? date < minDate : false)}
-              onSelect={(selectedDate) => {
-                setDate(selectedDate);
-                setValue(formatDate(selectedDate));
-                handleDateChange(selectedDate);
-                setOpen(false);
-              }}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
-  );
+	return (
+		<div>
+			{" "}
+			<div className="relative h-auto">
+				<Input
+					value={value}
+					placeholder={placeholder}
+					className="bg-background pr-10"
+					onChange={(e) => {
+						const newDate = new Date(e.target.value);
+						setValue(e.target.value);
+						if (isValidDate(newDate)) {
+							setDate(newDate);
+							setMonth(newDate);
+							handleDateChange(newDate);
+						}
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "ArrowDown") {
+							e.preventDefault();
+							setOpen(true);
+						}
+					}}
+				/>
+				<Popover open={open} onOpenChange={setOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							variant="ghost"
+							className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
+						>
+							<CalendarIcon className="size-3.5" />
+							<span className="sr-only">Select date</span>
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent
+						className="w-auto overflow-hidden p-0"
+						align="end"
+						alignOffset={-8}
+						sideOffset={10}
+					>
+						<Calendar
+							mode="single"
+							selected={date}
+							captionLayout="dropdown"
+							month={month}
+							onMonthChange={setMonth}
+							disabled={(date) => (minDate ? date < minDate : false)}
+							onSelect={(selectedDate) => {
+								setDate(selectedDate);
+								setValue(formatDate(selectedDate));
+								handleDateChange(selectedDate);
+								setOpen(false);
+							}}
+						/>
+					</PopoverContent>
+				</Popover>
+			</div>
+		</div>
+	);
 }

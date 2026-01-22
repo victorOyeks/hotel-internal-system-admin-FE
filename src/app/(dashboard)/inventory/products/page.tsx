@@ -11,10 +11,9 @@ type PageProps = {
 	searchParams: Promise<SearchParams>;
 };
 
-const loadSearchParams = createLoader(
-	{
-		...paginationSearchParams,
-	})
+const loadSearchParams = createLoader({
+	...paginationSearchParams,
+});
 
 function Page({ searchParams }: PageProps) {
 	const { token } = use(getCookieData())!;
@@ -28,7 +27,7 @@ function Page({ searchParams }: PageProps) {
 				const response = await $fetch("@get/api/inventories/products", {
 					query: {
 						...query,
-						page: query.page < 1 ? query.page : query.page - 1
+						page: query.page < 1 ? query.page : query.page - 1,
 					},
 					auth: {
 						type: "Bearer",
@@ -47,19 +46,22 @@ function Page({ searchParams }: PageProps) {
 		qc.ensureQueryData({
 			queryKey: ["inventory", "products", "stats"],
 			queryFn: async ({ signal }) => {
-				const response = await $fetch("@get/api/inventories/products/statistics", {
-					auth: {
-						type: "Bearer",
-						token,
+				const response = await $fetch(
+					"@get/api/inventories/products/statistics",
+					{
+						auth: {
+							type: "Bearer",
+							token,
+						},
+						signal,
+						throw: true,
 					},
-					signal,
-					throw: true,
-				});
+				);
 
 				return response;
 			},
 		}),
-	)
+	);
 
 	return (
 		<BreadCrumbWrapper
@@ -77,7 +79,11 @@ function Page({ searchParams }: PageProps) {
 				],
 			}}
 		>
-			<ProductCatalogPage products={products} paginationMeta={paginationMeta} productsStats={productsStats} />
+			<ProductCatalogPage
+				products={products}
+				paginationMeta={paginationMeta}
+				productsStats={productsStats}
+			/>
 		</BreadCrumbWrapper>
 	);
 }

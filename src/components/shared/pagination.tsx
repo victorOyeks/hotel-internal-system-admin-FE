@@ -65,18 +65,26 @@ const generatePagination = (
 };
 
 // Your improved pagination component
-export function DataTablePagination<T>(props: { table: Table<T> } | {
-	pageIndex: number;
-	pageCount: number;
-	nextPage: () => void;
-	previousPage: () => void;
-	canNextPage: boolean;
-	canPreviousPage: boolean;
-	setPageIndex?: (pageIndex: number) => void;
-}) {
+export function DataTablePagination<T>(
+	props:
+		| { table: Table<T> }
+		| {
+				pageIndex: number;
+				pageCount: number;
+				nextPage: () => void;
+				previousPage: () => void;
+				canNextPage: boolean;
+				canPreviousPage: boolean;
+				setPageIndex?: (pageIndex: number) => void;
+		  },
+) {
 	const table = "table" in props ? props.table : undefined;
-	const pageIndex = "table" in props ? props.table.getState().pagination.pageIndex : props.pageIndex;
-	const pageCount = "table" in props ? props.table.getPageCount() : props.pageCount;
+	const pageIndex =
+		"table" in props
+			? props.table.getState().pagination.pageIndex
+			: props.pageIndex;
+	const pageCount =
+		"table" in props ? props.table.getPageCount() : props.pageCount;
 
 	const paginationRange = useMemo(
 		() => generatePagination(pageIndex, pageCount),
@@ -94,7 +102,11 @@ export function DataTablePagination<T>(props: { table: Table<T> } | {
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
-				disabled={table ? !table.getCanPreviousPage() : !("canPreviousPage" in props ? props.canPreviousPage : false)}
+				disabled={
+					table
+						? !table.getCanPreviousPage()
+						: !("canPreviousPage" in props ? props.canPreviousPage : false)
+				}
 				onClick={() => {
 					if (table) {
 						table.previousPage();
@@ -146,7 +158,11 @@ export function DataTablePagination<T>(props: { table: Table<T> } | {
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
-				disabled={table ? !table.getCanNextPage() : !("canNextPage" in props ? props.canNextPage : false)}
+				disabled={
+					table
+						? !table.getCanNextPage()
+						: !("canNextPage" in props ? props.canNextPage : false)
+				}
 				onClick={() => {
 					if (table) {
 						table.nextPage();

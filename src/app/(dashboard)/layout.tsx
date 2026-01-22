@@ -10,32 +10,39 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { throttle } from "nuqs/server";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
-  const user = use(getUser());
+	const user = use(getUser());
 
-  if (!user) {
-    redirect("/auth");
-  }
+	if (!user) {
+		redirect("/auth");
+	}
 
-  if (!user.changedPassword) {
-    redirect("/reset-password");
-  }
+	if (!user.changedPassword) {
+		redirect("/reset-password");
+	}
 
-  const activeHotel = use(getManagerCurrentHotel());
-  return (
-    <NuqsAdapter defaultOptions={{
-      clearOnDefault: true,
-      limitUrlUpdates: throttle(500),
-      shallow: false,
-    }}>
-      <JotaiProvider>
-        <SidebarProvider>
-          <AppSidebar collapsible="icon" role={user.role as HotelRole} hotels={user.hotels} activeHotel={activeHotel ?? undefined} />
-          <SidebarInset className="bg-background-blue">
-            <Header user={user} />
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
-      </JotaiProvider>
-    </NuqsAdapter>
-  );
+	const activeHotel = use(getManagerCurrentHotel());
+	return (
+		<NuqsAdapter
+			defaultOptions={{
+				clearOnDefault: true,
+				limitUrlUpdates: throttle(500),
+				shallow: false,
+			}}
+		>
+			<JotaiProvider>
+				<SidebarProvider>
+					<AppSidebar
+						collapsible="icon"
+						role={user.role as HotelRole}
+						hotels={user.hotels}
+						activeHotel={activeHotel ?? undefined}
+					/>
+					<SidebarInset className="bg-background-blue">
+						<Header user={user} />
+						{children}
+					</SidebarInset>
+				</SidebarProvider>
+			</JotaiProvider>
+		</NuqsAdapter>
+	);
 }

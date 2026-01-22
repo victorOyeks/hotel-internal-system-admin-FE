@@ -7,7 +7,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { InventoryDelivery, Pagination } from "@/lib/fetch";
+import type { InventoryDelivery, Pagination } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import {
 	createColumnHelper,

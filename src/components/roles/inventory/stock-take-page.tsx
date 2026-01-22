@@ -11,9 +11,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlusIcon, EyeIcon, ClipboardListIcon } from "lucide-react";
-import {
-	createColumnHelper,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import type {
 	InventoryStockTakeResponse,
@@ -111,20 +109,20 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 				<div className="flex gap-2">
 					{(info.row.original.status === "SCHEDULED" ||
 						info.row.original.status === "IN_PROGRESS") && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => {
-									setSelectedStockTake(info.row.original);
-									// Logic to open counting dialog would go here
-									// For now we just open details
-									setIsDetailsDialogOpen(true);
-								}}
-							>
-								<ClipboardListIcon className="w-4 h-4 mr-1" />
-								Count
-							</Button>
-						)}
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								setSelectedStockTake(info.row.original);
+								// Logic to open counting dialog would go here
+								// For now we just open details
+								setIsDetailsDialogOpen(true);
+							}}
+						>
+							<ClipboardListIcon className="w-4 h-4 mr-1" />
+							Count
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -173,9 +171,7 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 						<DialogHeader>
 							<DialogTitle>Create Stock Take</DialogTitle>
 						</DialogHeader>
-						<CreateStockTakeForm
-							onClose={() => setIsCreateDialogOpen(false)}
-						/>
+						<CreateStockTakeForm onClose={() => setIsCreateDialogOpen(false)} />
 					</DialogContent>
 				</Dialog>
 			</div>

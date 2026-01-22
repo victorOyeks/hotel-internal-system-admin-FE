@@ -3,8 +3,20 @@
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+	Dialog,
+	DialogContent,
+	DialogTrigger,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
 	Table,
 	TableHeader,
@@ -49,7 +61,14 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import { useSetAtom } from "jotai";
-import { EditIcon, Loader2Icon, MoreVerticalIcon, PlusIcon, SearchIcon, TrashIcon } from "lucide-react";
+import {
+	EditIcon,
+	Loader2Icon,
+	MoreVerticalIcon,
+	PlusIcon,
+	SearchIcon,
+	TrashIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import z from "zod";
@@ -77,7 +96,7 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 	});
 
 	const { mutateAsync } = useMutation({
-		mutationKey: ['add-supplier'],
+		mutationKey: ["add-supplier"],
 		mutationFn: async (data: z.infer<typeof addSupplierFormSchema>) => {
 			const res = await addSupplier(data);
 			if (!res.success) {
@@ -90,11 +109,16 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 			form.reset();
 		},
 		onError: (error) => {
-			toast.error(error instanceof Error ? error.message : "Unable to add supplier");
-		}
-	})
+			toast.error(
+				error instanceof Error ? error.message : "Unable to add supplier",
+			);
+		},
+	});
 
-	const [search, setSearch] = useQueryState("product-list:search", parseAsString.withDefault(""))
+	const [search, setSearch] = useQueryState(
+		"product-list:search",
+		parseAsString.withDefault(""),
+	);
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -105,9 +129,7 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 					className="rounded-md md:rounded-xl transition-[width,contents] will-change-contents duration-300"
 				>
 					<PlusIcon />
-					<span className="hidden md:inline">
-						Add Supplier
-					</span>
+					<span className="hidden md:inline">Add Supplier</span>
 				</Button>
 			</DialogTrigger>
 
@@ -117,7 +139,10 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit((data) => mutateAsync(data))} className="space-y-4">
+					<form
+						onSubmit={form.handleSubmit((data) => mutateAsync(data))}
+						className="space-y-4"
+					>
 						<FormField
 							control={form.control}
 							name="name"
@@ -138,7 +163,11 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 								<FormItem>
 									<FormLabel>Email</FormLabel>
 									<FormControl>
-										<Input placeholder="supplier@example.com" type="email" {...field} />
+										<Input
+											placeholder="supplier@example.com"
+											type="email"
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -169,15 +198,15 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 											onValuesChange={field.onChange}
 										>
 											<MultiSelectTrigger className="w-full">
-												<MultiSelectValue
-													placeholder="Select products" />
+												<MultiSelectValue placeholder="Select products" />
 											</MultiSelectTrigger>
-											<MultiSelectContent shouldFilter={false}
+											<MultiSelectContent
+												shouldFilter={false}
 												searchValue={search}
 												onSearchValueChange={setSearch}
 												search={{
 													emptyMessage: "No products found.",
-													placeholder: "Search products"
+													placeholder: "Search products",
 												}}
 											>
 												{products.map((product) => (
@@ -193,36 +222,30 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 							)}
 						/>
 						<DialogFooter>
-							<Button type="submit"
+							<Button
+								type="submit"
 								disabled={
-									!form.formState.isValid
-									||
-									form.formState.isSubmitting
+									!form.formState.isValid || form.formState.isSubmitting
 								}
-							>{
-									form.formState.isSubmitting ? (
-										<>
-											<Loader2Icon />
-											Please wait...
-										</>
-									) : (
-										"Add Supplier"
-									)
-								}
+							>
+								{form.formState.isSubmitting ? (
+									<>
+										<Loader2Icon />
+										Please wait...
+									</>
+								) : (
+									"Add Supplier"
+								)}
 							</Button>
 						</DialogFooter>
 					</form>
 				</Form>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
 
-function BookingsListToolbar({
-	products,
-}: {
-	products: InventoryProduct[];
-}) {
+function BookingsListToolbar({ products }: { products: InventoryProduct[] }) {
 	return (
 		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
 			<div className="flex items-center gap-x-2">
@@ -276,10 +299,13 @@ const suppliesPageColumns = [
 		header: "Associated products",
 		cell: (info) => {
 			const items = info.getValue();
-			return items ?
+			return items ? (
 				<span className="text-wrap">
 					{items.map((item) => item.name).join(", ")}
-				</span> : "N/A"
+				</span>
+			) : (
+				"N/A"
+			);
 		},
 	}),
 	suppliesPageColumnHelper.display({
@@ -288,11 +314,7 @@ const suppliesPageColumns = [
 			return (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-8 w-8 p-0"
-						>
+						<Button variant="ghost" size="icon" className="h-8 w-8 p-0">
 							<span className="sr-only">Open menu</span>
 							<MoreVerticalIcon />
 						</Button>
@@ -309,9 +331,9 @@ const suppliesPageColumns = [
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-			)
-		}
-	})
+			);
+		},
+	}),
 ];
 
 function SuppliesTable({
@@ -349,9 +371,9 @@ function SuppliesTable({
 										{header.isPlaceholder
 											? null
 											: flexRender(
-												header.column.columnDef.header,
-												header.getContext(),
-											)}
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
 									</TableHead>
 								);
 							})}
@@ -408,7 +430,7 @@ export function SuppliesPage({
 	breadcrumb,
 	data,
 	paginationMeta,
-	productsList
+	productsList,
 }: {
 	breadcrumb: {
 		title: string;
@@ -426,14 +448,9 @@ export function SuppliesPage({
 	}, [breadcrumb, setBreadcrumb]);
 	return (
 		<div className="space-y-4 px-4 py-4">
-			<BookingsListToolbar
-				products={productsList}
-			/>
+			<BookingsListToolbar products={productsList} />
 
-			<SuppliesTable
-				data={data}
-				paginationMeta={paginationMeta}
-			/>
+			<SuppliesTable data={data} paginationMeta={paginationMeta} />
 		</div>
 	);
 }

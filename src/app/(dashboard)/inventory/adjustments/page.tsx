@@ -1,7 +1,7 @@
 import { StockAdjustmentPage } from "@/components/roles/inventory/stock-adjustment-page";
 
 function Page() {
-  return <StockAdjustmentPage />;
+	return <StockAdjustmentPage />;
 }
 
 export default Page;

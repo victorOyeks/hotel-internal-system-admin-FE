@@ -50,12 +50,11 @@ function Page({ searchParams }: PageProps) {
 			queryFn: async () => {
 				const response = await $fetch("@get/api/inventories/dashboard", {
 					auth: { type: "Bearer", token },
-					query: {
-					},
+					query: {},
 					throw: true,
-				})
+				});
 
-				console.log({ response })
+				console.log({ response });
 
 				return response;
 			},

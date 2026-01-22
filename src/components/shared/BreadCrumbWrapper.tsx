@@ -5,20 +5,20 @@ import { useSetAtom } from "jotai";
 import { type PropsWithChildren, useEffect } from "react";
 
 export function BreadCrumbWrapper({
-  breadcrumbs,
-  children,
+	breadcrumbs,
+	children,
 }: PropsWithChildren<{
-  breadcrumbs: {
-    title: string;
-    breadcrumbs: Breadcrumb[];
-  };
+	breadcrumbs: {
+		title: string;
+		breadcrumbs: Breadcrumb[];
+	};
 }>) {
-  const setBreadcrumb = useSetAtom(breadcrumbAtom);
+	const setBreadcrumb = useSetAtom(breadcrumbAtom);
 
-  useEffect(() => {
-    setBreadcrumb(breadcrumbs);
-    return () => setBreadcrumb(null);
-  }, [setBreadcrumb, breadcrumbs]);
+	useEffect(() => {
+		setBreadcrumb(breadcrumbs);
+		return () => setBreadcrumb(null);
+	}, [setBreadcrumb, breadcrumbs]);
 
-  return <>{children}</>;
+	return <>{children}</>;
 }

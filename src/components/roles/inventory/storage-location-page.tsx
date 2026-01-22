@@ -30,12 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	PlusIcon,
-	ThermometerIcon,
-	DropletIcon,
-	EyeIcon,
-} from "lucide-react";
+import { PlusIcon, ThermometerIcon, DropletIcon, EyeIcon } from "lucide-react";
 import { StatSection } from "./locations";
 import {
 	LocationsToolbar,
@@ -201,7 +196,6 @@ const mockLocations: StorageLocation[] = [
 	},
 ];
 
-
 const columnHelper = createColumnHelper<StorageLocation>();
 
 const columnDefs = [
@@ -291,12 +285,13 @@ const columnDefs = [
 					</div>
 					<div className="w-full bg-gray-200 rounded-full h-2">
 						<div
-							className={`h-2 rounded-full ${(location.currentOccupancy || 0) > 80
-								? "bg-red-500"
-								: (location.currentOccupancy || 0) > 60
-									? "bg-orange-500"
-									: "bg-green-500"
-								}`}
+							className={`h-2 rounded-full ${
+								(location.currentOccupancy || 0) > 80
+									? "bg-red-500"
+									: (location.currentOccupancy || 0) > 60
+										? "bg-orange-500"
+										: "bg-green-500"
+							}`}
 							style={{ width: `${location.currentOccupancy}%` }}
 						/>
 					</div>
@@ -335,7 +330,6 @@ const columnDefs = [
 			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 			const location = info.row.original;
 			return (
-
 				<LocationDetails
 					open={isDetailsOpen}
 					onOpenChange={setIsDetailsOpen}
@@ -474,9 +468,7 @@ export function StorageLocationPage() {
 						) : (
 							filteredLocations.map((location) => (
 								<TableRow key={location.id}>
-									<TableCell className="font-medium">
-										{location.code}
-									</TableCell>
+									<TableCell className="font-medium">{location.code}</TableCell>
 									<TableCell>
 										<div>
 											<p className="font-medium">{location.name}</p>
@@ -540,12 +532,13 @@ export function StorageLocationPage() {
 											</div>
 											<div className="w-full bg-gray-200 rounded-full h-2">
 												<div
-													className={`h-2 rounded-full ${(location.currentOccupancy || 0) > 80
-														? "bg-red-500"
-														: (location.currentOccupancy || 0) > 60
-															? "bg-orange-500"
-															: "bg-green-500"
-														}`}
+													className={`h-2 rounded-full ${
+														(location.currentOccupancy || 0) > 80
+															? "bg-red-500"
+															: (location.currentOccupancy || 0) > 60
+																? "bg-orange-500"
+																: "bg-green-500"
+													}`}
 													style={{ width: `${location.currentOccupancy}%` }}
 												/>
 											</div>

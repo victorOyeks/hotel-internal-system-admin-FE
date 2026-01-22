@@ -1,16 +1,10 @@
 import { SuppliesPage } from "@/components/roles/inventory/supplies-page";
-import {
-	$fetch,
-} from "@/lib/fetch";
+import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
-import {
-	createLoader,
-	parseAsString,
-	type SearchParams,
-} from "nuqs/server";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
 const breadcrumb = {
@@ -25,14 +19,17 @@ type PageProps = {
 	searchParams: Promise<SearchParams>;
 };
 
-const loadSearchParams = createLoader({
-	search: parseAsString,
-	...paginationSearchParams,
-}, {
-	urlKeys: {
-		search: "product-list:search"
-	}
-});
+const loadSearchParams = createLoader(
+	{
+		search: parseAsString,
+		...paginationSearchParams,
+	},
+	{
+		urlKeys: {
+			search: "product-list:search",
+		},
+	},
+);
 
 function Page({ searchParams }: PageProps) {
 	const query = use(loadSearchParams(searchParams));
@@ -70,7 +67,7 @@ function Page({ searchParams }: PageProps) {
 				return response;
 			},
 		}),
-	)
+	);
 	return (
 		<SuppliesPage
 			breadcrumb={breadcrumb}

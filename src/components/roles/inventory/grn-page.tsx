@@ -30,7 +30,6 @@ import type {
 	InventorySuppliers,
 } from "@/lib/fetch";
 
-
 const columnHelper = createColumnHelper<InventoryGRNResponse>();
 
 const columnDefs = [

@@ -68,9 +68,8 @@ function InventoryPage({ searchParams }: PageProps) {
 				});
 
 				return response.data;
-			}
-		},
-		),
+			},
+		}),
 	);
 
 	return (

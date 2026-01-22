@@ -5,59 +5,60 @@ import { getCookieData } from "@/lib/server-fns";
 import { use } from "react";
 import z from "zod";
 
-
-const ParamsSchema = z.object({
-  roomType: z.string(),
-  search: z.string(),
-  bookingStatus: z.string(),
-  page: z.coerce.number().default(0),
-  size: z.coerce.number().default(10),
-}).partial();
+const ParamsSchema = z
+	.object({
+		roomType: z.string(),
+		search: z.string(),
+		bookingStatus: z.string(),
+		page: z.coerce.number().default(0),
+		size: z.coerce.number().default(10),
+	})
+	.partial();
 
 function Page({
-  searchParams,
+	searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
+	searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
-  const cookieData = use(getCookieData())!;
-  const searchParamsObj = use(searchParams);
-  const queryClient = getQueryClient();
-  const validatedParams = ParamsSchema.parse(searchParamsObj);
+	const cookieData = use(getCookieData())!;
+	const searchParamsObj = use(searchParams);
+	const queryClient = getQueryClient();
+	const validatedParams = ParamsSchema.parse(searchParamsObj);
 
-  const { content, ...paginationProps } = use(
-    queryClient.ensureQueryData({
-      queryKey: ["hotel-owner-bookings", validatedParams],
-      queryFn: async () => {
-        const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {
-          query: {
-            ...validatedParams,
-            page: validatedParams.page ? validatedParams.page - 1 : 0
-          },
-          auth: {
-            type: "Bearer",
-            token: cookieData.token,
-          },
-          throw: true,
-        });
+	const { content, ...paginationProps } = use(
+		queryClient.ensureQueryData({
+			queryKey: ["hotel-owner-bookings", validatedParams],
+			queryFn: async () => {
+				const response = await $fetch("@get/api/hotel-owners/hotels/bookings", {
+					query: {
+						...validatedParams,
+						page: validatedParams.page ? validatedParams.page - 1 : 0,
+					},
+					auth: {
+						type: "Bearer",
+						token: cookieData.token,
+					},
+					throw: true,
+				});
 
-        return response.data;
-      },
-    })
-  );
+				return response.data;
+			},
+		}),
+	);
 
-  return (
-    <BookingsPage
-      bookings={content}
-      paginationMeta={paginationProps}
-      breadcrumb={{
-        title: "Bookings",
-        breadcrumbs: [
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Bookings", href: "/dashboard/bookings" },
-        ],
-      }}
-    />
-  );
+	return (
+		<BookingsPage
+			bookings={content}
+			paginationMeta={paginationProps}
+			breadcrumb={{
+				title: "Bookings",
+				breadcrumbs: [
+					{ label: "Dashboard", href: "/dashboard" },
+					{ label: "Bookings", href: "/dashboard/bookings" },
+				],
+			}}
+		/>
+	);
 }
 
 export default Page;

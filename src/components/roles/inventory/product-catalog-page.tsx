@@ -231,7 +231,7 @@ export function ProductCatalogPage({
 }: {
 	products: InventoryProductResponse[];
 	productsStats: InventoryProductStatistics;
-	paginationMeta: Pagination
+	paginationMeta: Pagination;
 }) {
 	const [pagination, setPagination] = usePaginationSearchParams();
 	const table = useReactTable({
@@ -253,7 +253,9 @@ export function ProductCatalogPage({
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-semibold tracking-tight">Product Catalog</h1>
+					<h1 className="text-3xl font-semibold tracking-tight">
+						Product Catalog
+					</h1>
 					<p className="text-muted-foreground mt-1">
 						Manage your product inventory and track batches
 					</p>
@@ -383,9 +385,9 @@ export function ProductCatalogPage({
 											{header.isPlaceholder
 												? null
 												: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
 										</TableHead>
 									);
 								})}
@@ -1041,17 +1043,19 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={() => {
-						setIsMenuOpen(false)
-						setIsEditOpen(true)
-					}}>
+					<DropdownMenuItem
+						onClick={() => {
+							setIsMenuOpen(false);
+							setIsEditOpen(true);
+						}}
+					>
 						<EditIcon />
 						Edit
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => {
-							setIsMenuOpen(false)
-							setIsDeleteOpen(true)
+							setIsMenuOpen(false);
+							setIsDeleteOpen(true);
 						}}
 						variant="destructive"
 					>
@@ -1155,13 +1159,19 @@ function EditProductForm({
 			trackExpiry: product.trackExpiry,
 			trackSerialNumbers: product.trackSerialNumbers || false,
 			perishable: product.perishable,
-			valuationMethod: (product.valuationMethod as z.infer<typeof ApiInputInventoryProduct>["valuationMethod"]) || "FIFO",
+			valuationMethod:
+				(product.valuationMethod as z.infer<
+					typeof ApiInputInventoryProduct
+				>["valuationMethod"]) || "FIFO",
 		},
 	});
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
+			<form
+				onSubmit={form.handleSubmit((data) => mutate(data))}
+				className="space-y-4"
+			>
 				<ScrollArea className="max-h-[60vh]">
 					<div className="space-y-6">
 						{/* Basic Information */}
@@ -1206,7 +1216,10 @@ function EditProductForm({
 									<FormItem>
 										<FormLabel>Product Name *</FormLabel>
 										<FormControl>
-											<Input placeholder="e.g., Premium Coffee Beans" {...field} />
+											<Input
+												placeholder="e.g., Premium Coffee Beans"
+												{...field}
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>

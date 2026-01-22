@@ -1,21 +1,33 @@
 import { StockTakePage } from "@/components/roles/inventory/stock-take-page";
-import {
-  mockStockTakes,
-  mockStockTakeStats,
-} from "@/components/roles/inventory/stock-take-mock";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { $fetch } from "@/lib/fetch";
+import { paginationSearchParams } from "@/lib/nuqs.server";
+import { getQueryClient } from "@/lib/queries";
+import { getCookieData } from "@/lib/server-fns";
+import { createLoader, type SearchParams } from "nuqs/server";
+import { use } from "react";
 
-export default async function Page() {
-  // Simulate API call
-  const stockTakes = await Promise.resolve(mockStockTakes);
-  const stats = await Promise.resolve(mockStockTakeStats);
+type PageProps = {
+	searchParams: Promise<SearchParams>;
+};
 
-  return (
-    <BreadCrumbWrapper breadcrumbs={{
-      breadcrumbs: [],
-      title: ""
-    }}>
-      <StockTakePage stockTakes={stockTakes} stats={stats} />
-    </BreadCrumbWrapper>
-  );
+const loadSearchParams = createLoader({
+	...paginationSearchParams,
+});
+
+export default function Page({ searchParams }: PageProps) {
+	const { token } = use(getCookieData())!;
+	const query = use(loadSearchParams(searchParams));
+	const qc = getQueryClient();
+
+	return (
+		<BreadCrumbWrapper
+			breadcrumbs={{
+				breadcrumbs: [],
+				title: "Stock takes",
+			}}
+		>
+			<StockTakePage stockTakes={[]} stats={{}} />
+		</BreadCrumbWrapper>
+	);
 }

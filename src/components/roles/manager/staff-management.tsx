@@ -2,44 +2,44 @@
 "use client";
 
 import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type Table as TableType,
-  useReactTable,
+	createColumnHelper,
+	flexRender,
+	getCoreRowModel,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	type Table as TableType,
+	useReactTable,
 } from "@tanstack/react-table";
 import {
-  DoorOpenIcon,
-  Loader2Icon,
-  MoreVerticalIcon,
-  PlusCircleIcon,
-  SearchIcon,
-  AlertTriangleIcon,
-  UserXIcon,
-  ReplaceIcon,
-  EyeOffIcon,
-  EyeIcon,
-  CalendarIcon,
+	DoorOpenIcon,
+	Loader2Icon,
+	MoreVerticalIcon,
+	PlusCircleIcon,
+	SearchIcon,
+	AlertTriangleIcon,
+	UserXIcon,
+	ReplaceIcon,
+	EyeOffIcon,
+	EyeIcon,
+	CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
+	Table,
+	TableBody,
+	TableCell,
+	TableFooter,
+	TableHead,
+	TableHeader,
+	TableRow,
 } from "@/components/ui/table";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { atom, useAtom, useSetAtom } from "jotai";
@@ -47,40 +47,40 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
 } from "@/components/ui/dialog";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 import {
-  type ExportData,
-  ExportDialog,
-  SuccessDialog,
+	type ExportData,
+	ExportDialog,
+	SuccessDialog,
 } from "@/components/shared/shared-dialogs";
 import {
-  type CustomPageStaffResponse,
-  type Pagination,
-  Role,
+	type CustomPageStaffResponse,
+	type Pagination,
+	Role,
 } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -90,15 +90,15 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { RotateCcwIcon, XIcon } from "lucide-react";
 import {
-  editStaffDetails,
-  onboardStaffToHotel,
-  resetPasswordForStaff,
-  suspendStaffAccount,
+	editStaffDetails,
+	onboardStaffToHotel,
+	resetPasswordForStaff,
+	suspendStaffAccount,
 } from "@/lib/manager-actions";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -107,1351 +107,1390 @@ import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
-  show: false,
-  message: "",
+	show: false,
+	message: "",
 });
 
 function StaffFilter({
-  queryState,
-  setQueryState,
-  setOpen
+	queryState,
+	setQueryState,
+	setOpen,
 }: {
-  queryState: {
-    search: string | null;
-    status: "ACTIVE" | "INACTIVE" | "PENDING" | "SUSPENDED" | null;
-    role: "HOTEL_OWNER" | "MANAGER" | "FRONT_DESK" | "MAINTENANCE" | "INVENTORY" | "BAR" | "KITCHEN" | "SUPER_ADMIN" | null;
-  };
-  setQueryState: (state: Partial<typeof queryState>) => void;
-  setOpen: (open: boolean) => void;
+	queryState: {
+		search: string | null;
+		status: "ACTIVE" | "INACTIVE" | "PENDING" | "SUSPENDED" | null;
+		role:
+			| "HOTEL_OWNER"
+			| "MANAGER"
+			| "FRONT_DESK"
+			| "MAINTENANCE"
+			| "INVENTORY"
+			| "BAR"
+			| "KITCHEN"
+			| "SUPER_ADMIN"
+			| null;
+	};
+	setQueryState: (state: Partial<typeof queryState>) => void;
+	setOpen: (open: boolean) => void;
 }) {
-  const [tempFilters, setTempFilters] = useState({
-    status: queryState.status,
-    role: queryState.role,
-  });
+	const [tempFilters, setTempFilters] = useState({
+		status: queryState.status,
+		role: queryState.role,
+	});
 
-  // Memoized callback functions to prevent unnecessary re-renders
-  const applyFilters = useCallback(() => {
-    setQueryState({
-      ...queryState,
-      status: tempFilters.status,
-      role: tempFilters.role,
-    });
-    setOpen(false);
-  }, [queryState, tempFilters.status, tempFilters.role, setQueryState, setOpen]);
+	// Memoized callback functions to prevent unnecessary re-renders
+	const applyFilters = useCallback(() => {
+		setQueryState({
+			...queryState,
+			status: tempFilters.status,
+			role: tempFilters.role,
+		});
+		setOpen(false);
+	}, [
+		queryState,
+		tempFilters.status,
+		tempFilters.role,
+		setQueryState,
+		setOpen,
+	]);
 
-  const clearFilters = useCallback(() => {
-    const clearedFilters = {
-      status: null,
-      role: null,
-    };
-    setTempFilters(clearedFilters);
-    setQueryState({
-      search: queryState.search,
-      status: null,
-      role: null,
-    });
-    setOpen(false);
-  }, [queryState.search, setQueryState, setOpen]);
+	const clearFilters = useCallback(() => {
+		const clearedFilters = {
+			status: null,
+			role: null,
+		};
+		setTempFilters(clearedFilters);
+		setQueryState({
+			search: queryState.search,
+			status: null,
+			role: null,
+		});
+		setOpen(false);
+	}, [queryState.search, setQueryState, setOpen]);
 
-  // Memoize filter state computations
-  const filterStates = useMemo(() => {
-    const hasActiveFilters = tempFilters.status || tempFilters.role;
-    const hasAppliedFilters = queryState.status || queryState.role;
-    const appliedFiltersCount = [queryState.status, queryState.role].filter(Boolean).length;
-    
-    return {
-      hasActiveFilters,
-      hasAppliedFilters,
-      appliedFiltersCount,
-    };
-  }, [tempFilters.status, tempFilters.role, queryState.status, queryState.role]);
+	// Memoize filter state computations
+	const filterStates = useMemo(() => {
+		const hasActiveFilters = tempFilters.status || tempFilters.role;
+		const hasAppliedFilters = queryState.status || queryState.role;
+		const appliedFiltersCount = [queryState.status, queryState.role].filter(
+			Boolean,
+		).length;
 
-  const statusOptions = [
-    { value: "ACTIVE", label: "Active", color: "bg-green-500" },
-    { value: "INACTIVE", label: "Inactive", color: "bg-gray-500" },
-    { value: "PENDING", label: "Pending", color: "bg-yellow-500" },
-    { value: "SUSPENDED", label: "Suspended", color: "bg-red-500" },
-  ];
+		return {
+			hasActiveFilters,
+			hasAppliedFilters,
+			appliedFiltersCount,
+		};
+	}, [
+		tempFilters.status,
+		tempFilters.role,
+		queryState.status,
+		queryState.role,
+	]);
 
-  const roleOptions = [
-    { value: "HOTEL_OWNER", label: "Hotel Owner" },
-    { value: "MANAGER", label: "Manager" },
-    { value: "FRONT_DESK", label: "Front Desk" },
-    { value: "MAINTENANCE", label: "Maintenance" },
-    { value: "INVENTORY", label: "Inventory" },
-    { value: "BAR", label: "Bar" },
-    { value: "KITCHEN", label: "Kitchen" },
-  ];
+	const statusOptions = [
+		{ value: "ACTIVE", label: "Active", color: "bg-green-500" },
+		{ value: "INACTIVE", label: "Inactive", color: "bg-gray-500" },
+		{ value: "PENDING", label: "Pending", color: "bg-yellow-500" },
+		{ value: "SUSPENDED", label: "Suspended", color: "bg-red-500" },
+	];
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-sm">Filter Staff</h4>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearFilters}
-          className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <RotateCcwIcon className="h-3 w-3 mr-1" />
-          Clear all
-        </Button>
-      </div>
+	const roleOptions = [
+		{ value: "HOTEL_OWNER", label: "Hotel Owner" },
+		{ value: "MANAGER", label: "Manager" },
+		{ value: "FRONT_DESK", label: "Front Desk" },
+		{ value: "MAINTENANCE", label: "Maintenance" },
+		{ value: "INVENTORY", label: "Inventory" },
+		{ value: "BAR", label: "Bar" },
+		{ value: "KITCHEN", label: "Kitchen" },
+	];
 
-      {/* Status Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Status</Label>
-        <Select
-          value={tempFilters.status || "all"}
-          onValueChange={(value) =>
-            setTempFilters({
-              ...tempFilters,
-              status: value === "all" ? null : value as typeof tempFilters.status,
-            })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 ${option.color} rounded-full`}></div>
-                  {option.label}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between">
+				<h4 className="font-semibold text-sm">Filter Staff</h4>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={clearFilters}
+					className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+				>
+					<RotateCcwIcon className="h-3 w-3 mr-1" />
+					Clear all
+				</Button>
+			</div>
 
-      {/* Role Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Role</Label>
-        <Select
-          value={tempFilters.role || "all"}
-          onValueChange={(value) =>
-            setTempFilters({ ...tempFilters, role: value === "all" ? null : value as typeof tempFilters.role })
-          }
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="All roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            {roleOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+			{/* Status Filter */}
+			<div className="space-y-2">
+				<Label className="text-sm font-medium">Status</Label>
+				<Select
+					value={tempFilters.status || "all"}
+					onValueChange={(value) =>
+						setTempFilters({
+							...tempFilters,
+							status:
+								value === "all" ? null : (value as typeof tempFilters.status),
+						})
+					}
+				>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder="All statuses" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All statuses</SelectItem>
+						{statusOptions.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								<div className="flex items-center gap-2">
+									<div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+									{option.label}
+								</div>
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 
-      {/* Filter Summary */}
-      {filterStates.hasActiveFilters && (
-        <div className="pt-2 border-t">
-          <p className="text-xs text-muted-foreground mb-2">Active filters:</p>
-          <div className="flex flex-wrap gap-1">
-            {tempFilters.status && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-                Status: {tempFilters.status.toLowerCase()}
-              </span>
-            )}
-            {tempFilters.role && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-                Role: {roleOptions.find(r => r.value === tempFilters.role)?.label}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+			{/* Role Filter */}
+			<div className="space-y-2">
+				<Label className="text-sm font-medium">Role</Label>
+				<Select
+					value={tempFilters.role || "all"}
+					onValueChange={(value) =>
+						setTempFilters({
+							...tempFilters,
+							role: value === "all" ? null : (value as typeof tempFilters.role),
+						})
+					}
+				>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder="All roles" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All roles</SelectItem>
+						{roleOptions.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								{option.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={clearFilters}
-          className="flex-1"
-        >
-          Clear
-        </Button>
-        <Button size="sm" onClick={applyFilters} className="flex-1">
-          Apply Filters
-        </Button>
-      </div>
-    </div>
-  );
+			{/* Filter Summary */}
+			{filterStates.hasActiveFilters && (
+				<div className="pt-2 border-t">
+					<p className="text-xs text-muted-foreground mb-2">Active filters:</p>
+					<div className="flex flex-wrap gap-1">
+						{tempFilters.status && (
+							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+								Status: {tempFilters.status.toLowerCase()}
+							</span>
+						)}
+						{tempFilters.role && (
+							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+								Role:{" "}
+								{roleOptions.find((r) => r.value === tempFilters.role)?.label}
+							</span>
+						)}
+					</div>
+				</div>
+			)}
+
+			{/* Action Buttons */}
+			<div className="flex gap-2 pt-2">
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={clearFilters}
+					className="flex-1"
+				>
+					Clear
+				</Button>
+				<Button size="sm" onClick={applyFilters} className="flex-1">
+					Apply Filters
+				</Button>
+			</div>
+		</div>
+	);
 }
 
 function HotelListToolbar({
-  table,
+	table,
 }: {
-  table: TableType<CustomPageStaffResponse>;
+	table: TableType<CustomPageStaffResponse>;
 }) {
-  const [queryState, setQueryState] = useQueryStates({
-    search: parseAsString,
-    status: parseAsStringLiteral(["ACTIVE", "INACTIVE", "PENDING", "SUSPENDED"]),
-    role: parseAsStringLiteral(["HOTEL_OWNER", "MANAGER", "FRONT_DESK", "MAINTENANCE", "INVENTORY", "BAR", "KITCHEN", "SUPER_ADMIN"]),
-  });
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+	const [queryState, setQueryState] = useQueryStates({
+		search: parseAsString,
+		status: parseAsStringLiteral([
+			"ACTIVE",
+			"INACTIVE",
+			"PENDING",
+			"SUSPENDED",
+		]),
+		role: parseAsStringLiteral([
+			"HOTEL_OWNER",
+			"MANAGER",
+			"FRONT_DESK",
+			"MAINTENANCE",
+			"INVENTORY",
+			"BAR",
+			"KITCHEN",
+			"SUPER_ADMIN",
+		]),
+	});
+	const [exportDialogOpen, setExportDialogOpen] = useState(false);
+	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
-  const handleExport = useCallback(
-    async (data: ExportData) => {
-      // Handle the export logic here, e.g., sending data to an API
-      console.log("Exporting data with the following details:", data);
-      setExportDialogOpen(false);
-      setSuccessDialogOpen({
-        show: true,
-        message: "Data exported successfully!",
-      });
-    },
-    [setSuccessDialogOpen]
-  );
+	const handleExport = useCallback(
+		async (data: ExportData) => {
+			// Handle the export logic here, e.g., sending data to an API
+			console.log("Exporting data with the following details:", data);
+			setExportDialogOpen(false);
+			setSuccessDialogOpen({
+				show: true,
+				message: "Data exported successfully!",
+			});
+		},
+		[setSuccessDialogOpen],
+	);
 
-  const [open, setOpen] = useState(false);
+	const [open, setOpen] = useState(false);
 
-  return (
-    <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
-      <div>
-        <p>All staff({table.getRowCount()})</p>
-      </div>
+	return (
+		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+			<div>
+				<p>All staff({table.getRowCount()})</p>
+			</div>
 
-      <div className="flex items-center gap-x-2 ">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search staff..."
-            value={queryState.search ?? ""}
-            onChange={(e) =>
-              setQueryState({ search: e.target.value || null })
-            }
-            className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
-          />
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <TableFilter open={open} setOpen={setOpen}>
-            <StaffFilter
-              queryState={queryState}
-              setQueryState={setQueryState}
-              setOpen={setOpen}
-            />
-          </TableFilter>
-          
-          {/* Applied Filters Display */}
-          {(queryState.status || queryState.role) && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {queryState.status && (
-                <>
-                  <span>Status:</span>
-                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
-                    {queryState.status}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setQueryState({ status: null })}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-              {queryState.role && (
-                <>
-                  <span>Role:</span>
-                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
-                    {queryState.role.replace('_', ' ')}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setQueryState({ role: null })}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+			<div className="flex items-center gap-x-2 ">
+				<div className="relative">
+					<input
+						type="text"
+						placeholder="Search staff..."
+						value={queryState.search ?? ""}
+						onChange={(e) => setQueryState({ search: e.target.value || null })}
+						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
+					/>
+					<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
+				</div>
 
-        <AddNewStaffDialog />
+				<div className="flex items-center gap-2">
+					<TableFilter open={open} setOpen={setOpen}>
+						<StaffFilter
+							queryState={queryState}
+							setQueryState={setQueryState}
+							setOpen={setOpen}
+						/>
+					</TableFilter>
 
-        <ExportDialog
-          open={exportDialogOpen}
-          setOpenAction={setExportDialogOpen}
-          onSubmitAction={handleExport}
-        />
-      </div>
-    </div>
-  );
+					{/* Applied Filters Display */}
+					{(queryState.status || queryState.role) && (
+						<div className="flex items-center gap-1 text-xs text-muted-foreground">
+							{queryState.status && (
+								<>
+									<span>Status:</span>
+									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+										{queryState.status}
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+										onClick={() => setQueryState({ status: null })}
+									>
+										<XIcon className="h-3 w-3" />
+									</Button>
+								</>
+							)}
+							{queryState.role && (
+								<>
+									<span>Role:</span>
+									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+										{queryState.role.replace("_", " ")}
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+										onClick={() => setQueryState({ role: null })}
+									>
+										<XIcon className="h-3 w-3" />
+									</Button>
+								</>
+							)}
+						</div>
+					)}
+				</div>
+
+				<AddNewStaffDialog />
+
+				<ExportDialog
+					open={exportDialogOpen}
+					setOpenAction={setExportDialogOpen}
+					onSubmitAction={handleExport}
+				/>
+			</div>
+		</div>
+	);
 }
 
 function AddNewStaffDialog() {
-  const [open, setOpen] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="secondary"
-          className="rounded-md md:rounded-xl"
-        >
-          <PlusCircleIcon />
-          <span className="hidden md:inline">Add staff</span>
-        </Button>
-      </DialogTrigger>
+	const [open, setOpen] = useState(false);
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogTrigger asChild>
+				<Button
+					size="sm"
+					variant="secondary"
+					className="rounded-md md:rounded-xl"
+				>
+					<PlusCircleIcon />
+					<span className="hidden md:inline">Add staff</span>
+				</Button>
+			</DialogTrigger>
 
-      <DialogContent className="p-4 rounded-2xl">
-        <DialogTitle>Add a new staff</DialogTitle>
-        <DialogDescription className="sr-only">
-          Fill in the details below to add a new staff member.
-        </DialogDescription>
+			<DialogContent className="p-4 rounded-2xl">
+				<DialogTitle>Add a new staff</DialogTitle>
+				<DialogDescription className="sr-only">
+					Fill in the details below to add a new staff member.
+				</DialogDescription>
 
-        <div className="mt-4">
-          <AddStaffForm setOpen={setOpen} />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+				<div className="mt-4">
+					<AddStaffForm setOpen={setOpen} />
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
 }
 
 const newStaffFormSchema = z.object({
-  fullName: z.string().nonempty("Staff name is required"),
-  email: z.email("Invalid email address"),
-  phoneNumber: z.string().nonempty("Phone number is required"),
-  role: Role,
-  staffId: z.string().optional(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+	fullName: z.string().nonempty("Staff name is required"),
+	email: z.email("Invalid email address"),
+	phoneNumber: z.string().nonempty("Phone number is required"),
+	role: Role,
+	staffId: z.string().optional(),
+	password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-  const [showPassword, setShowPassword] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: async (...params: Parameters<typeof onboardStaffToHotel>) => {
-      const res = await onboardStaffToHotel(...params);
-      if (!res.success) {
-        throw new Error(res.error || "Failed to add staff");
-      }
-      return res.data;
-    },
-    onSuccess: async () => {
-      setOpen(false);
-      form.reset();
-      setShowSuccessDialog({
-        show: true,
-        message: "Staff added successfully",
-      });
-      await revalidateRoute("/manager/staff-management");
-    },
-    onError: (e) => {
-      toast.error("Something went wrong", {
-        description: e.message || "Failed to add staff",
-      });
-    },
-  });
-  const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const form = useForm({
-    resolver: zodResolver(newStaffFormSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      role: "FRONT_DESK",
-      phoneNumber: "",
-      staffId: "",
-      password: "",
-    },
-    progressive: true,
-    mode: "onBlur",
-    reValidateMode: "onBlur",
-  });
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (...params: Parameters<typeof onboardStaffToHotel>) => {
+			const res = await onboardStaffToHotel(...params);
+			if (!res.success) {
+				throw new Error(res.error || "Failed to add staff");
+			}
+			return res.data;
+		},
+		onSuccess: async () => {
+			setOpen(false);
+			form.reset();
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff added successfully",
+			});
+			await revalidateRoute("/manager/staff-management");
+		},
+		onError: (e) => {
+			toast.error("Something went wrong", {
+				description: e.message || "Failed to add staff",
+			});
+		},
+	});
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const form = useForm({
+		resolver: zodResolver(newStaffFormSchema),
+		defaultValues: {
+			fullName: "",
+			email: "",
+			role: "FRONT_DESK",
+			phoneNumber: "",
+			staffId: "",
+			password: "",
+		},
+		progressive: true,
+		mode: "onBlur",
+		reValidateMode: "onBlur",
+	});
 
-  return (
-    <Form {...form}>
-      <form
-        className="space-y-4"
-        onSubmit={form.handleSubmit((data) =>
-          mutate(data as Required<z.infer<typeof newStaffFormSchema>>)
-        )}
-      >
-        <FormField
-          name="fullName"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Staff Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email address</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="e.g john.doe@example.com"
-                  autoComplete="off"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+	return (
+		<Form {...form}>
+			<form
+				className="space-y-4"
+				onSubmit={form.handleSubmit((data) =>
+					mutate(data as Required<z.infer<typeof newStaffFormSchema>>),
+				)}
+			>
+				<FormField
+					name="fullName"
+					control={form.control}
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Staff Name</FormLabel>
+							<FormControl>
+								<Input placeholder="e.g John Doe" {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="email"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Email address</FormLabel>
+							<FormControl>
+								<Input
+									placeholder="e.g john.doe@example.com"
+									autoComplete="off"
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-        <FormField
-          control={form.control}
-          name="phoneNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number</FormLabel>
-              <FormControl>
-                <Input
-                  type="tel"
-                  placeholder="e.g +234 801 234 5678"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+				<FormField
+					control={form.control}
+					name="phoneNumber"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Phone Number</FormLabel>
+							<FormControl>
+								<Input
+									type="tel"
+									placeholder="e.g +234 801 234 5678"
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Assign role</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-                  <SelectItem value="MANAGER">Manager</SelectItem>
-                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                  <SelectItem value="INVENTORY">Inventory</SelectItem>
-                  <SelectItem value="BAR">Bar</SelectItem>
-                  <SelectItem value="KITCHEN">Kitchen</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+				<FormField
+					control={form.control}
+					name="role"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Assign role</FormLabel>
+							<Select onValueChange={field.onChange} defaultValue={field.value}>
+								<FormControl>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select a role" />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+									<SelectItem value="MANAGER">Manager</SelectItem>
+									<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+									<SelectItem value="INVENTORY">Inventory</SelectItem>
+									<SelectItem value="BAR">Bar</SelectItem>
+									<SelectItem value="KITCHEN">Kitchen</SelectItem>
+								</SelectContent>
+							</Select>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <div className="relative">
-                <FormControl>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter a password"
-                    autoComplete="off"
-                    {...field}
-                  />
-                </FormControl>
-                <Button
-                  type="button"
-                  variant={"ghost"}
-                  size={"icon"}
-                  className="absolute right-0 top-1/2 -translate-y-1/2"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                >
-                  {showPassword ? (
-                    <EyeOffIcon className="h-4 w-4" />
-                  ) : (
-                    <EyeIcon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+				<FormField
+					control={form.control}
+					name="password"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Password</FormLabel>
+							<div className="relative">
+								<FormControl>
+									<Input
+										type={showPassword ? "text" : "password"}
+										placeholder="Enter a password"
+										autoComplete="off"
+										{...field}
+									/>
+								</FormControl>
+								<Button
+									type="button"
+									variant={"ghost"}
+									size={"icon"}
+									className="absolute right-0 top-1/2 -translate-y-1/2"
+									onClick={() => setShowPassword((prev) => !prev)}
+								>
+									{showPassword ? (
+										<EyeOffIcon className="h-4 w-4" />
+									) : (
+										<EyeIcon className="h-4 w-4" />
+									)}
+								</Button>
+							</div>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
-        <Button
-          type="submit"
-          className="mt-4 w-full font-semibold"
-          disabled={isPending}
-        >
-          {isPending ? (
-            <>
-              <Loader2Icon className="animate-spin" />
-              <span>Creating, please wait...</span>
-            </>
-          ) : (
-            "Add staff"
-          )}
-        </Button>
-      </form>
-    </Form>
-  );
+				<Button
+					type="submit"
+					className="mt-4 w-full font-semibold"
+					disabled={isPending}
+				>
+					{isPending ? (
+						<>
+							<Loader2Icon className="animate-spin" />
+							<span>Creating, please wait...</span>
+						</>
+					) : (
+						"Add staff"
+					)}
+				</Button>
+			</form>
+		</Form>
+	);
 }
 
 const hotelOwnerStaffEditSchema = newStaffFormSchema.omit({
-  password: true,
+	password: true,
 });
 
 function UpdateHotelStaffForm({
-  initialValues,
-  staffId,
-  setOpen,
+	initialValues,
+	staffId,
+	setOpen,
 }: {
-  initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
-  staffId: string;
-  setOpen: (open: boolean) => void;
+	initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+	staffId: string;
+	setOpen: (open: boolean) => void;
 }) {
-  const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const form = useForm({
-    resolver: zodResolver(hotelOwnerStaffEditSchema),
-    defaultValues: initialValues,
-    progressive: true,
-    mode: "onBlur",
-    reValidateMode: "onBlur",
-  });
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const form = useForm({
+		resolver: zodResolver(hotelOwnerStaffEditSchema),
+		defaultValues: initialValues,
+		progressive: true,
+		mode: "onBlur",
+		reValidateMode: "onBlur",
+	});
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
-      const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
-      type DataKey = keyof z.infer<typeof hotelOwnerStaffEditSchema>;
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+			const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
+			type DataKey = keyof z.infer<typeof hotelOwnerStaffEditSchema>;
 
-      for (const key in data) {
-        const typedKey = key as DataKey;
-        if (data[typedKey] === initialValues[typedKey]) continue;
-        if (typedKey === "role") {
-          changes.role = data.role;
-        } else {
-          changes[typedKey] = data[typedKey];
-        }
-      }
-      const res = await editStaffDetails(staffId, changes);
-      if (!res.success) {
-        throw new Error(res.error || "Failed to update staff details");
-      }
-      return res.data;
-    },
-    onSuccess: async () => {
-      setOpen(false);
-      setShowSuccessDialog({
-        show: true,
-        message: "Staff details updated successfully",
-      });
-      revalidateRoute("/manager/staff-management");
-    },
-  });
-  const handleSubmit = useCallback(
-    (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
-      toast.promise(mutateAsync(data), {
-        loading: "Updating staff details...",
-        success: "Staff details updated successfully",
-        error: "Failed to update staff details",
-      });
-    },
-    [mutateAsync]
-  );
+			for (const key in data) {
+				const typedKey = key as DataKey;
+				if (data[typedKey] === initialValues[typedKey]) continue;
+				if (typedKey === "role") {
+					changes.role = data.role;
+				} else {
+					changes[typedKey] = data[typedKey];
+				}
+			}
+			const res = await editStaffDetails(staffId, changes);
+			if (!res.success) {
+				throw new Error(res.error || "Failed to update staff details");
+			}
+			return res.data;
+		},
+		onSuccess: async () => {
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff details updated successfully",
+			});
+			revalidateRoute("/manager/staff-management");
+		},
+	});
+	const handleSubmit = useCallback(
+		(data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+			toast.promise(mutateAsync(data), {
+				loading: "Updating staff details...",
+				success: "Staff details updated successfully",
+				error: "Failed to update staff details",
+			});
+		},
+		[mutateAsync],
+	);
 
-  return (
-    <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Edit staff details</DialogTitle>
-      <DialogDescription className="sr-only">
-        Edit staff details
-      </DialogDescription>
-      <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
-          <FormField
-            control={form.control}
-            name="fullName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Staff Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email address</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g john.doe@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle>Edit staff details</DialogTitle>
+			<DialogDescription className="sr-only">
+				Edit staff details
+			</DialogDescription>
+			<Form {...form}>
+				<form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
+					<FormField
+						control={form.control}
+						name="fullName"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Staff Name</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g John Doe" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="email"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email address</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g john.doe@example.com" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-          <FormField
-            control={form.control}
-            name="phoneNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone Number</FormLabel>
-                <FormControl>
-                  <Input
-                    type="tel"
-                    placeholder="e.g +234 801 234 5678"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+					<FormField
+						control={form.control}
+						name="phoneNumber"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Phone Number</FormLabel>
+								<FormControl>
+									<Input
+										type="tel"
+										placeholder="e.g +234 801 234 5678"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Assign role</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-                    <SelectItem value="MANAGER">Manager</SelectItem>
-                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                    <SelectItem value="INVENTORY">Inventory</SelectItem>
-                    <SelectItem value="BAR">Bar</SelectItem>
-                    <SelectItem value="KITCHEN">Kitchen</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button
-            type="submit"
-            className="mt-4 w-full font-semibold"
-            disabled={isPending}
-          >
-            {isPending ? (
-              <>
-                <Loader2Icon className="animate-spin" />
-                <span>Updating, please wait...</span>
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
-        </form>
-      </Form>
-    </DialogContent>
-  );
+					<FormField
+						control={form.control}
+						name="role"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Assign role</FormLabel>
+								<Select
+									onValueChange={field.onChange}
+									defaultValue={field.value}
+									disabled
+								>
+									<FormControl>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select a role" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
+										<SelectItem value="MANAGER">Manager</SelectItem>
+										<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+										<SelectItem value="INVENTORY">Inventory</SelectItem>
+										<SelectItem value="BAR">Bar</SelectItem>
+										<SelectItem value="KITCHEN">Kitchen</SelectItem>
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<Button
+						type="submit"
+						className="mt-4 w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Updating, please wait...</span>
+							</>
+						) : (
+							"Save Changes"
+						)}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
 }
 
 const resetPasswordFormSchema = z
-  .object({
-    newPassword: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-  });
+	.object({
+		newPassword: z.string().min(8, "Password must be at least 8 characters"),
+		confirmPassword: z
+			.string()
+			.min(8, "Password must be at least 8 characters"),
+	})
+	.refine((data) => data.newPassword === data.confirmPassword, {
+		message: "Passwords do not match",
+	});
 
 function ResetPasswordForm({
-  setOpen,
-  staffId,
+	setOpen,
+	staffId,
 }: {
-  setOpen: (open: boolean) => void;
-  staffId: string;
+	setOpen: (open: boolean) => void;
+	staffId: string;
 }) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const form = useForm({
-    resolver: zodResolver(resetPasswordFormSchema),
-    defaultValues: {
-      newPassword: "",
-      confirmPassword: "",
-    },
-    progressive: true,
-    mode: "onBlur",
-    reValidateMode: "onBlur",
-  });
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const form = useForm({
+		resolver: zodResolver(resetPasswordFormSchema),
+		defaultValues: {
+			newPassword: "",
+			confirmPassword: "",
+		},
+		progressive: true,
+		mode: "onBlur",
+		reValidateMode: "onBlur",
+	});
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: (payload: z.infer<typeof resetPasswordFormSchema>) => {
-      return resetPasswordForStaff(staffId, payload);
-    },
-    onError: async () => {
-      toast.error("Something went wrong", {
-        description: "Failed to reset password",
-      });
-    },
-    onSuccess: async () => {
-      setOpen(false);
-      setShowSuccessDialog({
-        show: true,
-        message: "Password reset successfully",
-      });
-      form.reset();
-    },
-  });
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: (payload: z.infer<typeof resetPasswordFormSchema>) => {
+			return resetPasswordForStaff(staffId, payload);
+		},
+		onError: async () => {
+			toast.error("Something went wrong", {
+				description: "Failed to reset password",
+			});
+		},
+		onSuccess: async () => {
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Password reset successfully",
+			});
+			form.reset();
+		},
+	});
 
-  const handleSubmit = useCallback(
-    (data: z.infer<typeof resetPasswordFormSchema>) => {
-      toast.promise(mutateAsync(data), {
-        loading: "Resetting password...",
-        success: "Password reset successfully",
-        error: "Failed to reset password",
-      });
-    },
-    [mutateAsync]
-  );
+	const handleSubmit = useCallback(
+		(data: z.infer<typeof resetPasswordFormSchema>) => {
+			toast.promise(mutateAsync(data), {
+				loading: "Resetting password...",
+				success: "Password reset successfully",
+				error: "Failed to reset password",
+			});
+		},
+		[mutateAsync],
+	);
 
-  return (
-    <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle>Reset password</DialogTitle>
-      <DialogDescription className="sr-only">
-        Fill in the details below to reset staff password.
-      </DialogDescription>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="newPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>New Password</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter password"
-                      className="pr-10"
-                      {...field}
-                    />
-                  </FormControl>
-                  <Button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    variant="link"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
-                  >
-                    {showPassword ? (
-                      <EyeOffIcon className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle>Reset password</DialogTitle>
+			<DialogDescription className="sr-only">
+				Fill in the details below to reset staff password.
+			</DialogDescription>
+			<Form {...form}>
+				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+					<FormField
+						control={form.control}
+						name="newPassword"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>New Password</FormLabel>
+								<div className="relative">
+									<FormControl>
+										<Input
+											type={showPassword ? "text" : "password"}
+											placeholder="Enter password"
+											className="pr-10"
+											{...field}
+										/>
+									</FormControl>
+									<Button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										variant="link"
+										size="icon"
+										className="absolute right-1 top-1/2 -translate-y-1/2"
+									>
+										{showPassword ? (
+											<EyeOffIcon className="h-5 w-5 text-gray-500" />
+										) : (
+											<EyeIcon className="h-5 w-5 text-gray-500" />
+										)}
+									</Button>
+								</div>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm New Password</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Enter password"
-                      className="pr-10"
-                      {...field}
-                    />
-                  </FormControl>
-                  <Button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    variant="link"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOffIcon className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+					<FormField
+						control={form.control}
+						name="confirmPassword"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Confirm New Password</FormLabel>
+								<div className="relative">
+									<FormControl>
+										<Input
+											type={showConfirmPassword ? "text" : "password"}
+											placeholder="Enter password"
+											className="pr-10"
+											{...field}
+										/>
+									</FormControl>
+									<Button
+										type="button"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										variant="link"
+										size="icon"
+										className="absolute right-1 top-1/2 -translate-y-1/2"
+									>
+										{showConfirmPassword ? (
+											<EyeOffIcon className="h-5 w-5 text-gray-500" />
+										) : (
+											<EyeIcon className="h-5 w-5 text-gray-500" />
+										)}
+									</Button>
+								</div>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-          <Button
-            type="submit"
-            className="w-full font-semibold"
-            disabled={isPending}
-          >
-            {isPending ? (
-              <>
-                <Loader2Icon className="animate-spin" />
-                <span>Resetting, please wait...</span>
-              </>
-            ) : (
-              "Reset Password"
-            )}
-          </Button>
-        </form>
-      </Form>
-    </DialogContent>
-  );
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Resetting, please wait...</span>
+							</>
+						) : (
+							"Reset Password"
+						)}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
 }
 
 const suspendStaffSchema = z.object({
-  reason: z.string().nonempty(),
-  fromDate: z.date().refine((date) => date <= new Date(), {
-    message: "From date cannot be in the past",
-  }),
-  toDate: z.date().refine((date) => date >= new Date(), {
-    message: "To date cannot be in the past",
-  }),
+	reason: z.string().nonempty(),
+	fromDate: z.date().refine((date) => date <= new Date(), {
+		message: "From date cannot be in the past",
+	}),
+	toDate: z.date().refine((date) => date >= new Date(), {
+		message: "To date cannot be in the past",
+	}),
 });
 
 function SuspendStaffDialog({
-  setOpen,
-  id,
+	setOpen,
+	id,
 }: {
-  setOpen: (open: boolean) => void;
-  id: string;
+	setOpen: (open: boolean) => void;
+	id: string;
 }) {
-  const queryClient = useQueryClient();
-  const setShowSuccessDialog = useSetAtom(successDialogAtom);
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: (data: { reason: string; fromDate: string; toDate: string }) =>
-      suspendStaffAccount(id, data),
-    onSuccess: () => {
-      setOpen(false);
-      setShowSuccessDialog({
-        show: true,
-        message: "Staff suspended successfully",
-      });
-      queryClient.invalidateQueries({
-        exact: true,
-        queryKey: ["staffs"],
-      });
-      revalidateRoute("/manager/staff-management");
-    },
-    onError: () => {
-      toast.error("Something went wrong", {
-        description: "Failed to suspend staff",
-      });
-    },
-  });
-  const form = useForm({
-    resolver: zodResolver(suspendStaffSchema),
-    defaultValues: {
-      fromDate: new Date(),
-      toDate: new Date(),
-      reason: "",
-    },
-    reValidateMode: "onSubmit",
-    mode: "onSubmit",
-  });
+	const queryClient = useQueryClient();
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: (data: { reason: string; fromDate: string; toDate: string }) =>
+			suspendStaffAccount(id, data),
+		onSuccess: () => {
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff suspended successfully",
+			});
+			queryClient.invalidateQueries({
+				exact: true,
+				queryKey: ["staffs"],
+			});
+			revalidateRoute("/manager/staff-management");
+		},
+		onError: () => {
+			toast.error("Something went wrong", {
+				description: "Failed to suspend staff",
+			});
+		},
+	});
+	const form = useForm({
+		resolver: zodResolver(suspendStaffSchema),
+		defaultValues: {
+			fromDate: new Date(),
+			toDate: new Date(),
+			reason: "",
+		},
+		reValidateMode: "onSubmit",
+		mode: "onSubmit",
+	});
 
-  const handleSubmit = useCallback(
-    async (data: z.infer<typeof suspendStaffSchema>) => {
-      const isValid = await form.trigger();
-      if (!isValid) return;
-      const newData = {
-        ...data,
-        fromDate: format(data.fromDate, "yyyy-MM-dd"),
-        toDate: format(data.toDate, "yyyy-MM-dd"),
-      };
-      await mutateAsync(newData);
-    },
-    [form, mutateAsync]
-  );
+	const handleSubmit = useCallback(
+		async (data: z.infer<typeof suspendStaffSchema>) => {
+			const isValid = await form.trigger();
+			if (!isValid) return;
+			const newData = {
+				...data,
+				fromDate: format(data.fromDate, "yyyy-MM-dd"),
+				toDate: format(data.toDate, "yyyy-MM-dd"),
+			};
+			await mutateAsync(newData);
+		},
+		[form, mutateAsync],
+	);
 
-  return (
-    <DialogContent className="p-4 rounded-2xl">
-      <DialogTitle className="sr-only">Suspend Staff</DialogTitle>
-      <DialogDescription className="sr-only">
-        Type "SUSPEND" to confirm
-      </DialogDescription>
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle className="sr-only">Suspend Staff</DialogTitle>
+			<DialogDescription className="sr-only">
+				Type "SUSPEND" to confirm
+			</DialogDescription>
 
-      <div className="flex flex-col items-center justify-center">
-        <AlertTriangleIcon className="text-destructive-2 size-12" />
-        <h2 className="text-destructive-2">Warning!</h2>
-        <p className="text-gray-600 text-center">
-          This action Cannot be Undone, to confirm this action is deliberate
-          “type SUSPEND below”
-        </p>
-      </div>
+			<div className="flex flex-col items-center justify-center">
+				<AlertTriangleIcon className="text-destructive-2 size-12" />
+				<h2 className="text-destructive-2">Warning!</h2>
+				<p className="text-gray-600 text-center">
+					This action Cannot be Undone, to confirm this action is deliberate
+					“type SUSPEND below”
+				</p>
+			</div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="reason"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Reason for suspension</FormLabel>
-                <FormControl>
-                  <Input placeholder="Type reason for suspension" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+			<Form {...form}>
+				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+					<FormField
+						control={form.control}
+						name="reason"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Reason for suspension</FormLabel>
+								<FormControl>
+									<Input placeholder="Type reason for suspension" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-4">
-            <FormField
-              control={form.control}
-              name="fromDate"
-              render={({ field }) => (
-                <FormItem className="col-span-1">
-                  <FormLabel>From Date</FormLabel>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-4">
+						<FormField
+							control={form.control}
+							name="fromDate"
+							render={({ field }) => (
+								<FormItem className="col-span-1">
+									<FormLabel>From Date</FormLabel>
 
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a starting date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          // Date must be today or later
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        captionLayout="dropdown-months"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="toDate"
-              render={({ field }) => (
-                <FormItem className="col-span-1">
-                  <FormLabel>To Date</FormLabel>
-                  <FormControl>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick an ending date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            // Date must be today or later
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
-                          captionLayout="dropdown-months"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+									<Popover>
+										<PopoverTrigger asChild>
+											<FormControl>
+												<Button
+													variant={"outline"}
+													className={cn(
+														"w-full text-left font-normal",
+														!field.value && "text-muted-foreground",
+													)}
+												>
+													{field.value ? (
+														format(field.value, "PPP")
+													) : (
+														<span>Pick a starting date</span>
+													)}
+													<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+												</Button>
+											</FormControl>
+										</PopoverTrigger>
+										<PopoverContent className="w-auto p-0" align="start">
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												disabled={(date) =>
+													// Date must be today or later
+													date < new Date(new Date().setHours(0, 0, 0, 0))
+												}
+												captionLayout="dropdown-months"
+											/>
+										</PopoverContent>
+									</Popover>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="toDate"
+							render={({ field }) => (
+								<FormItem className="col-span-1">
+									<FormLabel>To Date</FormLabel>
+									<FormControl>
+										<Popover>
+											<PopoverTrigger asChild>
+												<FormControl>
+													<Button
+														variant={"outline"}
+														className={cn(
+															"w-full text-left font-normal",
+															!field.value && "text-muted-foreground",
+														)}
+													>
+														{field.value ? (
+															format(field.value, "PPP")
+														) : (
+															<span>Pick an ending date</span>
+														)}
+														<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+													</Button>
+												</FormControl>
+											</PopoverTrigger>
+											<PopoverContent className="w-auto p-0" align="start">
+												<Calendar
+													mode="single"
+													selected={field.value}
+													onSelect={field.onChange}
+													disabled={(date) =>
+														// Date must be today or later
+														date < new Date(new Date().setHours(0, 0, 0, 0))
+													}
+													captionLayout="dropdown-months"
+												/>
+											</PopoverContent>
+										</Popover>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
 
-          <Button
-            type="submit"
-            className="w-full font-semibold"
-            disabled={isPending}
-          >
-            {isPending ? (
-              <>
-                <Loader2Icon className="animate-spin" />
-                <span>Suspending, please wait...</span>
-              </>
-            ) : (
-              "Suspend Staff"
-            )}
-          </Button>
-          <Button
-            type="button"
-            className="w-full font-semibold bg-gray-100"
-            variant={"ghost"}
-            onClick={() => setOpen(false)}
-          >
-            Cancel
-          </Button>
-        </form>
-      </Form>
-    </DialogContent>
-  );
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Suspending, please wait...</span>
+							</>
+						) : (
+							"Suspend Staff"
+						)}
+					</Button>
+					<Button
+						type="button"
+						className="w-full font-semibold bg-gray-100"
+						variant={"ghost"}
+						onClick={() => setOpen(false)}
+					>
+						Cancel
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
 }
 
 const columns = [
-  columnHelper.display({
-    header: "S/N",
-    cell: (info) => (
-      <span className="text-foreground">{info.row.index + 1}</span>
-    ),
-  }),
-  columnHelper.accessor("fullName", {
-    header: "Staff Name",
-    cell: (info) => (
-      <div className="flex items-center gap-x-2">
-        {/* <Image
+	columnHelper.display({
+		header: "S/N",
+		cell: (info) => (
+			<span className="text-foreground">{info.row.index + 1}</span>
+		),
+	}),
+	columnHelper.accessor("fullName", {
+		header: "Staff Name",
+		cell: (info) => (
+			<div className="flex items-center gap-x-2">
+				{/* <Image
           src={info.row.original.profilePicture}
           alt={info.row.original.fullName}
           className="w-10 h-10 rounded-full"
           width={40}
           height={40}
         /> */}
-        <span className="font-semibold">{info.getValue()}</span>
-      </div>
-    ),
-  }),
-  columnHelper.accessor("role", {
-    header: "Role",
-    cell: (info) => {
-      const role = info.getValue();
-      const refinedRole = role
-        .replaceAll("_", " ")
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-      return <Badge variant={"outline"}>{refinedRole}</Badge>;
-    },
-  }),
-  columnHelper.accessor("email", {
-    header: "Email",
-    cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
-  }),
-  columnHelper.accessor("userStatus", {
-    header: "Status",
-    cell: (info) => {
-      const status = info.getValue() as
-        | "ACTIVE"
-        | "INACTIVE"
-        | "SUSPENDED"
-        | "PENDING";
+				<span className="font-semibold">{info.getValue()}</span>
+			</div>
+		),
+	}),
+	columnHelper.accessor("role", {
+		header: "Role",
+		cell: (info) => {
+			const role = info.getValue();
+			const refinedRole = role
+				.replaceAll("_", " ")
+				.toLowerCase()
+				.replace(/\b\w/g, (c) => c.toUpperCase());
+			return <Badge variant={"outline"}>{refinedRole}</Badge>;
+		},
+	}),
+	columnHelper.accessor("email", {
+		header: "Email",
+		cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
+	}),
+	columnHelper.accessor("userStatus", {
+		header: "Status",
+		cell: (info) => {
+			const status = info.getValue() as
+				| "ACTIVE"
+				| "INACTIVE"
+				| "SUSPENDED"
+				| "PENDING";
 
-      const refinedStatus = status
-        .replaceAll("_", " ")
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+			const refinedStatus = status
+				.replaceAll("_", " ")
+				.toLowerCase()
+				.replace(/\b\w/g, (c) => c.toUpperCase());
 
-      const variantMap = {
-        ACTIVE: "green",
-        INACTIVE: "yellow",
-        SUSPENDED: "destructive",
-        PENDING: "blue",
-      } as const;
+			const variantMap = {
+				ACTIVE: "green",
+				INACTIVE: "yellow",
+				SUSPENDED: "destructive",
+				PENDING: "blue",
+			} as const;
 
-      return (
-        <Badge variant={variantMap[status] ?? "outline"}>{refinedStatus}</Badge>
-      );
-    },
-  }),
-  columnHelper.accessor("phoneNumber", {
-    header: "Phone Number",
-    cell: (info) => <span>{info.getValue()}</span>,
-  }),
-  columnHelper.accessor("lastLogin", {
-    header: "Last Login",
-    cell: (info) => {
-      const value = info.getValue();
-      if (!value || value === "N/A") return <span>N/A</span>;
-      const date = new Date(value);
+			return (
+				<Badge variant={variantMap[status] ?? "outline"}>{refinedStatus}</Badge>
+			);
+		},
+	}),
+	columnHelper.accessor("phoneNumber", {
+		header: "Phone Number",
+		cell: (info) => <span>{info.getValue()}</span>,
+	}),
+	columnHelper.accessor("lastLogin", {
+		header: "Last Login",
+		cell: (info) => {
+			const value = info.getValue();
+			if (!value || value === "N/A") return <span>N/A</span>;
+			const date = new Date(value);
 
-      // e.g. Jun 15, 2023, 10:30 AM
-      const formattedDate = date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
-      return <span>{formattedDate}</span>;
-    },
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: (info) => {
-      const [open, setOpen] = useState<
-        "reset-password" | "suspend-staff" | "edit-staff" | false
-      >(false);
+			// e.g. Jun 15, 2023, 10:30 AM
+			const formattedDate = date.toLocaleString("en-US", {
+				month: "short",
+				day: "numeric",
+				year: "numeric",
+				hour: "numeric",
+				minute: "numeric",
+				hour12: true,
+			});
+			return <span>{formattedDate}</span>;
+		},
+	}),
+	columnHelper.display({
+		id: "actions",
+		cell: (info) => {
+			const [open, setOpen] = useState<
+				"reset-password" | "suspend-staff" | "edit-staff" | false
+			>(false);
 
-      const dialog = useMemo(() => {
-        switch (open) {
-          case "reset-password":
-            return (
-              <ResetPasswordForm
-                staffId={info.row.original.id}
-                setOpen={(isOpen) => setOpen(isOpen ? "reset-password" : false)}
-              />
-            );
-          case "edit-staff": {
-            const rowData = info.row.original;
-            return (
-              <UpdateHotelStaffForm
-                staffId={rowData.id}
-                initialValues={{
-                  fullName: rowData.fullName,
-                  email: rowData.email,
-                  role: rowData.role,
-                  phoneNumber: rowData.phoneNumber,
-                  staffId: rowData.staffId,
-                }}
-                setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
-              />
-            );
-          }
-          case "suspend-staff":
-            return (
-              <SuspendStaffDialog
-                setOpen={(isOpen) => setOpen(isOpen ? "suspend-staff" : false)}
-                id={info.row.original.id}
-              />
-            );
-          default:
-            return null;
-        }
-      }, [open, info.row.original]);
+			const dialog = useMemo(() => {
+				switch (open) {
+					case "reset-password":
+						return (
+							<ResetPasswordForm
+								staffId={info.row.original.id}
+								setOpen={(isOpen) => setOpen(isOpen ? "reset-password" : false)}
+							/>
+						);
+					case "edit-staff": {
+						const rowData = info.row.original;
+						return (
+							<UpdateHotelStaffForm
+								staffId={rowData.id}
+								initialValues={{
+									fullName: rowData.fullName,
+									email: rowData.email,
+									role: rowData.role,
+									phoneNumber: rowData.phoneNumber,
+									staffId: rowData.staffId,
+								}}
+								setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
+							/>
+						);
+					}
+					case "suspend-staff":
+						return (
+							<SuspendStaffDialog
+								setOpen={(isOpen) => setOpen(isOpen ? "suspend-staff" : false)}
+								id={info.row.original.id}
+							/>
+						);
+					default:
+						return null;
+				}
+			}, [open, info.row.original]);
 
-      return (
-        <Dialog
-          open={typeof open === "string"}
-          onOpenChange={(isOpen) => isOpen || setOpen(false)}
-        >
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white" align="end">
-              {/* <DropdownMenuItem asChild>
+			return (
+				<Dialog
+					open={typeof open === "string"}
+					onOpenChange={(isOpen) => isOpen || setOpen(false)}
+				>
+					<DropdownMenu modal={false}>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" className="h-8 w-8 p-0">
+								<span className="sr-only">Open menu</span>
+								<MoreVerticalIcon />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent className="bg-white" align="end">
+							{/* <DropdownMenuItem asChild>
                 <Link href={`/dashboard/hotels/${info.row.original.id}`}>
                   <HotelIcon />
                   View Branch Hotel
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator /> */}
-              <DialogTrigger
-                className="w-full"
-                onClick={() => setOpen("edit-staff")}
-                asChild
-              >
-                <DropdownMenuItem>
-                  <DoorOpenIcon />
-                  Edit Staff
-                </DropdownMenuItem>
-              </DialogTrigger>
-              <DropdownMenuSeparator />
-              <DialogTrigger
-                className="w-full"
-                onClick={() => setOpen("reset-password")}
-                asChild
-              >
-                <DropdownMenuItem>
-                  <ReplaceIcon />
-                  Reset password
-                </DropdownMenuItem>
-              </DialogTrigger>
-              <DropdownMenuSeparator />
-              <DialogTrigger
-                className="w-full"
-                onClick={() => setOpen("suspend-staff")}
-                disabled={info.row.original.userStatus === "SUSPENDED"}
-                asChild
-              >
-                <DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
-                  <UserXIcon className="text-red-500" />
-                  Suspend Staff
-                </DropdownMenuItem>
-              </DialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
+							<DialogTrigger
+								className="w-full"
+								onClick={() => setOpen("edit-staff")}
+								asChild
+							>
+								<DropdownMenuItem>
+									<DoorOpenIcon />
+									Edit Staff
+								</DropdownMenuItem>
+							</DialogTrigger>
+							<DropdownMenuSeparator />
+							<DialogTrigger
+								className="w-full"
+								onClick={() => setOpen("reset-password")}
+								asChild
+							>
+								<DropdownMenuItem>
+									<ReplaceIcon />
+									Reset password
+								</DropdownMenuItem>
+							</DialogTrigger>
+							<DropdownMenuSeparator />
+							<DialogTrigger
+								className="w-full"
+								onClick={() => setOpen("suspend-staff")}
+								disabled={info.row.original.userStatus === "SUSPENDED"}
+								asChild
+							>
+								<DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
+									<UserXIcon className="text-red-500" />
+									Suspend Staff
+								</DropdownMenuItem>
+							</DialogTrigger>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
-          {dialog}
-        </Dialog>
-      );
-    },
-  }),
+					{dialog}
+				</Dialog>
+			);
+		},
+	}),
 ];
 
 function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
-  return (
-    <div className="overflow-hidden rounded-md border">
-      <Table>
-        <TableHeader className="bg-gray-100">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <TableHead key={header.id} className="text-gray-500">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
+	return (
+		<div className="overflow-hidden rounded-md border">
+			<Table>
+				<TableHeader className="bg-gray-100">
+					{table.getHeaderGroups().map((headerGroup) => (
+						<TableRow key={headerGroup.id}>
+							{headerGroup.headers.map((header) => {
+								return (
+									<TableHead key={header.id} className="text-gray-500">
+										{header.isPlaceholder
+											? null
+											: flexRender(
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
+									</TableHead>
+								);
+							})}
+						</TableRow>
+					))}
+				</TableHeader>
 
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="text-gray-600">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
+				<TableBody>
+					{table.getRowModel().rows?.length ? (
+						table.getRowModel().rows.map((row) => (
+							<TableRow
+								key={row.id}
+								data-state={row.getIsSelected() && "selected"}
+							>
+								{row.getVisibleCells().map((cell) => (
+									<TableCell key={cell.id} className="text-gray-600">
+										{flexRender(cell.column.columnDef.cell, cell.getContext())}
+									</TableCell>
+								))}
+							</TableRow>
+						))
+					) : (
+						<TableRow>
+							<TableCell colSpan={columns.length} className="h-24 text-center">
+								No results.
+							</TableCell>
+						</TableRow>
+					)}
+				</TableBody>
 
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={columns.length}>
-              <div className="w-full flex items-center justify-between">
-                <p>
-                  {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                  {table.getFilteredRowModel().rows.length} row(s) selected.
-                </p>
+				<TableFooter>
+					<TableRow>
+						<TableCell colSpan={columns.length}>
+							<div className="w-full flex items-center justify-between">
+								<p>
+									{table.getFilteredSelectedRowModel().rows.length} of{" "}
+									{table.getFilteredRowModel().rows.length} row(s) selected.
+								</p>
 
-                <DataTablePagination table={table} />
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
-    </div>
-  );
+								<DataTablePagination table={table} />
+							</div>
+						</TableCell>
+					</TableRow>
+				</TableFooter>
+			</Table>
+		</div>
+	);
 }
 
 export function HotelManagerStaffsList({
-  breadcrumb,
-  staffs,
-  paginationMeta,
+	breadcrumb,
+	staffs,
+	paginationMeta,
 }: {
-  breadcrumb: {
-    title: string;
-    breadcrumbs: Breadcrumb[];
-  };
-  staffs: CustomPageStaffResponse[];
-  paginationMeta: Pagination;
+	breadcrumb: {
+		title: string;
+		breadcrumbs: Breadcrumb[];
+	};
+	staffs: CustomPageStaffResponse[];
+	paginationMeta: Pagination;
 }) {
-  const [pagination, setPagination] = usePaginationSearchParams();
-  const table = useReactTable({
-    data: staffs,
-    columns: columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    manualPagination: true,
-    pageCount: paginationMeta.totalPages,
-    state: {
-      pagination,
-    },
-    onPaginationChange: setPagination,
-  });
-  const setBreadcrumb = useSetAtom(breadcrumbAtom);
-  const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+	const [pagination, setPagination] = usePaginationSearchParams();
+	const table = useReactTable({
+		data: staffs,
+		columns: columns,
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		manualPagination: true,
+		pageCount: paginationMeta.totalPages,
+		state: {
+			pagination,
+		},
+		onPaginationChange: setPagination,
+	});
+	const setBreadcrumb = useSetAtom(breadcrumbAtom);
+	const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
 
-  useLayoutEffect(() => {
-    setBreadcrumb(breadcrumb);
-    return () => setBreadcrumb(null);
-  }, [setBreadcrumb, breadcrumb]);
+	useLayoutEffect(() => {
+		setBreadcrumb(breadcrumb);
+		return () => setBreadcrumb(null);
+	}, [setBreadcrumb, breadcrumb]);
 
-  return (
-    <div className="p-4 space-y-2 md:space-y-4">
-      <HotelListToolbar table={table} />
-      <HotelList table={table} />
-      <SuccessDialog
-        open={successDialogOpen.show}
-        setOpenAction={(show) =>
-          setSuccessDialogOpen({ ...successDialogOpen, show })
-        }
-        message={successDialogOpen.message}
-      />
-    </div>
-  );
+	return (
+		<div className="p-4 space-y-2 md:space-y-4">
+			<HotelListToolbar table={table} />
+			<HotelList table={table} />
+			<SuccessDialog
+				open={successDialogOpen.show}
+				setOpenAction={(show) =>
+					setSuccessDialogOpen({ ...successDialogOpen, show })
+				}
+				message={successDialogOpen.message}
+			/>
+		</div>
+	);
 }

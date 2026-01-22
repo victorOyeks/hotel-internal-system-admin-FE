@@ -1,7 +1,7 @@
 import { EnhancedInventoryDashboard } from "@/components/roles/inventory/enhanced-dashboard";
 
 function Page() {
-  return <EnhancedInventoryDashboard />;
+	return <EnhancedInventoryDashboard />;
 }
 
 export default Page;

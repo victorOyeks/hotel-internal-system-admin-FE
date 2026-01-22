@@ -1,6 +1,5 @@
 "use client";
 
-
 import { Button } from "@/components/ui/button";
 import type {
 	InventoryProductResponse,
@@ -69,7 +68,6 @@ import {
 } from "@/components/ui/command";
 import { useQueryState, parseAsString } from "nuqs";
 
-
 const successDialogAtom = atom({
 	show: false,
 	message: "",
@@ -136,7 +134,9 @@ export function InventoryStat({ data }: { data: InventorySummaryResponse }) {
 				</div>
 
 				<div className="flex flex-col flex-1">
-					<h3 className="text-xs text-muted-foreground">Pending PO Approvals</h3>
+					<h3 className="text-xs text-muted-foreground">
+						Pending PO Approvals
+					</h3>
 					<p className="text-xl font-semibold leading-tight">
 						{data.outOfStock}
 					</p>
@@ -661,13 +661,22 @@ function ProductListCard({
 									<p className="text-xs text-gray-500">{product.category}</p>
 									<div className="flex items-center gap-3 mt-1">
 										<span className="text-xs text-gray-600">
-											Stock: <span className="font-medium">{product.currentStock}</span>
+											Stock:{" "}
+											<span className="font-medium">
+												{product.currentStock}
+											</span>
 										</span>
 										<span className="text-xs text-gray-600">
-											Reorder: <span className="font-medium">{product.reorderLevel}</span>
+											Reorder:{" "}
+											<span className="font-medium">
+												{product.reorderLevel}
+											</span>
 										</span>
 										<span className="text-xs text-gray-600">
-											Loc: <span className="font-medium">{product.locationCode}</span>
+											Loc:{" "}
+											<span className="font-medium">
+												{product.locationCode}
+											</span>
 										</span>
 									</div>
 								</div>
@@ -684,8 +693,6 @@ function ProductListCard({
 		</section>
 	);
 }
-
-
 
 export function InventoryDashboard({
 	dashboardData,
@@ -879,7 +886,7 @@ export function InventoryDashboard({
 				{(dashboardData.fastMovingProducts ?? []).length > 0 && (
 					<ProductListCard
 						title="Fast Moving Products"
-						products={(dashboardData.fastMovingProducts ?? [])}
+						products={dashboardData.fastMovingProducts ?? []}
 						emptyMessage="No fast moving products"
 					/>
 				)}
@@ -888,7 +895,7 @@ export function InventoryDashboard({
 				{(dashboardData.slowMovingProducts ?? []).length > 0 && (
 					<ProductListCard
 						title="Slow Moving Products"
-						products={(dashboardData.slowMovingProducts ?? [])}
+						products={dashboardData.slowMovingProducts ?? []}
 						emptyMessage="No slow moving products"
 					/>
 				)}
@@ -910,7 +917,10 @@ export function InventoryDashboard({
 					<div className="bg-white rounded-2xl border border-primary-5/50 overflow-hidden">
 						<div className="divide-y">
 							{dashboardData.recentActivities.map((activity, index) => (
-								<div key={index} className="p-4 hover:bg-gray-50 transition-colors">
+								<div
+									key={index}
+									className="p-4 hover:bg-gray-50 transition-colors"
+								>
 									<div className="flex items-start justify-between gap-4">
 										<div className="flex-1">
 											<div className="flex items-center gap-2 mb-1">
@@ -921,7 +931,9 @@ export function InventoryDashboard({
 													{activity.referenceNumber}
 												</span>
 											</div>
-											<p className="text-sm text-gray-900">{activity.description}</p>
+											<p className="text-sm text-gray-900">
+												{activity.description}
+											</p>
 											<p className="text-xs text-gray-500 mt-1">
 												By {activity.performedBy}
 											</p>
