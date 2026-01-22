@@ -3,7 +3,6 @@ import type { HotelRole } from "./lib/types";
 import { tokenKey } from "./lib/server-fns";
 import { decrypt } from "./lib/session";
 
-
 const PREFIX_PATH = "/dashboard";
 
 const roleToPath: Record<HotelRole, string> = {
@@ -14,18 +13,16 @@ const roleToPath: Record<HotelRole, string> = {
   INVENTORY: "/inventory",
   MAINTENANCE: "/maintenance",
   RENTALS: "/rentals",
-  SUPER_ADMIN: "/admin"
-}
+  SUPER_ADMIN: "/admin",
+};
 
-const publicPaths = [
-  "/auth",
-  "/forgot-password",
-  "/reset-password",
-];
+const publicPaths = ["/auth", "/forgot-password", "/reset-password"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublicRoute = publicPaths.includes(pathname)
+  const isPublicRoute = publicPaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
   const token = request.cookies.get(tokenKey)?.value;
 
   if (!token) {
@@ -55,7 +52,7 @@ export async function middleware(request: NextRequest) {
     const query = request.nextUrl.search;
     const hashed = request.nextUrl.hash;
 
-    const rewriteUrl = new URL(expectedPath + actualPath, request.nextUrl)
+    const rewriteUrl = new URL(expectedPath + actualPath, request.nextUrl);
     rewriteUrl.search = query;
     rewriteUrl.hash = hashed;
 
@@ -75,5 +72,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
-}
+  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+};
