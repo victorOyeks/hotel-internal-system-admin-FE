@@ -10,43 +10,39 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusIcon, EyeIcon, ClipboardListIcon } from "lucide-react";
+import { PlusIcon, EyeIcon } from "lucide-react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import type {
-	InventoryStockTakeResponse,
-	InventoryStockTakeStatistics,
+	InventoryLocationListResponse,
+	InventoryProduct,
+	Pagination,
+	StockTake
 } from "@/lib/fetch";
 import { StockTakeTable } from "./stock-take-table";
 import { StockTakeToolbar } from "./stock-take-filters";
-import { StockTakeStats } from "./stock-take-stats";
+// import { StockTakeStats } from "./stock-take-stats";
 import { StockTakeDetails } from "./stock-take-details";
 import { CreateStockTakeForm } from "./stock-take-form";
 
 interface StockTakePageProps {
-	stockTakes: InventoryStockTakeResponse[];
-	stats: InventoryStockTakeStatistics;
+	stockTakes: StockTake[];
+	stats: any;
+	paginationSchema: Pagination;
+	inventoryLocations: InventoryLocationListResponse[];
+	products: InventoryProduct[]
 }
 
-const columnHelper = createColumnHelper<InventoryStockTakeResponse>();
+const columnHelper = createColumnHelper<StockTake>();
 
-export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
+export function StockTakePage({ stockTakes, inventoryLocations, products
+	, paginationSchema }: StockTakePageProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [selectedStockTake, setSelectedStockTake] =
-		useState<InventoryStockTakeResponse | null>(null);
+		useState<StockTake | null>(null);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-
-	const filteredData = (stockTakes || []).filter((item) => {
-		const matchesSearch =
-			item.stockTakeNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			item.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			item.supervisorName.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesStatus =
-			statusFilter === "all" || item.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
 
 	const columns = [
 		columnHelper.accessor("stockTakeNumber", {
@@ -86,7 +82,7 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 				);
 			},
 		}),
-		columnHelper.accessor("itemsWithVariance", {
+		columnHelper.accessor("totalItemsWithVariance", {
 			header: "Variances",
 			cell: (info) => {
 				const count = info.getValue();
@@ -106,23 +102,23 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 			id: "actions",
 			header: "Actions",
 			cell: (info) => (
-				<div className="flex gap-2">
-					{(info.row.original.status === "SCHEDULED" ||
+				<div>
+					{/* {(info.row.original.status === "SCHEDULED" ||
 						info.row.original.status === "IN_PROGRESS") && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								setSelectedStockTake(info.row.original);
-								// Logic to open counting dialog would go here
-								// For now we just open details
-								setIsDetailsDialogOpen(true);
-							}}
-						>
-							<ClipboardListIcon className="w-4 h-4 mr-1" />
-							Count
-						</Button>
-					)}
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									setSelectedStockTake(info.row.original);
+									// Logic to open counting dialog would go here
+									// For now we just open details
+									setIsDetailsDialogOpen(true);
+								}}
+							>
+								<ClipboardListIcon className="w-4 h-4 mr-1" />
+								Count
+							</Button>
+						)} */}
 					<Button
 						variant="ghost"
 						size="icon"
@@ -167,17 +163,20 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 							Create Stock Take
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-2xl">
+					<DialogContent className="max-w-4xl">
 						<DialogHeader>
 							<DialogTitle>Create Stock Take</DialogTitle>
 						</DialogHeader>
-						<CreateStockTakeForm onClose={() => setIsCreateDialogOpen(false)} />
+						<CreateStockTakeForm
+							inventoryLocations={inventoryLocations}
+							products={products}
+							onClose={() => setIsCreateDialogOpen(false)} />
 					</DialogContent>
 				</Dialog>
 			</div>
 
 			{/* Stats */}
-			<StockTakeStats stats={stats} />
+			{/* <StockTakeStats stats={stats} /> */}
 
 			{/* Filters */}
 			<StockTakeToolbar
@@ -188,7 +187,7 @@ export function StockTakePage({ stockTakes, stats }: StockTakePageProps) {
 			/>
 
 			{/* Table */}
-			<StockTakeTable columns={columns as any} data={filteredData} />
+			<StockTakeTable columns={columns as any} data={stockTakes} />
 
 			{/* Details Dialog */}
 			<StockTakeDetails

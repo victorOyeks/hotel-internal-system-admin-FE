@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Select,
@@ -12,149 +10,350 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import type { InventoryLocationListResponse, InventoryProduct } from "@/lib/fetch";
+import { MultiSelect, MultiSelectTrigger, MultiSelectValue, MultiSelectContent, MultiSelectItem } from "@/components/ui/multi-select";
+import { useQueryState, parseAsString } from "nuqs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
 
-// Mock locations - in a real app this would come from props or API
-const mockStorageLocations = [
-	{ id: "1", name: "Main Warehouse", code: "WH-MAIN" },
-	{ id: "2", name: "Cold Storage Unit 1", code: "CS-01" },
-	{ id: "3", name: "Dry Storage Room", code: "DS-01" },
-	{ id: "4", name: "Bar Storage", code: "BAR-ST" },
-];
+const stockTakeFormSchema = z.object({
+	locationId: z.string().min(1, "Location is required"),
+	stockTakeType: z.string().min(1, "Type is required"),
+	scheduledDate: z.string().min(1, "Scheduled date is required"),
+	supervisorId: z.string().min(1, "Supervisor ID is required"),
+	supervisorName: z.string().min(1, "Supervisor Name is required"),
+	countedBy: z.string().min(1, "Counted By is required"),
+	acceptableVariancePercent: z.coerce
+		.number()
+		.min(0)
+		.max(100, "Must be between 0 and 100"),
+	stockFrozen: z.boolean().default(false),
+	productIds: z.array(z.string()).default([]),
+	notes: z.string().optional(),
+});
+
+function ProductCombobox({
+	products,
+	search,
+	setSearch,
+	onValueChange,
+}: {
+	products: InventoryProduct[];
+	search: string;
+	setSearch: (search: string) => void;
+	onValueChange: (id: string) => void;
+}) {
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					className="w-full justify-between"
+				>
+					{search
+						? products.find((item) => item.id === search)?.name
+						: "Select item..."}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full flex-1 p-0" align="start">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search items..."
+						value={products.find((item) => item.id === search)?.name}
+						onValueChange={(value) => setSearch(value)}
+					/>
+					<CommandList>
+						<CommandEmpty>No item found.</CommandEmpty>
+						<CommandGroup>
+							{products.map((item) => (
+								<CommandItem
+									key={item.id}
+									value={item.id}
+									onSelect={(currentValue) => {
+										setSearch("");
+										onValueChange(currentValue);
+									}}
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											search === item.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									<div>
+										<div>{item.name}</div>
+									</div>
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+type StockTakeFormValues = z.infer<typeof stockTakeFormSchema>;
 
 interface CreateStockTakeFormProps {
 	onClose: () => void;
+	inventoryLocations: InventoryLocationListResponse[]
+	products: InventoryProduct[]
 }
 
-export function CreateStockTakeForm({ onClose }: CreateStockTakeFormProps) {
-	const [formData, setFormData] = useState({
-		locationId: "",
-		scheduledDate: new Date().toISOString().split("T")[0],
-		stockTakeType: "FULL",
-		supervisorName: "",
-		acceptableVariancePercentage: 5,
-		notes: "",
+export function CreateStockTakeForm({ onClose, inventoryLocations, products }: CreateStockTakeFormProps) {
+	const form = useForm({
+		resolver: zodResolver(stockTakeFormSchema),
+		defaultValues: {
+			locationId: "",
+			stockTakeType: "FULL",
+			scheduledDate: new Date().toISOString().split("T")[0],
+			supervisorId: "",
+			supervisorName: "",
+			countedBy: "",
+			acceptableVariancePercent: 100,
+			stockFrozen: true,
+			productIds: [],
+		},
 	});
 
-	const handleSubmit = () => {
-		console.log("Creating stock take:", formData);
+	const [search, setSearch] = useQueryState(
+		"product-list:search",
+		parseAsString.withDefault(""),
+	);
+
+
+	const [locationSearch, setLocationSearch] = useQueryState(
+		"location-list:search",
+		parseAsString.withDefault(""),
+	);
+
+	const handleSubmit = (data: StockTakeFormValues) => {
+		console.log("Creating stock take:", data);
 		// API call would go here
 		alert(
-			"Stock take created successfully! Items auto-generated from location.",
+			"Stock take created successfully! Payload logged to console.",
 		);
 		onClose();
 	};
 
 	return (
-		<div className="space-y-6">
-			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="location">Storage Location *</Label>
-					<Select
-						value={formData.locationId}
-						onValueChange={(value) =>
-							setFormData({ ...formData, locationId: value })
-						}
-					>
-						<SelectTrigger id="location">
-							<SelectValue placeholder="Select location" />
-						</SelectTrigger>
-						<SelectContent>
-							{mockStorageLocations.map((location) => (
-								<SelectItem key={location.id} value={location.id}>
-									{location.name} ({location.code})
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+				<div className="grid grid-cols-2 gap-2">
+					<FormField
+						control={form.control}
+						name="locationId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Storage Location *</FormLabel>
+								<Select
+									onValueChange={field.onChange}
+									defaultValue={field.value}
+								>
+									<FormControl>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select location" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										{inventoryLocations.map((location) => (
+											<SelectItem key={location.id} value={location.id}>
+												{location.locationName} ({location.locationCode})
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
-				<div className="space-y-2">
-					<Label htmlFor="scheduledDate">Scheduled Date *</Label>
-					<Input
-						id="scheduledDate"
-						type="date"
-						value={formData.scheduledDate}
-						onChange={(e) =>
-							setFormData({ ...formData, scheduledDate: e.target.value })
-						}
+					<FormField
+						control={form.control}
+						name="scheduledDate"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Scheduled Date *</FormLabel>
+								<FormControl>
+									<Input type="date" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="stockTakeType"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Stock Take Type *</FormLabel>
+								<Select
+									onValueChange={field.onChange}
+									defaultValue={field.value}
+								>
+									<FormControl>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select type" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent className="w-full">
+										<SelectItem value="FULL">Full Count</SelectItem>
+										<SelectItem value="PARTIAL">Partial Count</SelectItem>
+										<SelectItem value="CYCLE_COUNT">Cycle Count</SelectItem>
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="supervisorName"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Supervisor Name *</FormLabel>
+								<FormControl>
+									<Input placeholder="Enter supervisor name" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="supervisorId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Supervisor ID *</FormLabel>
+								<FormControl>
+									<Input placeholder="Enter supervisor ID" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="countedBy"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Counted By *</FormLabel>
+								<FormControl>
+									<Input placeholder="Enter counter name" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="acceptableVariancePercent"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Acceptable Variance % *</FormLabel>
+								<FormControl>
+									<Input
+										type="number"
+										min="0"
+										max="100"
+										step="0.1"
+										{...field}
+										value={field.value as number}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="productIds"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Products</FormLabel>
+								<FormControl>
+									<ProductCombobox
+										products={products}
+										search={search}
+										setSearch={setSearch}
+										onValueChange={field.onChange}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
 					/>
 				</div>
 
-				<div className="space-y-2">
-					<Label htmlFor="type">Stock Take Type *</Label>
-					<Select
-						value={formData.stockTakeType}
-						onValueChange={(value) =>
-							setFormData({
-								...formData,
-								stockTakeType: value,
-							})
-						}
-					>
-						<SelectTrigger id="type">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="FULL">Full Count</SelectItem>
-							<SelectItem value="PARTIAL">Partial Count</SelectItem>
-							<SelectItem value="CYCLE_COUNT">Cycle Count</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div className="space-y-2">
-					<Label htmlFor="supervisor">Supervisor Name *</Label>
-					<Input
-						id="supervisor"
-						value={formData.supervisorName}
-						onChange={(e) =>
-							setFormData({ ...formData, supervisorName: e.target.value })
-						}
-						placeholder="Enter supervisor name"
-					/>
-				</div>
-
-				<div className="space-y-2">
-					<Label htmlFor="variance">Acceptable Variance % *</Label>
-					<Input
-						id="variance"
-						type="number"
-						min="0"
-						max="100"
-						step="0.1"
-						value={formData.acceptableVariancePercentage}
-						onChange={(e) =>
-							setFormData({
-								...formData,
-								acceptableVariancePercentage: parseFloat(e.target.value) || 0,
-							})
-						}
-					/>
-				</div>
-			</div>
-
-			<div className="space-y-2">
-				<Label htmlFor="notes">Notes</Label>
-				<Textarea
-					id="notes"
-					value={formData.notes}
-					onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-					placeholder="Additional notes or instructions..."
-					rows={3}
+				<FormField
+					control={form.control}
+					name="stockFrozen"
+					render={({ field }) => (
+						<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+							<FormControl>
+								<Checkbox
+									checked={field.value}
+									onCheckedChange={field.onChange}
+								/>
+							</FormControl>
+							<div className="space-y-1 leading-none">
+								<FormLabel>Freeze Stock</FormLabel>
+								<FormDescription>
+									Prevent stock movements during the count.
+								</FormDescription>
+							</div>
+						</FormItem>
+					)}
 				/>
-			</div>
 
-			<div className="flex justify-end gap-2">
-				<Button variant="outline" onClick={onClose}>
-					Cancel
-				</Button>
-				<Button
-					onClick={handleSubmit}
-					disabled={!formData.locationId || !formData.supervisorName}
-				>
-					Create Stock Take
-				</Button>
-			</div>
-		</div>
+				<FormField
+					control={form.control}
+					name="notes"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Notes</FormLabel>
+							<FormControl>
+								<Textarea
+									placeholder="Additional notes or instructions..."
+									className="resize-none"
+									{...field}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<div className="flex justify-end gap-2">
+					<Button variant="outline" onClick={onClose} type="button">
+						Cancel
+					</Button>
+					<Button type="submit">Create Stock Take</Button>
+				</div>
+			</form>
+		</Form>
 	);
 }

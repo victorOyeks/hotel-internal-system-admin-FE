@@ -6,7 +6,7 @@ import {
 	type OnboardStaffRequest,
 	type OnboardHotelRequest,
 } from "./fetch";
-import { createSession, deleteSession } from "./session";
+import { createSession, deleteSession, refreshTokenKey } from "./session";
 import { getUser, verifySession } from "./dal";
 import { revalidatePath } from "next/cache";
 import {
@@ -14,6 +14,7 @@ import {
 	type ServerActionResponseFromEndpoint,
 	parseError,
 } from "./action-utils";
+import { cookies } from "next/headers";
 
 export async function revalidateRoute(path: string) {
 	revalidatePath(path);
@@ -97,6 +98,27 @@ export async function forgotPassword(payload: {
 		};
 	} catch (error) {
 		return { success: false, error: parseError(error) };
+	}
+}
+
+export async function refreshToken() {
+	console.log("Refreshing token");
+	const cookieStore = await cookies();
+	const refreshToken = cookieStore.get(refreshTokenKey)?.value;
+	if (refreshToken) {
+		try {
+			const response = await $fetch("@post/api/auth/refresh", {
+				body: { refreshToken },
+				throw: true,
+			});
+			await createSession(
+				response.data.accessToken,
+				response.data.refreshToken,
+			);
+			return { success: true, data: response };
+		} catch (error) {
+			return { success: false, error: parseError(error) };
+		}
 	}
 }
 

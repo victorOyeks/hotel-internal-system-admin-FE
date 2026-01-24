@@ -4,7 +4,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { createLoader, type SearchParams } from "nuqs/server";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
@@ -13,6 +13,13 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
+	productSearch: parseAsString,
+	locationSearch: parseAsString,
+}, {
+	urlKeys: {
+		locationSearch: "location-list:search",
+		productSearch: "product-list:search",
+	}
 });
 
 export default function Page({ searchParams }: PageProps) {
@@ -28,12 +35,51 @@ export default function Page({ searchParams }: PageProps) {
 					token,
 					type: "Bearer"
 				},
-				query,
+				query: {
+					page: query.page < 1 ? query.page : query.page - 1,
+					size: query.size,
+				},
 				throw: true,
 			})
 			return res.data;
 		},
 	}))
+
+	const locations = use(qc.ensureQueryData({
+		queryKey: ["locations", query],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/inventories/locations/list", {
+				auth: {
+					token,
+					type: "Bearer"
+				},
+				query: {
+					search: query.locationSearch
+				},
+				throw: true,
+			})
+			return res.data;
+		},
+	}))
+
+	const products = use(qc.ensureQueryData({
+		queryKey: ["products", query],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/inventories/products/list", {
+				auth: {
+					token,
+					type: "Bearer"
+				},
+				query: {
+					search: query.productSearch
+				},
+				throw: true,
+			})
+			return res.data;
+		},
+	}))
+
+	console.log(products)
 
 	return (
 		<BreadCrumbWrapper
@@ -42,7 +88,12 @@ export default function Page({ searchParams }: PageProps) {
 				title: "Stock takes",
 			}}
 		>
-			<StockTakePage stockTakes={stockTakes} stats={{}} />
+			<StockTakePage stockTakes={stockTakes}
+				products={products}
+				stats={undefined}
+				paginationSchema={paginationSchema}
+				inventoryLocations={locations}
+			/>
 		</BreadCrumbWrapper>
 	);
 }

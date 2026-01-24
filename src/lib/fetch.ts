@@ -2,9 +2,8 @@
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
-import { cookies } from "next/headers";
-import { createSession, refreshTokenKey } from "./session";
 import { redirect } from "next/navigation";
+import { refreshToken } from "./actions";
 
 export const Role = z.enum([
 	"HOTEL_OWNER",
@@ -723,6 +722,21 @@ const ApiResponseInventoryLocationResponse = ApiResponseObject.extend({
 export type InventoryLocationResponse = z.infer<
 	typeof ApiResponseInventoryLocationResponse
 >["data"]["content"][number];
+
+const ApiResponseInventoryLocationListResponse = ApiResponseObject.extend({
+	data: z
+		.object({
+			id: z.string(),
+			locationCode: z.string(),
+			locationName: z.string(),
+			locationType: InventoryLocations,
+		})
+		.array(),
+});
+
+export type InventoryLocationListResponse = z.infer<
+	typeof ApiResponseInventoryLocationListResponse
+>["data"][number];
 
 const ApiResponseInventoryGRNResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
@@ -1698,40 +1712,9 @@ const CreateStockTakeRequest = z.object({
 
 export type CreateStockTakeRequest = z.infer<typeof CreateStockTakeRequest>;
 
-const StockTakeResponse = z.object({
-	id: z.string(),
-	customId: z.string(),
-	hotelId: z.string(),
-	stockTakeNumber: z.string(),
-	description: z.string(),
-	locationId: z.string(),
-	locationName: z.string(),
-	status: z.string(),
-	scheduledDate: z.string(),
-	startDate: z.string().nullable(),
-	endDate: z.string().nullable(),
-	blindCount: z.boolean(),
-	includeInactiveProducts: z.boolean(),
-	productCategories: z.array(z.string()),
-	totalItems: z.number(),
-	itemsCounted: z.number(),
-	itemsWithVariance: z.number(),
-	totalVarianceValue: z.number(),
-	approvalStatus: z.string(),
-	approvedBy: z.string().nullable(),
-	approvedAt: z.string().nullable(),
-	notes: z.string(),
-	createdAt: z.string(),
-	updatedAt: z.string(),
-	createdBy: z.string(),
-	updatedBy: z.string(),
-});
-
-export type StockTakeResponse = z.infer<typeof StockTakeResponse>;
-
 const ApiResponseCustomPageStockTakeResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
-		content: z.array(StockTakeResponse),
+		content: StockTakeSchema.array(),
 	}),
 });
 
@@ -3411,201 +3394,6 @@ export const schema = createSchema({
 		params: z.object({ itemId: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@delete/api/hotel-bank-accounts/{id}": {
-		params: z.object({ id: z.string() }),
-		query: z.object({ reason: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
-	},
-	"@delete/api/hotel-owners/hotels/{id}": {
-		params: z.object({ id: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/hotel-owners/staff/{userId}": {
-		params: z.object({ userId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/hotels/laundry/items/{itemId}": {
-		params: z.object({ itemId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/hotels/rentals/items/{itemId}": {
-		params: z.object({ itemId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/inventories/products/{productId}": {
-		params: z.object({ productId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/inventories/suppliers/{supplierId}": {
-		params: z.object({ supplierId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/managers/{hotelId}/{userId}": {
-		params: z.object({ hotelId: z.string(), userId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/managers/room-types/{roomTypeId}": {
-		params: z.object({ roomTypeId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/restaurants/destinations/{destinationId}": {
-		params: z.object({ destinationId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/restaurants/{id}/bar-item": {
-		params: z.object({ id: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@delete/api/restaurants/{id}/stock": {
-		params: z.object({ id: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/admin/payment-reconciliation/pending": {
-		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/admin/payment-reconciliation/stats": {
-		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/auth/liveness-check": {
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/conversations": {
-		query: z
-			.object({
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/conversations/{conversationId}/messages": {
-		params: z.object({ conversationId: z.string() }),
-		query: z
-			.object({
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/conversations/{conversationId}/presence": {
-		params: z.object({ conversationId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/conversations/{conversationId}/unread-count": {
-		params: z.object({ conversationId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/conversations/search": {
-		query: z
-			.object({
-				searchTerm: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/presence/online": {
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/presence/{userId}": {
-		params: z.object({ userId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/chat/unread-count": {
-		output: ApiResponseObject,
-	},
-	"@get/api/corporate/guests/{organizationId}": {
-		params: z.object({ organizationId: z.string() }),
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				staffName: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-				sortBy: z.string().optional().nullable(),
-				sortDir: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/corporate/organizations": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-				sortBy: z.string().optional().nullable(),
-				sortDir: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/corporate/organizations/{id}": {
-		params: z.object({ id: z.string() }),
-		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/corporate/reports/{organizationId}": {
-		params: z.object({ organizationId: z.string() }),
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				start: z.string().optional().nullable(),
-				end: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/corporate/transactions/{organizationId}": {
-		params: z.object({ organizationId: z.string() }),
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				staffName: z.string().optional().nullable(),
-				type: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				start: z.string().optional().nullable(),
-				end: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/feedbacks": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				status: z.string().optional().nullable(),
-				isSerious: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				dateFrom: z.string().optional().nullable(),
-				dateTo: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/bookings/{bookingId}/detailed": {
-		params: z.object({ bookingId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/cash-flow": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
 	"@get/api/financials/compare": {
 		query: z
 			.object({
@@ -4040,7 +3828,7 @@ export const schema = createSchema({
 	},
 	"@get/api/inventories/locations/list": {
 		query: z.object({ search: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
+		output: ApiResponseInventoryLocationListResponse,
 	},
 	"@get/api/inventories/locations/statistics": {
 		output: ApiResponseObject,
@@ -5110,32 +4898,18 @@ export const $fetch = (async (...args: Parameters<typeof baseFetch>) => {
 	} catch (error: any) {
 		const status = error.status || error.statusCode;
 		if (status === 401) {
-			const cookieStore = await cookies();
-			const refreshToken = cookieStore.get(refreshTokenKey)?.value;
-
-			if (refreshToken) {
-				try {
-					const { data } = await baseFetch("@post/api/auth/refresh", {
-						body: { refreshToken },
-						throw: true,
-					});
-
-					await createSession(data.accessToken, data.refreshToken);
-					const [url, options] = args;
-
-					const newOptions = { ...options };
-					if (newOptions.auth && newOptions.auth.type === "Bearer") {
-						newOptions.auth.token = data.accessToken;
-					}
-
-					return await baseFetch(url, newOptions);
-				} catch {
-					// Refresh failed, redirect to login
-					redirect("/auth");
+			const refreshedToken = await refreshToken();
+			if (refreshedToken?.success) {
+				const [url, options] = args;
+				const newOptions = { ...options };
+				if (newOptions.auth && newOptions.auth.type === "Bearer") {
+					newOptions.auth.token = refreshedToken?.data?.data.accessToken!;
 				}
-			} else {
-				redirect("/auth");
+				return await baseFetch(url, newOptions);
 			}
+
+			console.log("Redirecting to auth");
+			redirect("/auth");
 		}
 		throw error;
 	}
