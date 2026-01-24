@@ -1,6 +1,10 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
+import { cookies } from "next/headers";
+import { createSession, refreshTokenKey } from "./session";
+import { redirect } from "next/navigation";
 
 export const Role = z.enum([
 	"HOTEL_OWNER",
@@ -194,8 +198,11 @@ const LoginRequest = z.object({
 });
 
 const LoginResponse = z.object({
-	token: z.string(),
+	refreshToken: z.string(),
+	accessToken: z.string(),
+	expiresIn: z.number(),
 	role: z.string(),
+	permissions: z.string().array(),
 });
 
 const ApiResponseLoginResponse = z.object({
@@ -901,63 +908,144 @@ export type InventoryPurchaseOrderStatistics = z.infer<
 	typeof ApiResponseInventoryPurchaseOrderStatistics
 >["data"];
 
+export const StockTakeStatusEnum = z.enum([
+	"SCHEDULED",
+	"IN_PROGRESS",
+	"PENDING_REVIEW",
+	"REVIEWED",
+	"ADJUSTMENTS_POSTED",
+	"COMPLETED",
+	"CANCELLED",
+]);
+
+const StockTakeLineItemSchema = z.object({
+	id: z.string(),
+	lineNumber: z.number().int(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	batchId: z.string().optional(),
+	batchNumber: z.string().optional(),
+
+	// Quantities & Values
+	systemQuantity: z.number(),
+	actualQuantity: z.number(),
+	varianceQuantity: z.number(),
+	variancePercent: z.number(),
+	unitCost: z.number(),
+	systemValue: z.number(),
+	actualValue: z.number(),
+	varianceValue: z.number(),
+
+	// Count Details
+	counted: z.boolean(),
+	countedAt: z.string().datetime().nullable().optional(),
+	countedBy: z.string().nullable().optional(),
+	recounted: z.boolean(),
+	countAttempts: z.number().int(),
+
+	// Variance & Investigation
+	hasVariance: z.boolean(),
+	significantVariance: z.boolean(),
+	requiresInvestigation: z.boolean(),
+	varianceReason: z.string().nullable().optional(),
+	investigationNotes: z.string().nullable().optional(),
+	investigatedBy: z.string().nullable().optional(),
+	investigatedAt: z.string().datetime().nullable().optional(),
+
+	// Resolution
+	resolved: z.boolean(),
+	resolutionAction: z.string().nullable().optional(),
+	adjustmentId: z.string().nullable().optional(),
+
+	// Conditions
+	conditionNotes: z.string().nullable().optional(),
+	damagedItemsFound: z.boolean(),
+	expiredItemsFound: z.boolean(),
+	storageLocationObserved: z.string().nullable().optional(),
+
+	// Meta
+	photoUrls: z.string().nullable().optional(), // Could be a CSV string or a single URL based on input
+	notes: z.string().nullable().optional(),
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
+});
+
+const StockTakeSchema = z.object({
+	id: z.string(),
+	hotelId: z.string(),
+	stockTakeNumber: z.string(),
+
+	// The Array Enum List provided
+	status: StockTakeStatusEnum,
+
+	// Location Details
+	locationId: z.string(),
+	locationCode: z.string(),
+	locationName: z.string(),
+	stockTakeType: z.string(), // e.g., "FULL", "CYCLE_COUNT"
+
+	// Dates
+	scheduledDate: z.date().or(z.string()), // Accepts YYYY-MM-DD
+	startedAt: z.iso.datetime().nullable().optional(),
+	completedAt: z.iso.datetime().nullable().optional(),
+
+	// Personnel
+	supervisorId: z.string().nullable().optional(),
+	supervisorName: z.string().nullable().optional(),
+	countedBy: z.string().nullable().optional(), // Primary counter for the whole sheet
+	reviewedBy: z.string().nullable().optional(),
+	reviewedAt: z.string().datetime().nullable().optional(),
+
+	// The Array of Line Items
+	items: z.array(StockTakeLineItemSchema).optional(),
+
+	// Aggregates & Totals
+	totalItemsExpected: z.number().int(),
+	totalItemsCounted: z.number().int(),
+	totalItemsWithVariance: z.number().int(),
+	totalValueVariance: z.number(),
+	systemStockValue: z.number(),
+	actualStockValue: z.number(),
+	acceptableVariancePercent: z.number(),
+	hasSignificantVariances: z.boolean(),
+
+	// Adjustment Meta
+	adjustmentsPosted: z.boolean(),
+	adjustmentsPostedAt: z.string().datetime().nullable().optional(),
+	adjustmentsPostedBy: z.string().nullable().optional(),
+	adjustmentsCount: z.number().int(),
+
+	// Frozen State
+	stockFrozen: z.boolean(),
+	stockFrozenAt: z.string().datetime().nullable().optional(),
+	stockUnfrozenAt: z.string().datetime().nullable().optional(),
+
+	// Report Details
+	findings: z.string().nullable().optional(),
+	recommendations: z.string().nullable().optional(),
+	notes: z.string().nullable().optional(),
+	reportUrl: z.string().nullable().optional(),
+
+	// Cancellation
+	cancelled: z.boolean(),
+	cancelledAt: z.iso.datetime().nullable().optional(),
+	cancelledBy: z.string().nullable().optional(),
+	cancellationReason: z.string().nullable().optional(),
+
+	// Timestamps
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
+	createdBy: z.string(),
+	updatedBy: z.string(),
+});
+
+export type StockTakeLineItem = z.infer<typeof StockTakeLineItemSchema>;
+export type StockTake = z.infer<typeof StockTakeSchema>;
+
 const ApiResponseInventoryStockTakeResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
-		content: z.array(
-			z.object({
-				id: z.string(),
-				stockTakeNumber: z.string(),
-				locationId: z.string(),
-				locationName: z.string(),
-				scheduledDate: z.string(),
-				stockTakeType: z.enum(["FULL", "PARTIAL", "CYCLE_COUNT"]),
-				supervisorId: z.string(),
-				supervisorName: z.string(),
-				acceptableVariancePercentage: z.number(),
-				status: z.enum([
-					"SCHEDULED",
-					"IN_PROGRESS",
-					"PENDING_REVIEW",
-					"REVIEWED",
-					"COMPLETED",
-				]),
-				items: z.array(
-					z.object({
-						id: z.string(),
-						productId: z.string(),
-						productName: z.string(),
-						productSku: z.string(),
-						systemQuantity: z.number(),
-						actualQuantity: z.number().nullable(),
-						unitCost: z.number(),
-						variance: z.number(),
-						variancePercentage: z.number(),
-						varianceValue: z.number(),
-						isCounted: z.boolean(),
-						countedBy: z.string().optional(),
-						countedDate: z.string().optional(),
-						requiresInvestigation: z.boolean(),
-						notes: z.string().optional(),
-						damagedItemsFound: z.boolean(),
-						expiredItemsFound: z.boolean(),
-					}),
-				),
-				totalItems: z.number(),
-				countedItems: z.number(),
-				itemsWithVariance: z.number(),
-				totalSystemValue: z.number(),
-				totalActualValue: z.number(),
-				totalVarianceValue: z.number(),
-				completedDate: z.string().optional(),
-				reviewedBy: z.string().optional(),
-				reviewedDate: z.string().optional(),
-				adjustmentsCreated: z.number(),
-				adjustmentsPostedDate: z.string().optional(),
-				notes: z.string().optional(),
-				createdBy: z.string(),
-				createdDate: z.string(),
-			}),
-		),
+		content: StockTakeSchema.array(),
 	}),
 });
 
@@ -965,8 +1053,7 @@ export type InventoryStockTakeResponse = z.infer<
 	typeof ApiResponseInventoryStockTakeResponse
 >["data"]["content"][number];
 
-export type InventoryStockTakeItem =
-	InventoryStockTakeResponse["items"][number];
+export type InventoryStockTakeItem = z.infer<typeof StockTakeLineItemSchema>;
 
 const ApiResponseInventoryStockTakeStatistics = ApiResponseObject.extend({
 	data: z.object({
@@ -1214,12 +1301,28 @@ export type InventoryProduct = {
 	category: z.infer<typeof InventoryProductsCategory>;
 };
 
+const RefreshTokenRequest = z.object({
+	refreshToken: z.string(),
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
 	"@post/api/auth/sign-in": {
 		input: LoginRequest,
 		output: ApiResponseLoginResponse,
+	},
+	"@post/api/auth/refresh": {
+		input: RefreshTokenRequest,
+		output: ApiResponseLoginResponse,
+	},
+	"@post/api/auth/reset-password": {
+		output: ApiResponseObject.extend({
+			data: z.string(),
+		}),
+		input: z.object({
+			email: z.string(),
+		}),
 	},
 
 	// User APIs
@@ -2398,30 +2501,22 @@ export const schema = createSchema({
 	},
 	// Stock Take APIs
 	"@get/api/inventories/stock-takes": {
-		output: ApiResponseInventoryStockTakeResponse,
 		query: z
 			.object({
-				status: z
-					.enum([
-						"SCHEDULED",
-						"IN_PROGRESS",
-						"PENDING_REVIEW",
-						"REVIEWED",
-						"COMPLETED",
-					])
-					.nullable(),
+				status: StockTakeStatusEnum.nullable(),
 				search: z.string().nullable(),
 				page: z.coerce.number().default(0),
 				size: z.coerce.number().default(10),
 			})
 			.partial(),
+		output: ApiResponseInventoryStockTakeResponse,
 	},
 	"@get/api/inventories/stock-takes/statistics": {
 		output: ApiResponseInventoryStockTakeStatistics,
 	},
 });
 
-export const $fetch = createFetch({
+export const baseFetch = createFetch({
 	baseURL: env.NEXT_PUBLIC_API_URL,
 	schema: schema,
 	errorSchema: ApiExceptionResponseObject,
@@ -2467,3 +2562,40 @@ export const $fetch = createFetch({
 	},
 	disableValidation: true,
 });
+
+export const $fetch = (async (...args: Parameters<typeof baseFetch>) => {
+	try {
+		return await baseFetch(...args);
+	} catch (error: any) {
+		const status = error.status || error.statusCode;
+		if (status === 401) {
+			const cookieStore = await cookies();
+			const refreshToken = cookieStore.get(refreshTokenKey)?.value;
+
+			if (refreshToken) {
+				try {
+					const { data } = await baseFetch("@post/api/auth/refresh", {
+						body: { refreshToken },
+						throw: true,
+					});
+
+					await createSession(data.accessToken, data.refreshToken);
+					const [url, options] = args;
+
+					const newOptions = { ...options };
+					if (newOptions.auth && newOptions.auth.type === "Bearer") {
+						newOptions.auth.token = data.accessToken;
+					}
+
+					return await baseFetch(url, newOptions);
+				} catch {
+					// Refresh failed, redirect to login
+					redirect("/auth");
+				}
+			} else {
+				redirect("/auth");
+			}
+		}
+		throw error;
+	}
+}) as typeof baseFetch;

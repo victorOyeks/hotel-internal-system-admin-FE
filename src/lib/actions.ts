@@ -46,7 +46,7 @@ export async function login(payload: {
 			},
 		);
 
-		await createSession(data.token);
+		await createSession(data.accessToken, data.refreshToken);
 
 		return { success: true, data: { message, referenceId, role: data.role } };
 	} catch (error) {

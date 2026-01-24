@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { HotelRole } from "./lib/types";
-import { tokenKey } from "./lib/server-fns";
+import { tokenKey } from "./lib/session";
 import { decrypt } from "./lib/session";
 
 const PREFIX_PATH = "/dashboard";

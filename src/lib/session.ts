@@ -2,8 +2,10 @@ import "server-only";
 import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import type { UserPayload } from "./types";
-import { tokenKey } from "./server-fns";
 import { env } from "@/env";
+
+export const tokenKey = "hms.jwt.session_token";
+export const refreshTokenKey = "hms.jwt.refresh_token";
 
 export function decrypt(session: string) {
 	try {
@@ -15,7 +17,7 @@ export function decrypt(session: string) {
 	}
 }
 
-export async function createSession(session: string) {
+export async function createSession(session: string, refreshToken?: string) {
 	const payload = decrypt(session);
 
 	if (!payload) {
@@ -33,6 +35,20 @@ export async function createSession(session: string) {
 		path: "/",
 		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
 	});
+
+	if (refreshToken) {
+		// Refresh token expires in 12 hours
+		const refreshExpiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
+		cookieStore.set(refreshTokenKey, refreshToken, {
+			httpOnly: true,
+			// secure: process.env.NODE_ENV === 'production',
+			expires: refreshExpiresAt,
+			sameSite: "lax",
+			path: "/",
+			domain:
+				process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
+		});
+	}
 }
 
 export async function updateSession() {
@@ -63,11 +79,14 @@ export async function updateSession() {
 
 export async function deleteSession() {
 	const cookieStore = await cookies();
-	cookieStore.set(tokenKey, "", {
+	const options = {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
 		expires: new Date(0),
 		sameSite: "lax",
 		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-	});
+	} as const;
+
+	cookieStore.set(tokenKey, "", options);
+	cookieStore.set(refreshTokenKey, "", options);
 }

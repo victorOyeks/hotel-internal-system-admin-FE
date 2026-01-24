@@ -2,9 +2,9 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { decrypt } from "./session";
+import { decrypt, tokenKey } from "./session";
 
-export const tokenKey = "hms.jwt.session_token";
+// Keys moved to session.ts to avoid circular dependency
 
 export const getCookieData = cache(async () => {
 	const cookieStore = await cookies();

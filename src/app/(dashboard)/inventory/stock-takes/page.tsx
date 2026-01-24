@@ -20,6 +20,21 @@ export default function Page({ searchParams }: PageProps) {
 	const query = use(loadSearchParams(searchParams));
 	const qc = getQueryClient();
 
+	const { content: stockTakes, ...paginationSchema } = use(qc.ensureQueryData({
+		queryKey: ["stock-takes", query],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/inventories/stock-takes", {
+				auth: {
+					token,
+					type: "Bearer"
+				},
+				query,
+				throw: true,
+			})
+			return res.data;
+		},
+	}))
+
 	return (
 		<BreadCrumbWrapper
 			breadcrumbs={{
@@ -27,7 +42,7 @@ export default function Page({ searchParams }: PageProps) {
 				title: "Stock takes",
 			}}
 		>
-			<StockTakePage stockTakes={[]} stats={{}} />
+			<StockTakePage stockTakes={stockTakes} stats={{}} />
 		</BreadCrumbWrapper>
 	);
 }

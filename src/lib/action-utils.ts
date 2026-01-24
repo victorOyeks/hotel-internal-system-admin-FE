@@ -22,6 +22,17 @@ export type ServerActionResponseFromEndpoint<T extends keyof Schema> =
  * @returns A user-friendly error message.
  */
 export function parseError(error: unknown): string {
+	// Rethrow redirect errors so Next.js can handle them
+	if (
+		error &&
+		typeof error === "object" &&
+		"digest" in error &&
+		typeof (error as { digest: unknown }).digest === "string" &&
+		(error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+	) {
+		throw error;
+	}
+
 	if (error instanceof Error) {
 		// Check for fetch error structure which often has error.data.message
 		if (typeof error === "object" && error !== null && "data" in error) {
