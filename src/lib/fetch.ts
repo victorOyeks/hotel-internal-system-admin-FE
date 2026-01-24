@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Legacy code uses any extensively */
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
@@ -824,85 +824,7 @@ export type InventoryGRNResponse = z.infer<
 	typeof ApiResponseInventoryGRNResponse
 >["data"]["content"][number];
 
-const ApiResponseInventoryPurchaseOrderResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(
-			z.object({
-				id: z.string(),
-				customId: z.string(),
-				hotelId: z.string(),
-				poNumber: z.string(),
-				status: z.enum([
-					"DRAFT",
-					"PENDING_APPROVAL",
-					"APPROVED",
-					"REJECTED",
-					"SENT",
-					"PARTIALLY_RECEIVED",
-					"COMPLETED",
-					"CANCELLED",
-				]),
-				supplierId: z.string(),
-				supplierName: z.string(),
-				supplierEmail: z.string().optional(),
-				orderDate: z.string(),
-				expectedDeliveryDate: z.string(),
-				paymentTerms: z.string().optional(),
-				shippingAddress: z.string().optional(),
-				billingAddress: z.string().optional(),
-				notes: z.string().optional(),
-				subtotal: z.number(),
-				taxAmount: z.number(),
-				shippingCost: z.number(),
-				discountAmount: z.number(),
-				totalAmount: z.number(),
-				currency: z.string().default("USD"),
-				items: z.array(
-					z.object({
-						id: z.string(),
-						productId: z.string(),
-						productSku: z.string(),
-						productName: z.string(),
-						quantityOrdered: z.number(),
-						quantityReceived: z.number(),
-						unit: z.string(),
-						unitPrice: z.number(),
-						taxRate: z.number(),
-						taxAmount: z.number(),
-						lineTotal: z.number(),
-						notes: z.string().optional(),
-					}),
-				),
-				createdBy: z.string(),
-				createdAt: z.string(),
-				updatedAt: z.string(),
-				approvedBy: z.string().optional(),
-				approvedAt: z.string().optional(),
-			}),
-		),
-	}),
-});
-
-export type InventoryPurchaseOrderResponse = z.infer<
-	typeof ApiResponseInventoryPurchaseOrderResponse
->["data"]["content"][number];
-
-export type InventoryPurchaseOrderItem =
-	InventoryPurchaseOrderResponse["items"][number];
-
-const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
-	data: z.object({
-		totalPOs: z.number(),
-		draftPOs: z.number(),
-		pendingApprovalPOs: z.number(),
-		approvedPOs: z.number(),
-		completedPOs: z.number(),
-		cancelledPOs: z.number(),
-		totalValue: z.number(),
-		posToday: z.number(),
-		valueToday: z.number(),
-	}),
-});
+export type InventoryPurchaseOrderItem = PurchaseOrderItemResponse;
 
 export type InventoryPurchaseOrderStatistics = z.infer<
 	typeof ApiResponseInventoryPurchaseOrderStatistics
@@ -1043,33 +965,7 @@ const StockTakeSchema = z.object({
 export type StockTakeLineItem = z.infer<typeof StockTakeLineItemSchema>;
 export type StockTake = z.infer<typeof StockTakeSchema>;
 
-const ApiResponseInventoryStockTakeResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: StockTakeSchema.array(),
-	}),
-});
-
-export type InventoryStockTakeResponse = z.infer<
-	typeof ApiResponseInventoryStockTakeResponse
->["data"]["content"][number];
-
 export type InventoryStockTakeItem = z.infer<typeof StockTakeLineItemSchema>;
-
-const ApiResponseInventoryStockTakeStatistics = ApiResponseObject.extend({
-	data: z.object({
-		totalStockTakes: z.number(),
-		scheduledStockTakes: z.number(),
-		inProgressStockTakes: z.number(),
-		pendingReviewStockTakes: z.number(),
-		completedStockTakes: z.number(),
-		totalVarianceValue: z.number(),
-		accuracyRate: z.number(),
-	}),
-});
-
-export type InventoryStockTakeStatistics = z.infer<
-	typeof ApiResponseInventoryStockTakeStatistics
->["data"];
 
 export const ApiResponseInventoryProductResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
@@ -1305,6 +1201,951 @@ const RefreshTokenRequest = z.object({
 	refreshToken: z.string(),
 });
 
+// --- Inventory Schemas ---
+
+const SupplierResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	name: z.string(),
+	contactPerson: z.string(),
+	email: z.string(),
+	phoneNumber: z.string(),
+	address: z.string(),
+	taxIdentificationNumber: z.string().nullable(),
+	paymentTerms: z.string(),
+	currency: z.string(),
+	category: z.string(),
+	rating: z.number(),
+	active: z.boolean(),
+	notes: z.string(),
+	website: z.string().nullable(),
+	leadTimeDays: z.number(),
+	minimumOrderValue: z.number(),
+	preferredPaymentMethod: z.string(),
+	bankName: z.string().nullable(),
+	bankAccountNumber: z.string().nullable(),
+	bankAccountName: z.string().nullable(),
+	bankBranch: z.string().nullable(),
+	swiftCode: z.string().nullable(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
+});
+
+export type SupplierResponse = z.infer<typeof SupplierResponse>;
+
+const AddSupplierRequest = z.object({
+	name: z.string(),
+	contactPerson: z.string(),
+	email: z.string().email(),
+	phoneNumber: z.string(),
+	address: z.string(),
+	taxIdentificationNumber: z.string().optional(),
+	paymentTerms: z.string(),
+	currency: z.string(),
+	category: z.string(),
+	notes: z.string().optional(),
+	website: z.string().url().optional(),
+	leadTimeDays: z.number().int().min(0),
+	minimumOrderValue: z.number().min(0),
+	preferredPaymentMethod: z.string(),
+	bankName: z.string().optional(),
+	bankAccountNumber: z.string().optional(),
+	bankAccountName: z.string().optional(),
+	bankBranch: z.string().optional(),
+	swiftCode: z.string().optional(),
+});
+
+export type AddSupplierRequest = z.infer<typeof AddSupplierRequest>;
+
+const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
+	active: z.boolean().optional(),
+});
+
+export type UpdateSupplierRequest = z.infer<typeof UpdateSupplierRequest>;
+
+const ApiResponseCustomPageSupplierResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(SupplierResponse),
+	}),
+});
+
+const ProductResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	barcode: z.string().nullable(),
+	name: z.string(),
+	description: z.string(),
+	brand: z.string(),
+	manufacturer: z.string(),
+	category: z.string(), // Enum in docs, keeping as string for now or use InventoryProductsCategory
+	subcategory: z.string(),
+	status: z.enum(["ACTIVE", "INACTIVE", "DISCONTINUED", "DRAFT", "ARCHIVED"]),
+	baseUnit: z.string(),
+	purchaseUnit: z.string(),
+	consumptionUnit: z.string(),
+	conversionFactor: z.number(),
+	standardCost: z.number(),
+	lastPurchasePrice: z.number(),
+	sellingPrice: z.number(),
+	valuationMethod: z.string(),
+	reorderLevel: z.number(),
+	reorderQuantity: z.number(),
+	minStockLevel: z.number(),
+	maxStockLevel: z.number(),
+	safetyStock: z.number(),
+	leadTimeDays: z.number(),
+	trackBatches: z.boolean(),
+	trackExpiry: z.boolean(),
+	trackSerialNumbers: z.boolean(),
+	perishable: z.boolean(),
+	storageRequirements: z.string(),
+	temperatureMin: z.number().nullable(),
+	temperatureMax: z.number().nullable(),
+	shelfLifeDays: z.number().nullable(),
+	weight: z.number().nullable(),
+	length: z.number().nullable(),
+	width: z.number().nullable(),
+	height: z.number().nullable(),
+	preferredSupplierId: z.string().nullable(),
+	preferredSupplierName: z.string().nullable(),
+	supplierPartNumber: z.string().nullable(),
+	imageUrl: z.string().nullable(),
+	notes: z.string(),
+	internalNotes: z.string(),
+	tags: z.string(),
+	taxRate: z.number(),
+	taxCategory: z.string(),
+	accountCode: z.string(),
+	costCenter: z.string(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
+});
+
+export type ProductResponse = z.infer<typeof ProductResponse>;
+
+const CreateProductRequest = z.object({
+	barcode: z.string().optional(),
+	name: z.string(),
+	description: z.string().optional(),
+	brand: z.string().optional(),
+	manufacturer: z.string().optional(),
+	category: z.string(), // Should match InventoryProductsCategory
+	subcategory: z.string().optional(),
+	status: z
+		.enum(["ACTIVE", "INACTIVE", "DISCONTINUED", "DRAFT", "ARCHIVED"])
+		.optional(),
+	baseUnit: z.string(),
+	purchaseUnit: z.string().optional(),
+	consumptionUnit: z.string().optional(),
+	conversionFactor: z.number().optional(),
+	standardCost: z.number().optional(),
+	lastPurchasePrice: z.number().optional(),
+	sellingPrice: z.number().optional(),
+	valuationMethod: z
+		.enum([
+			"FIFO",
+			"LIFO",
+			"WEIGHTED_AVERAGE",
+			"STANDARD_COST",
+			"SPECIFIC_IDENTIFICATION",
+		])
+		.optional(),
+	reorderLevel: z.number().optional(),
+	reorderQuantity: z.number().optional(),
+	minStockLevel: z.number().optional(),
+	maxStockLevel: z.number().optional(),
+	safetyStock: z.number().optional(),
+	leadTimeDays: z.number().int().optional(),
+	trackBatches: z.boolean().optional(),
+	trackExpiry: z.boolean().optional(),
+	trackSerialNumbers: z.boolean().optional(),
+	perishable: z.boolean().optional(),
+	storageRequirements: z.string().optional(),
+	temperatureMin: z.number().optional(),
+	temperatureMax: z.number().optional(),
+	shelfLifeDays: z.number().int().optional(),
+	weight: z.number().optional(),
+	length: z.number().optional(),
+	width: z.number().optional(),
+	height: z.number().optional(),
+	preferredSupplierId: z.string().optional(),
+	supplierPartNumber: z.string().optional(),
+	imageUrl: z.string().optional(),
+	notes: z.string().optional(),
+	internalNotes: z.string().optional(),
+	tags: z.string().optional(),
+	taxRate: z.number().optional(),
+	taxCategory: z.string().optional(),
+	accountCode: z.string().optional(),
+	costCenter: z.string().optional(),
+});
+
+export type CreateProductRequest = z.infer<typeof CreateProductRequest>;
+
+const UpdateProductRequest = CreateProductRequest.partial();
+
+export type UpdateProductRequest = z.infer<typeof UpdateProductRequest>;
+
+const ApiResponseCustomPageProductResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(ProductResponse),
+	}),
+});
+
+const ApiResponseProductResponse = ApiResponseObject.extend({
+	data: ProductResponse,
+});
+
+const ApiResponseSupplierResponse = ApiResponseObject.extend({
+	data: SupplierResponse,
+});
+
+// --- Storage Location Schemas ---
+
+const StorageLocationResponse = z.object({
+	id: z.string(),
+	hotelId: z.string(),
+	locationCode: z.string(),
+	locationName: z.string(),
+	locationType: z.string(), // InventoryLocations enum
+	description: z.string(),
+	building: z.string(),
+	floor: z.string(),
+	room: z.string(),
+	physicalAddress: z.string(),
+	totalCapacity: z.number(),
+	capacityUnit: z.string(),
+	temperatureControlled: z.boolean(),
+	minTemperature: z.number(),
+	maxTemperature: z.number(),
+	humidityControlled: z.boolean(),
+	minHumidity: z.number(),
+	maxHumidity: z.number(),
+	accessRestrictions: z.string(),
+	managerUserId: z.string(),
+	contactPerson: z.string(),
+	contactPhone: z.string(),
+	active: z.boolean(),
+	isPrimary: z.boolean(),
+	allowNegativeStock: z.boolean(),
+	operatingHours: z.string(),
+	specialInstructions: z.string(),
+	notes: z.string(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
+	createdBy: z.string(),
+	updatedBy: z.string(),
+	deactivatedAt: z.coerce.date().nullable(),
+	deactivatedBy: z.string().nullable(),
+	totalProductsStored: z.number(),
+	lowStockProducts: z.number(),
+	outOfStockProducts: z.number(),
+});
+
+export type StorageLocationResponse = z.infer<typeof StorageLocationResponse>;
+
+const CreateStorageLocationRequest = z.object({
+	locationCode: z.string(),
+	locationName: z.string(),
+	locationType: z.string(), // InventoryLocations
+	description: z.string().optional(),
+	building: z.string().optional(),
+	floor: z.string().optional(),
+	room: z.string().optional(),
+	physicalAddress: z.string().optional(),
+	totalCapacity: z.number().optional(),
+	capacityUnit: z.string().optional(),
+	temperatureControlled: z.boolean().optional(),
+	minTemperature: z.number().optional(),
+	maxTemperature: z.number().optional(),
+	humidityControlled: z.boolean().optional(),
+	minHumidity: z.number().optional(),
+	maxHumidity: z.number().optional(),
+	accessRestrictions: z.string().optional(),
+	managerUserId: z.string().optional(),
+	contactPerson: z.string().optional(),
+	contactPhone: z.string().optional(),
+	isPrimary: z.boolean().optional(),
+	allowNegativeStock: z.boolean().optional(),
+	operatingHours: z.string().optional(),
+	specialInstructions: z.string().optional(),
+	notes: z.string().optional(),
+});
+
+export type CreateStorageLocationRequest = z.infer<
+	typeof CreateStorageLocationRequest
+>;
+
+const ApiResponseCustomPageStorageLocationResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StorageLocationResponse),
+	}),
+});
+
+const ApiResponseStorageLocationResponse = ApiResponseObject.extend({
+	data: StorageLocationResponse,
+});
+
+// --- GRN Schemas ---
+
+const GRNItemRequest = z.object({
+	productId: z.string(),
+	purchaseOrderItemId: z.string().optional(),
+	quantityReceived: z.number().min(0),
+	quantityAccepted: z.number().min(0),
+	quantityRejected: z.number().min(0),
+	unit: z.string(),
+	unitPrice: z.number().min(0),
+	taxRate: z.number().optional(),
+	batchNumber: z.string().optional(),
+	serialNumber: z.string().optional(),
+	manufactureDate: z.string().optional(), // date
+	expiryDate: z.string().optional(), // date
+	qualityStatus: z.string().optional(),
+	qualityNotes: z.string().optional(),
+	rejectionReason: z.string().optional(),
+	damageDetails: z.string().optional(),
+	packagingCondition: z.string().optional(),
+	damaged: z.boolean().optional(),
+	expired: z.boolean().optional(),
+	notes: z.string().optional(),
+	storageLocation: z.string().optional(),
+});
+
+export type GRNItemRequest = z.infer<typeof GRNItemRequest>;
+
+const GoodsReceiptNoteItemResponse = z.object({
+	id: z.string(),
+	lineNumber: z.number(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	purchaseOrderItemId: z.string(),
+	quantityOrdered: z.number(),
+	quantityReceived: z.number(),
+	quantityAccepted: z.number(),
+	quantityRejected: z.number(),
+	unit: z.string(),
+	unitPrice: z.number(),
+	lineTotal: z.number(),
+	taxRate: z.number(),
+	taxAmount: z.number(),
+	batchId: z.string(),
+	batchNumber: z.string(),
+	serialNumber: z.string(),
+	manufactureDate: z.string(),
+	expiryDate: z.string(),
+	qualityStatus: z.string(),
+	qualityNotes: z.string(),
+	rejectionReason: z.string(),
+	damageDetails: z.string(),
+	packagingCondition: z.string(),
+	damaged: z.boolean(),
+	expired: z.boolean(),
+	notes: z.string(),
+	storageLocation: z.string(),
+	stockMovementId: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type GoodsReceiptNoteItemResponse = z.infer<
+	typeof GoodsReceiptNoteItemResponse
+>;
+
+const CreateGRNRequest = z.object({
+	supplierId: z.string(),
+	purchaseOrderId: z.string().optional(),
+	supplierInvoiceNumber: z.string().optional(),
+	supplierInvoiceDate: z.string().optional(), // date
+	supplierDeliveryNote: z.string().optional(),
+	storageLocationId: z.string(),
+	receiptDate: z.string(), // date
+	receiptTime: z.string().optional(), // date-time
+	deliveredBy: z.string().optional(),
+	vehicleNumber: z.string().optional(),
+	inspectionRequired: z.boolean().optional(),
+	items: z.array(GRNItemRequest).min(1),
+	notes: z.string().optional(),
+	discrepancies: z.string().optional(),
+	packagingCondition: z.string().optional(),
+});
+
+export type CreateGRNRequest = z.infer<typeof CreateGRNRequest>;
+
+const UpdateGRNRequest = z.object({
+	supplierInvoiceNumber: z.string().optional(),
+	supplierInvoiceDate: z.string().optional(),
+	supplierDeliveryNote: z.string().optional(),
+	receiptDate: z.string(),
+	receiptTime: z.string().optional(),
+	deliveredBy: z.string().optional(),
+	vehicleNumber: z.string().optional(),
+	inspectionRequired: z.boolean().optional(),
+	inspectionDate: z.string().optional(),
+	inspectedBy: z.string().optional(),
+	inspectionResult: z.string().optional(),
+	inspectionNotes: z.string().optional(),
+	items: z.array(GRNItemRequest).min(1),
+	notes: z.string().optional(),
+	discrepancies: z.string().optional(),
+	packagingCondition: z.string().optional(),
+});
+
+export type UpdateGRNRequest = z.infer<typeof UpdateGRNRequest>;
+
+const GoodsReceiptNoteResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	hotelId: z.string(),
+	grnNumber: z.string(),
+	status: z.string(),
+	purchaseOrderId: z.string(),
+	purchaseOrderNumber: z.string(),
+	supplierId: z.string(),
+	supplierName: z.string(),
+	supplierInvoiceNumber: z.string(),
+	supplierInvoiceDate: z.string(),
+	supplierDeliveryNote: z.string(),
+	storageLocationId: z.string(),
+	storageLocationCode: z.string(),
+	storageLocationName: z.string(),
+	receiptDate: z.string(),
+	receiptTime: z.string(),
+	receivedBy: z.string(),
+	deliveredBy: z.string(),
+	vehicleNumber: z.string(),
+	inspectionRequired: z.boolean(),
+	inspectionDate: z.string(),
+	inspectedBy: z.string(),
+	inspectionResult: z.string(),
+	inspectionNotes: z.string(),
+	items: z.array(GoodsReceiptNoteItemResponse),
+	totalAmount: z.number(),
+	taxAmount: z.number(),
+	discountAmount: z.number(),
+	netAmount: z.number(),
+	totalQuantityReceived: z.number(),
+	totalQuantityAccepted: z.number(),
+	totalQuantityRejected: z.number(),
+	stockPosted: z.boolean(),
+	stockPostedAt: z.string(),
+	notes: z.string(),
+	discrepancies: z.string(),
+	packagingCondition: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type GoodsReceiptNoteResponse = z.infer<typeof GoodsReceiptNoteResponse>;
+
+const ApiResponseCustomPageGoodsReceiptNoteResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(GoodsReceiptNoteResponse),
+	}),
+});
+
+const ApiResponseGoodsReceiptNoteResponse = ApiResponseObject.extend({
+	data: GoodsReceiptNoteResponse,
+});
+
+// --- Stock Take Schemas ---
+
+const StockTakeItemResponse = z.object({
+	id: z.string(),
+	stockTakeId: z.string(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	locationId: z.string(),
+	locationName: z.string(),
+	systemQuantity: z.number(),
+	actualQuantity: z.number().nullable(),
+	variance: z.number().nullable(),
+	varianceValue: z.number().nullable(),
+	status: z.string(),
+	countedBy: z.string().nullable(),
+	countedAt: z.string().nullable(), // date-time
+	notes: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type StockTakeItemResponse = z.infer<typeof StockTakeItemResponse>;
+
+const RecordStockCountRequest = z.object({
+	stockTakeItemId: z.string(),
+	actualQuantity: z.number().min(0),
+	conditionNotes: z.string().optional(),
+	damagedItemsFound: z.boolean().optional(),
+	expiredItemsFound: z.boolean().optional(),
+	storageLocationObserved: z.string().optional(),
+	notes: z.string().optional(),
+});
+
+export type RecordStockCountRequest = z.infer<typeof RecordStockCountRequest>;
+
+const CreateStockTakeRequest = z.object({
+	locationId: z.string(),
+	description: z.string(),
+	scheduledDate: z.string(), // date-time
+	blindCount: z.boolean().optional(),
+	includeInactiveProducts: z.boolean().optional(),
+	productCategories: z.array(z.string()).optional(),
+	assignedUserIds: z.array(z.string()).optional(),
+	notes: z.string().optional(),
+});
+
+export type CreateStockTakeRequest = z.infer<typeof CreateStockTakeRequest>;
+
+const StockTakeResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	hotelId: z.string(),
+	stockTakeNumber: z.string(),
+	description: z.string(),
+	locationId: z.string(),
+	locationName: z.string(),
+	status: z.string(),
+	scheduledDate: z.string(),
+	startDate: z.string().nullable(),
+	endDate: z.string().nullable(),
+	blindCount: z.boolean(),
+	includeInactiveProducts: z.boolean(),
+	productCategories: z.array(z.string()),
+	totalItems: z.number(),
+	itemsCounted: z.number(),
+	itemsWithVariance: z.number(),
+	totalVarianceValue: z.number(),
+	approvalStatus: z.string(),
+	approvedBy: z.string().nullable(),
+	approvedAt: z.string().nullable(),
+	notes: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	createdBy: z.string(),
+	updatedBy: z.string(),
+});
+
+export type StockTakeResponse = z.infer<typeof StockTakeResponse>;
+
+const ApiResponseCustomPageStockTakeResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StockTakeResponse),
+	}),
+});
+
+const ApiResponseInventoryStockTakeResponse =
+	ApiResponseCustomPageStockTakeResponse;
+const ApiResponseInventoryStockTakeStatistics = ApiResponseObject.extend({
+	data: z.object({
+		totalStockTakes: z.number(),
+		completedStockTakes: z.number(),
+		pendingStockTakes: z.number(),
+		totalVarianceValue: z.number(),
+		accuracyRate: z.number(),
+	}),
+});
+
+// --- Stock Adjustment Schemas ---
+
+const CreateStockAdjustmentRequest = z.object({
+	productId: z.string(),
+	locationId: z.string(),
+	batchId: z.string().optional(),
+	adjustmentDate: z.string(), // date-time
+	reason: z.enum([
+		"DAMAGED",
+		"EXPIRED",
+		"STOLEN",
+		"LOST",
+		"QUALITY_ISSUE",
+		"STOCK_COUNT_VARIANCE",
+		"SPILLAGE",
+		"BREAKAGE",
+		"OBSOLETE",
+		"DATA_ENTRY_ERROR",
+		"RETURNED_TO_SUPPLIER",
+		"FOUND",
+		"OTHER",
+	]),
+	adjustmentType: z.enum(["INCREASE", "DECREASE"]),
+	adjustmentQuantity: z.number().min(0),
+	unitCost: z.number().min(0).optional(),
+	stockTakeId: z.string().optional(),
+	requiresApproval: z.boolean().optional(),
+	description: z.string(),
+	notes: z.string().optional(),
+	responsiblePerson: z.string().optional(),
+	incidentNumber: z.string().optional(),
+	insuranceClaim: z.boolean().optional(),
+	claimNumber: z.string().optional(),
+	claimAmount: z.number().min(0).optional(),
+});
+
+export type CreateStockAdjustmentRequest = z.infer<
+	typeof CreateStockAdjustmentRequest
+>;
+
+const StockAdjustmentResponse = z.object({
+	id: z.string(),
+	hotelId: z.string(),
+	adjustmentNumber: z.string(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	locationId: z.string(),
+	locationCode: z.string(),
+	locationName: z.string(),
+	batchId: z.string().nullable(),
+	batchNumber: z.string().nullable(),
+	adjustmentDate: z.string(),
+	reason: z.string(),
+	adjustmentType: z.string(),
+	quantityBefore: z.number(),
+	adjustmentQuantity: z.number(),
+	quantityAfter: z.number(),
+	unitCost: z.number(),
+	totalCostImpact: z.number(),
+	stockTakeId: z.string().nullable(),
+	stockTakeNumber: z.string().nullable(),
+	requiresApproval: z.boolean(),
+	approved: z.boolean(),
+	approvedBy: z.string().nullable(),
+	approvedAt: z.string().nullable(),
+	approvalComments: z.string().nullable(),
+	posted: z.boolean(),
+	postedAt: z.string().nullable(),
+	postedBy: z.string().nullable(),
+	stockMovementId: z.string().nullable(),
+	description: z.string(),
+	notes: z.string(),
+	responsiblePerson: z.string().nullable(),
+	photoUrls: z.string().nullable(),
+	documentUrls: z.string().nullable(),
+	incidentNumber: z.string().nullable(),
+	insuranceClaim: z.boolean(),
+	claimNumber: z.string().nullable(),
+	claimAmount: z.number().nullable(),
+	cancelled: z.boolean(),
+	cancelledAt: z.string().nullable(),
+	cancelledBy: z.string().nullable(),
+	cancellationReason: z.string().nullable(),
+	reversalAdjustmentId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	createdBy: z.string(),
+	updatedBy: z.string(),
+});
+
+export type StockAdjustmentResponse = z.infer<typeof StockAdjustmentResponse>;
+
+const ApiResponseCustomPageStockAdjustmentResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StockAdjustmentResponse),
+	}),
+});
+
+const ApiResponseStockAdjustmentResponse = ApiResponseObject.extend({
+	data: StockAdjustmentResponse,
+});
+
+// --- Stock Issue Schemas ---
+
+const StockIssueItemRequest = z.object({
+	productId: z.string(),
+	batchId: z.string().optional(),
+	quantity: z.number().min(0),
+	notes: z.string().optional(),
+});
+
+export type StockIssueItemRequest = z.infer<typeof StockIssueItemRequest>;
+
+const StockIssueRequest = z.object({
+	locationId: z.string(),
+	issueDate: z.string(), // date-time
+	issueType: z.enum([
+		"INTERNAL_CONSUMPTION",
+		"SALES_ISSUE",
+		"TRANSFER_OUT",
+		"OTHERS",
+	]),
+	departmentId: z.string().optional(),
+	receivedBy: z.string().optional(),
+	orderId: z.string().optional(),
+	bookingId: z.string().optional(),
+	toLocationId: z.string().optional(),
+	autoCompleteTransfer: z.boolean().optional(),
+	items: z.array(StockIssueItemRequest).min(1),
+	notes: z.string().optional(),
+	reason: z.string().optional(),
+});
+
+export type StockIssueRequest = z.infer<typeof StockIssueRequest>;
+
+// --- Stock Requisition Schemas ---
+
+const RequisitionItemRequest = z.object({
+	productId: z.string(),
+	quantityRequested: z.number().min(0),
+	unit: z.string(),
+	notes: z.string().optional(),
+});
+
+export type RequisitionItemRequest = z.infer<typeof RequisitionItemRequest>;
+
+const RequisitionItemResponse = z.object({
+	id: z.string(),
+	productId: z.string(),
+	productName: z.string(),
+	productSku: z.string(),
+	quantityRequested: z.number(),
+	quantityApproved: z.number().nullable(),
+	quantityIssued: z.number(),
+	unit: z.string(),
+	status: z.string(),
+	notes: z.string(),
+});
+
+export type RequisitionItemResponse = z.infer<typeof RequisitionItemResponse>;
+
+const CreateRequisitionRequest = z.object({
+	departmentId: z.string().optional(), // or department enum
+	requiredDate: z.string(), // date
+	priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+	items: z.array(RequisitionItemRequest).min(1),
+	notes: z.string().optional(),
+});
+
+export type CreateRequisitionRequest = z.infer<typeof CreateRequisitionRequest>;
+
+const StockRequisitionResponse = z.object({
+	id: z.string(),
+	requisitionNumber: z.string(),
+	hotelId: z.string(),
+	department: z.string(),
+	requestedBy: z.string(),
+	requestedAt: z.string(),
+	requiredDate: z.string(),
+	priority: z.string(),
+	status: z.string(),
+	items: z.array(RequisitionItemResponse),
+	approvalStatus: z.string(),
+	approvedBy: z.string().nullable(),
+	approvedAt: z.string().nullable(),
+	rejectionReason: z.string().nullable(),
+	fulfilledBy: z.string().nullable(),
+	fulfilledAt: z.string().nullable(),
+	notes: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type StockRequisitionResponse = z.infer<typeof StockRequisitionResponse>;
+
+const ApiResponseCustomPageStockRequisitionResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StockRequisitionResponse),
+	}),
+});
+
+const ApiResponseStockRequisitionResponse = ApiResponseObject.extend({
+	data: StockRequisitionResponse,
+});
+
+// --- Purchase Order Schemas ---
+
+const PurchaseOrderItemRequest = z.object({
+	productId: z.string(),
+	productDescription: z.string().optional(),
+	quantityOrdered: z.number().min(0),
+	unit: z.string(),
+	unitPrice: z.number().min(0),
+	discountPercent: z.number().min(0).max(100).optional(),
+	taxRate: z.number().min(0).max(100).optional(),
+	expectedDeliveryDate: z.string().optional(),
+	notes: z.string().optional(),
+	specifications: z.string().optional(),
+});
+
+export type PurchaseOrderItemRequest = z.infer<typeof PurchaseOrderItemRequest>;
+
+const PurchaseOrderItemResponse = z.object({
+	id: z.string(),
+	lineNumber: z.number(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	productDescription: z.string(),
+	quantityOrdered: z.number(),
+	quantityReceived: z.number(),
+	quantityPending: z.number(),
+	quantityRejected: z.number(),
+	unit: z.string(),
+	unitPrice: z.number(),
+	discountPercent: z.number(),
+	discountAmount: z.number(),
+	lineTotal: z.number(),
+	taxRate: z.number(),
+	taxAmount: z.number(),
+	expectedDeliveryDate: z.string(),
+	notes: z.string(),
+	specifications: z.string(),
+	fullyReceived: z.boolean(),
+	cancelled: z.boolean(),
+	cancellationReason: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type PurchaseOrderItemResponse = z.infer<
+	typeof PurchaseOrderItemResponse
+>;
+
+const CreatePurchaseOrderRequest = z.object({
+	supplierId: z.string(),
+	orderDate: z.string(), // date
+	expectedDeliveryDate: z.string().optional(), // date
+	deliveryLocationId: z.string(),
+	currency: z.string().optional(),
+	exchangeRate: z.number().optional(),
+	paymentTerms: z.string().optional(),
+	paymentDueDays: z.number().int().optional(),
+	paymentMethod: z.string().optional(),
+	notes: z.string().optional(),
+	termsAndConditions: z.string().optional(),
+	deliveryInstructions: z.string().optional(),
+	internalNotes: z.string().optional(),
+	requisitionNumber: z.string().optional(),
+	quotationNumber: z.string().optional(),
+	items: z.array(PurchaseOrderItemRequest).min(1),
+});
+
+export type CreatePurchaseOrderRequest = z.infer<
+	typeof CreatePurchaseOrderRequest
+>;
+
+const PurchaseOrderResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	hotelId: z.string(),
+	orderNumber: z.string(),
+	supplierId: z.string(),
+	supplierName: z.string(),
+	supplierEmail: z.string(),
+	supplierPhone: z.string(),
+	orderDate: z.string(),
+	expectedDeliveryDate: z.string(),
+	deliveryLocationId: z.string(),
+	deliveryLocationName: z.string(),
+	status: z.string(),
+	currency: z.string(),
+	exchangeRate: z.number(),
+	subTotal: z.number(),
+	taxTotal: z.number(),
+	discountTotal: z.number(),
+	shippingCost: z.number(),
+	otherCosts: z.number(),
+	grandTotal: z.number(),
+	paymentTerms: z.string(),
+	paymentStatus: z.string(),
+	amountPaid: z.number(),
+	balanceDue: z.number(),
+	notes: z.string(),
+	termsAndConditions: z.string(),
+	deliveryInstructions: z.string(),
+	internalNotes: z.string(),
+	requisitionNumber: z.string(),
+	quotationNumber: z.string(),
+	approvalStatus: z.string(),
+	approvedBy: z.string().nullable(),
+	approvedAt: z.string().nullable(),
+	items: z.array(PurchaseOrderItemResponse),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type PurchaseOrderResponse = z.infer<typeof PurchaseOrderResponse>;
+
+const ApiResponseCustomPagePurchaseOrderResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(PurchaseOrderResponse),
+	}),
+});
+
+const ApiResponseInventoryPurchaseOrderResponse =
+	ApiResponseCustomPagePurchaseOrderResponse;
+const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
+	data: z.object({
+		totalOrders: z.number(),
+		pendingOrders: z.number(),
+		completedOrders: z.number(),
+		totalValue: z.number(),
+		overdueOrders: z.number(),
+	}),
+});
+
+// --- Stock Movement Schemas ---
+
+const StockMovementResponse = z.object({
+	id: z.string(),
+	hotelId: z.string(),
+	movementNumber: z.string(),
+	movementType: z.string(),
+	movementDate: z.string(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	locationId: z.string(),
+	locationCode: z.string(),
+	locationName: z.string(),
+	fromLocationId: z.string().nullable(),
+	fromLocationCode: z.string().nullable(),
+	fromLocationName: z.string().nullable(),
+	toLocationId: z.string().nullable(),
+	toLocationCode: z.string().nullable(),
+	toLocationName: z.string().nullable(),
+	quantity: z.number(),
+	unitCost: z.number(),
+	totalCost: z.number(),
+	balanceAfter: z.number(),
+	batchId: z.string().nullable(),
+	batchNumber: z.string().nullable(),
+	referenceNumber: z.string().nullable(),
+	referenceType: z.string().nullable(),
+	referenceId: z.string().nullable(),
+	orderId: z.string().nullable(),
+	bookingId: z.string().nullable(),
+	departmentId: z.string().nullable(),
+	performedBy: z.string(),
+	approvedBy: z.string().nullable(),
+	receivedBy: z.string().nullable(),
+	notes: z.string(),
+	reason: z.string(),
+	qualityStatus: z.string().nullable(),
+	qualityNotes: z.string().nullable(),
+	attachmentUrl: z.string().nullable(),
+	isReversed: z.boolean(),
+	reversedBy: z.string().nullable(),
+	reversedAt: z.string().nullable(),
+	reversalMovementId: z.string().nullable(),
+	reversalReason: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
+
+const ApiResponseCustomPageStockMovementResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StockMovementResponse),
+	}),
+});
+
+const ApiResponseStockMovementResponse = ApiResponseObject.extend({
+	data: StockMovementResponse,
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -1324,8 +2165,50 @@ export const schema = createSchema({
 			email: z.string(),
 		}),
 	},
+	"@post/api/auth/verify-otp": {
+		input: z.object({
+			otp: z.string(),
+		}),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				resetToken: z.string(),
+				message: z.string(),
+			}),
+		}),
+	},
+	"@post/api/auth/set-new-password": {
+		input: z.object({
+			resetToken: z.string(),
+			newPassword: z.string(),
+			confirmPassword: z.string(),
+		}),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				message: z.string(),
+			}),
+		}),
+	},
 
 	// User APIs
+	"@post/api/users/force-reset-password": {
+		input: z.object({
+			newPassword: z.string(),
+			confirmPassword: z.string(),
+		}),
+		output: ApiResponseObject.extend({
+			data: z.string(),
+		}),
+	},
+	"@post/api/users/change-password": {
+		input: z.object({
+			oldPassword: z.string(),
+			newPassword: z.string(),
+			confirmPassword: z.string(),
+		}),
+		output: ApiResponseObject.extend({
+			data: z.string(),
+		}),
+	},
 	"@get/api/users/me": {
 		output: ApiResponseUserInfoResponse,
 	},
@@ -2513,6 +3396,1664 @@ export const schema = createSchema({
 	},
 	"@get/api/inventories/stock-takes/statistics": {
 		output: ApiResponseInventoryStockTakeStatistics,
+	},
+	// Generated Endpoints
+	"@delete/api/chat/messages/{messageId}": {
+		params: z.object({ messageId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/corporate/organizations/{id}": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@delete/api/front-desks/lost-and-found/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/hotel-bank-accounts/{id}": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ reason: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@delete/api/hotel-owners/hotels/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/hotel-owners/staff/{userId}": {
+		params: z.object({ userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/hotels/laundry/items/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/hotels/rentals/items/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/inventories/products/{productId}": {
+		params: z.object({ productId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/inventories/suppliers/{supplierId}": {
+		params: z.object({ supplierId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/managers/{hotelId}/{userId}": {
+		params: z.object({ hotelId: z.string(), userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/managers/room-types/{roomTypeId}": {
+		params: z.object({ roomTypeId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/restaurants/destinations/{destinationId}": {
+		params: z.object({ destinationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/restaurants/{id}/bar-item": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/restaurants/{id}/stock": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/admin/payment-reconciliation/pending": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/admin/payment-reconciliation/stats": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/auth/liveness-check": {
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/conversations": {
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/conversations/{conversationId}/messages": {
+		params: z.object({ conversationId: z.string() }),
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/conversations/{conversationId}/presence": {
+		params: z.object({ conversationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/conversations/{conversationId}/unread-count": {
+		params: z.object({ conversationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/conversations/search": {
+		query: z
+			.object({
+				searchTerm: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/presence/online": {
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/presence/{userId}": {
+		params: z.object({ userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/chat/unread-count": {
+		output: ApiResponseObject,
+	},
+	"@get/api/corporate/guests/{organizationId}": {
+		params: z.object({ organizationId: z.string() }),
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				staffName: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				sortBy: z.string().optional().nullable(),
+				sortDir: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/corporate/organizations": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				sortBy: z.string().optional().nullable(),
+				sortDir: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/corporate/organizations/{id}": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/corporate/reports/{organizationId}": {
+		params: z.object({ organizationId: z.string() }),
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				start: z.string().optional().nullable(),
+				end: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/corporate/transactions/{organizationId}": {
+		params: z.object({ organizationId: z.string() }),
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				staffName: z.string().optional().nullable(),
+				type: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				start: z.string().optional().nullable(),
+				end: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/feedbacks": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				isSerious: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				dateFrom: z.string().optional().nullable(),
+				dateTo: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/bookings/{bookingId}/detailed": {
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/cash-flow": {
+		query: z
+			.object({
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				period: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/compare": {
+		query: z
+			.object({
+				period1Start: z.string().optional().nullable(),
+				period1End: z.string().optional().nullable(),
+				period2Start: z.string().optional().nullable(),
+				period2End: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/dashboard": {
+		query: z
+			.object({
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				period: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/expenditures": {
+		query: z
+			.object({
+				category: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/expenditures/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/expenditures/overdue": {
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/expenses": {
+		query: z
+			.object({
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				period: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/items/consumption-report": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				itemType: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/monthly-summary": {
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/other-income": {
+		query: z
+			.object({
+				category: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/other-income/booking/{bookingId}": {
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/other-income/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/profit-and-loss": {
+		query: z
+			.object({
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				period: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/quarterly-summary": {
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/restaurant/daily-summary": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				destination: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/restaurant/daily-summary/paginated": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				destination: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/restaurant/detailed-report": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/restaurant/item-sales-detail": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/restaurant/room-food-sales": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/revenue": {
+		query: z
+			.object({
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				period: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/summary/comprehensive": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/this-week": {
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/today": {
+		output: ApiResponseObject,
+	},
+	"@get/api/financials/yearly-summary": {
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/bookings/{bookingId}/payments": {
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/bookings/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				bookingStatus: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/guest-logs/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				hotelId: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/lost-and-found/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				claimStatus: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				dateFrom: z.string().optional().nullable(),
+				dateTo: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/lost-and-found/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/rooms/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				roomStatus: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/front-desks/rooms/{roomIdentifier}/guest-details": {
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-bank-accounts": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-bank-accounts/active": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-bank-accounts/default": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-bank-accounts/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-bank-accounts/paystack/banks": {
+		query: z.object({ country: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-owners/dashboard/hotels/{hotelId}": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({ selectedMonth: z.string().optional().nullable() })
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-owners/hotels/{hotelId}/rooms": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotel-payment-settings/{hotelId}": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/dashboard/stats": {
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/items": {
+		query: z.object({ activeOnly: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/items/category/{category}": {
+		params: z.object({ category: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/items/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders": {
+		query: z
+			.object({
+				status: z.string().optional().nullable(),
+				paymentStatus: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders/booking/{bookingId}": {
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders/{orderId}": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders/{orderId}/payments": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders/{orderId}/payment-summary": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/laundry/orders/room/{roomIdentifier}": {
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/items/category/{category}": {
+		params: z.object({ category: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/items/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/orders/booking/{bookingId}": {
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/orders/{orderId}": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/orders/{orderId}/payments": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/orders/{orderId}/payment-summary": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/hotels/rentals/orders/room/{roomIdentifier}": {
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/adjustments": {
+		query: z
+			.object({
+				productId: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				reason: z.string().optional().nullable(),
+				adjustmentType: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				posted: z.string().optional().nullable(),
+				approved: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/adjustments/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				productId: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				reason: z.string().optional().nullable(),
+				adjustmentType: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				posted: z.string().optional().nullable(),
+				approved: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/grn/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				supplierId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				hasRejectedItems: z.string().optional().nullable(),
+				stockPosted: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/grn/{grnId}": {
+		params: z.object({ grnId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/locations/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				active: z.string().optional().nullable(),
+				locationType: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				temperatureControlled: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/locations/list": {
+		query: z.object({ search: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/locations/statistics": {
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/products/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				category: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				trackBatches: z.string().optional().nullable(),
+				trackExpiry: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/products/{productId}": {
+		params: z.object({ productId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/purchase-orders/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				supplierId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/purchase-orders/list": {
+		query: z.object({ search: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/purchase-orders/{poId}": {
+		params: z.object({ poId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/purchase-orders/{poId}/export": {
+		params: z.object({ poId: z.string() }),
+		query: z.object({ format: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/requisitions": {
+		query: z
+			.object({
+				status: z.string().optional().nullable(),
+				department: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/requisitions/pending-count": {
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/requisitions/{requisitionId}": {
+		params: z.object({ requisitionId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements": {
+		query: z
+			.object({
+				productId: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				movementType: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/by-number/{movementNumber}": {
+		params: z.object({ movementNumber: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/by-reference": {
+		query: z
+			.object({
+				referenceNumber: z.string().optional().nullable(),
+				referenceType: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				productId: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				movementType: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/location/{locationId}/history": {
+		params: z.object({ locationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements/product/{productId}/history": {
+		params: z.object({ productId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-takes/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				hasVariances: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/suppliers/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/suppliers/list": {
+		query: z.object({ search: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/inventories/suppliers/{supplierId}": {
+		params: z.object({ supplierId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/dashboard/{hotelId}": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({ month: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/dashboard/{hotelId}/earnings-graph": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/guest-logs": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/{hotelId}/staff": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				role: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/hotels/{hotelId}/bookings": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				roomType: z.string().optional().nullable(),
+				bookingStatus: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/hotels/{hotelId}/rooms": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/hotels/{hotelId}/room-types": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/logs/{hotelId}": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/lost-and-found": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				claimStatus: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				dateFrom: z.string().optional().nullable(),
+				dateTo: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/managers/lost-and-found/{itemId}": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/marketers/hotel-biz": {
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/marketers/hotel-biz/{hotelBizId}/hotels": {
+		params: z.object({ hotelBizId: z.string() }),
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/marketers/hotels": {
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/notifications/my-notifications": {
+		query: z
+			.object({
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/notifications/unread": {
+		output: ApiResponseObject,
+	},
+	"@get/api/notifications/unread/count": {
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-links": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				sortBy: z.string().optional().nullable(),
+				sortDir: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-links/callback/{shortCode}": {
+		params: z.object({ shortCode: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-links/{shortCode}": {
+		params: z.object({ shortCode: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-links/statistics": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-link-transactions": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				sortBy: z.string().optional().nullable(),
+				sortDir: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-link-transactions/by-reference/{paystackReference}": {
+		params: z.object({ paystackReference: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-link-transactions/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payment-link-transactions/statistics": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts": {
+		query: z
+			.object({
+				hotelId: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+				sortBy: z.string().optional().nullable(),
+				sortDir: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts/by-transfer-code/{transferCode}": {
+		params: z.object({ transferCode: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts/failed-ready-for-retry": {
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts/statistics": {
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/payouts/stuck": {
+		query: z.object({ hoursAgo: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/public/business-types": {
+		output: ApiResponseObject,
+	},
+	"@get/api/public/health": {
+		output: ApiResponseObject,
+	},
+	"@get/api/public/verify-email": {
+		query: z.object({ token: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/bar-items": {
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				availability: z.string().optional().nullable(),
+				page: z.string().optional().nullable(),
+				size: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/bar-items/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				availability: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/bar-restock-requests/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/{id}/bar-item": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/{id}/stock": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/items/statistics": {
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/restaurant-orders/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				destination: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+				searchText: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/stock/export": {
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				department: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@get/api/webhooks/paystack/health": {
+		output: ApiResponseObject,
+	},
+	"@patch/api/financials/expenditures/{id}/status": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ status: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@patch/api/financials/other-income/{id}/status": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ status: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@patch/api/hotel-bank-accounts/{id}/set-default": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/hotel-owners/users/{userId}/permissions": {
+		input: z.any(),
+		params: z.object({ userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/hotels/laundry/orders/{orderId}/status": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/hotels/rentals/orders/{orderId}/status": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/managers/{hotelId}/{userId}/reset-password": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string(), userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/managers/{hotelId}/{userId}/suspend": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string(), userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/managers/users/{userId}/permissions": {
+		input: z.any(),
+		params: z.object({ userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@patch/api/payment-links/{id}/cancel": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ reason: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@patch/api/restaurants/restaurant-orders/{orderId}/status": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/admin/payment-reconciliation/{transactionId}/retry": {
+		params: z.object({ transactionId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/auth/logout": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/bookings/{bookingId}/payment-links": {
+		input: z.any(),
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/chat/conversations/{conversationId}/messages": {
+		params: z.object({ conversationId: z.string() }),
+		query: z
+			.object({
+				content: z.string().optional().nullable(),
+				messageType: z.string().optional().nullable(),
+				replyToMessageId: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/chat/conversations/group": {
+		input: z.array(z.string()),
+		query: z
+			.object({ conversationName: z.string().optional().nullable() })
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/chat/conversations/one-on-one/{otherUserId}": {
+		params: z.object({ otherUserId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/chat/presence/batch": {
+		input: z.array(z.string()),
+		output: ApiResponseObject,
+	},
+	"@post/api/corporate/assign-booking": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/corporate/manual-charges": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/corporate/organizations": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/feedback": {
+		input: z.any(),
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/financials/expenditures": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/financials/other-income": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/bookings/{bookingId}/payments": {
+		input: z.any(),
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/lost-and-found/{itemId}/claim": {
+		input: z.any(),
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/{roomIdentifier}/cancel-reservation": {
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/{roomIdentifier}/check-in": {
+		input: z.any(),
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/{roomIdentifier}/check-out": {
+		input: z.any(),
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/front-desks/{roomIdentifier}/make-reservation": {
+		input: z.any(),
+		params: z.object({ roomIdentifier: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-bank-accounts": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-bank-accounts/{id}/reactivate": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-bank-accounts/paystack/verify-account": {
+		query: z
+			.object({
+				accountNumber: z.string().optional().nullable(),
+				bankCode: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-owners/{hotelId}/manager/{managerId}": {
+		params: z.object({ hotelId: z.string(), managerId: z.string() }),
+		query: z.object({ action: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-payment-settings/{hotelId}/disable-auto-payout": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-payment-settings/{hotelId}/disable-payment-links": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-payment-settings/{hotelId}/enable-auto-payout": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotel-payment-settings/{hotelId}/enable-payment-links": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotels/laundry/items": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotels/laundry/orders": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotels/laundry/payments": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/hotels/rentals/orders/{orderId}/extend": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/adjustments": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/adjustments/{adjustmentId}/approve": {
+		params: z.object({ adjustmentId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/adjustments/{adjustmentId}/post": {
+		params: z.object({ adjustmentId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/grn": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/grn/{grnId}/post-to-stock": {
+		params: z.object({ grnId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/locations": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/products/bulk-upload": {
+		input: z.object({ file: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/purchase-orders": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/purchase-orders/{poId}/approve": {
+		params: z.object({ poId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions/{requisitionId}/approve": {
+		input: z.any(),
+		params: z.object({ requisitionId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions/{requisitionId}/cancel": {
+		params: z.object({ requisitionId: z.string() }),
+		query: z.object({ reason: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions/{requisitionId}/fulfill": {
+		params: z.object({ requisitionId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions/{requisitionId}/reject": {
+		params: z.object({ requisitionId: z.string() }),
+		query: z.object({ reason: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/requisitions/{requisitionId}/submit": {
+		params: z.object({ requisitionId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/review-bar-restock/{requestId}": {
+		params: z.object({ requestId: z.string() }),
+		query: z.object({ status: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/stock/issue": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/stock-movements/{id}/reverse": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/stock-takes": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/stock-takes/{stockTakeId}/complete": {
+		params: z.object({ stockTakeId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/inventories/stock-takes/{stockTakeId}/items/{itemId}/record-count":
+		{
+			input: z.any(),
+			params: z.object({ stockTakeId: z.string(), itemId: z.string() }),
+			output: ApiResponseObject,
+		},
+	"@post/api/inventories/stock-takes/{stockTakeId}/post-adjustments": {
+		params: z.object({ stockTakeId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/kitchen-sales/{saleId}/payment-links": {
+		input: z.any(),
+		params: z.object({ saleId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/laundry-orders/{orderId}/payment-links": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/managers/hotels/{hotelId}/onboard-staff": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/managers/hotels/{hotelId}/rooms": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/managers/hotels/{hotelId}/rooms/bulk-upload": {
+		input: z.object({ file: z.string() }),
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/managers/hotels/{hotelId}/room-types": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/payment-links/{id}/send-whatsapp": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/payment-links/{shortCode}/initialize": {
+		params: z.object({ shortCode: z.string() }),
+		query: z
+			.object({ customerEmail: z.string().optional().nullable() })
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/payment-link-transactions/manual-verify": {
+		query: z
+			.object({ paystackReference: z.string().optional().nullable() })
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/payouts/{id}/retry": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/payouts/manual": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/payouts/trigger-retry-job": {
+		output: ApiResponseObject,
+	},
+	"@post/api/payouts/trigger-stuck-check-job": {
+		output: ApiResponseObject,
+	},
+	"@post/api/platform-owner/assign-hotel-biz": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/platform-owner/onboard-marketer": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/public/hotel-signup": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/public/resend-verification": {
+		query: z.object({ email: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/rental-orders/{orderId}/payment-links": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/bar-item": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/bar-items/{barItemId}/link-product": {
+		params: z.object({ barItemId: z.string() }),
+		query: z.object({ productId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/bar-restock-request": {
+		query: z
+			.object({
+				barItemId: z.string().optional().nullable(),
+				quantity: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/food-item": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/restaurant-orders": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/restaurants/stock": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/test/greetings/christmas": {
+		output: ApiResponseObject,
+	},
+	"@post/api/test/greetings/monthly": {
+		output: ApiResponseObject,
+	},
+	"@post/api/test/greetings/new-year": {
+		output: ApiResponseObject,
+	},
+	"@post/api/upload": {
+		query: z.object({ file: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@post/api/webhooks/infobip/whatsapp/delivery-report": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/webhooks/infobip/whatsapp/inbound": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@post/api/webhooks/paystack": {
+		input: z.string(),
+		output: ApiResponseObject,
+	},
+	"@post/api/webhooks/paystack/test": {
+		input: z.any(),
+		output: ApiResponseObject,
+	},
+	"@put/api/chat/conversations/{conversationId}/read": {
+		params: z.object({ conversationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/chat/messages/{messageId}": {
+		params: z.object({ messageId: z.string() }),
+		query: z.object({ newContent: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@put/api/corporate/organizations/{id}": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
+		output: ApiResponseObject,
+	},
+	"@put/api/feedback/{id}/status": {
+		params: z.object({ id: z.string() }),
+		query: z
+			.object({
+				status: z.string().optional().nullable(),
+				isSerious: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
+	"@put/api/front-desks/lost-and-found/{itemId}": {
+		input: z.any(),
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/hotel-owners/hotels/{id}": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/hotel-owners/users/{userId}": {
+		input: z.any(),
+		params: z.object({ userId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/hotel-payment-settings/{hotelId}": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/hotels/laundry/items/{itemId}": {
+		input: z.any(),
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/hotels/rentals/items/{itemId}": {
+		input: z.any(),
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/inventories/grn/{grnId}": {
+		input: z.any(),
+		params: z.object({ grnId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/inventories/products/{productId}": {
+		input: z.any(),
+		params: z.object({ productId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/inventories/suppliers/{supplierId}": {
+		input: z.any(),
+		params: z.object({ supplierId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/managers/{hotelId}/{staffId}": {
+		input: z.any(),
+		params: z.object({ hotelId: z.string(), staffId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/managers/hotels/rooms/{roomId}": {
+		input: z.any(),
+		params: z.object({ roomId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/managers/room-types/{roomTypeId}": {
+		input: z.any(),
+		params: z.object({ roomTypeId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/notifications/mark-all-read": {
+		output: ApiResponseObject,
+	},
+	"@put/api/notifications/{notificationId}/read": {
+		params: z.object({ notificationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/restaurants/destinations/{destinationId}": {
+		input: z.any(),
+		params: z.object({ destinationId: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/restaurants/{id}/bar-item": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/restaurants/{id}/stock": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/restaurants/restaurant-orders/{orderId}": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject,
 	},
 });
 
