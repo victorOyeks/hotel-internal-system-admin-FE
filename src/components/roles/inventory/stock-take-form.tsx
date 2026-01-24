@@ -23,13 +23,12 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
+import { useMutation } from "@tanstack/react-query";
+import { addStockTake } from "@/lib/inventory-actions";
+import { toast } from "sonner";
 import type { InventoryLocationListResponse, InventoryProduct } from "@/lib/fetch";
 import { MultiSelect, MultiSelectTrigger, MultiSelectValue, MultiSelectContent, MultiSelectItem } from "@/components/ui/multi-select";
 import { useQueryState, parseAsString } from "nuqs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
 
 const stockTakeFormSchema = z.object({
 	locationId: z.string().min(1, "Location is required"),
@@ -47,67 +46,6 @@ const stockTakeFormSchema = z.object({
 	notes: z.string().optional(),
 });
 
-function ProductCombobox({
-	products,
-	search,
-	setSearch,
-	onValueChange,
-}: {
-	products: InventoryProduct[];
-	search: string;
-	setSearch: (search: string) => void;
-	onValueChange: (id: string) => void;
-}) {
-	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					className="w-full justify-between"
-				>
-					{search
-						? products.find((item) => item.id === search)?.name
-						: "Select item..."}
-					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent className="w-full flex-1 p-0" align="start">
-				<Command shouldFilter={false}>
-					<CommandInput
-						placeholder="Search items..."
-						value={products.find((item) => item.id === search)?.name}
-						onValueChange={(value) => setSearch(value)}
-					/>
-					<CommandList>
-						<CommandEmpty>No item found.</CommandEmpty>
-						<CommandGroup>
-							{products.map((item) => (
-								<CommandItem
-									key={item.id}
-									value={item.id}
-									onSelect={(currentValue) => {
-										setSearch("");
-										onValueChange(currentValue);
-									}}
-								>
-									<CheckIcon
-										className={cn(
-											"mr-2 h-4 w-4",
-											search === item.id ? "opacity-100" : "opacity-0",
-										)}
-									/>
-									<div>
-										<div>{item.name}</div>
-									</div>
-								</CommandItem>
-							))}
-						</CommandGroup>
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
-	);
-}
 
 type StockTakeFormValues = z.infer<typeof stockTakeFormSchema>;
 
@@ -144,13 +82,20 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 		parseAsString.withDefault(""),
 	);
 
+	const { mutate, isPending } = useMutation({
+		mutationFn: addStockTake,
+		onSuccess: (response) => {
+			if (response.success) {
+				toast.success("Stock take created successfully");
+				onClose();
+			} else {
+				toast.error(response.error || "Failed to create stock take");
+			}
+		},
+	});
+
 	const handleSubmit = (data: StockTakeFormValues) => {
-		console.log("Creating stock take:", data);
-		// API call would go here
-		alert(
-			"Stock take created successfully! Payload logged to console.",
-		);
-		onClose();
+		mutate(data);
 	};
 
 	return (
@@ -295,12 +240,29 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 							<FormItem>
 								<FormLabel>Products</FormLabel>
 								<FormControl>
-									<ProductCombobox
-										products={products}
-										search={search}
-										setSearch={setSearch}
-										onValueChange={field.onChange}
-									/>
+									<MultiSelect
+										values={field.value}
+										onValuesChange={field.onChange}
+									>
+										<MultiSelectTrigger className="w-full">
+											<MultiSelectValue placeholder="Select products" />
+										</MultiSelectTrigger>
+										<MultiSelectContent
+											shouldFilter={false}
+											searchValue={search}
+											onSearchValueChange={setSearch}
+											search={{
+												emptyMessage: "No products found.",
+												placeholder: "Search products",
+											}}
+										>
+											{products.map((product) => (
+												<MultiSelectItem key={product.id} value={product.id}>
+													{product.name}
+												</MultiSelectItem>
+											))}
+										</MultiSelectContent>
+									</MultiSelect>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -351,7 +313,9 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 					<Button variant="outline" onClick={onClose} type="button">
 						Cancel
 					</Button>
-					<Button type="submit">Create Stock Take</Button>
+					<Button type="submit" disabled={isPending}>
+						{isPending ? "Creating..." : "Create Stock Take"}
+					</Button>
 				</div>
 			</form>
 		</Form>

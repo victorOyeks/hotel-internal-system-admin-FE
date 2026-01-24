@@ -166,3 +166,35 @@ export async function postGRNToStock(grnId: string) {
 		};
 	}
 }
+
+export async function addStockTake(payload: {
+	locationId: string;
+	stockTakeType: string;
+	scheduledDate: string;
+	supervisorId: string;
+	supervisorName: string;
+	countedBy: string;
+	acceptableVariancePercent: number;
+	stockFrozen: boolean;
+	productIds: string[];
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/stock-takes", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to add stock take",
+		};
+	}
+}
