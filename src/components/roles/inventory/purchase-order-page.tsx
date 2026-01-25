@@ -19,8 +19,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import type {
-	InventoryPurchaseOrderResponse,
+	PurchaseOrderResponse,
 	InventoryPurchaseOrderStatistics,
+	InventorySuppliers,
+	InventoryProduct,
 } from "@/lib/fetch";
 import { PurchaseOrderTable } from "./purchase-order-table";
 import { PurchaseOrderToolbar } from "./purchase-order-filters";
@@ -28,10 +30,10 @@ import { PurchaseOrderStats } from "./purchase-order-stats";
 import { PurchaseOrderDetails } from "./purchase-order-details";
 import { CreatePOForm } from "./purchase-order-form";
 
-const columnHelper = createColumnHelper<InventoryPurchaseOrderResponse>();
+const columnHelper = createColumnHelper<PurchaseOrderResponse>();
 
 const columnDefs = [
-	columnHelper.accessor("poNumber", {
+	columnHelper.accessor("orderNumber", {
 		header: "PO Number",
 		cell: (info) => (
 			<span className="font-mono font-medium">{info.getValue()}</span>
@@ -100,8 +102,8 @@ const columnDefs = [
 			);
 		},
 	}),
-	columnHelper.accessor("totalAmount", {
-		header: "Total Amount",
+	columnHelper.accessor("amountPaid", {
+		header: "Amount Paid",
 		cell: (info) => (
 			<div className="text-right font-semibold">
 				{formatCurrency(info.getValue())}
@@ -141,11 +143,13 @@ const columnDefs = [
 ];
 
 interface PurchaseOrderPageProps {
-	orders: InventoryPurchaseOrderResponse[];
+	orders: PurchaseOrderResponse[];
 	stats: InventoryPurchaseOrderStatistics;
+	suppliers: InventorySuppliers[];
+	products: InventoryProduct[];
 }
 
-export function PurchaseOrderPage({ orders, stats }: PurchaseOrderPageProps) {
+export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [statusFilter, setStatusFilter] = useState("all");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -153,8 +157,8 @@ export function PurchaseOrderPage({ orders, stats }: PurchaseOrderPageProps) {
 	// Filter data
 	const filteredData = orders.filter((order) => {
 		const matchesSearch =
-			order.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			order.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
+			order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			order.supplierName?.toLowerCase().includes(searchQuery.toLowerCase());
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
 		return matchesSearch && matchesStatus;
@@ -188,7 +192,11 @@ export function PurchaseOrderPage({ orders, stats }: PurchaseOrderPageProps) {
 						<DialogHeader>
 							<DialogTitle>Create Purchase Order</DialogTitle>
 						</DialogHeader>
-						<CreatePOForm onClose={() => setIsCreateDialogOpen(false)} />
+						<CreatePOForm
+							onClose={() => setIsCreateDialogOpen(false)}
+							suppliers={suppliers}
+							products={products}
+						/>
 					</DialogContent>
 				</Dialog>
 			</div>

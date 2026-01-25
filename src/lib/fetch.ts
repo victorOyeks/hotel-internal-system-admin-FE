@@ -2058,11 +2058,24 @@ const ApiResponseInventoryPurchaseOrderResponse =
 	ApiResponseCustomPagePurchaseOrderResponse;
 const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
 	data: z.object({
-		totalOrders: z.number(),
-		pendingOrders: z.number(),
-		completedOrders: z.number(),
+		totalPurchaseOrders: z.number(),
+		pendingApproval: z.number(),
+		approved: z.number(),
+		sentToSupplier: z.number(),
+		partiallyReceived: z.number(),
+		received: z.number(),
+		cancelled: z.number(),
 		totalValue: z.number(),
-		overdueOrders: z.number(),
+		pendingValue: z.number(),
+		overduePurchaseOrders: z.number(),
+		statusBreakdown: z.object({
+			DRAFT: z.number(),
+			APPROVED: z.number(),
+			SENT_TO_SUPPLIER: z.number(),
+			PARTIALLY_RECEIVED: z.number(),
+			RECEIVED: z.number(),
+			CANCELLED: z.number(),
+		}),
 	}),
 });
 

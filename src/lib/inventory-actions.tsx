@@ -1,5 +1,7 @@
 "use server";
 
+import type { CreatePurchaseOrderRequest } from "@/lib/fetch";
+
 import type z from "zod";
 import type {
 	ServerActionResponse,
@@ -195,6 +197,29 @@ export async function addStockTake(payload: {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unable to add stock take",
+		};
+	}
+}
+
+export async function addPurchaseOrder(payload: CreatePurchaseOrderRequest) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/purchase-orders", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to create purchase order",
 		};
 	}
 }

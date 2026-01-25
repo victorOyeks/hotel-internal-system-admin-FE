@@ -25,26 +25,26 @@ export function PurchaseOrderStats({ stats }: PurchaseOrderStatsProps) {
 				icon={<ClockIcon className="size-6 text-yellow-600" />}
 				bgClass="bg-yellow-600/10"
 				title="Pending Approval"
-				value={stats.pendingApprovalPOs.toString()}
+				value={stats.pendingApproval.toString()}
 			/>
 			<StatCard
 				icon={<CheckCircleIcon className="size-6 text-green-600" />}
 				bgClass="bg-green-600/10"
 				title="Approved"
-				value={stats.approvedPOs.toString()}
+				value={stats.approved.toString()}
 			/>
 			<StatCard
 				icon={<FileTextIcon className="size-6 text-gray-600" />}
 				bgClass="bg-gray-600/10"
-				title="Drafts"
-				value={stats.draftPOs.toString()}
+				title="Overdue"
+				value={stats.overduePurchaseOrders.toString()}
 			/>
 			<StatCard
 				icon={<CalendarIcon className="size-6 text-purple-600" />}
 				bgClass="bg-purple-600/10"
 				title="Today's Orders"
-				value={`${stats.posToday.toString()}`!}
-				subtitle={`${formatCurrency(stats.valueToday)}`}
+				value={`${stats.totalPurchaseOrders.toString()}`!}
+				subtitle={`${formatCurrency(stats.totalValue)}`}
 			/>
 		</div>
 	);
