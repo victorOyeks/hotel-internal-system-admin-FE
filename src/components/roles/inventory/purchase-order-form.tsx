@@ -111,7 +111,7 @@ function SupplierCombobox({
 									value={supplier.id}
 									onSelect={(currentValue) => {
 										onValueChange(currentValue === value ? "" : currentValue);
-										setOpen(false);
+										// setOpen(false);
 									}}
 								>
 									<CheckIcon
@@ -147,7 +147,7 @@ export function CreatePOForm({
 		},
 	});
 
-	const { fields, append, remove, replace } = useFieldArray({
+	const { fields, append, remove } = useFieldArray({
 		control: form.control,
 		name: "items",
 	});

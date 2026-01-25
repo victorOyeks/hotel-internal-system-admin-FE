@@ -82,7 +82,7 @@ export async function middleware(request: NextRequest) {
 	const userRole = session?.role as HotelRole;
 	const expectedPath = roleToPath[userRole];
 
-	let response = NextResponse.next();
+	let response: Response;
 
 	// Handle Rewrite Logic
 	if (pathname.startsWith(PREFIX_PATH)) {
@@ -109,8 +109,10 @@ export async function middleware(request: NextRequest) {
 
 	// 8. FINAL STEP: Attach new cookies if we refreshed
 	if (newTokens) {
+		console.log("attaching new tokens", newTokens);
 		await createSession(newTokens.accessToken, newTokens.refreshToken);
 	}
+	response = NextResponse.next();
 
 	return response;
 }
