@@ -3,6 +3,7 @@ import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import type { UserPayload } from "./types";
 import { env } from "@/env";
+import { $fetch } from "./fetch";
 
 export const tokenKey = "hms.jwt.session_token";
 export const refreshTokenKey = "hms.jwt.refresh_token";
@@ -89,4 +90,26 @@ export async function deleteSession() {
 
 	cookieStore.set(tokenKey, "", options);
 	cookieStore.set(refreshTokenKey, "", options);
+}
+
+export async function refreshSession() {
+	const refreshToken = (await cookies()).get(refreshTokenKey)?.value;
+
+	if (!refreshToken) {
+		return null;
+	}
+
+	const { data, error } = await $fetch("@post/api/auth/refresh", {
+		body: {
+			refreshToken,
+		},
+	});
+
+	if (error) {
+		console.error(error);
+		return null;
+	}
+
+	await createSession(data.data.accessToken, data.data.refreshToken);
+	return data.data;
 }

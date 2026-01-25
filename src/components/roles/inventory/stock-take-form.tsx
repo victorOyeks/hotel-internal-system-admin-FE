@@ -29,14 +29,91 @@ import { toast } from "sonner";
 import type { InventoryLocationListResponse, InventoryProduct } from "@/lib/fetch";
 import { MultiSelect, MultiSelectTrigger, MultiSelectValue, MultiSelectContent, MultiSelectItem } from "@/components/ui/multi-select";
 import { useQueryState, parseAsString } from "nuqs";
+import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
+import { revalidateRoute } from "@/lib/actions";
+
+function LocationCombobox({
+	value,
+	onValueChange,
+	locations,
+}: {
+	value: string;
+	onValueChange: (value: string) => void;
+	locations: InventoryLocationListResponse[];
+}) {
+	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"location-list:search",
+		parseAsString.withDefault(""),
+	);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between"
+				>
+					{value
+						? locations.find((location) => location.id === value)?.locationName
+						: "Select location..."}
+					<ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search locations..."
+						value={searchQuery}
+						onValueChange={(value) => setSearchQuery(value)}
+					/>
+					<CommandList>
+						<CommandEmpty>No location found.</CommandEmpty>
+						<CommandGroup>
+							{locations.map((location) => (
+								<CommandItem
+									key={location.id}
+									value={location.id}
+									onSelect={(currentValue) => {
+										onValueChange(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === location.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									<div>
+										<div className="font-medium">{location.locationCode}</div>
+										<div className="text-sm text-gray-500">
+											{location.locationName}
+										</div>
+									</div>
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
 
 const stockTakeFormSchema = z.object({
-	locationId: z.string().min(1, "Location is required"),
-	stockTakeType: z.string().min(1, "Type is required"),
-	scheduledDate: z.string().min(1, "Scheduled date is required"),
-	supervisorId: z.string().min(1, "Supervisor ID is required"),
-	supervisorName: z.string().min(1, "Supervisor Name is required"),
-	countedBy: z.string().min(1, "Counted By is required"),
+	locationId: z.string().nonempty("Location is required"),
+	stockTakeType: z.string().nonempty("Type is required"),
+	scheduledDate: z.string().nonempty("Scheduled date is required"),
+	supervisorId: z.string().optional(),
+	supervisorName: z.string().nonempty("Supervisor Name is required"),
+	countedBy: z.string().nonempty("Counted By is required"),
 	acceptableVariancePercent: z.coerce
 		.number()
 		.min(0)
@@ -46,15 +123,11 @@ const stockTakeFormSchema = z.object({
 	notes: z.string().optional(),
 });
 
-
-type StockTakeFormValues = z.infer<typeof stockTakeFormSchema>;
-
 interface CreateStockTakeFormProps {
 	onClose: () => void;
 	inventoryLocations: InventoryLocationListResponse[]
 	products: InventoryProduct[]
 }
-
 export function CreateStockTakeForm({ onClose, inventoryLocations, products }: CreateStockTakeFormProps) {
 	const form = useForm({
 		resolver: zodResolver(stockTakeFormSchema),
@@ -76,17 +149,12 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 		parseAsString.withDefault(""),
 	);
 
-
-	const [locationSearch, setLocationSearch] = useQueryState(
-		"location-list:search",
-		parseAsString.withDefault(""),
-	);
-
-	const { mutate, isPending } = useMutation({
+	const { mutateAsync, isPending } = useMutation({
 		mutationFn: addStockTake,
-		onSuccess: (response) => {
+		onSuccess: async (response) => {
 			if (response.success) {
 				toast.success("Stock take created successfully");
+				await revalidateRoute("/dashboard/stock-takes")
 				onClose();
 			} else {
 				toast.error(response.error || "Failed to create stock take");
@@ -94,13 +162,9 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 		},
 	});
 
-	const handleSubmit = (data: StockTakeFormValues) => {
-		mutate(data);
-	};
-
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+			<form onSubmit={form.handleSubmit((data) => mutateAsync(data))} className="space-y-6">
 				<div className="grid grid-cols-2 gap-2">
 					<FormField
 						control={form.control}
@@ -108,23 +172,15 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>Storage Location *</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select location" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										{inventoryLocations.map((location) => (
-											<SelectItem key={location.id} value={location.id}>
-												{location.locationName} ({location.locationCode})
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+
+								<FormControl>
+									<LocationCombobox
+										locations={inventoryLocations}
+										value={field.value}
+										onValueChange={field.onChange}
+									/>
+								</FormControl>
+
 								<FormMessage />
 							</FormItem>
 						)}

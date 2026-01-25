@@ -3,17 +3,22 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getCookieData } from "./server-fns";
-import { decrypt, tokenKey } from "./session";
+import { decrypt, refreshSession, tokenKey } from "./session";
 import { redirect } from "next/navigation";
 import { $fetch } from "./fetch";
 import type { HotelRole } from "./types";
 
 export const verifySession = cache(async (role?: HotelRole) => {
-	const cookie = (await cookies()).get(tokenKey)?.value;
+	let cookie = (await cookies()).get(tokenKey)?.value;
 
 	if (!cookie) {
-		redirect("/auth");
+		const newSession = await refreshSession();
+		if (!newSession) {
+			redirect("/auth");
+		}
+		cookie = newSession.accessToken;
 	}
+
 	const session = decrypt(cookie);
 
 	if (!session?.userId) {

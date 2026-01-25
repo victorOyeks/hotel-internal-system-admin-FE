@@ -171,7 +171,7 @@ export async function addStockTake(payload: {
 	locationId: string;
 	stockTakeType: string;
 	scheduledDate: string;
-	supervisorId: string;
+	supervisorId?: string;
 	supervisorName: string;
 	countedBy: string;
 	acceptableVariancePercent: number;
