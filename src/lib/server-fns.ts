@@ -3,7 +3,6 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { decrypt, refreshSession, tokenKey } from "./session";
-import { redirect } from "next/navigation";
 
 // Keys moved to session.ts to avoid circular dependency
 
@@ -14,7 +13,7 @@ export const getCookieData = cache(async () => {
 	if (!token) {
 		const newSession = await refreshSession();
 		if (!newSession) {
-			redirect("/auth");
+			return null;
 		}
 		token = newSession.accessToken;
 	}

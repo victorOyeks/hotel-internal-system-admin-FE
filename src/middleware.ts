@@ -5,6 +5,7 @@ import {
 	refreshTokenKey,
 	decrypt,
 	createSession,
+	deleteSession,
 } from "./lib/session";
 import { $fetch } from "./lib/fetch";
 
@@ -61,10 +62,15 @@ export async function middleware(request: NextRequest) {
 			// Update the local accessToken so RBAC below works with the new user
 			accessToken = newTokens.accessToken;
 			session = decrypt(accessToken);
+		} else {
+			console.error(
+				"Token refresh failed inside middleware",
+				refreshToken,
+				response.error,
+			);
+			await deleteSession();
+			// Fall through to the auth check below
 		}
-
-		console.error("Token refresh failed inside middleware", response.error);
-		// Fall through to the auth check below
 	}
 
 	// 6. Auth Check: If still no valid session, redirect (unless public)
@@ -82,8 +88,6 @@ export async function middleware(request: NextRequest) {
 	const userRole = session?.role as HotelRole;
 	const expectedPath = roleToPath[userRole];
 
-	let response: Response;
-
 	// Handle Rewrite Logic
 	if (pathname.startsWith(PREFIX_PATH)) {
 		const actualPath = pathname.slice(PREFIX_PATH.length) || "/";
@@ -95,13 +99,13 @@ export async function middleware(request: NextRequest) {
 		rewriteUrl.hash = hashed;
 
 		console.log("Rewriting to:", rewriteUrl.toString());
-		response = NextResponse.rewrite(rewriteUrl);
+		return NextResponse.rewrite(rewriteUrl);
 	}
 	// Handle 404 for direct access to protected paths
 	else if (expectedPath && pathname.startsWith(expectedPath)) {
 		// If user tries to visit /restaurant directly instead of /dashboard/restaurant
 		// You might want to allow this or rewrite, currently you 404 it.
-		response = new NextResponse(null, {
+		return new NextResponse(null, {
 			status: 404,
 			statusText: "Not Found",
 		});
@@ -112,9 +116,8 @@ export async function middleware(request: NextRequest) {
 		console.log("attaching new tokens", newTokens);
 		await createSession(newTokens.accessToken, newTokens.refreshToken);
 	}
-	response = NextResponse.next();
 
-	return response;
+	return NextResponse.next();
 }
 
 export const config = {
