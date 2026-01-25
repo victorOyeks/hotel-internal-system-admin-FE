@@ -5,6 +5,7 @@ import {
   $fetch,
   type OnboardStaffRequest,
   type OnboardHotelRequest,
+  type Notification,
 } from "./fetch";
 import { createSession, deleteSession } from "./session";
 import { getUser, verifySession } from "./dal";
@@ -90,10 +91,11 @@ export async function forgotPassword(payload: {
       body: payload,
       throw: true,
     });
+    const res = response as { message: string };
     return {
       success: true,
       // The message field contains the OTP for testing (will be email-sent in production)
-      data: { message: response.message, otp: response.message },
+      data: { message: res.message, otp: res.message },
     };
   } catch (error) {
     return { success: false, error: parseError(error) };
@@ -108,9 +110,10 @@ export async function verifyOtp(payload: {
       body: payload,
       throw: true,
     });
+    const res = response as { data: { resetToken: string; message: string } };
     return {
       success: true,
-      data: response.data,
+      data: res.data,
     };
   } catch (error) {
     return { success: false, error: parseError(error) };
@@ -127,9 +130,10 @@ export async function setNewPassword(payload: {
       body: payload,
       throw: true,
     });
+    const res = response as { message: string };
     return {
       success: true,
-      data: { message: response.message },
+      data: { message: res.message },
     };
   } catch (error) {
     return { success: false, error: parseError(error) };
@@ -152,6 +156,112 @@ export async function changePassword(payload: {
       success: true,
       data: response as { message: string; data: string },
     };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+// --- Notification Actions ---
+
+interface NotificationData {
+  notifications: Notification[];
+  unreadCount: number;
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export async function getNotifications(params?: {
+  page?: number;
+  size?: number;
+}): Promise<
+  { success: true; data: NotificationData } | { success: false; error: string }
+> {
+  try {
+    const sessionData = await verifySession();
+    const response = await $fetch("@get/api/notifications/my-notifications", {
+      query: { page: params?.page ?? 0, size: params?.size ?? 20 },
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return {
+      success: true,
+      data: (response as { data: NotificationData }).data,
+    };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+export async function getUnreadNotifications(): Promise<
+  { success: true; data: Notification[] } | { success: false; error: string }
+> {
+  try {
+    const sessionData = await verifySession();
+    const response = await $fetch("@get/api/notifications/unread", {
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true, data: (response as { data: Notification[] }).data };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+export async function getUnreadNotificationCount(): Promise<
+  { success: true; data: number } | { success: false; error: string }
+> {
+  try {
+    const sessionData = await verifySession();
+    const response = await $fetch("@get/api/notifications/unread/count", {
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true, data: (response as { data: number }).data };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+  try {
+    const sessionData = await verifySession();
+    await $fetch("@put/api/notifications/:notificationId/read", {
+      params: { notificationId },
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+export async function markAllNotificationsAsRead() {
+  try {
+    const sessionData = await verifySession();
+    await $fetch("@put/api/notifications/mark-all-read", {
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: parseError(error) };
+  }
+}
+
+export async function deleteNotification(notificationId: string) {
+  try {
+    const sessionData = await verifySession();
+    await $fetch("@delete/api/notifications/:notificationId", {
+      params: { notificationId },
+      auth: { type: "Bearer", token: sessionData.token },
+      throw: true,
+    });
+    return { success: true };
   } catch (error) {
     return { success: false, error: parseError(error) };
   }
