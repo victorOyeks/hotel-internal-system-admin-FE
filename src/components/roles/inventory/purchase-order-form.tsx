@@ -17,7 +17,7 @@ import * as z from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { addPurchaseOrder } from "@/lib/inventory-actions";
 import { toast } from "sonner";
-import { TrashIcon, ChevronsUpDownIcon, CheckIcon } from "lucide-react";
+import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
 import { revalidateRoute } from "@/lib/actions";
 import type { InventoryProduct, InventorySuppliers } from "@/lib/fetch";
 import {
@@ -45,23 +45,23 @@ import {
 } from "@/components/ui/command";
 
 const purchaseOrderItemSchema = z.object({
-	productId: z.string().min(1, "Product is required"),
+	productId: z.string().nonempty("Product is required"),
 	quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
 	unitPrice: z.coerce.number().min(0, "Unit price must be positive"),
-	unit: z.string().min(1, "Unit is required"),
+	unit: z.string().nonempty("Unit is required"),
 });
 
 const purchaseOrderFormSchema = z.object({
-	supplierId: z.string().min(1, "Supplier is required"),
-	expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
+	supplierId: z.string().nonempty("Supplier is required"),
+	expectedDeliveryDate: z.string().nonempty("Expected delivery date is required"),
 	paymentTerms: z.string().optional(),
 	notes: z.string().optional(),
-	items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
+	items: z.array(purchaseOrderItemSchema).nonempty("At least one item is required"),
 });
 
 interface CreatePOFormProps {
 	onClose: () => void;
-	suppliers: InventorySuppliers[];
+	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" | "phone">[];
 	products: InventoryProduct[];
 }
 
@@ -72,7 +72,7 @@ function SupplierCombobox({
 }: {
 	value: string;
 	onValueChange: (value: string) => void;
-	suppliers: InventorySuppliers[];
+	suppliers: CreatePOFormProps["suppliers"];
 }) {
 	const [open, setOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useQueryState(
@@ -315,7 +315,7 @@ export function CreatePOForm({
 											<FormField
 												control={form.control}
 												name={`items.${index}.quantity`}
-												render={({ field }) => (
+												render={() => (
 													<FormItem>
 														<FormLabel className="text-xs">Quantity</FormLabel>
 														<FormControl>
@@ -323,7 +323,10 @@ export function CreatePOForm({
 																type="number"
 																min="1"
 																className="h-8"
-																{...field}
+																{...form.register(`items.${index}.quantity`, {
+																	valueAsNumber: true,
+																})}
+
 															/>
 														</FormControl>
 														<FormMessage />
@@ -360,6 +363,7 @@ export function CreatePOForm({
 																step="0.01"
 																className="h-8"
 																{...field}
+																value={field.value as number}
 															/>
 														</FormControl>
 														<FormMessage />

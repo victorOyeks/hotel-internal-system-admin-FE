@@ -62,19 +62,21 @@ export default function Page({ searchParams }: PageProps) {
 	const suppliers = use(qc.ensureQueryData({
 		queryKey: ["suppliers", query],
 		queryFn: async () => {
-			const res = await $fetch("@get/api/inventories/suppliers", {
+			const res = await $fetch("@get/api/inventories/suppliers/list", {
 				auth: {
 					token,
 					type: "Bearer"
 				},
 				query: {
-					// search: query.supplierSearch // Assuming API supports search
+					search: query.supplierSearch // Assuming API supports search
 				},
 				throw: true,
 			})
-			return res.data.content;
+			return res.data;
 		},
 	}));
+
+	console.log(suppliers)
 
 	const products = use(qc.ensureQueryData({
 		queryKey: ["products", query],

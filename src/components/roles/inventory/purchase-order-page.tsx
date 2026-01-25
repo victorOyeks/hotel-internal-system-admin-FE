@@ -145,7 +145,8 @@ const columnDefs = [
 interface PurchaseOrderPageProps {
 	orders: PurchaseOrderResponse[];
 	stats: InventoryPurchaseOrderStatistics;
-	suppliers: InventorySuppliers[];
+	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" |
+		"phone">[];
 	products: InventoryProduct[];
 }
 

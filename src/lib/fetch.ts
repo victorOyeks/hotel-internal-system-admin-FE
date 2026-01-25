@@ -3961,7 +3961,16 @@ export const schema = createSchema({
 	},
 	"@get/api/inventories/suppliers/list": {
 		query: z.object({ search: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: z
+				.object({
+					id: z.string(),
+					name: z.string(),
+					email: z.string(),
+					phone: z.string(),
+				})
+				.array(),
+		}),
 	},
 	"@get/api/managers/guest-logs": {
 		query: z
@@ -4739,6 +4748,9 @@ export const $fetch = createFetch({
 	errorSchema: ApiExceptionResponseObject,
 	onError: ({ error }) => {
 		console.error(error);
+		if (error.status === 400) {
+			return;
+		}
 		throw new Error(
 			"data" in error
 				? typeof error.data === "string"
