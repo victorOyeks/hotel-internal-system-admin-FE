@@ -4572,6 +4572,46 @@ export const schema = createSchema({
 		params: z.object({ id: z.string() }),
 		output: ApiResponseObject,
 	},
+	"@get/api/inventories/stock-movements": {
+		query: z
+			.object({
+				search: z.string().optional().nullable(),
+				pageable: z.any(), // Using any for pageable as it's complex and handled by backend
+			})
+			.partial(),
+		output: ApiResponseCustomPageStockMovementResponse,
+	},
+	"@get/api/inventories/stock-movements/{id}": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseStockMovementResponse,
+	},
+	"@get/api/inventories/stock-movements/product/{productId}/history": {
+		params: z.object({ productId: z.string() }),
+		query: z.any(),
+		output: ApiResponseCustomPageStockMovementResponse,
+	},
+	"@get/api/inventories/stock-movements/location/{locationId}/history": {
+		params: z.object({ locationId: z.string() }),
+		query: z.any(),
+		output: ApiResponseCustomPageStockMovementResponse,
+	},
+	"@get/api/inventories/stock-movements/export": {
+		query: z.any(),
+		output: z.any(), // Likely a blob or file download
+	},
+	"@get/api/inventories/stock-movements/by-reference": {
+		query: z
+			.object({
+				referenceType: z.string(),
+				referenceId: z.string(),
+			})
+			.partial(),
+		output: ApiResponseCustomPageStockMovementResponse,
+	},
+	"@get/api/inventories/stock-movements/by-number/{movementNumber}": {
+		params: z.object({ movementNumber: z.string() }),
+		output: ApiResponseStockMovementResponse,
+	},
 	"@post/api/inventories/stock-takes": {
 		input: z.any(),
 		output: ApiResponseObject,
