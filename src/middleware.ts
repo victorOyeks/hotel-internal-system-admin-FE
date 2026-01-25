@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { HotelRole } from "./lib/types";
-import { tokenKey } from "./lib/session";
-import { decrypt } from "./lib/session";
+import {
+	tokenKey,
+	refreshTokenKey,
+	decrypt,
+	createSession,
+} from "./lib/session";
+import { $fetch } from "./lib/fetch";
 
 const PREFIX_PATH = "/dashboard";
 
@@ -20,33 +25,66 @@ const publicPaths = ["/auth", "/forgot-password", "/reset-password"];
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
+
+	// 1. Check if public route
 	const isPublicRoute = publicPaths.some(
 		(path) => pathname === path || pathname.startsWith(`${path}/`),
 	);
-	const token = request.cookies.get(tokenKey)?.value;
 
-	if (!token) {
-		const redirectUrl = new URL("/auth", request.url);
-		redirectUrl.searchParams.set("from", pathname);
+	// 2. Initialize Redirect URL
+	const loginUrl = new URL("/auth", request.url);
+	loginUrl.searchParams.set("from", pathname);
 
-		if (!isPublicRoute) {
-			return NextResponse.redirect(redirectUrl);
+	// 3. Get Tokens
+	let accessToken = request.cookies.get(tokenKey)?.value;
+	const refreshToken = request.cookies.get(refreshTokenKey)?.value;
+
+	// 4. Verify Access Token (Decrypt returns null if expired/invalid)
+	let session = accessToken ? decrypt(accessToken) : null;
+
+	// Flag to track if we need to set new cookies on the response
+	let newTokens: { accessToken: string; refreshToken: string } | null = null;
+
+	// 5. REFRESH LOGIC: If session is invalid/missing BUT we have a refresh token
+	if (!session && refreshToken) {
+		const response = await $fetch("@post/api/auth/refresh", {
+			body: { refreshToken },
+		});
+
+		if (response.data && !response.error) {
+			// Success! Capture new tokens
+			newTokens = {
+				accessToken: response.data.data.accessToken,
+				refreshToken: response.data.data.refreshToken,
+			};
+
+			// Update the local accessToken so RBAC below works with the new user
+			accessToken = newTokens.accessToken;
+			session = decrypt(accessToken);
 		}
 
+		console.error("Token refresh failed inside middleware", response.error);
+		// Fall through to the auth check below
+	}
+
+	// 6. Auth Check: If still no valid session, redirect (unless public)
+	if (!session && !isPublicRoute) {
+		return NextResponse.redirect(loginUrl);
+	}
+
+	// 7. Allow public routes to pass if they have no session
+	if (isPublicRoute && !session) {
 		return NextResponse.next();
 	}
 
-	const session = decrypt(token);
-
-	if (!isPublicRoute && !session) {
-		const redirectUrl = new URL("/auth", request.url);
-		redirectUrl.searchParams.set("from", pathname);
-		return NextResponse.redirect(redirectUrl);
-	}
+	// --- RBAC & REWRITES (Only runs if we have a valid session) ---
 
 	const userRole = session?.role as HotelRole;
 	const expectedPath = roleToPath[userRole];
 
+	let response = NextResponse.next();
+
+	// Handle Rewrite Logic
 	if (pathname.startsWith(PREFIX_PATH)) {
 		const actualPath = pathname.slice(PREFIX_PATH.length) || "/";
 		const query = request.nextUrl.search;
@@ -57,18 +95,24 @@ export async function middleware(request: NextRequest) {
 		rewriteUrl.hash = hashed;
 
 		console.log("Rewriting to:", rewriteUrl.toString());
-
-		return NextResponse.rewrite(rewriteUrl);
+		response = NextResponse.rewrite(rewriteUrl);
 	}
-
-	if (pathname.startsWith(expectedPath)) {
-		return new NextResponse(null, {
+	// Handle 404 for direct access to protected paths
+	else if (expectedPath && pathname.startsWith(expectedPath)) {
+		// If user tries to visit /restaurant directly instead of /dashboard/restaurant
+		// You might want to allow this or rewrite, currently you 404 it.
+		response = new NextResponse(null, {
 			status: 404,
 			statusText: "Not Found",
 		});
 	}
 
-	return NextResponse.next();
+	// 8. FINAL STEP: Attach new cookies if we refreshed
+	if (newTokens) {
+		await createSession(newTokens.accessToken, newTokens.refreshToken);
+	}
+
+	return response;
 }
 
 export const config = {
