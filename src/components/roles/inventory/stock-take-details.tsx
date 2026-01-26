@@ -24,14 +24,11 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import type { StockTake } from "@/lib/fetch";
-import { Progress } from "@/components/ui/progress";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
 	MapPin,
 	Calendar,
 	User,
-	Activity,
-	DollarSign,
 	ClipboardList,
 } from "lucide-react";
 

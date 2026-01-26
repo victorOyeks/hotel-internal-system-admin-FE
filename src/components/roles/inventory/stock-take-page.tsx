@@ -157,9 +157,10 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 						Perform physical inventory counts and reconcile variances
 					</p>
 				</div>
+
 				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 					<DialogTrigger asChild>
-						<Button>
+						<Button className="rounded-md md:rounded-xl">
 							<PlusIcon className="w-4 h-4 mr-2" />
 							Create Stock Take
 						</Button>
@@ -171,7 +172,8 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 						<CreateStockTakeForm
 							inventoryLocations={inventoryLocations}
 							products={products}
-							onClose={() => setIsCreateDialogOpen(false)} />
+							onClose={() => setIsCreateDialogOpen(false)}
+						/>
 					</DialogContent>
 				</Dialog>
 			</div>
@@ -185,7 +187,10 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 				setSearchQuery={setSearchQuery}
 				statusFilter={statusFilter}
 				setStatusFilter={setStatusFilter}
-			/>
+				totalCount={paginationSchema.totalElements}
+			>
+
+			</StockTakeToolbar>
 
 			{/* Table */}
 			<StockTakeTable columns={columns as any} data={stockTakes} />
