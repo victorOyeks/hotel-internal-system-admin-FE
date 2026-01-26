@@ -33,8 +33,10 @@ import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { ChevronsUpDownIcon, CheckIcon } from "lucide-react";
+import { ChevronsUpDownIcon, CheckIcon, CalendarIcon } from "lucide-react";
 import { revalidateRoute } from "@/lib/actions";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 function LocationCombobox({
 	value,
@@ -111,7 +113,6 @@ const stockTakeFormSchema = z.object({
 	locationId: z.string().nonempty("Location is required"),
 	stockTakeType: z.string().nonempty("Type is required"),
 	scheduledDate: z.string().nonempty("Scheduled date is required"),
-	supervisorId: z.string().optional(),
 	supervisorName: z.string().nonempty("Supervisor Name is required"),
 	countedBy: z.string().nonempty("Counted By is required"),
 	acceptableVariancePercent: z.coerce
@@ -190,11 +191,39 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 						control={form.control}
 						name="scheduledDate"
 						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Scheduled Date *</FormLabel>
-								<FormControl>
-									<Input type="date" {...field} />
-								</FormControl>
+							<FormItem className="flex flex-col">
+								<FormLabel className="text-xs">Scheduled Date *</FormLabel>
+								<Popover>
+									<PopoverTrigger asChild>
+										<FormControl>
+											<Button
+												variant={"outline"}
+												className={cn(
+													"h-8 text-xs pl-3 text-left font-normal",
+													!field.value && "text-muted-foreground",
+												)}
+											>
+												{field.value ? (
+													format(field.value, "PPP")
+												) : (
+													<span>Pick a date</span>
+												)}
+												<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+											</Button>
+										</FormControl>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={new Date(field.value)}
+											onSelect={field.onChange}
+											disabled={(date) =>
+												date > new Date() || date < new Date("1900-01-01")
+											}
+											initialFocus
+										/>
+									</PopoverContent>
+								</Popover>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -234,20 +263,6 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 								<FormLabel>Supervisor Name *</FormLabel>
 								<FormControl>
 									<Input placeholder="Enter supervisor name" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="supervisorId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Supervisor ID *</FormLabel>
-								<FormControl>
-									<Input placeholder="Enter supervisor ID" {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>

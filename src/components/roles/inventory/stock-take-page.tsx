@@ -47,7 +47,17 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 	const columns = [
 		columnHelper.accessor("stockTakeNumber", {
 			header: "Stock Take #",
-			cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+			cell: (info) => (
+				<Button
+					variant="link"
+					onClick={() => {
+						setSelectedStockTake(info.row.original);
+						setIsDetailsDialogOpen(true);
+					}}
+				>
+					<span className="font-medium">{info.getValue()}</span>,
+				</Button>
+			)
 		}),
 		columnHelper.accessor("locationName", {
 			header: "Location",
@@ -119,16 +129,7 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 								Count
 							</Button>
 						)} */}
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => {
-							setSelectedStockTake(info.row.original);
-							setIsDetailsDialogOpen(true);
-						}}
-					>
-						<EyeIcon className="w-4 h-4" />
-					</Button>
+
 				</div>
 			),
 		}),
@@ -149,7 +150,7 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
+					<h1 className="text-3xl font-medium tracking-tight">
 						Stock Take / Physical Count
 					</h1>
 					<p className="text-muted-foreground mt-1">
@@ -163,7 +164,7 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 							Create Stock Take
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-4xl">
+					<DialogContent className="max-w-4xl! h-[90vh] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>Create Stock Take</DialogTitle>
 						</DialogHeader>
