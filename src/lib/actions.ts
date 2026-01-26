@@ -5,6 +5,7 @@ import {
 	$fetch,
 	type OnboardStaffRequest,
 	type OnboardHotelRequest,
+	type CreateStorageLocationRequest,
 } from "./fetch";
 import { createSession, deleteSession, refreshTokenKey } from "./session";
 import { getUser, verifySession } from "./dal";
@@ -346,4 +347,23 @@ export async function uploadImage(payload: { file: File }) {
 		success: true,
 		data: (response.data as { data: { url: string } }).data,
 	};
+}
+
+// --- Inventory Actions ---
+
+export async function createStorageLocation(
+	payload: CreateStorageLocationRequest,
+): ServerActionResponseFromEndpoint<"@post/api/inventories/locations"> {
+	try {
+		const sessionData = await verifySession();
+		const response = await $fetch("@post/api/inventories/locations", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+		revalidatePath("/inventory/locations");
+		return { success: true, data: response };
+	} catch (error) {
+		return { success: false, error: parseError(error) };
+	}
 }

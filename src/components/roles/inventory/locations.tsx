@@ -75,7 +75,7 @@ export function StatSection({
 				icon={<MapPinIcon className="w-6 h-6 text-orange-600" />}
 				bgClass="bg-orange-600/10"
 				title="Average Occupancy"
-				value={`${avgOccupancy.toFixed(0)}%`}
+				value={`${avgOccupancy.toFixed(2)}`}
 			/>
 		</div>
 	);

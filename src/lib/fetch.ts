@@ -655,7 +655,7 @@ const ApiResponseHotelOwnerDashboardOverviewResponse = ApiResponseObject.extend(
 	},
 );
 
-const InventoryLocations = z.enum([
+export const InventoryLocations = z.enum([
 	"MAIN_WAREHOUSE",
 	"KITCHEN_STORE",
 	"BAR_STORE",
@@ -1419,7 +1419,7 @@ const StorageLocationResponse = z.object({
 	hotelId: z.string(),
 	locationCode: z.string(),
 	locationName: z.string(),
-	locationType: z.string(), // InventoryLocations enum
+	locationType: InventoryLocations,
 	description: z.string(),
 	building: z.string(),
 	floor: z.string(),
@@ -1459,7 +1459,7 @@ export type StorageLocationResponse = z.infer<typeof StorageLocationResponse>;
 const CreateStorageLocationRequest = z.object({
 	locationCode: z.string(),
 	locationName: z.string(),
-	locationType: z.string(), // InventoryLocations
+	locationType: InventoryLocations,
 	description: z.string().optional(),
 	building: z.string().optional(),
 	floor: z.string().optional(),
