@@ -24,18 +24,18 @@ import {
 	Table,
 	TableBody,
 	TableCell,
+	TableFooter,
 	TableHead,
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusIcon, ThermometerIcon, DropletIcon, EyeIcon } from "lucide-react";
+import { PlusIcon, ThermometerIcon, DropletIcon, EyeIcon, MoreHorizontalIcon, MoreVerticalIcon } from "lucide-react";
 import { StatSection } from "./locations";
 import {
 	LocationsToolbar,
 	type LocationType,
-	type StorageLocation,
 } from "./locations-filters";
 import {
 	createColumnHelper,
@@ -44,179 +44,34 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import { LocationDetails } from "./location-details";
+import type { Pagination, StorageLocationResponse } from "@/lib/fetch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LocationTable } from "./location-table";
 
-// Mock data
-const mockLocations: StorageLocation[] = [
-	{
-		id: "1",
-		code: "WH-MAIN",
-		name: "Main Warehouse",
-		locationType: "WAREHOUSE",
-		description: "Primary storage facility for general inventory",
-		building: "Building A",
-		floor: "Ground Floor",
-		room: "Room 101",
-		physicalAddress: "123 Hotel Drive, Storage Block A",
-		capacityVolume: 500,
-		capacityWeight: 10000,
-		capacityUnits: 100,
-		temperatureControlled: true,
-		temperatureMin: 15,
-		temperatureMax: 25,
-		humidityControlled: true,
-		humidityMin: 40,
-		humidityMax: 60,
-		managerId: "1",
-		managerName: "Sarah Johnson",
-		contactPhone: "+1-555-0101",
-		contactEmail: "sarah.j@hotel.com",
-		accessRestrictions: "Authorized personnel only. Badge required.",
-		operatingHours: "24/7",
-		specialInstructions:
-			"Heavy items on lower shelves. FIFO rotation required.",
-		isActive: true,
-		currentOccupancy: 75,
-		itemsStored: 245,
-		createdBy: "Admin",
-		createdDate: "2025-01-01T00:00:00",
-	},
-	{
-		id: "2",
-		code: "CS-01",
-		name: "Cold Storage Unit 1",
-		locationType: "COLD_STORAGE",
-		description: "Temperature-controlled storage for perishables",
-		building: "Building B",
-		floor: "Basement",
-		room: "CS-1",
-		capacityVolume: 100,
-		capacityWeight: 2000,
-		temperatureControlled: true,
-		temperatureMin: 2,
-		temperatureMax: 8,
-		humidityControlled: true,
-		humidityMin: 80,
-		humidityMax: 90,
-		managerId: "2",
-		managerName: "Michael Chen",
-		contactPhone: "+1-555-0102",
-		contactEmail: "michael.c@hotel.com",
-		accessRestrictions: "Kitchen staff and inventory officers only",
-		operatingHours: "24/7",
-		specialInstructions:
-			"Temperature monitored continuously. Alert if temp exceeds 10°C. FIFO strictly enforced.",
-		isActive: true,
-		currentOccupancy: 60,
-		itemsStored: 85,
-		createdBy: "Admin",
-		createdDate: "2025-01-01T00:00:00",
-	},
-	{
-		id: "3",
-		code: "DS-01",
-		name: "Dry Storage Room",
-		locationType: "DRY_STORAGE",
-		description: "Ambient storage for non-perishables",
-		building: "Building A",
-		floor: "Ground Floor",
-		room: "Room 102",
-		capacityVolume: 200,
-		capacityWeight: 5000,
-		capacityUnits: 50,
-		temperatureControlled: false,
-		humidityControlled: true,
-		humidityMin: 30,
-		humidityMax: 50,
-		managerId: "1",
-		managerName: "Sarah Johnson",
-		contactPhone: "+1-555-0101",
-		contactEmail: "sarah.j@hotel.com",
-		accessRestrictions: "Standard access. Sign-in required.",
-		operatingHours: "6:00 AM - 10:00 PM",
-		specialInstructions: "Keep dry. No water storage. Pest control monthly.",
-		isActive: true,
-		currentOccupancy: 45,
-		itemsStored: 120,
-		createdBy: "Admin",
-		createdDate: "2025-01-01T00:00:00",
-	},
-	{
-		id: "4",
-		code: "BAR-ST",
-		name: "Bar Storage",
-		locationType: "BAR",
-		description: "Dedicated storage for bar supplies and beverages",
-		building: "Main Building",
-		floor: "1st Floor",
-		room: "Bar Back Room",
-		capacityVolume: 50,
-		capacityWeight: 1000,
-		temperatureControlled: true,
-		temperatureMin: 12,
-		temperatureMax: 18,
-		humidityControlled: false,
-		managerId: "3",
-		managerName: "Emma Davis",
-		contactPhone: "+1-555-0103",
-		contactEmail: "emma.d@hotel.com",
-		accessRestrictions: "Bar staff only. Manager approval required.",
-		operatingHours: "10:00 AM - 2:00 AM",
-		specialInstructions: "Secure lock. Inventory daily. Wine storage separate.",
-		isActive: true,
-		currentOccupancy: 80,
-		itemsStored: 156,
-		createdBy: "Admin",
-		createdDate: "2025-01-01T00:00:00",
-	},
-	{
-		id: "5",
-		code: "HK-ST",
-		name: "Housekeeping Storage",
-		locationType: "HOUSEKEEPING",
-		description: "Cleaning supplies and linen storage",
-		building: "Service Building",
-		floor: "2nd Floor",
-		room: "HK-Storage",
-		capacityVolume: 80,
-		capacityWeight: 1500,
-		temperatureControlled: false,
-		humidityControlled: false,
-		managerId: "4",
-		managerName: "Lisa Martinez",
-		contactPhone: "+1-555-0104",
-		contactEmail: "lisa.m@hotel.com",
-		accessRestrictions: "Housekeeping department only",
-		operatingHours: "6:00 AM - 6:00 PM",
-		specialInstructions: "Chemicals stored separately. MSDS sheets on wall.",
-		isActive: true,
-		currentOccupancy: 55,
-		itemsStored: 78,
-		createdBy: "Admin",
-		createdDate: "2025-01-01T00:00:00",
-	},
-];
-
-const columnHelper = createColumnHelper<StorageLocation>();
+const columnHelper = createColumnHelper<StorageLocationResponse>();
 
 const columnDefs = [
-	columnHelper.accessor("code", {
+	columnHelper.accessor("locationCode", {
 		header: "Location Code",
 		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
 	}),
-	columnHelper.accessor("name", {
+	columnHelper.accessor("locationName", {
 		header: "Name",
 		cell: (info) => {
-			const location = info.row.original;
 			return (
-				<div>
-					<p className="font-medium">{location.name}</p>
-					{location.description && (
-						<p className="text-xs text-muted-foreground">
-							{location.description.substring(0, 40)}
-							{location.description.length > 40 ? "..." : ""}
-						</p>
-					)}
-				</div>
+				<LocationDetails
+					location={info.row.original}
+				>
+					<div className="hover:underline group-hover:underline cursor-pointer">
+						<p className="font-medium">{info.getValue()}</p>
+						{info.row.original.description && (
+							<p className="text-xs text-muted-foreground">
+								{info.row.original.description.substring(0, 40)}
+								{info.row.original.description.length > 40 ? "..." : ""}
+							</p>
+						)}
+					</div>
+				</LocationDetails>
 			);
 		},
 	}),
@@ -253,7 +108,7 @@ const columnDefs = [
 							className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
 						>
 							<ThermometerIcon className="w-3 h-3 mr-1" />
-							{location.temperatureMin}°C - {location.temperatureMax}°C
+							{location.minTemperature}°C - {location.maxTemperature}°C
 						</Badge>
 					)}
 					{location.humidityControlled && (
@@ -262,7 +117,7 @@ const columnDefs = [
 							className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
 						>
 							<DropletIcon className="w-3 h-3 mr-1" />
-							{location.humidityMin}% - {location.humidityMax}%
+							{location.minHumidity}% - {location.maxHumidity}%
 						</Badge>
 					)}
 					{!location.temperatureControlled && !location.humidityControlled && (
@@ -280,32 +135,38 @@ const columnDefs = [
 			return (
 				<div className="space-y-1 min-w-[120px]">
 					<div className="flex justify-between text-xs">
-						<span>{location.itemsStored} items</span>
-						<span>{location.currentOccupancy}%</span>
+						<span>{location.totalProductsStored} items</span>
+						<span>{
+							Intl.NumberFormat("en-US", {
+								style: "percent",
+								maximumFractionDigits: 2,
+							}).format(
+								((location.totalProductsStored / location.totalCapacity) * 100),
+							)
+						}</span>
 					</div>
 					<div className="w-full bg-gray-200 rounded-full h-2">
 						<div
-							className={`h-2 rounded-full ${
-								(location.currentOccupancy || 0) > 80
-									? "bg-red-500"
-									: (location.currentOccupancy || 0) > 60
-										? "bg-orange-500"
-										: "bg-green-500"
-							}`}
-							style={{ width: `${location.currentOccupancy}%` }}
+							className={`h-2 rounded-full ${(location.totalProductsStored / location.totalCapacity) > 80
+								? "bg-red-500"
+								: (location.totalProductsStored / location.totalCapacity) > 60
+									? "bg-orange-500"
+									: "bg-green-500"
+								}`}
+							style={{ width: `${(location.totalProductsStored / location.totalCapacity) * 100}%` }}
 						/>
 					</div>
 				</div>
 			);
 		},
 	}),
-	columnHelper.accessor("managerName", {
+	columnHelper.accessor("contactPerson", {
 		header: "Manager",
 		cell: (info) => {
 			const location = info.row.original;
 			return (
 				<div className="text-sm">
-					<p className="font-medium">{location.managerName}</p>
+					<p className="font-medium">{location.contactPerson}</p>
 					{location.contactPhone && (
 						<p className="text-xs text-muted-foreground">
 							{location.contactPhone}
@@ -315,10 +176,10 @@ const columnDefs = [
 			);
 		},
 	}),
-	columnHelper.accessor("isActive", {
+	columnHelper.accessor("active", {
 		header: "Status",
 		cell: (info) => (
-			<Badge variant={info.getValue() ? "default" : "secondary"}>
+			<Badge variant={info.getValue() ? "green" : "red"}>
 				{info.getValue() ? "Active" : "Inactive"}
 			</Badge>
 		),
@@ -326,70 +187,57 @@ const columnDefs = [
 	columnHelper.display({
 		id: "actions",
 		header: "Actions",
-		cell: (info) => {
-			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-			const location = info.row.original;
+		cell: () => {
 			return (
-				<LocationDetails
-					open={isDetailsOpen}
-					onOpenChange={setIsDetailsOpen}
-					location={location}
-				>
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => setIsDetailsOpen(true)}
-						asChild
-					>
-						<EyeIcon />
-					</Button>
-				</LocationDetails>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="icon">
+							<MoreVerticalIcon />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuLabel>Actions</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						<DropdownMenuLabel>View</DropdownMenuLabel>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			);
 		},
 	}),
 ];
 
-export function StorageLocationPage() {
-	const [locations] = useState<StorageLocation[]>(mockLocations);
+export function StorageLocationPage({
+	locations,
+	paginationMeta
+}: {
+	locations: StorageLocationResponse[];
+	paginationMeta: Pagination;
+}) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [typeFilter, setTypeFilter] = useState<string>("all");
 	const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-	// Filter locations
-	const filteredLocations = locations.filter((loc) => {
-		const matchesSearch =
-			loc.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			loc.description?.toLowerCase().includes(searchQuery.toLowerCase());
-
-		const matchesType = typeFilter === "all" || loc.locationType === typeFilter;
-		const matchesTemp =
-			temperatureFilter === "all" ||
-			(temperatureFilter === "controlled" && loc.temperatureControlled) ||
-			(temperatureFilter === "uncontrolled" && !loc.temperatureControlled);
-
-		return matchesSearch && matchesType && matchesTemp;
-	});
-
 	const table = useReactTable({
-		data: filteredLocations,
+		data: locations,
 		columns: columnDefs,
+		manualPagination: true,
+		manualFiltering: true,
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
 	// Calculate stats
-	const activeCount = locations.filter((l) => l.isActive).length;
+	const activeCount = locations.filter((l) => l.active).length;
 	const temperatureControlledCount = locations.filter(
 		(l) => l.temperatureControlled,
 	).length;
 	const totalItemsStored = locations.reduce(
-		(sum, l) => sum + (l.itemsStored || 0),
+		(sum, l) => sum + (l.totalProductsStored || 0),
 		0,
 	);
 	const avgOccupancy =
-		locations.reduce((sum, l) => sum + (l.currentOccupancy || 0), 0) /
+		locations.reduce((sum, l) => sum + (l.totalCapacity || 0), 0) /
 		locations.length;
 
 	return (
@@ -440,142 +288,9 @@ export function StorageLocationPage() {
 			/>
 
 			{/* Locations Table */}
-			<div className="overflow-hidden rounded-md border bg-card">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Location Code</TableHead>
-							<TableHead>Name</TableHead>
-							<TableHead>Type</TableHead>
-							<TableHead>Building/Floor</TableHead>
-							<TableHead>Climate Control</TableHead>
-							<TableHead>Occupancy</TableHead>
-							<TableHead>Manager</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead>Actions</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{filteredLocations.length === 0 ? (
-							<TableRow>
-								<TableCell
-									colSpan={9}
-									className="text-center text-muted-foreground py-8"
-								>
-									No locations found
-								</TableCell>
-							</TableRow>
-						) : (
-							filteredLocations.map((location) => (
-								<TableRow key={location.id}>
-									<TableCell className="font-medium">{location.code}</TableCell>
-									<TableCell>
-										<div>
-											<p className="font-medium">{location.name}</p>
-											{location.description && (
-												<p className="text-xs text-muted-foreground">
-													{location.description.substring(0, 40)}
-													{location.description.length > 40 ? "..." : ""}
-												</p>
-											)}
-										</div>
-									</TableCell>
-									<TableCell>
-										<Badge variant="outline">
-											{location.locationType.replace(/_/g, " ")}
-										</Badge>
-									</TableCell>
-									<TableCell>
-										<div className="text-sm">
-											<p>{location.building}</p>
-											{location.floor && (
-												<p className="text-xs text-muted-foreground">
-													{location.floor}
-												</p>
-											)}
-										</div>
-									</TableCell>
-									<TableCell>
-										<div className="space-y-1">
-											{location.temperatureControlled && (
-												<Badge
-													variant="outline"
-													className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
-												>
-													<ThermometerIcon className="w-3 h-3 mr-1" />
-													{location.temperatureMin}°C -{" "}
-													{location.temperatureMax}°C
-												</Badge>
-											)}
-											{location.humidityControlled && (
-												<Badge
-													variant="outline"
-													className="bg-purple-50 text-purple-700 border-purple-200 text-xs"
-												>
-													<DropletIcon className="w-3 h-3 mr-1" />
-													{location.humidityMin}% - {location.humidityMax}%
-												</Badge>
-											)}
-											{!location.temperatureControlled &&
-												!location.humidityControlled && (
-													<span className="text-xs text-muted-foreground">
-														Ambient
-													</span>
-												)}
-										</div>
-									</TableCell>
-									<TableCell>
-										<div className="space-y-1">
-											<div className="flex justify-between text-xs">
-												<span>{location.itemsStored} items</span>
-												<span>{location.currentOccupancy}%</span>
-											</div>
-											<div className="w-full bg-gray-200 rounded-full h-2">
-												<div
-													className={`h-2 rounded-full ${
-														(location.currentOccupancy || 0) > 80
-															? "bg-red-500"
-															: (location.currentOccupancy || 0) > 60
-																? "bg-orange-500"
-																: "bg-green-500"
-													}`}
-													style={{ width: `${location.currentOccupancy}%` }}
-												/>
-											</div>
-										</div>
-									</TableCell>
-									<TableCell>
-										<div className="text-sm">
-											<p className="font-medium">{location.managerName}</p>
-											{location.contactPhone && (
-												<p className="text-xs text-muted-foreground">
-													{location.contactPhone}
-												</p>
-											)}
-										</div>
-									</TableCell>
-									<TableCell>
-										<Badge
-											variant={location.isActive ? "default" : "secondary"}
-										>
-											{location.isActive ? "Active" : "Inactive"}
-										</Badge>
-									</TableCell>
-									<TableCell>
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => console.log(location)}
-										>
-											View Details
-										</Button>
-									</TableCell>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</div>
+			<LocationTable
+				table={table}
+			/>
 		</div>
 	);
 }

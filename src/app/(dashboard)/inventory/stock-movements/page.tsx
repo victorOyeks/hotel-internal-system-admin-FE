@@ -14,9 +14,11 @@ type PageProps = {
 const loadSearchParams = createLoader({
     ...paginationSearchParams,
     search: parseAsString,
+    type: parseAsString,
 }, {
     urlKeys: {
         search: "search",
+        type: "type",
     }
 });
 
@@ -37,12 +39,48 @@ export default function Page({ searchParams }: PageProps) {
                     page: query.page < 1 ? query.page : query.page - 1,
                     size: query.size,
                     search: query.search,
+                    movementType: query.type,
                 },
                 throw: true,
             })
             return res.data;
         },
-    }))
+    }));
+
+    const locations = use(qc.ensureQueryData({
+        queryKey: ["inventory-locations-list"],
+        queryFn: async () => {
+            const res = await $fetch("@get/api/inventories/locations/list", {
+                auth: {
+                    token,
+                    type: "Bearer"
+                },
+                throw: true,
+            });
+            return res.data.map(l => ({ id: l.id, name: l.locationName }));
+        }
+    }));
+
+    const products = use(qc.ensureQueryData({
+        queryKey: ["inventory-products-list"],
+        queryFn: async () => {
+            const res = await $fetch("@get/api/inventories/products/list", {
+                auth: {
+                    token,
+                    type: "Bearer"
+                },
+                throw: true,
+            });
+
+            const data: any = res.data;
+            if (Array.isArray(data)) {
+                return data.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku }));
+            } else if (Array.isArray(data.content)) {
+                return data.content.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku }));
+            }
+            return [];
+        }
+    }));
 
     return (
         <BreadCrumbWrapper
@@ -57,6 +95,8 @@ export default function Page({ searchParams }: PageProps) {
             <StockMovementPage
                 movements={movements}
                 paginationSchema={paginationSchema}
+                locations={locations}
+                products={products}
             />
         </BreadCrumbWrapper>
     );

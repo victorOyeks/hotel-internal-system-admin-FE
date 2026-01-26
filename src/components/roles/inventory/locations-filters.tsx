@@ -17,7 +17,7 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { atom, useSetAtom } from "jotai";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import type { InventoryGRNResponse } from "@/lib/fetch";
+import type { InventoryGRNResponse, StorageLocationResponse } from "@/lib/fetch";
 
 // Types based on FRD 3.5
 export type LocationType =
@@ -143,7 +143,7 @@ export function LocationsToolbar({
 	setSearchQuery,
 	typeFilter,
 }: {
-	table: TableType<StorageLocation>;
+	table: TableType<StorageLocationResponse>;
 } & LocationsFiltersProps) {
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
@@ -197,7 +197,7 @@ export function LocationsToolbar({
 										variant="ghost"
 										size="sm"
 										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-										// onClick={() => setQueryState({ status: null })}
+									// onClick={() => setQueryState({ status: null })}
 									>
 										<XIcon className="h-3 w-3" />
 									</Button>

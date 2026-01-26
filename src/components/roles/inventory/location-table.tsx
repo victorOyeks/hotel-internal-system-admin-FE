@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/table";
 import { flexRender, type Table as TableType } from "@tanstack/react-table";
 import { DataTablePagination } from "@/components/shared/pagination";
-import type { StorageLocation } from "./locations-filters";
+import type { StorageLocationResponse } from "@/lib/fetch";
 
 interface LocationTableProps {
-	table: TableType<StorageLocation>;
+	table: TableType<StorageLocationResponse>;
 }
 
 export function LocationTable({ table }: LocationTableProps) {
@@ -28,9 +28,9 @@ export function LocationTable({ table }: LocationTableProps) {
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}

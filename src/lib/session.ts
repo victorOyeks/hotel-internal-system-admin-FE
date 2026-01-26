@@ -52,32 +52,6 @@ export async function createSession(session: string, refreshToken?: string) {
 	}
 }
 
-export async function updateSession() {
-	const session = (await cookies()).get("session")?.value;
-
-	if (!session) {
-		return null;
-	}
-
-	const payload = decrypt(session);
-
-	if (!payload) {
-		return null;
-	}
-
-	const expires = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000);
-
-	const cookieStore = await cookies();
-	cookieStore.set(tokenKey, session, {
-		expires,
-		path: "/",
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "lax",
-		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-	});
-}
-
 export async function deleteSession() {
 	const cookieStore = await cookies();
 	const options = {

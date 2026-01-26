@@ -1,5 +1,6 @@
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
@@ -20,16 +21,15 @@ import {
 	BoxIcon,
 	BuildingIcon,
 	PhoneIcon,
-	MailIcon,
 	AlertCircleIcon,
 } from "lucide-react";
-import type { StorageLocation } from "./locations-filters";
 import type { PropsWithChildren } from "react";
+import type { StorageLocationResponse } from "@/lib/fetch";
 
 interface LocationDetailsProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	location: StorageLocation | null;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	location: StorageLocationResponse | null;
 }
 
 export function LocationDetails({
@@ -48,23 +48,23 @@ export function LocationDetails({
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 						<div className="space-y-1">
 							<DialogTitle className="text-2xl font-medium flex items-center gap-3">
-								{location.name}
+								{location.locationName}
 								<Badge
-									variant={location.isActive ? "default" : "secondary"}
+									variant={location.active ? "default" : "secondary"}
 									className="text-sm font-normal"
 								>
-									{location.isActive ? "Active" : "Inactive"}
+									{location.active ? "Active" : "Inactive"}
 								</Badge>
 							</DialogTitle>
 							<p className="text-sm text-muted-foreground flex items-center gap-2">
 								<MapPinIcon className="w-4 h-4" />
-								{location.code}
+								{location.locationCode}
 							</p>
 						</div>
 						<div className="flex items-center gap-2">
-							<Button variant="outline" onClick={() => onOpenChange(false)}>
-								Close
-							</Button>
+							<DialogClose asChild>
+								<Button variant="outline">Close</Button>
+							</DialogClose>
 							<Button>Edit Location</Button>
 						</div>
 					</div>
@@ -83,40 +83,38 @@ export function LocationDetails({
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Capacity</p>
 								<div className="font-medium">
-									{location.capacityVolume
-										? `${location.capacityVolume} m³`
+									{location.totalCapacity
+										? `${Intl.NumberFormat("en-US").format(location.totalCapacity)} ${location.capacityUnit}`
 										: "N/A"}
 								</div>
-								<p className="text-xs text-muted-foreground">
-									{location.capacityWeight
-										? `${location.capacityWeight} kg`
-										: ""}
-								</p>
 							</div>
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Occupancy</p>
 								<div className="flex items-baseline gap-2">
 									<span className="text-2xl font-medium">
-										{location.currentOccupancy}%
+										{
+											Intl.NumberFormat("en-US", {
+												style: "percent",
+											}).format(location.totalProductsStored / location.totalCapacity)
+										}
 									</span>
 								</div>
 								<div className="w-full bg-secondary rounded-full h-1.5 mt-2">
 									<div
-										className={`h-1.5 rounded-full ${
-											(location.currentOccupancy || 0) > 80
-												? "bg-red-500"
-												: (location.currentOccupancy || 0) > 60
-													? "bg-orange-500"
-													: "bg-green-500"
-										}`}
-										style={{ width: `${location.currentOccupancy}%` }}
+										className={`h-1.5 rounded-full ${(location.totalProductsStored / location.totalCapacity) > 80
+											? "bg-red-500"
+											: (location.totalProductsStored / location.totalCapacity) > 60
+												? "bg-orange-500"
+												: "bg-green-500"
+											}`}
+										style={{ width: `${location.totalProductsStored / location.totalCapacity}%` }}
 									/>
 								</div>
 							</div>
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Manager</p>
 								<div className="font-medium truncate">
-									{location.managerName}
+									{location.contactPerson}
 								</div>
 								<p className="text-xs text-muted-foreground truncate">
 									{location.contactPhone}
@@ -230,7 +228,7 @@ export function LocationDetails({
 														Items Stored
 													</p>
 													<p className="text-2xl font-medium">
-														{location.itemsStored}
+														{location.totalProductsStored}
 													</p>
 												</div>
 											</div>
@@ -262,13 +260,13 @@ export function LocationDetails({
 												<div className="flex justify-between text-sm">
 													<span className="text-blue-700">Min Temp</span>
 													<span className="font-medium text-blue-900">
-														{location.temperatureMin}°C
+														{location.minTemperature}°C
 													</span>
 												</div>
 												<div className="flex justify-between text-sm">
 													<span className="text-blue-700">Max Temp</span>
 													<span className="font-medium text-blue-900">
-														{location.temperatureMax}°C
+														{location.maxTemperature}°C
 													</span>
 												</div>
 											</div>
@@ -300,13 +298,13 @@ export function LocationDetails({
 												<div className="flex justify-between text-sm">
 													<span className="text-purple-700">Min Humidity</span>
 													<span className="font-medium text-purple-900">
-														{location.humidityMin}%
+														{location.minHumidity}
 													</span>
 												</div>
 												<div className="flex justify-between text-sm">
 													<span className="text-purple-700">Max Humidity</span>
 													<span className="font-medium text-purple-900">
-														{location.humidityMax}%
+														{location.maxHumidity}
 													</span>
 												</div>
 											</div>
@@ -329,11 +327,11 @@ export function LocationDetails({
 											<div className="flex items-center gap-3">
 												<div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
 													<span className="font-medium text-lg">
-														{location.managerName?.charAt(0)}
+														{location.contactPerson?.charAt(0)}
 													</span>
 												</div>
 												<div>
-													<p className="font-medium">{location.managerName}</p>
+													<p className="font-medium">{location.contactPerson}</p>
 													<p className="text-sm text-muted-foreground">
 														Location Manager
 													</p>
@@ -344,17 +342,6 @@ export function LocationDetails({
 													<div className="flex items-center gap-2 text-sm">
 														<PhoneIcon className="w-4 h-4 text-muted-foreground" />
 														<span>{location.contactPhone}</span>
-													</div>
-												)}
-												{location.contactEmail && (
-													<div className="flex items-center gap-2 text-sm">
-														<MailIcon className="w-4 h-4 text-muted-foreground" />
-														<a
-															href={`mailto:${location.contactEmail}`}
-															className="text-primary hover:underline"
-														>
-															{location.contactEmail}
-														</a>
 													</div>
 												)}
 											</div>
