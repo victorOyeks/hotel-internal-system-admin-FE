@@ -136,7 +136,6 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 			locationId: "",
 			stockTakeType: "FULL",
 			scheduledDate: new Date().toISOString().split("T")[0],
-			supervisorId: "",
 			supervisorName: "",
 			countedBy: "",
 			acceptableVariancePercent: 100,
