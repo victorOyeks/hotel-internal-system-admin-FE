@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Form,
@@ -394,9 +395,11 @@ export function CreatePOForm({
 				/>
 
 				<div className="flex justify-end gap-2">
-					<Button variant="outline" onClick={onClose} type="button">
+					<DialogClose asChild>
+					<Button variant="outline" type="button">
 						Cancel
 					</Button>
+					</DialogClose>
 					<Button type="submit" disabled={isPending}>
 						{isPending ? "Creating..." : "Create Purchase Order"}
 					</Button>
