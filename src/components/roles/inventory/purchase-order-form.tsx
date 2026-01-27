@@ -60,7 +60,6 @@ const purchaseOrderFormSchema = z.object({
 });
 
 interface CreatePOFormProps {
-	onClose: () => void;
 	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" | "phone">[];
 	products: InventoryProduct[];
 }
@@ -132,7 +131,6 @@ function SupplierCombobox({
 }
 
 export function CreatePOForm({
-	onClose,
 	suppliers,
 	products,
 }: CreatePOFormProps) {
@@ -191,7 +189,6 @@ export function CreatePOForm({
 			if (response.success) {
 				toast.success("Purchase order created successfully");
 				await revalidateRoute("/dashboard/inventory/purchase-orders");
-				onClose();
 			} else {
 				toast.error(response.error || "Failed to create purchase order");
 			}
