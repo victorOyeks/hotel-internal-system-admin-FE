@@ -168,7 +168,7 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 						Create and manage purchase orders for suppliers
 					</p>
 				</div>
-				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+				<Dialog>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" />
@@ -180,7 +180,6 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 							<DialogTitle>Create Purchase Order</DialogTitle>
 						</DialogHeader>
 						<CreatePOForm
-							onClose={() => setIsCreateDialogOpen(false)}
 							suppliers={suppliers}
 							products={products}
 						/>
