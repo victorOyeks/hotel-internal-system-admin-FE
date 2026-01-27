@@ -151,22 +151,8 @@ interface PurchaseOrderPageProps {
 }
 
 export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-	// Filter data
-	const filteredData = orders.filter((order) => {
-		const matchesSearch =
-			order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			order.supplierName?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesStatus =
-			statusFilter === "all" || order.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
-
 	const table = useReactTable({
-		data: filteredData,
+		data: orders,
 		columns: columnDefs,
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
@@ -206,12 +192,7 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 			<PurchaseOrderStats stats={stats} />
 
 			{/* Filters */}
-			<PurchaseOrderToolbar
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				statusFilter={statusFilter}
-				setStatusFilter={setStatusFilter}
-			/>
+			<PurchaseOrderToolbar />
 
 			{/* Table */}
 			<PurchaseOrderTable table={table} />

@@ -37,8 +37,6 @@ const columnHelper = createColumnHelper<StockTake>();
 
 export function StockTakePage({ stockTakes, inventoryLocations, products
 	, paginationSchema }: StockTakePageProps) {
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
 	const [selectedStockTake, setSelectedStockTake] =
 		useState<StockTake | null>(null);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -183,10 +181,6 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 
 			{/* Filters */}
 			<StockTakeToolbar
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				statusFilter={statusFilter}
-				setStatusFilter={setStatusFilter}
 				totalCount={paginationSchema.totalElements}
 			>
 

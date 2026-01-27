@@ -15,20 +15,24 @@ const loadSearchParams = createLoader({
     ...paginationSearchParams,
     search: parseAsString,
     type: parseAsString,
+    productSearch: parseAsString,
+    locationSearch: parseAsString,
 }, {
     urlKeys: {
         search: "search",
         type: "type",
+        productSearch: "product-list:search",
+        locationSearch: "location-list:search",
     }
 });
 
 export default function Page({ searchParams }: PageProps) {
     const { token } = use(getCookieData())!;
-    const query = use(loadSearchParams(searchParams));
+    const searchParamsValues = use(loadSearchParams(searchParams));
     const qc = getQueryClient();
 
     const { content: movements, ...paginationSchema } = use(qc.ensureQueryData({
-        queryKey: ["stock-movements", query],
+        queryKey: ["stock-movements", searchParamsValues],
         queryFn: async () => {
             const res = await $fetch("@get/api/inventories/stock-movements", {
                 auth: {
@@ -36,10 +40,10 @@ export default function Page({ searchParams }: PageProps) {
                     type: "Bearer"
                 },
                 query: {
-                    page: query.page < 1 ? query.page : query.page - 1,
-                    size: query.size,
-                    search: query.search,
-                    movementType: query.type,
+                    page: searchParamsValues.page < 1 ? searchParamsValues.page : searchParamsValues.page - 1,
+                    size: searchParamsValues.size,
+                    search: searchParamsValues.search,
+                    movementType: searchParamsValues.type,
                 },
                 throw: true,
             })
@@ -48,12 +52,15 @@ export default function Page({ searchParams }: PageProps) {
     }));
 
     const locations = use(qc.ensureQueryData({
-        queryKey: ["inventory-locations-list"],
+        queryKey: ["inventory-locations-list", searchParamsValues.locationSearch],
         queryFn: async () => {
             const res = await $fetch("@get/api/inventories/locations/list", {
                 auth: {
                     token,
                     type: "Bearer"
+                },
+                query: {
+                    search: searchParamsValues.locationSearch ?? undefined
                 },
                 throw: true,
             });
@@ -62,12 +69,15 @@ export default function Page({ searchParams }: PageProps) {
     }));
 
     const products = use(qc.ensureQueryData({
-        queryKey: ["inventory-products-list"],
+        queryKey: ["inventory-products-list", searchParamsValues.productSearch],
         queryFn: async () => {
             const res = await $fetch("@get/api/inventories/products/list", {
                 auth: {
                     token,
                     type: "Bearer"
+                },
+                query: {
+                    search: searchParamsValues.productSearch ?? undefined
                 },
                 throw: true,
             });

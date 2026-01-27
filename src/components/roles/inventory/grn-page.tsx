@@ -110,11 +110,6 @@ export function GRNPage({
 	// UI State
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-	// Filter State
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState<string>("all");
-	const [postedFilter, setPostedFilter] = useState<string>("all");
-
 	return (
 		<div className="space-y-6 p-6">
 			{/* Header */}
@@ -156,15 +151,7 @@ export function GRNPage({
 			/>
 
 			{/* Filters */}
-			<GRNToolbar
-				table={table}
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				statusFilter={statusFilter}
-				setStatusFilter={setStatusFilter}
-				postedFilter={postedFilter}
-				setPostedFilter={setPostedFilter}
-			/>
+			<GRNToolbar table={table} />
 
 			{/* Table */}
 			<GRNTable table={table} />

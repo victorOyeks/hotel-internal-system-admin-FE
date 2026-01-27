@@ -7,7 +7,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
 	type ExportData,
@@ -17,7 +16,8 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { atom, useSetAtom } from "jotai";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import type { InventoryGRNResponse, StorageLocationResponse } from "@/lib/fetch";
+import type { StorageLocationResponse } from "@/lib/fetch";
+import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
 
 // Types based on FRD 3.5
 export type LocationType =
@@ -66,69 +66,6 @@ export type StorageLocation = {
 	lastModifiedDate?: string;
 };
 
-interface LocationsFiltersProps {
-	searchQuery: string;
-	setSearchQuery: (val: string) => void;
-	typeFilter: string;
-	setTypeFilter: (val: string) => void;
-	temperatureFilter: string;
-	setTemperatureFilter: (val: string) => void;
-}
-
-export function LocationFilters({
-	searchQuery,
-	setSearchQuery,
-	typeFilter,
-	setTypeFilter,
-	temperatureFilter,
-	setTemperatureFilter,
-}: LocationsFiltersProps) {
-	return (
-		<Card>
-			<CardContent className="pt-6">
-				<div className="grid gap-4 md:grid-cols-4">
-					<div className="md:col-span-2 relative">
-						<SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-						<Input
-							placeholder="Search by code, name, or description..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
-					<Select value={typeFilter} onValueChange={setTypeFilter}>
-						<SelectTrigger>
-							<SelectValue placeholder="All types" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All Types</SelectItem>
-							<SelectItem value="WAREHOUSE">Warehouse</SelectItem>
-							<SelectItem value="COLD_STORAGE">Cold Storage</SelectItem>
-							<SelectItem value="DRY_STORAGE">Dry Storage</SelectItem>
-							<SelectItem value="BAR">Bar</SelectItem>
-							<SelectItem value="KITCHEN">Kitchen</SelectItem>
-							<SelectItem value="HOUSEKEEPING">Housekeeping</SelectItem>
-						</SelectContent>
-					</Select>
-					<Select
-						value={temperatureFilter}
-						onValueChange={setTemperatureFilter}
-					>
-						<SelectTrigger>
-							<SelectValue placeholder="All locations" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All Locations</SelectItem>
-							<SelectItem value="controlled">Temperature Controlled</SelectItem>
-							<SelectItem value="uncontrolled">Not Controlled</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
 const successDialogAtom = atom({
 	show: false,
 	message: "",
@@ -136,15 +73,25 @@ const successDialogAtom = atom({
 
 export function LocationsToolbar({
 	table,
-	temperatureFilter,
-	searchQuery,
-	// settypeFilter,
-	// settemperatureFilter,
-	setSearchQuery,
-	typeFilter,
 }: {
 	table: TableType<StorageLocationResponse>;
-} & LocationsFiltersProps) {
+}) {
+	const [queryState, setQueryState] = useQueryStates({
+		search: parseAsString,
+		type: parseAsStringLiteral([
+			"WAREHOUSE",
+			"COLD_STORAGE",
+			"DRY_STORAGE",
+			"BAR",
+			"KITCHEN",
+			"RESTAURANT",
+			"HOUSEKEEPING",
+			"MAINTENANCE",
+			"OTHER",
+		]),
+		temperature: parseAsStringLiteral(["controlled", "uncontrolled"]),
+	});
+
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
@@ -164,9 +111,9 @@ export function LocationsToolbar({
 	const [open, setOpen] = useState(false);
 
 	return (
-		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
 			<div>
-				<p>All GRNs ({table.getRowCount()})</p>
+				<p>All Locations ({table.getRowCount()})</p>
 			</div>
 
 			<div className="flex items-center gap-x-2 ">
@@ -174,51 +121,120 @@ export function LocationsToolbar({
 					<input
 						type="text"
 						placeholder="Search..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
+						value={queryState.search ?? ""}
+						onChange={(e) =>
+							setQueryState({ search: e.target.value || null })
+						}
 						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
 					/>
 					<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
 				</div>
 
 				<div className="flex items-center gap-2">
-					<TableFilter open={open} setOpen={setOpen}></TableFilter>
+					<TableFilter open={open} setOpen={setOpen} count={(queryState.type ? 1 : 0) + (queryState.temperature ? 1 : 0)}>
+						<div className="flex flex-col gap-y-4 w-[280px]">
+							<div className="space-y-2">
+								<h4 className="font-medium leading-none">Type</h4>
+								<Select
+									value={queryState.type ?? "all"}
+									onValueChange={(value) =>
+										setQueryState({
+											type: value === "all" ? null : (value as any),
+										})
+									}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="All types" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All Types</SelectItem>
+										<SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+										<SelectItem value="COLD_STORAGE">Cold Storage</SelectItem>
+										<SelectItem value="DRY_STORAGE">Dry Storage</SelectItem>
+										<SelectItem value="BAR">Bar</SelectItem>
+										<SelectItem value="KITCHEN">Kitchen</SelectItem>
+										<SelectItem value="HOUSEKEEPING">Housekeeping</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="space-y-2">
+								<h4 className="font-medium leading-none">Temperature</h4>
+								<Select
+									value={queryState.temperature ?? "all"}
+									onValueChange={(value) =>
+										setQueryState({
+											temperature: value === "all" ? null : (value as any),
+										})
+									}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="All locations" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All Locations</SelectItem>
+										<SelectItem value="controlled">Temperature Controlled</SelectItem>
+										<SelectItem value="uncontrolled">Not Controlled</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex items-center justify-between border-t pt-4">
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => {
+										setQueryState({ type: null, temperature: null });
+									}}
+									className="text-muted-foreground hover:text-foreground"
+								>
+									Reset
+								</Button>
+								<Button
+									size="sm"
+									onClick={() => {
+										setOpen(false);
+									}}
+								>
+									Done
+								</Button>
+							</div>
+						</div>
+					</TableFilter>
 
 					{/* Applied Filters Display */}
-					{(temperatureFilter || typeFilter) && (
+					{(queryState.type || queryState.temperature) && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
-							{temperatureFilter && (
+							{queryState.type && (
 								<>
-									<span>Status:</span>
+									<span>Type:</span>
 									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
-										{temperatureFilter}
+										{queryState.type.replace(/_/g, " ")}
 									</span>
 									<Button
 										variant="ghost"
 										size="sm"
 										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-									// onClick={() => setQueryState({ status: null })}
+										onClick={() => setQueryState({ type: null })}
 									>
 										<XIcon className="h-3 w-3" />
 									</Button>
 								</>
 							)}
-							{/* {queryState.role && (
-                <>
-                  <span>Role:</span>
-                  <span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
-                    {queryState.role.replace('_', ' ')}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setQueryState({ role: null })}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </>
-              )} */}
+							{queryState.temperature && (
+								<>
+									<span>Temp:</span>
+									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+										{queryState.temperature}
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+										onClick={() => setQueryState({ temperature: null })}
+									>
+										<XIcon className="h-3 w-3" />
+									</Button>
+								</>
+							)}
 						</div>
 					)}
 				</div>

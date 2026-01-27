@@ -3,7 +3,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
+import { createLoader, parseAsFloat, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
@@ -14,6 +14,8 @@ const loadSearchParams = createLoader(
 	{
 		...paginationSearchParams,
 		searchName: parseAsString,
+		type: parseAsString,
+		temperature: parseAsFloat,
 	},
 	{
 		urlKeys: {
@@ -23,17 +25,20 @@ const loadSearchParams = createLoader(
 )
 
 function Page({ searchParams }: PageProps) {
-	const query = use(loadSearchParams(searchParams));
+	const { searchName, type, temperature } = use(loadSearchParams(searchParams));
 	const { token } = use(getCookieData())!;
 	const queryClient = getQueryClient();
 	const { content, ...paginationMeta } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["locations", query],
+			queryKey: ["locations", searchName, type, temperature],
 			queryFn: async () => {
 				const response = await $fetch("@get/api/inventories/locations", {
 					auth: { type: "Bearer", token },
 					query: {
-						page: query.page ? query.page - 1 : 0,
+						page: 0,
+						search: searchName || "",
+						type: (type) || undefined,
+						temperature: (temperature) || undefined,
 					},
 					throw: true,
 				});

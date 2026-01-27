@@ -13,6 +13,8 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
+	search: parseAsString.withDefault(""),
+	status: parseAsString,
 	productSearch: parseAsString,
 	supplierSearch: parseAsString,
 }, {
@@ -38,6 +40,8 @@ export default function Page({ searchParams }: PageProps) {
 				query: {
 					page: query.page < 1 ? query.page : query.page - 1,
 					size: query.size,
+					search: query.search,
+					status: query.status as any,
 				},
 				throw: true,
 			})

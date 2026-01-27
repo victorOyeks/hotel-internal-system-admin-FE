@@ -181,26 +181,6 @@ export function StorageLocationPage({
 	locations: StorageLocationResponse[];
 	paginationMeta: Pagination;
 }) {
-	const [searchQuery, setSearchQuery] = useState("");
-	const [typeFilter, setTypeFilter] = useState<string>("all");
-	const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
-	const [isCreateOpen, setIsCreateOpen] = useState(false);
-	const [pagination, onPaginationChange] = usePaginationSearchParams()
-
-	const table = useReactTable({
-		data: locations,
-		columns: columnDefs,
-		manualPagination: true,
-		manualFiltering: true,
-		onPaginationChange,
-		pageCount: paginationMeta.totalPages,
-		state: {
-			pagination
-		},
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-	});
-
 	// Calculate stats
 	const activeCount = locations.filter((l) => l.active).length;
 	const temperatureControlledCount = locations.filter(
@@ -216,6 +196,22 @@ export function StorageLocationPage({
 	);
 	const avgOccupancy =
 		totalCapacity > 0 ? (totalItemsStored / totalCapacity) * 100 : 0;
+
+	const [pagination, onPaginationChange] = usePaginationSearchParams()
+
+	const table = useReactTable({
+		data: locations,
+		columns: columnDefs,
+		manualPagination: true,
+		manualFiltering: true,
+		onPaginationChange,
+		pageCount: paginationMeta.totalPages,
+		state: {
+			pagination
+		},
+		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+	});
 
 	return (
 		<div className="space-y-6 p-6">
@@ -254,15 +250,7 @@ export function StorageLocationPage({
 			/>
 
 			{/* Search and Filters */}
-			<LocationsToolbar
-				table={table}
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				typeFilter={typeFilter}
-				setTypeFilter={setTypeFilter}
-				temperatureFilter={temperatureFilter}
-				setTemperatureFilter={setTemperatureFilter}
-			/>
+			<LocationsToolbar table={table} />
 
 			{/* Locations Table */}
 			<LocationTable

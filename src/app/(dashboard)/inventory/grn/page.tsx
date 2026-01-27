@@ -13,15 +13,19 @@ export default function Page({
 	const { token } = use(getCookieData())!;
 	const queryClient = getQueryClient();
 
-	const { "supplier-search": supplierSearch, "location-search": locationSearch } =
+	const { "supplier-search": supplierSearch, "location-search": locationSearch, search, status, posted } =
 		use(searchParams);
 
 	const { content: grns } = use(
 		queryClient.fetchQuery({
-			queryKey: ["inventory-grns"],
+			queryKey: ["inventory-grns", search, status, posted],
 			queryFn: async ({ signal }) => {
 				const res = await $fetch("@get/api/inventories/grn", {
-					query: {},
+					query: {
+						search: (search as string) || "",
+						status: (status as any) || undefined,
+						posted: (posted as any) || undefined,
+					},
 					auth: {
 						type: "Bearer",
 						token: token,
