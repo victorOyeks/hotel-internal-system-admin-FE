@@ -122,19 +122,26 @@ const columnDefs = [
 								style: "percent",
 								maximumFractionDigits: 2,
 							}).format(
-								((location.totalProductsStored / location.totalCapacity) * 100),
+								location.totalCapacity > 0
+									? (location.totalProductsStored / location.totalCapacity)
+									: 0
 							)
 						}</span>
 					</div>
 					<div className="w-full bg-gray-200 rounded-full h-2">
 						<div
-							className={`h-2 rounded-full ${(location.totalProductsStored / location.totalCapacity) > 80
+							className={`h-2 rounded-full ${location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.8
 								? "bg-red-500"
-								: (location.totalProductsStored / location.totalCapacity) > 60
+								: location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.6
 									? "bg-orange-500"
 									: "bg-green-500"
 								}`}
-							style={{ width: `${(location.totalProductsStored / location.totalCapacity) * 100}%` }}
+							style={{
+								width: `${location.totalCapacity > 0
+									? (location.totalProductsStored / location.totalCapacity) * 100
+									: 0
+									}%`
+							}}
 						/>
 					</div>
 				</div>
@@ -203,9 +210,12 @@ export function StorageLocationPage({
 		(sum, l) => sum + (l.totalProductsStored || 0),
 		0,
 	);
+	const totalCapacity = locations.reduce(
+		(sum, l) => sum + (l.totalCapacity || 0),
+		0,
+	);
 	const avgOccupancy =
-		locations.reduce((sum, l) => sum + (l.totalCapacity || 0), 0) /
-		locations.length;
+		totalCapacity > 0 ? (totalItemsStored / totalCapacity) * 100 : 0;
 
 	return (
 		<div className="space-y-6 p-6">
@@ -219,7 +229,7 @@ export function StorageLocationPage({
 						Manage warehouse and storage facility information
 					</p>
 				</div>
-				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+				<Dialog>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" />
@@ -230,7 +240,7 @@ export function StorageLocationPage({
 						<DialogHeader>
 							<DialogTitle>Add Storage Location</DialogTitle>
 						</DialogHeader>
-						<CreateLocationForm onSuccess={() => setIsCreateOpen(false)} />
+						<CreateLocationForm />
 					</DialogContent>
 				</Dialog>
 			</div>

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { createStorageLocation } from "@/lib/actions";
+import { createStorageLocation, revalidateRoute } from "@/lib/actions";
 import {
     InventoryLocations,
 } from "@/lib/fetch";
@@ -110,6 +110,7 @@ export function CreateLocationForm({
             toast.success("Storage location created successfully");
             form.reset();
             onSuccess?.();
+            revalidateRoute("/dashboard/locations")
         },
         onError: (error) => {
             toast.error(error.message || "Failed to create storage location");
