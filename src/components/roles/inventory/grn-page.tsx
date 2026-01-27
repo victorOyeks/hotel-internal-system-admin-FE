@@ -27,6 +27,8 @@ import type {
 	InventoryGRNResponse,
 	InventoryGRNStatistics,
 	InventoryLocationResponse,
+	InventoryProduct,
+	InventorySupplierMini,
 	InventorySuppliers,
 } from "@/lib/fetch";
 
@@ -92,11 +94,13 @@ export function GRNPage({
 	statsData,
 	grnLocations,
 	suppliers,
+	products,
 }: {
 	grnsData: InventoryGRNResponse[];
 	statsData: InventoryGRNStatistics;
 	grnLocations: InventoryLocationResponse[];
-	suppliers: InventorySuppliers[];
+	suppliers: InventorySupplierMini[];
+	products: InventoryProduct[];
 }) {
 	const table = useReactTable({
 		columns: columnDefs,
@@ -137,6 +141,7 @@ export function GRNPage({
 						<CreateGRNForm
 							grnLocations={grnLocations}
 							suppliers={suppliers}
+							products={products}
 							onClose={() => setIsCreateOpen(false)}
 						/>
 					</DialogContent>

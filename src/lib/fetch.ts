@@ -549,6 +549,11 @@ export type InventorySuppliers = z.infer<
 >["data"]["content"][number];
 export type InventorySupplierItem = InventorySuppliers["products"][number];
 
+export type InventorySupplierMini = Pick<
+	z.infer<typeof InventorySupplier>,
+	"id" | "name" | "email" | "phone"
+>;
+
 const InventorySupplier = z.object({
 	id: z.string(),
 	name: z.string(),

@@ -5,9 +5,16 @@ import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import { use } from "react";
 
-function Page() {
+export default function Page({
+	searchParams,
+}: {
+	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
 	const { token } = use(getCookieData())!;
 	const queryClient = getQueryClient();
+
+	const { "supplier-search": supplierSearch, "location-search": locationSearch } =
+		use(searchParams);
 
 	const { content: grns } = use(
 		queryClient.fetchQuery({
@@ -30,10 +37,12 @@ function Page() {
 
 	const { content: inventoryLocs } = use(
 		queryClient.fetchQuery({
-			queryKey: ["inventory-locs"],
+			queryKey: ["inventory-locs", locationSearch],
 			queryFn: async ({ signal }) => {
 				const res = await $fetch("@get/api/inventories/locations", {
-					query: {},
+					query: {
+						search: (locationSearch as string) || "",
+					},
 					auth: {
 						type: "Bearer",
 						token: token,
@@ -65,12 +74,37 @@ function Page() {
 		}),
 	);
 
-	const { content: suppliers } = use(
+	const { data: suppliers } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["suppliers"],
+			queryKey: ["suppliers", supplierSearch],
 			queryFn: async ({ signal }) => {
-				const res = await $fetch("@get/api/inventories/suppliers", {
-					query: {},
+				const res = await $fetch("@get/api/inventories/suppliers/list", {
+					query: {
+						search: (supplierSearch as string) || "",
+					},
+					auth: {
+						type: "Bearer",
+						token,
+					},
+					signal,
+					throw: true,
+				});
+
+				return res;
+			},
+		}),
+	);
+
+	const { "product-search": productSearch } = use(searchParams);
+
+	const { content: products } = use(
+		queryClient.ensureQueryData({
+			queryKey: ["products", productSearch],
+			queryFn: async ({ signal }) => {
+				const res = await $fetch("@get/api/inventories/products", {
+					query: {
+						search: (productSearch as string) || "",
+					},
 					auth: {
 						type: "Bearer",
 						token,
@@ -110,9 +144,10 @@ function Page() {
 				grnsData={grns}
 				grnLocations={inventoryLocs}
 				suppliers={suppliers}
+				products={products}
 			/>
 		</BreadCrumbWrapper>
 	);
 }
 
-export default Page;
+

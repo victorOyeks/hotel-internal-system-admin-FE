@@ -4,7 +4,16 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2Icon, PlusIcon, TrashIcon } from "lucide-react";
+import {
+	CalendarIcon,
+	CheckIcon,
+	ChevronsUpDownIcon,
+	Loader2Icon,
+	PlusIcon,
+	TrashIcon,
+} from "lucide-react";
+import { parseAsString, useQueryState } from "nuqs";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,14 +24,16 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Popover,
@@ -46,7 +57,8 @@ import { addGRNItem } from "@/lib/inventory-actions";
 import { revalidateRoute } from "@/lib/actions";
 import type {
 	InventoryLocationResponse,
-	InventorySuppliers,
+	InventoryProduct,
+	InventorySupplierMini,
 } from "@/lib/fetch";
 
 // --- Schema Definition ---
@@ -95,15 +107,226 @@ const grnSchema = z.object({
 
 type GrnFormValues = z.infer<typeof grnSchema>;
 
+
+
+// --- Components ---
+
+function SupplierCombobox({
+	value,
+	onValueChange,
+	suppliers,
+}: {
+	value: string;
+	onValueChange: (value: string) => void;
+	suppliers: InventorySupplierMini[];
+}) {
+	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"supplier-search",
+		parseAsString.withDefault(""),
+	);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between h-8 text-xs truncate"
+				>
+					{value
+						? suppliers.find((supplier) => supplier.id === value)?.name || value
+						: "Select supplier..."}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search supplier..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+						className="h-8 text-xs"
+					/>
+					<CommandList>
+						<CommandEmpty>No supplier found.</CommandEmpty>
+						<CommandGroup>
+							{suppliers.map((supplier) => (
+								<CommandItem
+									key={supplier.id}
+									value={supplier.id}
+									onSelect={(currentValue) => {
+										onValueChange(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+									className="text-xs"
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === supplier.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{supplier.name}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function LocationCombobox({
+	value,
+	onValueChange,
+	locations,
+}: {
+	value: string;
+	onValueChange: (value: string) => void;
+	locations: InventoryLocationResponse[];
+}) {
+	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"location-search",
+		parseAsString.withDefault(""),
+	);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between h-8 text-xs"
+				>
+					{value
+						? locations.find((location) => location.id === value)
+							?.locationName || value
+						: "Select location..."}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search location..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+						className="h-8 text-xs"
+					/>
+					<CommandList>
+						<CommandEmpty>No location found.</CommandEmpty>
+						<CommandGroup>
+							{locations.map((location) => (
+								<CommandItem
+									key={location.id}
+									value={location.id}
+									onSelect={(currentValue) => {
+										onValueChange(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+									className="text-xs"
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === location.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{location.locationName}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function ProductCombobox({
+	value,
+	onValueChange,
+	products,
+}: {
+	value: string;
+	onValueChange: (value: string) => void;
+	products: InventoryProduct[];
+}) {
+	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"product-search",
+		parseAsString.withDefault(""),
+	);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between h-7 text-xs truncate"
+				>
+					{value
+						? products.find((product) => product.id === value)?.name || value
+						: "Select product..."}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search product..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+						className="h-8 text-xs"
+					/>
+					<CommandList>
+						<CommandEmpty>No product found.</CommandEmpty>
+						<CommandGroup>
+							{products.map((product) => (
+								<CommandItem
+									key={product.id}
+									value={product.id}
+									onSelect={(currentValue) => {
+										onValueChange(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+									className="text-xs"
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === product.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{product.name}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 // --- Component ---
 
 export function CreateGRNForm({
 	onClose,
 	grnLocations,
 	suppliers,
+	products,
 }: {
 	grnLocations: InventoryLocationResponse[];
-	suppliers: InventorySuppliers[];
+	suppliers: InventorySupplierMini[];
+	products: InventoryProduct[];
 	onClose: () => void;
 }) {
 	const form = useForm({
@@ -159,23 +382,13 @@ export function CreateGRNForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel className="text-xs">Supplier *</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger className="h-8 text-xs">
-											<SelectValue placeholder="Select supplier" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										{suppliers.map((s) => (
-											<SelectItem key={s.id} value={s.id} className="text-xs">
-												{s.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								<FormControl>
+									<SupplierCombobox
+										suppliers={suppliers}
+										value={field.value}
+										onValueChange={field.onChange}
+									/>
+								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -205,23 +418,13 @@ export function CreateGRNForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel className="text-xs">Storage Loc *</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger className="h-8 text-xs">
-											<SelectValue placeholder="Select location" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										{grnLocations.map((l) => (
-											<SelectItem key={l.id} value={l.id} className="text-xs">
-												{l.locationName}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+								<FormControl>
+									<LocationCombobox
+										locations={grnLocations}
+										value={field.value}
+										onValueChange={field.onChange}
+									/>
+								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -384,10 +587,10 @@ export function CreateGRNForm({
 												control={form.control}
 												name={`items.${index}.productId`}
 												render={({ field }) => (
-													<Input
-														{...field}
-														className="h-7 text-xs"
-														placeholder="Prod ID"
+													<ProductCombobox
+														products={products}
+														value={field.value}
+														onValueChange={field.onChange}
 													/>
 												)}
 											/>
