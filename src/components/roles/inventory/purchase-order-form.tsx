@@ -47,7 +47,7 @@ import {
 
 const purchaseOrderItemSchema = z.object({
 	productId: z.string().nonempty("Product is required"),
-	quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+	quantityOrdered: z.coerce.number().min(1, "Quantity must be at least 1"),
 	unitPrice: z.coerce.number().min(0, "Unit price must be positive"),
 	unit: z.string().nonempty("Unit is required"),
 });
@@ -169,7 +169,7 @@ export function CreatePOForm({
 				const product = products.find((p) => p.id === id);
 				append({
 					productId: id,
-					quantity: 1,
+					quantityOrdered: 1,
 					unitPrice: product?.price || 0,
 					unit: product?.unit || "pcs", // Default unit if not available
 				});
@@ -312,7 +312,7 @@ export function CreatePOForm({
 										<div className="col-span-3">
 											<FormField
 												control={form.control}
-												name={`items.${index}.quantity`}
+												name={`items.${index}.quantityOrdered`}
 												render={() => (
 													<FormItem>
 														<FormLabel className="text-xs">Quantity</FormLabel>
@@ -321,7 +321,7 @@ export function CreatePOForm({
 																type="number"
 																min="1"
 																className="h-8"
-																{...form.register(`items.${index}.quantity`, {
+																{...form.register(`items.${index}.quantityOrdered`, {
 																	valueAsNumber: true,
 																})}
 
