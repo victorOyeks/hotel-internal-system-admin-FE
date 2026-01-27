@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -12,8 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { TableFilter } from "@/components/shared/table-filter";
-import { cn } from "@/lib/utils";
-import { SearchIcon, X } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
 import { useMemo, useCallback } from "react";
 
