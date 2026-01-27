@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -88,6 +88,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
 import { addProduct } from "@/lib/inventory-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 const categories = [
 	{ value: "FOOD", label: "Food" },
@@ -385,9 +386,9 @@ export function ProductCatalogPage({
 											{header.isPlaceholder
 												? null
 												: flexRender(
-														header.column.columnDef.header,
-														header.getContext(),
-													)}
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
 										</TableHead>
 									);
 								})}
@@ -443,21 +444,69 @@ export function ProductCatalogPage({
 // Add Product Form Component
 function AddProductForm({ onClose }: { onClose: () => void }) {
 	const { mutate, isPending } = useMutation({
+		mutationKey: ["add-product-inventory"],
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
 			const response = await addProduct(payload);
 
 			if (!response.success) {
 				throw Error(response.error);
 			}
+
+			return response.data.message
 		},
-		onSuccess: () => {
-			toast.success("Product created successfully");
+		onSuccess: async (message) => {
+			toast.success(message);
+			await revalidateRoute("/dashboard/products")
 			onClose();
 		},
 		onError: (error) => {
 			toast.error(error.message);
 		},
 	});
+
+	const categories = useMemo(() => {
+		const c = [
+			"FOOD_FRESH",
+			"FOOD_FROZEN",
+			"FOOD_DRY_GOODS",
+			"BEVERAGES_ALCOHOLIC",
+			"BEVERAGES_NON_ALCOHOLIC",
+			"BEVERAGES_HOT",
+			"CLEANING_SUPPLIES",
+			"LAUNDRY_SUPPLIES",
+			"GUEST_AMENITIES",
+			"LINENS_TOWELS",
+			"MAINTENANCE_SUPPLIES",
+			"ELECTRICAL_SUPPLIES",
+			"PLUMBING_SUPPLIES",
+			"HVAC_SUPPLIES",
+			"STATIONERY",
+			"OFFICE_EQUIPMENT",
+			"PRINTING_SUPPLIES",
+			"MINIBAR_ITEMS",
+			"ROOM_SUPPLIES",
+			"WELCOME_ITEMS",
+			"KITCHEN_EQUIPMENT",
+			"TABLEWARE",
+			"DISPOSABLES",
+			"UNIFORMS",
+			"SAFETY_EQUIPMENT",
+			"MARKETING_MATERIALS",
+			"GENERAL_SUPPLIES",
+			"OTHER",
+		]
+
+		return c.reduce((p, c) => {
+			return [...p, { value: c, label: c.replaceAll("_", " ").toLocaleLowerCase() }]
+		}, [] as { value: string; label: string }[])
+	}, [])
+
+	const units = useMemo(() => {
+		const u = ["PCS", "EACH", "SET", "UNIT", "IN", "BOTTLE", "G", "BAG", "CM", "BOX", "L", "M", "FT", "CASE", "GAL", "TON", "LB", "DOZEN", "PACK", "PAIR", "KG", "ROLL", "ML", "OZ", "CAN", "CARTON"]
+		return u.reduce((p, c) => {
+			return [...p, { value: c, label: c }]
+		}, [] as { value: string; label: string }[])
+	}, [])
 
 	const form = useForm({
 		resolver: zodResolver(ApiInputInventoryProduct),
@@ -471,6 +520,7 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 			baseUnit: "KG",
 		},
 	});
+
 
 	function onSubmit(values: z.infer<typeof ApiInputInventoryProduct>) {
 		mutate(values);
@@ -603,13 +653,13 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 												defaultValue={field.value}
 											>
 												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select category" />
+													<SelectTrigger className="capitalize w-full">
+														<SelectValue placeholder="Select category" className="capitalize" />
 													</SelectTrigger>
 												</FormControl>
-												<SelectContent>
+												<SelectContent className="w-full">
 													{categories.map((cat) => (
-														<SelectItem key={cat.value} value={cat.value}>
+														<SelectItem key={cat.value} value={cat.value} className="capitalize">
 															{cat.label}
 														</SelectItem>
 													))}
@@ -680,11 +730,23 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 										<FormItem>
 											<FormLabel>Purchase Unit</FormLabel>
 											<FormControl>
-												<Input
-													placeholder="e.g., box"
-													{...field}
-													value={field.value || ""}
-												/>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger className="capitalize w-full">
+															<SelectValue placeholder="Select unit" className="capitalize" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent className="w-full">
+														{units.map((unit) => (
+															<SelectItem key={unit.value} value={unit.value} className="capitalize">
+																{unit.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
 											</FormControl>
 											<FormMessage />
 										</FormItem>

@@ -1107,7 +1107,7 @@ export const ApiInputInventoryProduct = z.object({
 	height: z.number().min(0).optional(),
 	preferredSupplierId: z.string().optional(),
 	supplierPartNumber: z.string().optional(),
-	imageUrl: z.string().url().optional().or(z.literal("")),
+	imageUrl: z.url().optional().or(z.literal("")),
 	notes: z.string().optional(),
 	internalNotes: z.string().optional(),
 	tags: z.string().optional(),

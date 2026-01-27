@@ -58,6 +58,13 @@ export async function login(payload: {
 }
 
 export async function logout(): Promise<void> {
+	const refreshToken = (await cookies()).get(refreshTokenKey)?.value;
+	await $fetch("@post/api/auth/logout", {
+		body: {
+			refreshToken,
+		},
+		throw: true,
+	});
 	await deleteSession();
 	// Note: redirect() throws a NEXT_REDIRECT error, which Next.js handles.
 	// We don't wrap this in try/catch as we want that behavior.

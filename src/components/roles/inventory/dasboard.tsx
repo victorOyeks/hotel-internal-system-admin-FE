@@ -57,7 +57,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
 	Command,
 	CommandInput,
@@ -67,6 +67,7 @@ import {
 	CommandItem,
 } from "@/components/ui/command";
 import { useQueryState, parseAsString } from "nuqs";
+import { formatDate } from "date-fns";
 
 const successDialogAtom = atom({
 	show: false,
@@ -682,7 +683,7 @@ function ProductListCard({
 								</div>
 								<div className="text-right">
 									<p className="text-sm font-semibold text-gray-900">
-										${product.value.toLocaleString()}
+										${product.value}
 									</p>
 								</div>
 							</div>
@@ -745,28 +746,28 @@ export function InventoryDashboard({
 					<StatCard
 						icon={<ArchiveIcon className="size-5" />}
 						label="Total Value"
-						value={`$${dashboardData.totalInventoryValue.toLocaleString()}`}
+						value={formatCurrency(dashboardData.totalInventoryValue)}
 						bgColor="bg-purple-600/10"
 						iconColor="text-purple-600"
 					/>
 					<StatCard
 						icon={<PackageCheckIcon className="size-5" />}
 						label="Stock on Hand"
-						value={dashboardData.totalStockOnHand.toLocaleString()}
+						value={dashboardData.totalStockOnHand}
 						bgColor="bg-indigo-600/10"
 						iconColor="text-indigo-600"
 					/>
 					<StatCard
 						icon={<ClipboardListIcon className="size-5" />}
 						label="Reserved Stock"
-						value={dashboardData.totalReservedStock.toLocaleString()}
+						value={dashboardData.totalReservedStock}
 						bgColor="bg-orange-600/10"
 						iconColor="text-orange-600"
 					/>
 					<StatCard
 						icon={<CheckIcon className="size-5" />}
 						label="Available Stock"
-						value={dashboardData.totalAvailableStock.toLocaleString()}
+						value={dashboardData.totalAvailableStock}
 						bgColor="bg-green-600/10"
 						iconColor="text-green-600"
 					/>
@@ -794,7 +795,7 @@ export function InventoryDashboard({
 					<StatCard
 						icon={<TruckIcon className="size-5" />}
 						label="Total PO Value"
-						value={`$${dashboardData.totalPurchaseOrderValue.toLocaleString()}`}
+						value={`${formatCurrency(dashboardData.totalPurchaseOrderValue)}`}
 						bgColor="bg-blue-600/10"
 						iconColor="text-blue-600"
 					/>
@@ -815,7 +816,7 @@ export function InventoryDashboard({
 					<StatCard
 						icon={<FileTextIcon className="size-5" />}
 						label="Today's GRN Value"
-						value={`$${dashboardData.todayGRNsValue.toLocaleString()}`}
+						value={`${formatCurrency(dashboardData.todayGRNsValue)}`}
 						bgColor="bg-purple-600/10"
 						iconColor="text-purple-600"
 					/>
@@ -939,7 +940,7 @@ export function InventoryDashboard({
 											</p>
 										</div>
 										<div className="text-xs text-gray-400 whitespace-nowrap">
-											{new Date(activity.activityDate).toLocaleString()}
+											{formatDate(new Date(activity.activityDate), "dd/MM/yyyy")}
 										</div>
 									</div>
 								</div>
