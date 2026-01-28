@@ -2627,17 +2627,13 @@ export const schema = createSchema({
 	"@get/api/inventories/products": {
 		query: z
 			.object({
-				status: z.enum([
-					"ACTIVE",
-					"INACTIVE",
-					"DISCONTINUED",
-					"DRAFT",
-					"ARCHIVED",
-				]),
-				category: InventoryProductsCategory,
-				search: z.string(),
-				trackBatches: z.boolean(),
-				trackExpiry: z.boolean(),
+				status: z
+					.enum(["ACTIVE", "INACTIVE", "DISCONTINUED", "DRAFT", "ARCHIVED"])
+					.nullable(),
+				category: InventoryProductsCategory.nullable(),
+				search: z.string().nullable(),
+				trackBatches: z.boolean().nullable(),
+				trackExpiry: z.boolean().nullable(),
 				page: z.coerce.number().default(0),
 				size: z.coerce.number().default(10),
 			})
@@ -3851,6 +3847,10 @@ export const schema = createSchema({
 				trackExpiry: z.string().optional().nullable(),
 			})
 			.partial(),
+		output: ApiResponseObject,
+	},
+	"@delete/api/inventories/products/:productId": {
+		params: z.object({ productId: z.string() }),
 		output: ApiResponseObject,
 	},
 	"@get/api/inventories/products/:productId": {

@@ -4,6 +4,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
+import { productSearchParams } from "@/lib/search-params.inventory";
 import { createLoader, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
@@ -13,6 +14,7 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
+	...productSearchParams,
 });
 
 function Page({ searchParams }: PageProps) {

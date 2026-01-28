@@ -87,17 +87,8 @@ import {
 } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
-import { addProduct } from "@/lib/inventory-actions";
+import { addProduct, deleteProduct, editProduct } from "@/lib/inventory-actions";
 import { revalidateRoute } from "@/lib/actions";
-
-const categories = [
-	{ value: "FOOD", label: "Food" },
-	{ value: "BEVERAGE", label: "Beverage" },
-	{ value: "SUPPLIES", label: "Supplies" },
-	{ value: "EQUIPMENT", label: "Equipment" },
-	{ value: "LINEN", label: "Linen" },
-	{ value: "AMENITIES", label: "Amenities" },
-];
 
 function StatCard({
 	icon,
@@ -319,62 +310,9 @@ export function ProductCatalogPage({
 				/>
 			</div>
 
-			{/* Filters and Search */}
-			{/* <Card>
-				<CardHeader>
-					<CardTitle>Search & Filter Products</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="flex gap-4 flex-wrap">
-						<div className="flex-1 min-w-[200px]">
-							<div className="relative">
-								<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-								<Input
-									placeholder="Search by name, SKU, or description..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
-						</div>
-
-						<Select
-							value={selectedCategory}
-							onValueChange={setSelectedCategory}
-						>
-							<SelectTrigger className="w-[180px]">
-								<FilterIcon className="w-4 h-4 mr-2" />
-								<SelectValue placeholder="Category" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Categories</SelectItem>
-								{categories.map((cat) => (
-									<SelectItem key={cat.value} value={cat.value}>
-										{cat.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
-						<Select value={selectedStatus} onValueChange={setSelectedStatus}>
-							<SelectTrigger className="w-[180px]">
-								<SelectValue placeholder="Status" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Status</SelectItem>
-								<SelectItem value="ACTIVE">Active</SelectItem>
-								<SelectItem value="INACTIVE">Inactive</SelectItem>
-								<SelectItem value="DISCONTINUED">Discontinued</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-				</CardContent>
-			</Card> */}
-
 			<ProductsToolbar table={table} />
 
 			{/* Products Table */}
-
 			<div className="overflow-hidden rounded-md border bg-card">
 				<Table>
 					<TableHeader className="bg-gray-100">
@@ -1166,6 +1104,47 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 	);
 }
 
+// Delete Product Action Component
+function DeleteProductAction({
+	productId,
+	onClose,
+}: {
+	productId: string;
+	onClose: () => void;
+}) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async () => {
+			const response = await deleteProduct({ productId });
+			if (!response.success) {
+				throw Error(response.error);
+			}
+			return response.data;
+		},
+		onSuccess: async () => {
+			await revalidateRoute("/dashboard/products");
+			toast.success("Product deleted successfully");
+			onClose();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	return (
+		<AlertDialogAction
+			onClick={(e) => {
+				e.preventDefault();
+				mutate();
+			}}
+			disabled={isPending}
+			className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+		>
+			{isPending ? "Deleting..." : "Delete"}
+		</AlertDialogAction>
+	);
+}
+
+
 // Edit Product Form Component
 function EditProductForm({
 	product,
@@ -1176,15 +1155,18 @@ function EditProductForm({
 }) {
 	const { mutate, isPending } = useMutation({
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
-			// TODO: Replace with actual update endpoint
-			const response = await addProduct(payload);
+			const response = await editProduct(product.id, payload);
 
 			if (!response.success) {
 				throw Error(response.error);
 			}
+
+			//@ts-ignore
+			return response.data.message;
 		},
 		onSuccess: () => {
 			toast.success("Product updated successfully");
+			revalidateRoute("/dashboard/products")
 			onClose();
 		},
 		onError: (error) => {
@@ -1321,39 +1303,4 @@ function EditProductForm({
 			</form>
 		</Form>
 	);
-}
 
-// Delete Product Action Component
-function DeleteProductAction({
-	productId,
-	onClose,
-}: {
-	productId: string;
-	onClose: () => void;
-}) {
-	const { mutate, isPending } = useMutation({
-		mutationFn: async () => {
-			// TODO: Replace with actual delete endpoint
-			// For now, simulate a delete operation
-			console.log("Deleting product", productId);
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-		},
-		onSuccess: () => {
-			toast.success("Product deleted successfully");
-			onClose();
-		},
-		onError: (_error) => {
-			toast.error("Failed to delete product");
-		},
-	});
-
-	return (
-		<AlertDialogAction
-			onClick={() => mutate()}
-			disabled={isPending}
-			className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-		>
-			{isPending ? "Deleting..." : "Delete"}
-		</AlertDialogAction>
-	);
-}

@@ -94,6 +94,62 @@ export async function addProduct(
 	}
 }
 
+export async function editProduct(
+	productId: string,
+	payload: z.infer<typeof ApiInputInventoryProduct>,
+): ServerActionResponseFromEndpoint<"@put/api/inventories/products/:productId"> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@put/api/inventories/products/:productId",
+			{
+				params: { productId },
+				body: payload,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit product",
+		};
+	}
+}
+
+export async function deleteProduct(params: {
+	productId: string;
+}): ServerActionResponseFromEndpoint<"@delete/api/inventories/products/:productId"> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/products/:productId",
+			{
+				params,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete product",
+		};
+	}
+}
+
 export async function addGRNItem(payload: unknown) {
 	try {
 		const sessionData = await verifySession();
