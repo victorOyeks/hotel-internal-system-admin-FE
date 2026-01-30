@@ -1303,4 +1303,4 @@ function EditProductForm({
 			</form>
 		</Form>
 	);
-
+}

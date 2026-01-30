@@ -49,6 +49,8 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}));
 
+	console.log(orders)
+
 	const stats = use(qc.ensureQueryData({
 		queryKey: ["purchase-orders-stats"],
 		queryFn: async () => {
@@ -80,8 +82,6 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}));
 
-	console.log(suppliers)
-
 	const products = use(qc.ensureQueryData({
 		queryKey: ["products", query],
 		queryFn: async () => {
@@ -98,7 +98,8 @@ export default function Page({ searchParams }: PageProps) {
 			return res.data;
 		},
 	}));
-	console.log({ stats })
+
+
 	return (
 		<BreadCrumbWrapper
 			breadcrumbs={{

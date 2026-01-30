@@ -4,6 +4,7 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,23 +19,25 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 import { CheckCircleIcon, XCircleIcon } from "lucide-react";
-import type { InventoryPurchaseOrderResponse } from "@/lib/fetch";
+import type { PurchaseOrderResponse } from "@/lib/fetch";
+import type { PropsWithChildren } from "react";
+import { formatDate } from "date-fns";
 
-interface PurchaseOrderDetailsProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	order: InventoryPurchaseOrderResponse;
+interface PurchaseOrderDetailsProps extends PropsWithChildren {
+	order: PurchaseOrderResponse;
 }
 
 export function PurchaseOrderDetails({
-	open,
-	onOpenChange,
 	order,
+	children,
 }: PurchaseOrderDetailsProps) {
 	if (!order) return null;
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog>
+			<DialogTrigger asChild>
+				{children}
+			</DialogTrigger>
 			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{order.poNumber}</DialogTitle>
@@ -73,12 +76,13 @@ export function PurchaseOrderDetails({
 								{new Date(order.orderDate).toLocaleDateString()}
 							</p>
 						</div>
-						<div>
-							<p className="text-sm text-muted-foreground">Expected Delivery</p>
-							<p className="font-semibold">
-								{new Date(order.expectedDeliveryDate).toLocaleDateString()}
-							</p>
-						</div>
+						{order.expectedDeliveryDate &&
+							<div>
+								<p className="text-sm text-muted-foreground">Expected Delivery</p>
+								<p className="font-semibold">
+									{new Date(order.expectedDeliveryDate).toLocaleDateString()}
+								</p>
+							</div>}
 						<div>
 							<p className="text-sm text-muted-foreground">Payment Terms</p>
 							<p className="font-semibold">{order.paymentTerms || "N/A"}</p>
@@ -157,10 +161,10 @@ export function PurchaseOrderDetails({
 					{order.approvedBy && (
 						<div className="bg-muted/50 p-4 rounded-lg">
 							<p className="text-sm text-muted-foreground">Approved By</p>
-							<p className="font-semibold">{order.approvedBy}</p>
+							<p className="font-semibold">{order.approvedBy || "N/A"}</p>
 							<p className="text-xs text-muted-foreground">
-								{order.approvedAt &&
-									new Date(order.approvedAt).toLocaleString()}
+								{order.approvalDate &&
+									formatDate(new Date(order.approvalDate), "dd-MM-yyyy")}
 							</p>
 						</div>
 					)}
