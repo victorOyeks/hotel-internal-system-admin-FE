@@ -83,16 +83,17 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}));
 
-	const products = use(qc.ensureQueryData({
+	const { content: products } = use(qc.ensureQueryData({
 		queryKey: ["products", query],
 		queryFn: async () => {
-			const res = await $fetch("@get/api/inventories/products/list", {
+			const res = await $fetch("@get/api/inventories/products", {
 				auth: {
 					token,
 					type: "Bearer"
 				},
 				query: {
-					search: query.productSearch
+					search: query.productSearch,
+					size: 50
 				},
 				throw: true,
 			})

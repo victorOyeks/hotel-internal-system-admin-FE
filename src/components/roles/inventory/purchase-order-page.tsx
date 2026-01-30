@@ -28,7 +28,7 @@ import type {
 	PurchaseOrderResponse,
 	InventoryPurchaseOrderStatistics,
 	InventorySuppliers,
-	InventoryProduct,
+	InventoryProductResponse,
 } from "@/lib/fetch";
 import { PurchaseOrderTable } from "./purchase-order-table";
 import { PurchaseOrderToolbar } from "./purchase-order-filters";
@@ -160,7 +160,7 @@ interface PurchaseOrderPageProps {
 	stats: InventoryPurchaseOrderStatistics;
 	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" |
 		"phone">[];
-	products: InventoryProduct[];
+	products: InventoryProductResponse[];
 }
 
 export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
