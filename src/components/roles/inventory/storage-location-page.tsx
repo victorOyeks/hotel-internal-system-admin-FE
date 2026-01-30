@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,11 +9,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { ThermometerIcon, DropletIcon, MoreVerticalIcon, PlusIcon } from "lucide-react";
+import { ThermometerIcon, DropletIcon, PlusIcon } from "lucide-react";
 import { StatSection } from "./locations";
 import {
 	LocationsToolbar,
-	type LocationType,
 } from "./locations-filters";
 import {
 	createColumnHelper,
@@ -24,7 +22,6 @@ import {
 } from "@tanstack/react-table";
 import { LocationDetails } from "./location-details";
 import type { Pagination, StorageLocationResponse } from "@/lib/fetch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LocationTable } from "./location-table";
 import { CreateLocationForm } from "./create-location-form";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";

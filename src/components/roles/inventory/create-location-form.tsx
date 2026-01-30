@@ -37,14 +37,14 @@ import { z } from "zod";
 // Let's try to reconstruct it to match the form needs.
 
 const formSchema = z.object({
-    locationCode: z.string().min(1, "Location Code is required"),
-    locationName: z.string().min(1, "Location Name is required"),
+    locationCode: z.string().min(1, "Location Code is required").max(50, "Max 50 characters"),
+    locationName: z.string().min(1, "Location Name is required").max(200, "Max 200 characters"),
     locationType: InventoryLocations,
-    description: z.string().optional(),
-    building: z.string().optional(),
-    floor: z.string().optional(),
-    room: z.string().optional(),
-    physicalAddress: z.string().optional(),
+    description: z.string().max(500, "Max 500 characters").optional(),
+    building: z.string().max(200, "Max 200 characters").optional(),
+    floor: z.string().max(100, "Max 100 characters").optional(),
+    room: z.string().max(100, "Max 100 characters").optional(),
+    physicalAddress: z.string().max(500, "Max 500 characters").optional(),
     totalCapacity: z.coerce.number().optional(),
     capacityUnit: z.string().optional(),
     temperatureControlled: z.boolean().default(false),
@@ -53,15 +53,15 @@ const formSchema = z.object({
     humidityControlled: z.boolean().default(false),
     minHumidity: z.coerce.number().optional(),
     maxHumidity: z.coerce.number().optional(),
-    accessRestrictions: z.string().optional(),
-    managerUserId: z.string().optional(),
-    contactPerson: z.string().optional(),
-    contactPhone: z.string().optional(),
+    accessRestrictions: z.string().max(200, "Max 200 characters").optional(),
+    managerUserId: z.string().max(200).optional(),
+    contactPerson: z.string().max(200, "Max 200 characters").optional(),
+    contactPhone: z.string().max(50, "Max 50 characters").optional(),
     isPrimary: z.boolean().default(false),
     allowNegativeStock: z.boolean().default(false),
-    operatingHours: z.string().optional(),
-    specialInstructions: z.string().optional(),
-    notes: z.string().optional(),
+    operatingHours: z.string().max(1000, "Max 1000 characters").optional(),
+    specialInstructions: z.string().max(1000, "Max 1000 characters").optional(),
+    notes: z.string().max(1000, "Max 1000 characters").optional(),
 });
 
 export function CreateLocationForm({
@@ -160,14 +160,14 @@ export function CreateLocationForm({
                             control={form.control}
                             name="locationType"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="col-span-full">
                                     <FormLabel>Location Type *</FormLabel>
                                     <Select
                                         onValueChange={field.onChange}
                                         defaultValue={field.value}
                                     >
                                         <FormControl>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
                                         </FormControl>
@@ -203,6 +203,53 @@ export function CreateLocationForm({
                                 )}
                             />
                         </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Configuration</h3>
+                    <div className="flex flex-row gap-4">
+                        <FormField
+                            control={form.control}
+                            name="isPrimary"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 flex-1">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Primary Location</FormLabel>
+                                        <p className="text-sm text-muted-foreground">
+                                            Mark this as the main storage location
+                                        </p>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="allowNegativeStock"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 flex-1">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Allow Negative Stock</FormLabel>
+                                        <p className="text-sm text-muted-foreground">
+                                            Allow stock level to go below zero
+                                        </p>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
                     </div>
                 </div>
 
@@ -262,7 +309,7 @@ export function CreateLocationForm({
                                     <FormItem>
                                         <FormLabel>Physical Address</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Full physical address" {...field} />
+                                            <Textarea rows={2} className="resize-none" placeholder="Full physical address" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -505,6 +552,23 @@ export function CreateLocationForm({
                                         <Textarea
                                             placeholder="Special handling, safety protocols..."
                                             rows={3}
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Internal Notes</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Internal notes about this location..."
+                                            rows={2}
                                             {...field}
                                         />
                                     </FormControl>
