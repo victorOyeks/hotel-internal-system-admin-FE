@@ -361,7 +361,7 @@ const suppliesPageColumns = [
 										row.products.map((p) => (
 											<span
 												key={p.id}
-												className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-xs"
+												className="px-2 py-1 bg-green-100 text-green-800 rounded-md text-xs"
 											>
 												{p.name}
 											</span>
