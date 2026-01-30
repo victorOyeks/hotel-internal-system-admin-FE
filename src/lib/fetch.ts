@@ -1590,27 +1590,6 @@ const CreateGRNRequest = z.object({
 
 export type CreateGRNRequest = z.infer<typeof CreateGRNRequest>;
 
-const UpdateGRNRequest = z.object({
-	supplierInvoiceNumber: z.string().optional(),
-	supplierInvoiceDate: z.string().optional(),
-	supplierDeliveryNote: z.string().optional(),
-	receiptDate: z.string(),
-	receiptTime: z.string().optional(),
-	deliveredBy: z.string().optional(),
-	vehicleNumber: z.string().optional(),
-	inspectionRequired: z.boolean().optional(),
-	inspectionDate: z.string().optional(),
-	inspectedBy: z.string().optional(),
-	inspectionResult: z.string().optional(),
-	inspectionNotes: z.string().optional(),
-	items: z.array(GRNItemRequest).min(1),
-	notes: z.string().optional(),
-	discrepancies: z.string().optional(),
-	packagingCondition: z.string().optional(),
-});
-
-export type UpdateGRNRequest = z.infer<typeof UpdateGRNRequest>;
-
 const GoodsReceiptNoteResponse = z.object({
 	id: z.string(),
 	customId: z.string(),
@@ -1665,6 +1644,27 @@ const ApiResponseCustomPageGoodsReceiptNoteResponse = ApiResponseObject.extend({
 const ApiResponseGoodsReceiptNoteResponse = ApiResponseObject.extend({
 	data: GoodsReceiptNoteResponse,
 });
+
+export const UpdateGRNRequest = z.object({
+	supplierInvoiceNumber: z.string().max(100).optional(),
+	supplierInvoiceDate: z.string().date().optional(),
+	supplierDeliveryNote: z.string().max(100).optional(),
+	receiptDate: z.string().date(),
+	receiptTime: z.string().datetime().optional(),
+	deliveredBy: z.string().max(200).optional(),
+	vehicleNumber: z.string().max(100).optional(),
+	inspectionRequired: z.boolean().optional(),
+	inspectionDate: z.string().datetime().optional(),
+	inspectedBy: z.string().max(200).optional(),
+	inspectionResult: z.string().max(100).optional(),
+	inspectionNotes: z.string().max(2000).optional(),
+	items: z.array(GRNItemRequest).min(1),
+	notes: z.string().max(2000).optional(),
+	discrepancies: z.string().max(1000).optional(),
+	packagingCondition: z.string().max(500).optional(),
+});
+
+export type UpdateGRNRequest = z.infer<typeof UpdateGRNRequest>;
 
 // --- Stock Take Schemas ---
 
@@ -2099,6 +2099,17 @@ const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
 		}),
 	}),
 });
+
+const PurchaseOrderListItem = PurchaseOrderResponse.pick({
+	id: true,
+	poNumber: true,
+	supplierName: true,
+	status: true,
+	orderDate: true,
+	expectedDeliveryDate: true,
+});
+
+export type PurchaseOrderListItem = z.infer<typeof PurchaseOrderListItem>;
 
 // --- Stock Movement Schemas ---
 
@@ -3361,7 +3372,8 @@ export const schema = createSchema({
 			}),
 		}),
 	},
-	"@put/api/hotels/rentals/items/:itemId": {
+
+	"@get/api/hotels/rentals/items/:itemId": {
 		params: z.object({ itemId: z.string() }),
 		output: ApiResponseObject.extend({
 			data: z.object({
@@ -3758,10 +3770,6 @@ export const schema = createSchema({
 		params: z.object({ category: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@get/api/hotels/rentals/items/:itemId": {
-		params: z.object({ itemId: z.string() }),
-		output: ApiResponseObject,
-	},
 	"@get/api/hotels/rentals/orders/booking/:bookingId": {
 		params: z.object({ bookingId: z.string() }),
 		output: ApiResponseObject,
@@ -3888,7 +3896,9 @@ export const schema = createSchema({
 	},
 	"@get/api/inventories/purchase-orders/list": {
 		query: z.object({ search: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: PurchaseOrderListItem.array(),
+		}),
 	},
 	"@get/api/inventories/purchase-orders/:poId": {
 		params: z.object({ poId: z.string() }),

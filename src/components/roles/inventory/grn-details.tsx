@@ -37,12 +37,10 @@ import { revalidateRoute } from "@/lib/actions";
 import { formatCurrency } from "@/lib/utils";
 
 interface GRNDetailsProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
 	grn: InventoryGRNResponse | null;
 }
 
-export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
+export function GRNDetails({ grn }: GRNDetailsProps) {
 	const { mutate: postToStock, isPending } = useMutation({
 		mutationFn: async (grnId: string) => {
 			const response = await postGRNToStock(grnId);
@@ -54,7 +52,6 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 		onSuccess: async () => {
 			toast.success("GRN posted to stock successfully");
 			await revalidateRoute("/dashboard/grn");
-			onOpenChange(false);
 		},
 		onError: (error) => {
 			toast.error("Failed to post GRN to stock", {
@@ -74,7 +71,7 @@ export function GRNDetails({ open, onOpenChange, grn }: GRNDetailsProps) {
 
 	if (!grn) return null;
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog>
 			<DialogTrigger asChild>
 				<Button variant={"link"} className="p-0 h-auto font-medium">
 					{grn.supplierName}

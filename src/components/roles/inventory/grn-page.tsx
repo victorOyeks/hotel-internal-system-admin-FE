@@ -23,71 +23,145 @@ import { GRNTable } from "./grn-table";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	EditIcon,
+	MoreVerticalIcon,
+	TrashIcon,
+} from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { deleteGRN } from "@/lib/inventory-actions";
+import { toast } from "sonner";
+import { revalidateRoute } from "@/lib/actions";
 import type {
 	InventoryGRNResponse,
 	InventoryGRNStatistics,
 	InventoryLocationResponse,
 	InventoryProduct,
 	InventorySupplierMini,
-	InventorySuppliers,
+	PurchaseOrderListItem,
 } from "@/lib/fetch";
 
 const columnHelper = createColumnHelper<InventoryGRNResponse>();
 
-const columnDefs = [
-	columnHelper.accessor("grnNumber", {
-		header: "GRN Number",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("supplierName", {
-		header: "Supplier",
-		cell: (info) => {
-			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-			const selectedGRN = info.row.original;
+function GRNActions({
+	grn,
+	grnLocations,
+	suppliers,
+	products,
+	purchaseOrders,
+}: {
+	grn: InventoryGRNResponse;
+	grnLocations: InventoryLocationResponse[];
+	suppliers: InventorySupplierMini[];
+	products: InventoryProduct[];
+	purchaseOrders: PurchaseOrderListItem[];
+}) {
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [showEditDialog, setShowEditDialog] = useState(false);
 
-			return (
-				<GRNDetails
-					open={isDetailsOpen}
-					onOpenChange={setIsDetailsOpen}
-					grn={selectedGRN}
-				/>
-			);
-		},
-	}),
-	columnHelper.accessor("purchaseOrderNumber", {
-		header: "PO Number",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("status", {
-		header: "Status",
-		cell: (info) => {
-			const value = info.getValue();
-
-			if (value === "ACCEPTED") {
-				return <Badge variant={"green"}>Accepted</Badge>;
+	const { mutate: deleteMutate } = useMutation({
+		mutationKey: ["delete-grn"],
+		mutationFn: async (grnId: string) => {
+			const res = await deleteGRN(grnId);
+			if (!res.success) {
+				throw new Error(res.error);
 			}
-
-			return <Badge variant={"yellow"}>Draft</Badge>;
+			return res;
 		},
-	}),
-	columnHelper.accessor("stockPosted", {
-		header: "Posted",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("totalAmount", {
-		header: "Total Amount",
-		cell: (info) => formatCurrency(info.getValue()),
-	}),
-	columnHelper.accessor("updatedAt", {
-		header: "Created Date",
-		cell: (info) => {
-			// e.g 21st oct, 2025. 7:30 pm
-			const value = formatDate(new Date(info.getValue()), "PPpp");
-
-			return value;
+		onSuccess: async (res) => {
+			await revalidateRoute("/dashboard/grn");
+			//@ts-ignore
+			toast.success(res.data?.message || "GRN deleted successfully");
+			setShowDeleteDialog(false);
 		},
-	}),
-];
+		onError: (err) => {
+			toast.error(err.message);
+		},
+	});
+
+	if (grn.status === "ACCEPTED" || grn.stockPosted) {
+		return null; // Cannot edit/delete posted GRNs
+	}
+
+	return (
+		<>
+			<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the GRN.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => deleteMutate(grn.id)}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+				<DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Edit Goods Receipt Note</DialogTitle>
+					</DialogHeader>
+					<CreateGRNForm
+						grnLocations={grnLocations}
+						suppliers={suppliers}
+						products={products}
+						purchaseOrders={purchaseOrders}
+						onClose={() => setShowEditDialog(false)}
+						initialData={grn}
+					/>
+				</DialogContent>
+			</Dialog>
+
+			<DropdownMenu modal={false}>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size="icon">
+						<span className="sr-only">Open menu</span>
+						<MoreVerticalIcon />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={() => setShowEditDialog(true)}>
+						<EditIcon />
+						Edit
+					</DropdownMenuItem>
+
+					<DropdownMenuItem
+						onClick={() => setShowDeleteDialog(true)}
+						className="text-red-600"
+					>
+						<TrashIcon />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</>
+	);
+}
 
 export function GRNPage({
 	grnsData,
@@ -95,18 +169,83 @@ export function GRNPage({
 	grnLocations,
 	suppliers,
 	products,
+	purchaseOrders,
 }: {
 	grnsData: InventoryGRNResponse[];
 	statsData: InventoryGRNStatistics;
 	grnLocations: InventoryLocationResponse[];
 	suppliers: InventorySupplierMini[];
 	products: InventoryProduct[];
+	purchaseOrders: PurchaseOrderListItem[];
 }) {
+	const columnDefs = [
+		columnHelper.accessor("grnNumber", {
+			header: "GRN Number",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("supplierName", {
+			header: "Supplier",
+			cell: (info) => {
+				const selectedGRN = info.row.original;
+
+				return (
+					<GRNDetails
+						grn={selectedGRN}
+					/>
+				);
+			},
+		}),
+		columnHelper.accessor("purchaseOrderNumber", {
+			header: "PO Number",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("status", {
+			header: "Status",
+			cell: (info) => {
+				const value = info.getValue();
+
+				if (value === "ACCEPTED") {
+					return <Badge variant={"green"}>Accepted</Badge>;
+				}
+
+				return <Badge variant={"yellow"}>Draft</Badge>;
+			},
+		}),
+		columnHelper.accessor("stockPosted", {
+			header: "Posted",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("totalAmount", {
+			header: "Total Amount",
+			cell: (info) => formatCurrency(info.getValue()),
+		}),
+		columnHelper.accessor("updatedAt", {
+			header: "Created Date",
+			cell: (info) => {
+				const value = formatDate(new Date(info.getValue()), "PPpp");
+				return value;
+			},
+		}),
+		columnHelper.display({
+			id: "actions",
+			cell: ({ row }) => (
+				<GRNActions
+					grn={row.original}
+					grnLocations={grnLocations}
+					suppliers={suppliers}
+					products={products}
+					purchaseOrders={purchaseOrders}
+				/>
+			),
+		}),
+	];
+
 	const table = useReactTable({
 		columns: columnDefs,
 		data: grnsData,
 		getCoreRowModel: getCoreRowModel(),
 	});
+
 	// UI State
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -137,6 +276,7 @@ export function GRNPage({
 							grnLocations={grnLocations}
 							suppliers={suppliers}
 							products={products}
+							purchaseOrders={purchaseOrders}
 							onClose={() => setIsCreateOpen(false)}
 						/>
 					</DialogContent>

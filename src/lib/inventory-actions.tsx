@@ -337,3 +337,54 @@ export async function addPurchaseOrder(payload: CreatePurchaseOrderRequest) {
 		};
 	}
 }
+
+export async function editGRN(
+	grnId: string,
+	payload: z.infer<typeof import("./fetch").UpdateGRNRequest>,
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/grn/:grnId", {
+			body: payload,
+			params: { grnId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit GRN",
+		};
+	}
+}
+
+export async function deleteGRN(grnId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/grn/:grnId",
+			{
+				params: { grnId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete GRN",
+		};
+	}
+}
