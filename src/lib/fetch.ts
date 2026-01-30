@@ -1250,7 +1250,7 @@ const SupplierResponse = z.object({
 
 export type SupplierResponse = z.infer<typeof SupplierResponse>;
 
-const AddSupplierRequest = z.object({
+export const AddSupplierRequest = z.object({
 	name: z.string(),
 	contactPerson: z.string(),
 	email: z.string().email(),
@@ -1274,7 +1274,7 @@ const AddSupplierRequest = z.object({
 
 export type AddSupplierRequest = z.infer<typeof AddSupplierRequest>;
 
-const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
+export const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
 	active: z.boolean().optional(),
 });
 

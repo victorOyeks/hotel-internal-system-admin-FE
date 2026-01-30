@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation */
 import { PurchaseOrderPage } from "@/components/roles/inventory/purchase-order-page";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";

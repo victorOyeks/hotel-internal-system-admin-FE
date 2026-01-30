@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -129,7 +128,6 @@ const columnDefs = [
 	columnHelper.display({
 		id: "actions",
 		cell: (info) => {
-			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 			const order = info.row.original;
 
 			return (
@@ -144,7 +142,7 @@ const columnDefs = [
 						<DropdownMenuContent align="end">
 							<DropdownMenuLabel>Actions</DropdownMenuLabel>
 							{order.status === "PENDING_APPROVAL" && (
-								<DropdownMenuItem className="text-green-600">
+								<DropdownMenuItem>
 									Approve Order
 								</DropdownMenuItem>
 							)}

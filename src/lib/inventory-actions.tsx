@@ -138,6 +138,8 @@ export async function deleteProduct(params: {
 			},
 		);
 
+		console.log("response", response);
+
 		return {
 			success: true,
 			data: response,
@@ -195,6 +197,62 @@ export async function addSupplier(payload: {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unable to add supplier",
+		};
+	}
+}
+
+export async function editSupplier(
+	supplierId: string,
+	payload: {
+		name: string;
+		email: string;
+		phone: string;
+		productIds: string[];
+	},
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/suppliers/:supplierId", {
+			body: payload,
+			params: { supplierId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit supplier",
+		};
+	}
+}
+
+export async function deleteSupplier(supplierId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/suppliers/:supplierId",
+			{
+				params: { supplierId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete supplier",
 		};
 	}
 }
