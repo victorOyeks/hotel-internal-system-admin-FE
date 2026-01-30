@@ -62,19 +62,24 @@ const columns = [
             <div>
                 <p className="font-medium">{info.getValue()}</p>
                 <p className="text-xs text-muted-foreground">
-                    {info.row.original.productSku}
+                    {/* Product SKU if available */}
                 </p>
             </div>
         ),
     }),
-    columnHelper.accessor("locationName", {
-        header: "Location",
+    columnHelper.accessor("fromLocationName", {
+        header: "From",
         cell: (info) => (
             <div>
-                <p className="font-medium">{info.getValue()}</p>
-                <p className="text-xs text-muted-foreground">
-                    {info.row.original.locationCode}
-                </p>
+                <p className="font-medium text-sm">{info.getValue() || "-"}</p>
+            </div>
+        ),
+    }),
+    columnHelper.accessor("toLocationName", {
+        header: "To",
+        cell: (info) => (
+            <div>
+                <p className="font-medium text-sm">{info.getValue() || "-"}</p>
             </div>
         ),
     }),
@@ -187,7 +192,7 @@ export function StockMovementPage({
             </div>
 
             {/* Toolbar */}
-            <StockMovementToolbar />
+            <StockMovementToolbar locations={locations} products={products} />
 
             {/* Table */}
             <StockMovementTable table={table} />

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation */
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,16 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { SearchIcon } from "lucide-react";
 import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
 import { useMemo, useCallback } from "react";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/shared/date-picker";
+import { format } from "date-fns";
 
-export function StockMovementToolbar() {
+interface StockMovementToolbarProps {
+    locations: { id: string; name: string }[];
+    products: { id: string; name: string; sku: string }[];
+}
+
+export function StockMovementToolbar({ locations, products }: StockMovementToolbarProps) {
     const [filterStates, setFilterStates] = useQueryStates({
         search: parseAsString,
         type: parseAsStringLiteral([
@@ -29,22 +38,28 @@ export function StockMovementToolbar() {
             "DAMAGE_WRITEOFF",
             "EXPIRY_WRITEOFF",
         ]),
+        productId: parseAsString,
+        locationId: parseAsString,
+        startDate: parseAsString,
+        endDate: parseAsString,
     });
 
     const filterQueryState = useMemo(
         () => ({
             type: filterStates.type,
+            productId: filterStates.productId,
+            locationId: filterStates.locationId,
+            startDate: filterStates.startDate,
+            endDate: filterStates.endDate,
         }),
-        [filterStates.type],
+        [filterStates],
     );
 
     const setFilterQueryState = useCallback(
-        (state: Partial<{ type: string | null }>) => {
+        (state: Partial<typeof filterQueryState>) => {
             setFilterStates((prev) => ({
                 ...prev,
-                ...state as {
-                    type: typeof filterQueryState.type;
-                },
+                ...state,
             }));
         },
         [setFilterStates],
@@ -60,9 +75,43 @@ export function StockMovementToolbar() {
                 value: filterStates.type.replace(/_/g, " "),
             });
         }
+        if (filterStates.productId) {
+            const product = products.find((p) => p.id === filterStates.productId);
+            if (product) {
+                filters.push({
+                    key: "productId",
+                    label: "Product",
+                    value: product.name,
+                });
+            }
+        }
+        if (filterStates.locationId) {
+            const location = locations.find((l) => l.id === filterStates.locationId);
+            if (location) {
+                filters.push({
+                    key: "locationId",
+                    label: "Location",
+                    value: location.name,
+                });
+            }
+        }
+        if (filterStates.startDate) {
+            filters.push({
+                key: "startDate",
+                label: "From",
+                value: format(new Date(filterStates.startDate), "PP"),
+            });
+        }
+        if (filterStates.endDate) {
+            filters.push({
+                key: "endDate",
+                label: "To",
+                value: format(new Date(filterStates.endDate), "PP"),
+            });
+        }
 
         return filters;
-    }, [filterStates]);
+    }, [filterStates, products, locations]);
 
     const removeFilter = useCallback(
         (key: string) => {
@@ -114,10 +163,14 @@ export function StockMovementToolbar() {
 
             <div className="flex items-center gap-x-2">
                 <TableFilter count={appliedFilters.length}>
-                    <StockMovementFilter
-                        queryState={filterQueryState}
-                        setQueryState={setFilterQueryState}
-                    />
+                    <TableFilter count={appliedFilters.length}>
+                        <StockMovementFilter
+                            queryState={filterQueryState}
+                            setQueryState={setFilterQueryState}
+                            locations={locations}
+                            products={products}
+                        />
+                    </TableFilter>
                 </TableFilter>
 
                 <Button size={"sm"} className="rounded-md md:rounded-xl">
@@ -131,18 +184,54 @@ export function StockMovementToolbar() {
 function StockMovementFilter({
     queryState,
     setQueryState,
+    locations,
+    products,
 }: {
-    queryState: { type: string | null };
-    setQueryState: (state: Partial<{ type: string | null }>) => void;
+    queryState: {
+        type:
+        | "PURCHASE_RECEIPT"
+        | "SALES_ISSUE"
+        | "TRANSFER_IN"
+        | "TRANSFER_OUT"
+        | "ADJUSTMENT_IN"
+        | "ADJUSTMENT_OUT"
+        | "INTERNAL_CONSUMPTION"
+        | "DAMAGE_WRITEOFF"
+        | "EXPIRY_WRITEOFF"
+        | null;
+        productId: string | null;
+        locationId: string | null;
+        startDate: string | null;
+        endDate: string | null;
+    };
+    setQueryState: (state: Partial<typeof queryState>) => void;
+    locations: { id: string; name: string }[];
+    products: { id: string; name: string; sku: string }[];
 }) {
     return (
-        <div className="space-y-4 w-[200px]">
+        <div className="space-y-4 w-[250px]">
+            <div className="space-y-2">
+                <Label>Date Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                    <DatePicker
+                        initialDate={queryState.startDate ?? ""}
+                        onChange={(date) => setQueryState({ startDate: date || null })}
+                        placeholder="Start Date"
+                    />
+                    <DatePicker
+                        initialDate={queryState.endDate ?? ""}
+                        onChange={(date) => setQueryState({ endDate: date || null })}
+                        placeholder="End Date"
+                    />
+                </div>
+            </div>
+
             <div className="space-y-2">
                 <Label>Movement Type</Label>
                 <Select
                     value={queryState.type ?? "all"}
                     onValueChange={(value) =>
-                        setQueryState({ type: value === "all" ? null : value })
+                        setQueryState({ type: value === "all" ? null : value as any })
                     }
                 >
                     <SelectTrigger>
@@ -161,6 +250,26 @@ function StockMovementFilter({
                         <SelectItem value="EXPIRY_WRITEOFF">Expiry Writeoff</SelectItem>
                     </SelectContent>
                 </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label>Location</Label>
+                <Combobox
+                    options={locations.map(l => ({ label: l.name, value: l.id }))}
+                    value={queryState.locationId ?? ""}
+                    onSelect={(value: any) => setQueryState({ locationId: value || null })}
+                    placeholder="Select location"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label>Product</Label>
+                <Combobox
+                    options={products.map(p => ({ label: p.name, value: p.id }))}
+                    value={queryState.productId ?? ""}
+                    onSelect={(value: any) => setQueryState({ productId: value || null })}
+                    placeholder="Select product"
+                />
             </div>
         </div>
     );

@@ -17,6 +17,8 @@ const loadSearchParams = createLoader({
     type: parseAsString,
     productSearch: parseAsString,
     locationSearch: parseAsString,
+    startDate: parseAsString,
+    endDate: parseAsString,
 }, {
     urlKeys: {
         search: "search",
@@ -44,9 +46,14 @@ export default function Page({ searchParams }: PageProps) {
                     size: searchParamsValues.size,
                     search: searchParamsValues.search,
                     movementType: searchParamsValues.type,
+                    startDate: searchParamsValues.startDate,
+                    endDate: searchParamsValues.endDate,
+                    // Note: If backend expects productId/locationId for filtering, map them here if you have separate filters, 
+                    // but the UI currently only has 'search'. If you add specialized filters, map them here.
                 },
                 throw: true,
             })
+
             return res.data;
         },
     }));

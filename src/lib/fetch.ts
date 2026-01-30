@@ -32,6 +32,45 @@ const ApiResponseObject = z.object({
 	data: z.object({}), // Generic object
 });
 
+export const InventoryStockMovementResponse = z.object({
+	id: z.string(),
+	movementType: z.string(),
+	productId: z.string(),
+	productName: z.string().optional(),
+	quantity: z.number(),
+	referenceType: z.string().optional(),
+	referenceId: z.string().optional(),
+	referenceNumber: z.string().optional(),
+	fromLocationId: z.string().nullable().optional(),
+	fromLocationName: z.string().nullable().optional(),
+	toLocationId: z.string().nullable().optional(),
+	toLocationName: z.string().nullable().optional(),
+	movementDate: z.string(),
+	performedBy: z.string().optional(),
+	remarks: z.string().optional(),
+	unitPrice: z.number().optional(),
+});
+
+export type InventoryStockMovementResponse = z.infer<
+	typeof InventoryStockMovementResponse
+>;
+
+export const ApiStockMovementListResponse = ApiResponseObject.extend({
+	data: z.object({
+		content: z.array(InventoryStockMovementResponse),
+		pageable: z.any(),
+		last: z.boolean(),
+		totalPages: z.number(),
+		totalElements: z.number(),
+		size: z.number(),
+		number: z.number(),
+		sort: z.any(),
+		first: z.boolean(),
+		numberOfElements: z.number(),
+		empty: z.boolean(),
+	}),
+});
+
 const Pagination = z.object({
 	pageNumber: z.number(),
 	pageSize: z.number(),
@@ -2162,16 +2201,6 @@ const StockMovementResponse = z.object({
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 
-const ApiResponseCustomPageStockMovementResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(StockMovementResponse),
-	}),
-});
-
-const ApiResponseStockMovementResponse = ApiResponseObject.extend({
-	data: StockMovementResponse,
-});
-
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -3964,10 +3993,7 @@ export const schema = createSchema({
 		params: z.object({ locationId: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@get/api/inventories/stock-movements/product/:productId/history": {
-		params: z.object({ productId: z.string() }),
-		output: ApiResponseObject,
-	},
+
 	"@get/api/inventories/stock-takes/export": {
 		query: z
 			.object({
@@ -4512,20 +4538,7 @@ export const schema = createSchema({
 		params: z.object({ id: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@get/api/inventories/stock-movements": {
-		query: z
-			.object({
-				productId: z.string().optional().nullable(),
-				locationId: z.string().optional().nullable(),
-				movementType: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				pageable: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseCustomPageStockMovementResponse,
-	},
+
 	"@post/api/inventories/stock-takes": {
 		input: z.any(),
 		output: ApiResponseObject,
@@ -4770,6 +4783,41 @@ export const schema = createSchema({
 		input: z.any(),
 		params: z.object({ orderId: z.string() }),
 		output: ApiResponseObject,
+	},
+	"@get/api/inventories/stock-movements": {
+		query: z
+			.object({
+				productId: z.string().optional().nullable(),
+				locationId: z.string().optional().nullable(),
+				movementType: z.string().optional().nullable(),
+				startDate: z.string().optional().nullable(),
+				endDate: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+				page: z.number().optional(),
+				size: z.number().optional(),
+			})
+			.partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: StockMovementResponse.array(),
+			}),
+		}),
+	},
+	"@get/api/inventories/stock-movements/product/:productId/history": {
+		params: z.object({ productId: z.string() }),
+		query: z
+			.object({
+				page: z.number().optional(),
+				size: z.number().optional(),
+				sort: z.string().optional(),
+			})
+			.partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: StockMovementResponse.array(),
+			}),
+		}),
 	},
 });
 
