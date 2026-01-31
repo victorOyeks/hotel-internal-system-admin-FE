@@ -31,14 +31,23 @@ export function StockMovementToolbar({ locations, products }: StockMovementToolb
         search: parseAsString,
         type: parseAsStringLiteral([
             "PURCHASE_RECEIPT",
-            "SALES_ISSUE",
+            "PURCHASE_RETURN_REVERSAL",
+            "SALES_RETURN",
             "TRANSFER_IN",
-            "TRANSFER_OUT",
             "ADJUSTMENT_IN",
-            "ADJUSTMENT_OUT",
+            "PRODUCTION_IN",
+            "SALES_ISSUE",
             "INTERNAL_CONSUMPTION",
+            "TRANSFER_OUT",
+            "ADJUSTMENT_OUT",
             "DAMAGE_WRITEOFF",
             "EXPIRY_WRITEOFF",
+            "THEFT_WRITEOFF",
+            "LOST_WRITEOFF",
+            "SAMPLE_ISSUE",
+            "STOCK_TAKE",
+            "OPENING_BALANCE",
+            "REVALUATION",
         ]),
         productId: parseAsString,
         locationId: parseAsString,
@@ -242,14 +251,23 @@ function StockMovementFilter({
     queryState: {
         type:
         | "PURCHASE_RECEIPT"
-        | "SALES_ISSUE"
+        | "PURCHASE_RETURN_REVERSAL"
+        | "SALES_RETURN"
         | "TRANSFER_IN"
-        | "TRANSFER_OUT"
         | "ADJUSTMENT_IN"
-        | "ADJUSTMENT_OUT"
+        | "PRODUCTION_IN"
+        | "SALES_ISSUE"
         | "INTERNAL_CONSUMPTION"
+        | "TRANSFER_OUT"
+        | "ADJUSTMENT_OUT"
         | "DAMAGE_WRITEOFF"
         | "EXPIRY_WRITEOFF"
+        | "THEFT_WRITEOFF"
+        | "LOST_WRITEOFF"
+        | "SAMPLE_ISSUE"
+        | "STOCK_TAKE"
+        | "OPENING_BALANCE"
+        | "REVALUATION"
         | null;
         productId: string | null;
         locationId: string | null;
@@ -292,14 +310,23 @@ function StockMovementFilter({
                     <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="PURCHASE_RECEIPT">Purchase Receipt</SelectItem>
-                        <SelectItem value="SALES_ISSUE">Sales Issue</SelectItem>
+                        <SelectItem value="PURCHASE_RETURN_REVERSAL">Purchase Return Reversal</SelectItem>
+                        <SelectItem value="SALES_RETURN">Sales Return</SelectItem>
                         <SelectItem value="TRANSFER_IN">Transfer In</SelectItem>
-                        <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
                         <SelectItem value="ADJUSTMENT_IN">Adjustment In</SelectItem>
-                        <SelectItem value="ADJUSTMENT_OUT">Adjustment Out</SelectItem>
+                        <SelectItem value="PRODUCTION_IN">Production In</SelectItem>
+                        <SelectItem value="SALES_ISSUE">Sales Issue</SelectItem>
                         <SelectItem value="INTERNAL_CONSUMPTION">Internal Consumption</SelectItem>
+                        <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
+                        <SelectItem value="ADJUSTMENT_OUT">Adjustment Out</SelectItem>
                         <SelectItem value="DAMAGE_WRITEOFF">Damage Writeoff</SelectItem>
                         <SelectItem value="EXPIRY_WRITEOFF">Expiry Writeoff</SelectItem>
+                        <SelectItem value="THEFT_WRITEOFF">Theft Writeoff</SelectItem>
+                        <SelectItem value="LOST_WRITEOFF">Lost Writeoff</SelectItem>
+                        <SelectItem value="SAMPLE_ISSUE">Sample Issue</SelectItem>
+                        <SelectItem value="STOCK_TAKE">Stock Take</SelectItem>
+                        <SelectItem value="OPENING_BALANCE">Opening Balance</SelectItem>
+                        <SelectItem value="REVALUATION">Revaluation</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
