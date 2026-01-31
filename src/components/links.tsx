@@ -17,6 +17,8 @@ import {
 	FileIcon,
 	PinIcon,
 	ClockAlertIcon,
+	FileDiffIcon,
+	ArrowLeftRightIcon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -98,12 +100,19 @@ export const inventoryOfficerLinks = [
 	},
 	{
 		title: "Stock takes",
+		icon: <ClipboardListIcon />,
 		url: "/dashboard/stock-takes",
 	},
 	{
 		title: "Stock Movements",
-		url: "/dashboard/stock-movements"
-	}
+		icon: <ArrowLeftRightIcon />,
+		url: "/dashboard/stock-movements",
+	},
+	{
+		title: "Stock Adjustments",
+		icon: <FileDiffIcon />,
+		url: "/dashboard/adjustments",
+	},
 ];
 
 export const frontDeskLinks = [
