@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: explanation */
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,10 +13,13 @@ import {
 import { TableFilter } from "@/components/shared/table-filter";
 import { SearchIcon } from "lucide-react";
 import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/shared/date-picker";
 import { format } from "date-fns";
+import { exportStockMovements } from "@/lib/inventory-actions";
+import { toast } from "sonner";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
 
 interface StockMovementToolbarProps {
     locations: { id: string; name: string }[];
@@ -123,6 +125,54 @@ export function StockMovementToolbar({ locations, products }: StockMovementToolb
         [setFilterStates],
     );
 
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+    const onExport = async (data: ExportData) => {
+        try {
+            const filters = {
+                search: filterStates.search || undefined,
+                movementType: filterStates.type || undefined,
+                startDate: data.from_date?.toISOString(),
+                endDate: data.to_date?.toISOString(),
+                productId: filterStates.productId || undefined,
+                locationId: filterStates.locationId || undefined,
+                format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+            };
+
+            const response = await exportStockMovements(filters);
+
+            if (response.success && response.data) {
+                const blob = new Blob([response.data as unknown as BlobPart], {
+                    type:
+                        data.export_type === "csv"
+                            ? "text/csv"
+                            : data.export_type === "pdf"
+                                ? "application/pdf"
+                                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                const extension =
+                    data.export_type === "excel" ? "xlsx" : data.export_type;
+                a.download = `${data.export_type === "csv"
+                    ? "stock-movements"
+                    : "stock-movements-report"
+                    }-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast.success("Export downloaded successfully");
+                setIsExportDialogOpen(false);
+            } else {
+                toast.error(response.error || "Failed to export movements");
+            }
+        } catch {
+            toast.error("An error occurred during export");
+        }
+    };
+
     return (
         <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
             <div className="flex items-center gap-x-2 flex-1">
@@ -173,9 +223,11 @@ export function StockMovementToolbar({ locations, products }: StockMovementToolb
                     </TableFilter>
                 </TableFilter>
 
-                <Button size={"sm"} className="rounded-md md:rounded-xl">
-                    Export
-                </Button>
+                <ExportDialog
+                    open={isExportDialogOpen}
+                    setOpenAction={setIsExportDialogOpen}
+                    onSubmitAction={onExport}
+                />
             </div>
         </div>
     );

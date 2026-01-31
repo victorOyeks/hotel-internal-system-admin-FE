@@ -65,13 +65,16 @@ export function SuccessDialog({
 }
 
 const exportSchema = z.object({
-	from_date: z.date({ error: "Please select a valid starting date" }),
-	to_date: z.date({ error: "Please select a valid ending date" }),
+	from_date: z.date({ error: "Please select a valid starting date" }).or(z.undefined()),
+	to_date: z.date({ error: "Please select a valid ending date" }).or(z.undefined()),
 	export_type: z
 		.string()
 		.nonempty({ message: "Please select an export type" })
-		.refine((val) => ["pdf", "csv"].includes(val)),
-	destination: z.email({ message: "Please enter a valid email address" }),
+		.refine((val) => ["pdf", "csv", "excel"].includes(val)),
+	destination: z.string({ message: "Please enter a valid email address" }).optional().default(undefined).transform((str) => {
+		if (!str.trim()) return undefined;
+		return str;
+	}).or(z.undefined()),
 });
 
 export type ExportData = z.infer<typeof exportSchema>;
@@ -91,8 +94,8 @@ export function ExportDialog({
 		defaultValues: {
 			from_date: undefined,
 			to_date: undefined,
-			export_type: "",
-			destination: "",
+			export_type: "excel",
+			destination: undefined,
 		},
 	});
 
@@ -241,6 +244,7 @@ export function ExportDialog({
 											<SelectContent>
 												<SelectItem value="pdf">PDF</SelectItem>
 												<SelectItem value="csv">CSV</SelectItem>
+												<SelectItem value="excel">Excel</SelectItem>
 											</SelectContent>
 										</Select>
 									</FormControl>

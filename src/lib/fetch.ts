@@ -2201,6 +2201,9 @@ const StockMovementResponse = z.object({
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 
+export const ExportStockMovementsResponse = z.any(); // Byte stream
+export const ExportStockLevelsResponse = z.any(); // Byte stream
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -3974,16 +3977,34 @@ export const schema = createSchema({
 	"@get/api/inventories/stock-movements/export": {
 		query: z
 			.object({
-				format: z.string().optional().nullable(),
-				productId: z.string().optional().nullable(),
-				locationId: z.string().optional().nullable(),
-				movementType: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
+				format: z.string(),
+				productId: z.string().optional(),
+				locationId: z.string().optional(),
+				movementType: z.string().optional(),
+				startDate: z.string().optional(),
+				endDate: z.string().optional(),
+				search: z.string().optional(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		response: {
+			200: ExportStockMovementsResponse,
+		},
+	},
+	"@get/api/inventories/stock-levels/export": {
+		query: z
+			.object({
+				format: z.string(),
+				locationId: z.string().optional(),
+				productId: z.string().optional(),
+				category: z.string().optional(),
+				search: z.string().optional(),
+				lowStock: z.boolean().optional(),
+				outOfStock: z.boolean().optional(),
+			})
+			.partial(),
+		response: {
+			200: ExportStockLevelsResponse,
+		},
 	},
 	"@get/api/inventories/stock-movements/:id": {
 		params: z.object({ id: z.string() }),

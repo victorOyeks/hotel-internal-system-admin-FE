@@ -43,6 +43,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { IssuedItemsTable } from "./issued-items";
 import { RestockRequestTable } from "./restock-request";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
+import { exportStockLevels } from "@/lib/inventory-actions";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 type SectionType = "issued" | "stock-request" | null;
 
@@ -411,6 +415,8 @@ function InventoryTableToolbar({
 						<InventoryFilter queryState={query} setQueryState={setQuery} />
 					</TableFilter>
 
+					<Export stockQuery={query} />
+
 					{/* Applied Filters Display */}
 					{(query.category || query.availability || query.department) && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -467,6 +473,62 @@ function InventoryTableToolbar({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function Export({ stockQuery }: { stockQuery: Values<any> }) {
+	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+	const onExport = async (data: ExportData) => {
+		try {
+			const filters = {
+				search: stockQuery.searchName || undefined,
+				category: stockQuery.category || undefined,
+				// Map availability to lowStock/outOfStock if possible, or ignore if API doesn't support 'availability' enum directly
+				// API supports: lowStock: boolean, outOfStock: boolean.
+				// InventoryFilter uses: 'IN_STOCK', 'OUT_OF_STOCK', 'LOW_STOCK'
+				lowStock: stockQuery.availability === "LOW_STOCK" ? true : undefined,
+				outOfStock: stockQuery.availability === "OUT_OF_STOCK" ? true : undefined,
+				format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+			};
+
+			const response = await exportStockLevels(filters);
+
+			if (response.success && response.data) {
+				const blob = new Blob([response.data as unknown as BlobPart], {
+					type:
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				const extension =
+					data.export_type === "excel" ? "xlsx" : data.export_type;
+				a.download = `stock-levels-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+				toast.success("Export downloaded successfully");
+				setIsExportDialogOpen(false);
+			} else {
+				toast.error(response.error || "Failed to export stock levels");
+			}
+		} catch {
+			toast.error("An error occurred during export");
+		}
+	};
+
+	return (
+		<ExportDialog
+			open={isExportDialogOpen}
+			setOpenAction={setIsExportDialogOpen}
+			onSubmitAction={onExport}
+		/>
 	);
 }
 

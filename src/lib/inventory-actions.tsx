@@ -420,3 +420,106 @@ export async function getProductMovementHistory(productId: string) {
 		};
 	}
 }
+
+export async function getLocationMovementHistory(locationId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/location/:locationId/history",
+			{
+				params: { locationId },
+				query: {
+					sort: "movementDate,desc",
+					size: 20,
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch location movement history",
+		};
+	}
+}
+
+export async function exportStockMovements(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	productId?: string;
+	locationId?: string;
+	movementType?: string;
+	startDate?: string;
+	endDate?: string;
+	search?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/export",
+			{
+				query: {
+					...filters,
+					format: filters.format || "CSV",
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock movements",
+		};
+	}
+}
+
+export async function exportStockLevels(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	locationId?: string;
+	productId?: string;
+	category?: string;
+	search?: string;
+	lowStock?: boolean;
+	outOfStock?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-levels/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock levels",
+		};
+	}
+}
