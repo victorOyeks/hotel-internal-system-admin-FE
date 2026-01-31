@@ -523,3 +523,37 @@ export async function exportStockLevels(filters: {
 		};
 	}
 }
+
+export async function exportStockTakes(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	status?: string;
+	locationId?: string;
+	startDate?: string;
+	endDate?: string;
+	hasVariances?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-takes/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+				hasVariances: filters.hasVariances ? "true" : undefined,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock takes",
+		};
+	}
+}

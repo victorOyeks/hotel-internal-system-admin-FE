@@ -38,7 +38,6 @@ import {
 	CalendarIcon,
 	MoreVerticalIcon,
 	EditIcon,
-	TrashIcon,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ProductsToolbar } from "./products";
@@ -1052,7 +1051,7 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 						<EditIcon />
 						Edit
 					</DropdownMenuItem>
-					<DropdownMenuItem
+					{/* <DropdownMenuItem
 						onClick={() => {
 							setIsMenuOpen(false);
 							setIsDeleteOpen(true);
@@ -1061,7 +1060,7 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 					>
 						<TrashIcon />
 						Delete
-					</DropdownMenuItem>
+					</DropdownMenuItem> */}
 				</DropdownMenuContent>
 			</DropdownMenu>
 

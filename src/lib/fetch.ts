@@ -2201,8 +2201,10 @@ const StockMovementResponse = z.object({
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 
+// Schemas for export responses
 export const ExportStockMovementsResponse = z.any(); // Byte stream
 export const ExportStockLevelsResponse = z.any(); // Byte stream
+export const ExportStockTakesResponse = z.any(); // Byte stream
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -4026,7 +4028,9 @@ export const schema = createSchema({
 				hasVariances: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		response: {
+			200: ExportStockTakesResponse,
+		},
 	},
 	"@get/api/inventories/suppliers/export": {
 		query: z
