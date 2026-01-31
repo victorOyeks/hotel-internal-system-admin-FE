@@ -388,3 +388,35 @@ export async function deleteGRN(grnId: string) {
 		};
 	}
 }
+
+export async function getProductMovementHistory(productId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/product/:productId/history",
+			{
+				params: { productId },
+				query: {
+					sort: "movementDate,desc",
+					size: 20,
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch product movement history",
+		};
+	}
+}
