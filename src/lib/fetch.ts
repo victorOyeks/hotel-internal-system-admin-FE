@@ -2205,6 +2205,7 @@ export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 export const ExportStockMovementsResponse = z.any(); // Byte stream
 export const ExportStockLevelsResponse = z.any(); // Byte stream
 export const ExportStockTakesResponse = z.any(); // Byte stream
+export const ExportStockAdjustmentsResponse = z.any(); // Byte stream
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
@@ -3838,7 +3839,7 @@ export const schema = createSchema({
 				pageable: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		output: ApiResponseCustomPageStockAdjustmentResponse,
 	},
 	"@get/api/inventories/adjustments/export": {
 		query: z
@@ -3854,7 +3855,9 @@ export const schema = createSchema({
 				approved: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		response: {
+			200: ExportStockAdjustmentsResponse,
+		},
 	},
 	"@get/api/inventories/grn/export": {
 		query: z

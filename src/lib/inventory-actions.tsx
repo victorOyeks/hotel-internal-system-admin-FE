@@ -557,3 +557,104 @@ export async function exportStockTakes(filters: {
 		};
 	}
 }
+
+export async function exportStockAdjustments(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	productId?: string;
+	locationId?: string;
+	reason?: string;
+	adjustmentType?: string;
+	startDate?: string;
+	endDate?: string;
+	posted?: boolean;
+	approved?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/adjustments/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+				posted: filters.posted ? "true" : undefined,
+				approved: filters.approved ? "true" : undefined,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to export stock adjustments",
+		};
+	}
+}
+
+export async function getStockAdjustments(
+	params: {
+		page?: number;
+		size?: number;
+		search?: string;
+		status?: string;
+		type?: string;
+		productId?: string;
+		locationId?: string;
+		startDate?: string;
+		endDate?: string;
+	} = {},
+) {
+	const sessionData = await verifySession();
+
+	const query: Record<string, any> = {
+		page: (params.page || 0).toString(),
+		size: (params.size || 20).toString(),
+	};
+
+	if (params.status && params.status !== "all") {
+		if (params.status === "APPROVED") {
+			query.approved = "true";
+			query.posted = "false";
+		} else if (params.status === "POSTED") {
+			query.posted = "true";
+		} else if (params.status === "PENDING_APPROVAL") {
+			query.approved = "false";
+			query.posted = "false";
+		}
+	}
+
+	if (params.type && params.type !== "all") query.adjustmentType = params.type;
+	if (params.productId) query.productId = params.productId;
+	if (params.locationId) query.locationId = params.locationId;
+	if (params.startDate) query.startDate = params.startDate;
+	if (params.endDate) query.endDate = params.endDate;
+
+	try {
+		const response = await $fetch("@get/api/inventories/adjustments", {
+			query: { ...query, pageable: "true" },
+			auth: { type: "Bearer", token: sessionData.token },
+		});
+
+		if (!response.data) {
+			return { success: false, error: "No data returned" };
+		}
+
+		return {
+			success: true,
+			data: response.data.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Failed to fetch adjustments",
+		};
+	}
+}

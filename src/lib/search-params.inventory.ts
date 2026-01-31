@@ -1,9 +1,4 @@
-import {
-	createLoader,
-	parseAsBoolean,
-	parseAsString,
-	parseAsStringEnum,
-} from "nuqs/server";
+import { parseAsBoolean, parseAsString, parseAsStringEnum } from "nuqs";
 
 export const PRODUCT_STATUSES = [
 	"ACTIVE",
@@ -69,4 +64,21 @@ export const productSearchParams = {
 	trackExpiry: parseAsBoolean,
 };
 
-export const loadProductSearchParams = createLoader(productSearchParams);
+export const ADJUSTMENT_STATUSES = [
+	"PENDING_APPROVAL",
+	"APPROVED",
+	"REJECTED",
+	"POSTED",
+] as const;
+
+export const ADJUSTMENT_TYPES = ["INCREASE", "DECREASE"] as const;
+
+export const adjustmentSearchParams = {
+	search: parseAsString.withDefault(""),
+	status: parseAsStringEnum([...ADJUSTMENT_STATUSES]),
+	type: parseAsStringEnum([...ADJUSTMENT_TYPES]),
+	productId: parseAsString,
+	locationId: parseAsString,
+	startDate: parseAsString,
+	endDate: parseAsString,
+};
