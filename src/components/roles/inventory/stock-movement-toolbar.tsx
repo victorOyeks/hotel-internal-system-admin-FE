@@ -222,14 +222,12 @@ export function StockMovementToolbar({ locations, products }: StockMovementToolb
 
             <div className="flex items-center gap-x-2">
                 <TableFilter count={appliedFilters.length}>
-                    <TableFilter count={appliedFilters.length}>
-                        <StockMovementFilter
-                            queryState={filterQueryState}
-                            setQueryState={setFilterQueryState}
-                            locations={locations}
-                            products={products}
-                        />
-                    </TableFilter>
+                    <StockMovementFilter
+                        queryState={filterQueryState}
+                        setQueryState={setFilterQueryState}
+                        locations={locations}
+                        products={products}
+                    />
                 </TableFilter>
 
                 <ExportDialog
@@ -279,7 +277,7 @@ function StockMovementFilter({
     products: { id: string; name: string; sku: string }[];
 }) {
     return (
-        <div className="space-y-4 w-[250px]">
+        <div className="space-y-4 max-w-sm w-full grid grid-flow-dense">
             <div className="space-y-2">
                 <Label>Date Range</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -304,7 +302,7 @@ function StockMovementFilter({
                         setQueryState({ type: value === "all" ? null : value as any })
                     }
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
