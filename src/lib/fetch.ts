@@ -3828,15 +3828,15 @@ export const schema = createSchema({
 	"@get/api/inventories/adjustments": {
 		query: z
 			.object({
-				productId: z.string().optional().nullable(),
-				locationId: z.string().optional().nullable(),
-				reason: z.string().optional().nullable(),
-				adjustmentType: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				posted: z.string().optional().nullable(),
-				approved: z.string().optional().nullable(),
-				pageable: z.string().optional().nullable(),
+				productId: z.string().nullable(),
+				locationId: z.string().nullable(),
+				reason: z.string().nullable(),
+				adjustmentType: z.string().nullable(),
+				startDate: z.string().nullable(),
+				endDate: z.string().nullable(),
+				posted: z.string().nullable(),
+				approved: z.string().nullable(),
+				pageable: z.string().nullable(),
 			})
 			.partial(),
 		output: ApiResponseCustomPageStockAdjustmentResponse,

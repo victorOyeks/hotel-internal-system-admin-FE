@@ -43,18 +43,18 @@ function Page({ searchParams }: PageProps) {
 								? "true"
 								: query.status === "PENDING_APPROVAL"
 									? "false"
-									: undefined,
+									: null,
 						posted:
 							query.status === "POSTED"
 								? "true"
 								: query.status === "PENDING_APPROVAL" || query.status === "APPROVED"
 									? "false"
-									: undefined,
-						adjustmentType: query.type ? undefined : query.type,
-						productId: query.productId || undefined,
-						locationId: query.locationId || undefined,
-						startDate: query.startDate || undefined,
-						endDate: query.endDate || undefined,
+									: null,
+						adjustmentType: query.type,
+						productId: query.productId,
+						locationId: query.locationId,
+						startDate: query.startDate,
+						endDate: query.endDate,
 					},
 					auth: {
 						type: "Bearer",
