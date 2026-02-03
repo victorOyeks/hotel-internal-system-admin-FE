@@ -31,7 +31,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
-import { Input } from "../ui/input";
 import { useCallback, useEffect, useState } from "react";
 
 export function SuccessDialog({
@@ -71,10 +70,6 @@ const exportSchema = z.object({
 		.string()
 		.nonempty({ message: "Please select an export type" })
 		.refine((val) => ["pdf", "csv", "excel"].includes(val)),
-	destination: z.string({ message: "Please enter a valid email address" }).optional().default(undefined).transform((str) => {
-		if (!str.trim()) return undefined;
-		return str;
-	}).or(z.undefined()),
 });
 
 export type ExportData = z.infer<typeof exportSchema>;
@@ -95,7 +90,6 @@ export function ExportDialog({
 			from_date: undefined,
 			to_date: undefined,
 			export_type: "excel",
-			destination: undefined,
 		},
 	});
 
@@ -253,7 +247,7 @@ export function ExportDialog({
 							)}
 						/>
 
-						<FormField
+						{/* <FormField
 							control={form.control}
 							name="destination"
 							render={({ field }) => (
@@ -270,7 +264,7 @@ export function ExportDialog({
 									<FormMessage />
 								</FormItem>
 							)}
-						/>
+						/> */}
 
 						<Button
 							className="w-full rounded-2xl"
