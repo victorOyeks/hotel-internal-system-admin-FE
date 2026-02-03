@@ -9,6 +9,8 @@ import type {
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type ApiInputInventoryProduct } from "./fetch";
+import { ExportData } from "@/components/shared/shared-dialogs";
+import { getCookieData } from "./server-fns";
 
 export async function addToInventory(payload: {
 	name: string;
@@ -598,6 +600,68 @@ export async function exportStockAdjustments(filters: {
 	}
 }
 
+export async function exportGRNs(
+	filters: {
+		search?: string;
+		status?: "DRAFT" | "ACCEPTED";
+		posted?: "posted" | "unposted";
+		supplierId?: string;
+		startDate?: string;
+		endDate?: string;
+	},
+	exportData: ExportData,
+) {
+	const sessionData = (await getCookieData())!;
+	const {
+		search,
+		status,
+		posted: postedFilter,
+		supplierId,
+		startDate,
+		endDate,
+	} = filters;
+
+	const posted =
+		postedFilter === "posted"
+			? "true"
+			: postedFilter === "unposted"
+				? "false"
+				: undefined;
+
+	try {
+		const response = await $fetch("@get/api/inventories/grn/export", {
+			query: {
+				format: exportData.export_type,
+				search: search || undefined,
+				status: status || undefined,
+				supplierId: supplierId || undefined,
+				startDate: startDate || undefined,
+				endDate: endDate || undefined,
+				stockPosted: posted,
+				// Not supporting hasRejectedItems derived filter yet
+			},
+			auth: {
+				type: "Bearer",
+				token: sessionData.token,
+			},
+		});
+
+		if (!response.data) {
+			return { success: false, error: "No data returned" };
+		}
+
+		return {
+			success: true,
+			data: response.data, // Should be Blob/File but type is ApiResponseObject in fetch.ts (mocked/generic)
+		};
+	} catch (error) {
+		console.error("Export failed:", error);
+		if (error instanceof Error) {
+			return { success: false, error: error.message };
+		}
+		return { success: false, error: "Failed to export data" };
+	}
+}
 export async function getStockAdjustments(
 	params: {
 		page?: number;
