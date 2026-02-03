@@ -12,6 +12,8 @@ export const Role = z.enum([
 	"RESTAURANT",
 	"RENTALS",
 	"SUPER_ADMIN",
+	"LAUNDRY",
+	"FINANCIALS",
 ]);
 
 const ApiExceptionResponseObject = z.object({
@@ -257,7 +259,7 @@ const UserInfoResponse = z.object({
 	phoneNumber: z.string(),
 	staffId: z.string(),
 	userStatus: z.string().nullable().or(z.undefined()),
-	role: Role,
+	roles: Role.array(),
 	customId: z.string().nullable().optional(),
 	parentUserCustomId: z.string().nullable().or(z.undefined()),
 	verified: z.boolean(),

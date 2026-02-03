@@ -7,6 +7,7 @@ import { $fetch } from "./fetch";
 
 export const tokenKey = "hms.jwt.session_token";
 export const refreshTokenKey = "hms.jwt.refresh_token";
+export const activeRoleKey = "hms.user.active_role";
 
 export function decrypt(session: string) {
 	try {

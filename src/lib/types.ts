@@ -28,7 +28,7 @@ export type UserPayload = {
 	phone: string;
 	staffId: string;
 	status: "ACTIVE" | "INACTIVE" | (string & {});
-	role: HotelRole;
+	roles: HotelRole[];
 	sub: string;
 	iat: number;
 	exp: number;
