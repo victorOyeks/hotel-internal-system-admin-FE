@@ -36,7 +36,7 @@ export function LogoutButton({ logoutAction }: LogoutButtonProps) {
         >
             {isLoggingOut ? (
                 <>
-                    Logging out
+                    Logging out...
                     <Loader2 className="animate-spin" />
                 </>
             ) : (
