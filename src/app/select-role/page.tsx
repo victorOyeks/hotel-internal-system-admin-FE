@@ -9,15 +9,14 @@ import {
     Package,
     ShieldAlert,
     Utensils,
-    LogOut,
     WashingMachine,
     PiggyBank,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { selectRole } from "./actions";
-import { deleteSession } from "@/lib/session";
-import { Button } from "@/components/ui/button";
 import { RoleButton } from "./role-button";
+import { LogoutButton } from "./logout-button";
+import { logout } from "@/lib/actions";
 
 const roleIcons: Record<HotelRole, React.ReactNode> = {
     HOTEL_OWNER: <Briefcase className="size-5" />,
@@ -65,12 +64,6 @@ export default async function SelectRolePage() {
         redirect("/auth");
     }
 
-    async function logout() {
-        "use server";
-        await deleteSession();
-        redirect("/auth");
-    }
-
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
             <div className="w-full max-w-lg space-y-6">
@@ -105,12 +98,7 @@ export default async function SelectRolePage() {
 
                 {/* Logout */}
                 <div>
-                    <form action={logout}>
-                        <Button type="submit" className="w-full">
-                            Log out
-                            <LogOut />
-                        </Button>
-                    </form>
+                    <LogoutButton logoutAction={logout} />
                 </div>
             </div>
         </div>

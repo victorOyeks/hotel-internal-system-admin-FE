@@ -3,10 +3,8 @@ import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
 import type { UserPayload } from "./types";
 import { env } from "@/env";
-import { $fetch } from "./fetch";
 
 export const tokenKey = "hms.jwt.session_token";
-export const refreshTokenKey = "hms.jwt.refresh_token";
 export const activeRoleKey = "hms.user.active_role";
 
 export function decrypt(session: string) {
@@ -19,7 +17,7 @@ export function decrypt(session: string) {
 	}
 }
 
-export async function createSession(session: string, refreshToken?: string) {
+export async function createSession(session: string) {
 	const payload = decrypt(session);
 
 	if (!payload) {
@@ -37,20 +35,6 @@ export async function createSession(session: string, refreshToken?: string) {
 		path: "/",
 		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
 	});
-
-	if (refreshToken) {
-		// Refresh token expires in 12 hours
-		const refreshExpiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
-		cookieStore.set(refreshTokenKey, refreshToken, {
-			httpOnly: true,
-			// secure: process.env.NODE_ENV === 'production',
-			expires: refreshExpiresAt,
-			sameSite: "lax",
-			path: "/",
-			domain:
-				process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-		});
-	}
 }
 
 export async function deleteSession() {
@@ -64,27 +48,4 @@ export async function deleteSession() {
 	} as const;
 
 	cookieStore.set(tokenKey, "", options);
-	cookieStore.set(refreshTokenKey, "", options);
-}
-
-export async function refreshSession() {
-	const refreshToken = (await cookies()).get(refreshTokenKey)?.value;
-
-	if (!refreshToken) {
-		return null;
-	}
-
-	const { data, error } = await $fetch("@post/api/auth/refresh", {
-		body: {
-			refreshToken,
-		},
-	});
-
-	if (error) {
-		console.error(error);
-		return null;
-	}
-
-	await createSession(data.data.accessToken, data.data.refreshToken);
-	return data.data;
 }
