@@ -1,4 +1,4 @@
-import { SearchIcon, XIcon } from "lucide-react";
+import { SearchIcon, XIcon, DownloadIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -18,6 +18,9 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import type { InventoryGRNResponse } from "@/lib/fetch";
 import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
+import { exportGRNs } from "@/lib/inventory-actions";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 const successDialogAtom = atom({
 	show: false,
@@ -40,15 +43,37 @@ export function GRNToolbar({
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
-			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
+			try {
+				const result = await exportGRNs(
+					{
+						search: queryState.search || undefined,
+						status: queryState.status || undefined,
+						posted: queryState.posted || undefined,
+						startDate: data.from_date?.toDateString(),
+						endDate: data.to_date?.toDateString(),
+					},
+					data,
+				);
+
+				if (result.success && result.data) {
+					const url = window.URL.createObjectURL(result.data as any);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = `grn-export-${format(new Date(), "yyyy-MM-dd")}.${data.export_type}`;
+					a.click();
+					window.URL.revokeObjectURL(url);
+					toast.success("Data exported successfully!");
+				} else {
+					toast.error(result.error || "Failed to export data");
+				}
+			} catch (error) {
+				console.error("Export error:", error);
+				toast.error("Failed to export data");
+			} finally {
+				setExportDialogOpen(false);
+			}
 		},
-		[setSuccessDialogOpen],
+		[queryState],
 	);
 
 	const [open, setOpen] = useState(false);
