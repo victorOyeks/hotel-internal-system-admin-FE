@@ -66,7 +66,7 @@ export default async function SelectRolePage() {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-            <div className="w-full max-w-lg space-y-6">
+            <div className="w-full max-w-lg lg:max-w-4xl space-y-6">
                 {/* Header */}
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold text-foreground">
@@ -78,7 +78,7 @@ export default async function SelectRolePage() {
                 </div>
 
                 {/* Role List */}
-                <div className="space-y-1">
+                <div className="space-y-1 lg:space-y-0 grid lg:grid-cols-2 lg:gap-px lg:bg-border rounded-lg overflow-hidden">
                     {user.roles.map((role) => (
                         <form
                             key={role}
@@ -97,7 +97,7 @@ export default async function SelectRolePage() {
                 </div>
 
                 {/* Logout */}
-                <div>
+                <div className="max-w-sm mx-auto">
                     <LogoutButton logoutAction={logout} />
                 </div>
             </div>
