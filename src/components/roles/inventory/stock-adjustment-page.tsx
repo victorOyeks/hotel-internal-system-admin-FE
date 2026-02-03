@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/table";
 import {
 	PlusIcon,
-	DownloadIcon,
 	SearchIcon,
 	XIcon,
 	TrendingUpIcon,
@@ -45,11 +44,6 @@ import type {
 } from "@/lib/fetch"; // Ensure this export exists or mock it locally if missing
 import { format } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
-import {
-	ADJUSTMENT_STATUSES,
-	ADJUSTMENT_TYPES,
-	adjustmentSearchParams,
-} from "@/lib/search-params.inventory";
 import { useQueryState } from "nuqs";
 import {
 	ExportDialog,
@@ -507,14 +501,6 @@ function StockAdjustmentToolbar({
 							)}
 						</div>
 					</TableFilter>
-
-					<Button
-						variant="outline"
-						className="rounded-full"
-						onClick={() => setIsExportDialogOpen(true)}
-					>
-						<DownloadIcon className="w-4 h-4" />
-					</Button>
 				</div>
 
 				<ExportDialog
