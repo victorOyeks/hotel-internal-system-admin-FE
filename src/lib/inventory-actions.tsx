@@ -9,6 +9,8 @@ import type {
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type ApiInputInventoryProduct } from "./fetch";
+import { ExportData } from "@/components/shared/shared-dialogs";
+import { getCookieData } from "./server-fns";
 
 export async function addToInventory(payload: {
 	name: string;
@@ -94,6 +96,64 @@ export async function addProduct(
 	}
 }
 
+export async function editProduct(
+	productId: string,
+	payload: z.infer<typeof ApiInputInventoryProduct>,
+): ServerActionResponseFromEndpoint<"@put/api/inventories/products/:productId"> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@put/api/inventories/products/:productId",
+			{
+				params: { productId },
+				body: payload,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit product",
+		};
+	}
+}
+
+export async function deleteProduct(params: {
+	productId: string;
+}): ServerActionResponseFromEndpoint<"@delete/api/inventories/products/:productId"> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/products/:productId",
+			{
+				params,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		console.log("response", response);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete product",
+		};
+	}
+}
+
 export async function addGRNItem(payload: unknown) {
 	try {
 		const sessionData = await verifySession();
@@ -139,6 +199,62 @@ export async function addSupplier(payload: {
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : "Unable to add supplier",
+		};
+	}
+}
+
+export async function editSupplier(
+	supplierId: string,
+	payload: {
+		name: string;
+		email: string;
+		phone: string;
+		productIds: string[];
+	},
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/suppliers/:supplierId", {
+			body: payload,
+			params: { supplierId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit supplier",
+		};
+	}
+}
+
+export async function deleteSupplier(supplierId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/suppliers/:supplierId",
+			{
+				params: { supplierId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete supplier",
 		};
 	}
 }
@@ -220,6 +336,389 @@ export async function addPurchaseOrder(payload: CreatePurchaseOrderRequest) {
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Unable to create purchase order",
+		};
+	}
+}
+
+export async function editGRN(
+	grnId: string,
+	payload: z.infer<typeof import("./fetch").UpdateGRNRequest>,
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/grn/:grnId", {
+			body: payload,
+			params: { grnId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit GRN",
+		};
+	}
+}
+
+export async function deleteGRN(grnId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@delete/api/inventories/grn/:grnId",
+			{
+				params: { grnId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to delete GRN",
+		};
+	}
+}
+
+export async function getProductMovementHistory(productId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/product/:productId/history",
+			{
+				params: { productId },
+				query: {
+					sort: "movementDate,desc",
+					size: 20,
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch product movement history",
+		};
+	}
+}
+
+export async function getLocationMovementHistory(locationId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/location/:locationId/history",
+			{
+				params: { locationId },
+				query: {
+					sort: "movementDate,desc",
+					size: 20,
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch location movement history",
+		};
+	}
+}
+
+export async function exportStockMovements(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	productId?: string;
+	locationId?: string;
+	movementType?: string;
+	startDate?: string;
+	endDate?: string;
+	search?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-movements/export",
+			{
+				query: {
+					...filters,
+					format: filters.format || "CSV",
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock movements",
+		};
+	}
+}
+
+export async function exportStockLevels(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	locationId?: string;
+	productId?: string;
+	category?: string;
+	search?: string;
+	lowStock?: boolean;
+	outOfStock?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-levels/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock levels",
+		};
+	}
+}
+
+export async function exportStockTakes(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	status?: string;
+	locationId?: string;
+	startDate?: string;
+	endDate?: string;
+	hasVariances?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-takes/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+				hasVariances: filters.hasVariances ? "true" : undefined,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export stock takes",
+		};
+	}
+}
+
+export async function exportStockAdjustments(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	productId?: string;
+	locationId?: string;
+	reason?: string;
+	adjustmentType?: string;
+	startDate?: string;
+	endDate?: string;
+	posted?: boolean;
+	approved?: boolean;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/adjustments/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+				posted: filters.posted ? "true" : undefined,
+				approved: filters.approved ? "true" : undefined,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to export stock adjustments",
+		};
+	}
+}
+
+export async function exportGRNs(
+	filters: {
+		search?: string;
+		status?: "DRAFT" | "ACCEPTED";
+		posted?: "posted" | "unposted";
+		supplierId?: string;
+		startDate?: string;
+		endDate?: string;
+	},
+	exportData: ExportData,
+) {
+	const sessionData = (await getCookieData())!;
+	const {
+		search,
+		status,
+		posted: postedFilter,
+		supplierId,
+		startDate,
+		endDate,
+	} = filters;
+
+	const posted =
+		postedFilter === "posted"
+			? "true"
+			: postedFilter === "unposted"
+				? "false"
+				: undefined;
+
+	try {
+		const response = await $fetch("@get/api/inventories/grn/export", {
+			query: {
+				format: exportData.export_type,
+				search: search || undefined,
+				status: status || undefined,
+				supplierId: supplierId || undefined,
+				startDate: startDate || undefined,
+				endDate: endDate || undefined,
+				stockPosted: posted,
+				// Not supporting hasRejectedItems derived filter yet
+			},
+			auth: {
+				type: "Bearer",
+				token: sessionData.token,
+			},
+		});
+
+		if (!response.data) {
+			return { success: false, error: "No data returned" };
+		}
+
+		return {
+			success: true,
+			data: response.data, // Should be Blob/File but type is ApiResponseObject in fetch.ts (mocked/generic)
+		};
+	} catch (error) {
+		console.error("Export failed:", error);
+		if (error instanceof Error) {
+			return { success: false, error: error.message };
+		}
+		return { success: false, error: "Failed to export data" };
+	}
+}
+export async function getStockAdjustments(
+	params: {
+		page?: number;
+		size?: number;
+		search?: string;
+		status?: string;
+		type?: string;
+		productId?: string;
+		locationId?: string;
+		startDate?: string;
+		endDate?: string;
+	} = {},
+) {
+	const sessionData = await verifySession();
+
+	const query: Record<string, any> = {
+		page: (params.page || 0).toString(),
+		size: (params.size || 20).toString(),
+	};
+
+	if (params.status && params.status !== "all") {
+		if (params.status === "APPROVED") {
+			query.approved = "true";
+			query.posted = "false";
+		} else if (params.status === "POSTED") {
+			query.posted = "true";
+		} else if (params.status === "PENDING_APPROVAL") {
+			query.approved = "false";
+			query.posted = "false";
+		}
+	}
+
+	if (params.type && params.type !== "all") query.adjustmentType = params.type;
+	if (params.productId) query.productId = params.productId;
+	if (params.locationId) query.locationId = params.locationId;
+	if (params.startDate) query.startDate = params.startDate;
+	if (params.endDate) query.endDate = params.endDate;
+
+	try {
+		const response = await $fetch("@get/api/inventories/adjustments", {
+			query: { ...query, pageable: "true" },
+			auth: { type: "Bearer", token: sessionData.token },
+		});
+
+		if (!response.data) {
+			return { success: false, error: "No data returned" };
+		}
+
+		return {
+			success: true,
+			data: response.data.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Failed to fetch adjustments",
 		};
 	}
 }

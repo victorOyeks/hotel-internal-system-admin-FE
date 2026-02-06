@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation */
 import { PurchaseOrderPage } from "@/components/roles/inventory/purchase-order-page";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
@@ -13,6 +14,8 @@ type PageProps = {
 
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
+	search: parseAsString.withDefault(""),
+	status: parseAsString,
 	productSearch: parseAsString,
 	supplierSearch: parseAsString,
 }, {
@@ -38,12 +41,16 @@ export default function Page({ searchParams }: PageProps) {
 				query: {
 					page: query.page < 1 ? query.page : query.page - 1,
 					size: query.size,
+					search: query.search,
+					status: query.status as any,
 				},
 				throw: true,
 			})
 			return res.data;
 		},
 	}));
+
+	console.log(orders)
 
 	const stats = use(qc.ensureQueryData({
 		queryKey: ["purchase-orders-stats"],
@@ -76,25 +83,25 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}));
 
-	console.log(suppliers)
-
-	const products = use(qc.ensureQueryData({
+	const { content: products } = use(qc.ensureQueryData({
 		queryKey: ["products", query],
 		queryFn: async () => {
-			const res = await $fetch("@get/api/inventories/products/list", {
+			const res = await $fetch("@get/api/inventories/products", {
 				auth: {
 					token,
 					type: "Bearer"
 				},
 				query: {
-					search: query.productSearch
+					search: query.productSearch,
+					size: 50
 				},
 				throw: true,
 			})
 			return res.data;
 		},
 	}));
-	console.log({ stats })
+
+
 	return (
 		<BreadCrumbWrapper
 			breadcrumbs={{

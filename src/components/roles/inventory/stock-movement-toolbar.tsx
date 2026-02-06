@@ -1,8 +1,7 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation */
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -12,41 +11,66 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { TableFilter } from "@/components/shared/table-filter";
-import { cn } from "@/lib/utils";
-import { SearchIcon, X } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useQueryStates, parseAsString, parseAsStringLiteral } from "nuqs";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/shared/date-picker";
+import { format } from "date-fns";
+import { exportStockMovements } from "@/lib/inventory-actions";
+import { toast } from "sonner";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
 
-export function StockMovementToolbar() {
+interface StockMovementToolbarProps {
+    locations: { id: string; name: string }[];
+    products: { id: string; name: string; sku: string }[];
+}
+
+export function StockMovementToolbar({ locations, products }: StockMovementToolbarProps) {
     const [filterStates, setFilterStates] = useQueryStates({
         search: parseAsString,
         type: parseAsStringLiteral([
             "PURCHASE_RECEIPT",
-            "SALES_ISSUE",
+            "PURCHASE_RETURN_REVERSAL",
+            "SALES_RETURN",
             "TRANSFER_IN",
-            "TRANSFER_OUT",
             "ADJUSTMENT_IN",
-            "ADJUSTMENT_OUT",
+            "PRODUCTION_IN",
+            "SALES_ISSUE",
             "INTERNAL_CONSUMPTION",
+            "TRANSFER_OUT",
+            "ADJUSTMENT_OUT",
             "DAMAGE_WRITEOFF",
             "EXPIRY_WRITEOFF",
+            "THEFT_WRITEOFF",
+            "LOST_WRITEOFF",
+            "SAMPLE_ISSUE",
+            "STOCK_TAKE",
+            "OPENING_BALANCE",
+            "REVALUATION",
         ]),
+        productId: parseAsString,
+        locationId: parseAsString,
+        startDate: parseAsString,
+        endDate: parseAsString,
     });
 
     const filterQueryState = useMemo(
         () => ({
             type: filterStates.type,
+            productId: filterStates.productId,
+            locationId: filterStates.locationId,
+            startDate: filterStates.startDate,
+            endDate: filterStates.endDate,
         }),
-        [filterStates.type],
+        [filterStates],
     );
 
     const setFilterQueryState = useCallback(
-        (state: Partial<{ type: string | null }>) => {
+        (state: Partial<typeof filterQueryState>) => {
             setFilterStates((prev) => ({
                 ...prev,
-                ...state as {
-                    type: typeof filterQueryState.type;
-                },
+                ...state,
             }));
         },
         [setFilterStates],
@@ -62,9 +86,43 @@ export function StockMovementToolbar() {
                 value: filterStates.type.replace(/_/g, " "),
             });
         }
+        if (filterStates.productId) {
+            const product = products.find((p) => p.id === filterStates.productId);
+            if (product) {
+                filters.push({
+                    key: "productId",
+                    label: "Product",
+                    value: product.name,
+                });
+            }
+        }
+        if (filterStates.locationId) {
+            const location = locations.find((l) => l.id === filterStates.locationId);
+            if (location) {
+                filters.push({
+                    key: "locationId",
+                    label: "Location",
+                    value: location.name,
+                });
+            }
+        }
+        if (filterStates.startDate) {
+            filters.push({
+                key: "startDate",
+                label: "From",
+                value: format(new Date(filterStates.startDate), "PP"),
+            });
+        }
+        if (filterStates.endDate) {
+            filters.push({
+                key: "endDate",
+                label: "To",
+                value: format(new Date(filterStates.endDate), "PP"),
+            });
+        }
 
         return filters;
-    }, [filterStates]);
+    }, [filterStates, products, locations]);
 
     const removeFilter = useCallback(
         (key: string) => {
@@ -75,6 +133,54 @@ export function StockMovementToolbar() {
         },
         [setFilterStates],
     );
+
+    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+    const onExport = async (data: ExportData) => {
+        try {
+            const filters = {
+                search: filterStates.search || undefined,
+                movementType: filterStates.type || undefined,
+                startDate: data.from_date?.toISOString(),
+                endDate: data.to_date?.toISOString(),
+                productId: filterStates.productId || undefined,
+                locationId: filterStates.locationId || undefined,
+                format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+            };
+
+            const response = await exportStockMovements(filters);
+
+            if (response.success && response.data) {
+                const blob = new Blob([response.data as unknown as BlobPart], {
+                    type:
+                        data.export_type === "csv"
+                            ? "text/csv"
+                            : data.export_type === "pdf"
+                                ? "application/pdf"
+                                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                const extension =
+                    data.export_type === "excel" ? "xlsx" : data.export_type;
+                a.download = `${data.export_type === "csv"
+                    ? "stock-movements"
+                    : "stock-movements-report"
+                    }-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast.success("Export downloaded successfully");
+                setIsExportDialogOpen(false);
+            } else {
+                toast.error(response.error || "Failed to export movements");
+            }
+        } catch {
+            toast.error("An error occurred during export");
+        }
+    };
 
     return (
         <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -119,12 +225,16 @@ export function StockMovementToolbar() {
                     <StockMovementFilter
                         queryState={filterQueryState}
                         setQueryState={setFilterQueryState}
+                        locations={locations}
+                        products={products}
                     />
                 </TableFilter>
 
-                <Button size={"sm"} className="rounded-md md:rounded-xl">
-                    Export
-                </Button>
+                <ExportDialog
+                    open={isExportDialogOpen}
+                    setOpenAction={setIsExportDialogOpen}
+                    onSubmitAction={onExport}
+                />
             </div>
         </div>
     );
@@ -133,36 +243,110 @@ export function StockMovementToolbar() {
 function StockMovementFilter({
     queryState,
     setQueryState,
+    locations,
+    products,
 }: {
-    queryState: { type: string | null };
-    setQueryState: (state: Partial<{ type: string | null }>) => void;
+    queryState: {
+        type:
+        | "PURCHASE_RECEIPT"
+        | "PURCHASE_RETURN_REVERSAL"
+        | "SALES_RETURN"
+        | "TRANSFER_IN"
+        | "ADJUSTMENT_IN"
+        | "PRODUCTION_IN"
+        | "SALES_ISSUE"
+        | "INTERNAL_CONSUMPTION"
+        | "TRANSFER_OUT"
+        | "ADJUSTMENT_OUT"
+        | "DAMAGE_WRITEOFF"
+        | "EXPIRY_WRITEOFF"
+        | "THEFT_WRITEOFF"
+        | "LOST_WRITEOFF"
+        | "SAMPLE_ISSUE"
+        | "STOCK_TAKE"
+        | "OPENING_BALANCE"
+        | "REVALUATION"
+        | null;
+        productId: string | null;
+        locationId: string | null;
+        startDate: string | null;
+        endDate: string | null;
+    };
+    setQueryState: (state: Partial<typeof queryState>) => void;
+    locations: { id: string; name: string }[];
+    products: { id: string; name: string; sku: string }[];
 }) {
     return (
-        <div className="space-y-4 w-[200px]">
+        <div className="space-y-4 max-w-sm w-full grid grid-flow-dense">
+            <div className="space-y-2">
+                <Label>Date Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                    <DatePicker
+                        initialDate={queryState.startDate ?? ""}
+                        onChange={(date) => setQueryState({ startDate: date || null })}
+                        placeholder="Start Date"
+                    />
+                    <DatePicker
+                        initialDate={queryState.endDate ?? ""}
+                        onChange={(date) => setQueryState({ endDate: date || null })}
+                        placeholder="End Date"
+                    />
+                </div>
+            </div>
+
             <div className="space-y-2">
                 <Label>Movement Type</Label>
                 <Select
                     value={queryState.type ?? "all"}
                     onValueChange={(value) =>
-                        setQueryState({ type: value === "all" ? null : value })
+                        setQueryState({ type: value === "all" ? null : value as any })
                     }
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="PURCHASE_RECEIPT">Purchase Receipt</SelectItem>
-                        <SelectItem value="SALES_ISSUE">Sales Issue</SelectItem>
+                        <SelectItem value="PURCHASE_RETURN_REVERSAL">Purchase Return Reversal</SelectItem>
+                        <SelectItem value="SALES_RETURN">Sales Return</SelectItem>
                         <SelectItem value="TRANSFER_IN">Transfer In</SelectItem>
-                        <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
                         <SelectItem value="ADJUSTMENT_IN">Adjustment In</SelectItem>
-                        <SelectItem value="ADJUSTMENT_OUT">Adjustment Out</SelectItem>
+                        <SelectItem value="PRODUCTION_IN">Production In</SelectItem>
+                        <SelectItem value="SALES_ISSUE">Sales Issue</SelectItem>
                         <SelectItem value="INTERNAL_CONSUMPTION">Internal Consumption</SelectItem>
+                        <SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
+                        <SelectItem value="ADJUSTMENT_OUT">Adjustment Out</SelectItem>
                         <SelectItem value="DAMAGE_WRITEOFF">Damage Writeoff</SelectItem>
                         <SelectItem value="EXPIRY_WRITEOFF">Expiry Writeoff</SelectItem>
+                        <SelectItem value="THEFT_WRITEOFF">Theft Writeoff</SelectItem>
+                        <SelectItem value="LOST_WRITEOFF">Lost Writeoff</SelectItem>
+                        <SelectItem value="SAMPLE_ISSUE">Sample Issue</SelectItem>
+                        <SelectItem value="STOCK_TAKE">Stock Take</SelectItem>
+                        <SelectItem value="OPENING_BALANCE">Opening Balance</SelectItem>
+                        <SelectItem value="REVALUATION">Revaluation</SelectItem>
                     </SelectContent>
                 </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label>Location</Label>
+                <Combobox
+                    options={locations.map(l => ({ label: l.name, value: l.id }))}
+                    value={queryState.locationId ?? ""}
+                    onSelect={(value: any) => setQueryState({ locationId: value || null })}
+                    placeholder="Select location"
+                />
+            </div>
+
+            <div className="space-y-2">
+                <Label>Product</Label>
+                <Combobox
+                    options={products.map(p => ({ label: p.name, value: p.id }))}
+                    value={queryState.productId ?? ""}
+                    onSelect={(value: any) => setQueryState({ productId: value || null })}
+                    placeholder="Select product"
+                />
             </div>
         </div>
     );

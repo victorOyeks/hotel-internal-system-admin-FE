@@ -30,7 +30,7 @@ binding = "ASSETS"
 
 [vars]
 DOMAIN_URL="sandbox.hospio360.com"
-NEXT_PUBLIC_API_URL="https://api-dev.hospio360.com"
+NEXT_PUBLIC_API_URL="https://api-dev.hospio360.com/hospio-service"
 
 
 # Create a R2 binding with the binding name "NEXT_INC_CACHE_R2_BUCKET"

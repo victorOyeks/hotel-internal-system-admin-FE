@@ -12,6 +12,8 @@ export const Role = z.enum([
   "RESTAURANT",
   "RENTALS",
   "SUPER_ADMIN",
+  "LAUNDRY",
+  "FINANCIALS",
 ]);
 
 const ApiExceptionResponseObject = z.object({
@@ -30,6 +32,45 @@ const ApiResponseObject = z.object({
   status: z.boolean(),
   message: z.string(),
   data: z.object({}), // Generic object
+});
+
+export const InventoryStockMovementResponse = z.object({
+  id: z.string(),
+  movementType: z.string(),
+  productId: z.string(),
+  productName: z.string().optional(),
+  quantity: z.number(),
+  referenceType: z.string().optional(),
+  referenceId: z.string().optional(),
+  referenceNumber: z.string().optional(),
+  fromLocationId: z.string().nullable().optional(),
+  fromLocationName: z.string().nullable().optional(),
+  toLocationId: z.string().nullable().optional(),
+  toLocationName: z.string().nullable().optional(),
+  movementDate: z.string(),
+  performedBy: z.string().optional(),
+  remarks: z.string().optional(),
+  unitPrice: z.number().optional(),
+});
+
+export type InventoryStockMovementResponse = z.infer<
+  typeof InventoryStockMovementResponse
+>;
+
+export const ApiStockMovementListResponse = ApiResponseObject.extend({
+  data: z.object({
+    content: z.array(InventoryStockMovementResponse),
+    pageable: z.any(),
+    last: z.boolean(),
+    totalPages: z.number(),
+    totalElements: z.number(),
+    size: z.number(),
+    number: z.number(),
+    sort: z.any(),
+    first: z.boolean(),
+    numberOfElements: z.number(),
+    empty: z.boolean(),
+  }),
 });
 
 const Pagination = z.object({
@@ -387,7 +428,7 @@ const UserInfoResponse = z.object({
   phoneNumber: z.string(),
   staffId: z.string(),
   userStatus: z.string().nullable().or(z.undefined()),
-  role: Role,
+  roles: Role.array(),
   customId: z.string().nullable().optional(),
   parentUserCustomId: z.string().nullable().or(z.undefined()),
   verified: z.boolean(),
@@ -717,6 +758,11 @@ export type InventorySuppliers = z.infer<
   typeof ApiResponseInventorySuppliers
 >["data"]["content"][number];
 export type InventorySupplierItem = InventorySuppliers["products"][number];
+
+export type InventorySupplierMini = Pick<
+  z.infer<typeof InventorySupplier>,
+  "id" | "name" | "email" | "phone"
+>;
 
 const InventorySupplier = z.object({
   id: z.string(),
@@ -1276,7 +1322,7 @@ export const ApiInputInventoryProduct = z.object({
   height: z.number().min(0).optional(),
   preferredSupplierId: z.string().optional(),
   supplierPartNumber: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z.url().optional().or(z.literal("")),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
   tags: z.string().optional(),
@@ -1414,7 +1460,7 @@ const SupplierResponse = z.object({
 
 export type SupplierResponse = z.infer<typeof SupplierResponse>;
 
-const AddSupplierRequest = z.object({
+export const AddSupplierRequest = z.object({
   name: z.string(),
   contactPerson: z.string(),
   email: z.string().email(),
@@ -1438,7 +1484,7 @@ const AddSupplierRequest = z.object({
 
 export type AddSupplierRequest = z.infer<typeof AddSupplierRequest>;
 
-const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
+export const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
   active: z.boolean().optional(),
 });
 
@@ -1754,27 +1800,6 @@ const CreateGRNRequest = z.object({
 
 export type CreateGRNRequest = z.infer<typeof CreateGRNRequest>;
 
-const UpdateGRNRequest = z.object({
-  supplierInvoiceNumber: z.string().optional(),
-  supplierInvoiceDate: z.string().optional(),
-  supplierDeliveryNote: z.string().optional(),
-  receiptDate: z.string(),
-  receiptTime: z.string().optional(),
-  deliveredBy: z.string().optional(),
-  vehicleNumber: z.string().optional(),
-  inspectionRequired: z.boolean().optional(),
-  inspectionDate: z.string().optional(),
-  inspectedBy: z.string().optional(),
-  inspectionResult: z.string().optional(),
-  inspectionNotes: z.string().optional(),
-  items: z.array(GRNItemRequest).min(1),
-  notes: z.string().optional(),
-  discrepancies: z.string().optional(),
-  packagingCondition: z.string().optional(),
-});
-
-export type UpdateGRNRequest = z.infer<typeof UpdateGRNRequest>;
-
 const GoodsReceiptNoteResponse = z.object({
   id: z.string(),
   customId: z.string(),
@@ -1829,6 +1854,27 @@ const ApiResponseCustomPageGoodsReceiptNoteResponse = ApiResponseObject.extend({
 const ApiResponseGoodsReceiptNoteResponse = ApiResponseObject.extend({
   data: GoodsReceiptNoteResponse,
 });
+
+export const UpdateGRNRequest = z.object({
+  supplierInvoiceNumber: z.string().max(100).optional(),
+  supplierInvoiceDate: z.string().date().optional(),
+  supplierDeliveryNote: z.string().max(100).optional(),
+  receiptDate: z.string().date(),
+  receiptTime: z.string().datetime().optional(),
+  deliveredBy: z.string().max(200).optional(),
+  vehicleNumber: z.string().max(100).optional(),
+  inspectionRequired: z.boolean().optional(),
+  inspectionDate: z.string().datetime().optional(),
+  inspectedBy: z.string().max(200).optional(),
+  inspectionResult: z.string().max(100).optional(),
+  inspectionNotes: z.string().max(2000).optional(),
+  items: z.array(GRNItemRequest).min(1),
+  notes: z.string().max(2000).optional(),
+  discrepancies: z.string().max(1000).optional(),
+  packagingCondition: z.string().max(500).optional(),
+});
+
+export type UpdateGRNRequest = z.infer<typeof UpdateGRNRequest>;
 
 // --- Stock Take Schemas ---
 
@@ -2177,42 +2223,58 @@ export type CreatePurchaseOrderRequest = z.infer<
 
 const PurchaseOrderResponse = z.object({
   id: z.string(),
-  customId: z.string(),
   hotelId: z.string(),
-  orderNumber: z.string(),
+  poNumber: z.string(),
+  status: z.string(),
   supplierId: z.string(),
   supplierName: z.string(),
-  supplierEmail: z.string(),
-  supplierPhone: z.string(),
-  orderDate: z.string(),
-  expectedDeliveryDate: z.string(),
+  supplierContactPerson: z.string().nullable().optional(),
+  supplierContactPhone: z.string().nullable().optional(),
+  supplierContactEmail: z.string().nullable().optional(),
   deliveryLocationId: z.string(),
   deliveryLocationName: z.string(),
-  status: z.string(),
+  deliveryAddress: z.string().nullable().optional(),
+  orderDate: z.string(),
+  expectedDeliveryDate: z.string().nullable().optional(),
+  approvalDate: z.string().nullable().optional(),
+  sentToSupplierDate: z.string().nullable().optional(),
+  subtotal: z.number(),
+  taxAmount: z.number(),
+  taxRate: z.number(),
+  shippingCost: z.number(),
+  otherCharges: z.number(),
+  discountAmount: z.number(),
+  discountPercent: z.number(),
+  totalAmount: z.number(),
   currency: z.string(),
   exchangeRate: z.number(),
-  subTotal: z.number(),
-  taxTotal: z.number(),
-  discountTotal: z.number(),
-  shippingCost: z.number(),
-  otherCosts: z.number(),
-  grandTotal: z.number(),
-  paymentTerms: z.string(),
-  paymentStatus: z.string(),
-  amountPaid: z.number(),
-  balanceDue: z.number(),
-  notes: z.string(),
-  termsAndConditions: z.string(),
-  deliveryInstructions: z.string(),
-  internalNotes: z.string(),
-  requisitionNumber: z.string(),
-  quotationNumber: z.string(),
-  approvalStatus: z.string(),
-  approvedBy: z.string().nullable(),
-  approvedAt: z.string().nullable(),
   items: z.array(PurchaseOrderItemResponse),
+  paymentTerms: z.string().nullable().optional(),
+  paymentDueDays: z.number().nullable().optional(),
+  paymentMethod: z.string().nullable().optional(),
+  requestedBy: z.string().nullable().optional(),
+  approvedBy: z.string().nullable().optional(),
+  rejectedBy: z.string().nullable().optional(),
+  rejectedAt: z.string().nullable().optional(),
+  rejectionReason: z.string().nullable().optional(),
+  totalQuantityOrdered: z.number(),
+  totalQuantityReceived: z.number(),
+  totalQuantityPending: z.number(),
+  notes: z.string().nullable().optional(),
+  termsAndConditions: z.string().nullable().optional(),
+  deliveryInstructions: z.string().nullable().optional(),
+  internalNotes: z.string().nullable().optional(),
+  attachmentUrls: z.string().nullable().optional(),
+  requisitionNumber: z.string().nullable().optional(),
+  quotationNumber: z.string().nullable().optional(),
+  cancelled: z.boolean(),
+  cancelledAt: z.string().nullable().optional(),
+  cancelledBy: z.string().nullable().optional(),
+  cancellationReason: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable().optional(),
+  updatedBy: z.string().nullable().optional(),
 });
 
 export type PurchaseOrderResponse = z.infer<typeof PurchaseOrderResponse>;
@@ -2247,6 +2309,17 @@ const ApiResponseInventoryPurchaseOrderStatistics = ApiResponseObject.extend({
     }),
   }),
 });
+
+const PurchaseOrderListItem = PurchaseOrderResponse.pick({
+  id: true,
+  poNumber: true,
+  supplierName: true,
+  status: true,
+  orderDate: true,
+  expectedDeliveryDate: true,
+});
+
+export type PurchaseOrderListItem = z.infer<typeof PurchaseOrderListItem>;
 
 // --- Stock Movement Schemas ---
 
@@ -2298,6 +2371,12 @@ const StockMovementResponse = z.object({
 });
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
+
+// Schemas for export responses
+export const ExportStockMovementsResponse = z.any(); // Byte stream
+export const ExportStockLevelsResponse = z.any(); // Byte stream
+export const ExportStockTakesResponse = z.any(); // Byte stream
+export const ExportStockAdjustmentsResponse = z.any(); // Byte stream
 
 const ApiResponseCustomPageStockMovementResponse = ApiResponseObject.extend({
   data: Pagination.extend({
@@ -2791,17 +2870,13 @@ export const schema = createSchema({
   "@get/api/inventories/products": {
     query: z
       .object({
-        status: z.enum([
-          "ACTIVE",
-          "INACTIVE",
-          "DISCONTINUED",
-          "DRAFT",
-          "ARCHIVED",
-        ]),
-        category: InventoryProductsCategory,
-        search: z.string(),
-        trackBatches: z.boolean(),
-        trackExpiry: z.boolean(),
+        status: z
+          .enum(["ACTIVE", "INACTIVE", "DISCONTINUED", "DRAFT", "ARCHIVED"])
+          .nullable(),
+        category: InventoryProductsCategory.nullable(),
+        search: z.string().nullable(),
+        trackBatches: z.boolean().nullable(),
+        trackExpiry: z.boolean().nullable(),
         page: z.coerce.number().default(0),
         size: z.coerce.number().default(10),
       })

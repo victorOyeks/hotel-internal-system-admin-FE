@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,11 +9,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { ThermometerIcon, DropletIcon, MoreVerticalIcon, PlusIcon } from "lucide-react";
+import { ThermometerIcon, DropletIcon, PlusIcon } from "lucide-react";
 import { StatSection } from "./locations";
 import {
 	LocationsToolbar,
-	type LocationType,
 } from "./locations-filters";
 import {
 	createColumnHelper,
@@ -24,7 +22,6 @@ import {
 } from "@tanstack/react-table";
 import { LocationDetails } from "./location-details";
 import type { Pagination, StorageLocationResponse } from "@/lib/fetch";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LocationTable } from "./location-table";
 import { CreateLocationForm } from "./create-location-form";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -122,19 +119,26 @@ const columnDefs = [
 								style: "percent",
 								maximumFractionDigits: 2,
 							}).format(
-								((location.totalProductsStored / location.totalCapacity) * 100),
+								location.totalCapacity > 0
+									? (location.totalProductsStored / location.totalCapacity)
+									: 0
 							)
 						}</span>
 					</div>
 					<div className="w-full bg-gray-200 rounded-full h-2">
 						<div
-							className={`h-2 rounded-full ${(location.totalProductsStored / location.totalCapacity) > 80
+							className={`h-2 rounded-full ${location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.8
 								? "bg-red-500"
-								: (location.totalProductsStored / location.totalCapacity) > 60
+								: location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.6
 									? "bg-orange-500"
 									: "bg-green-500"
 								}`}
-							style={{ width: `${(location.totalProductsStored / location.totalCapacity) * 100}%` }}
+							style={{
+								width: `${location.totalCapacity > 0
+									? (location.totalProductsStored / location.totalCapacity) * 100
+									: 0
+									}%`
+							}}
 						/>
 					</div>
 				</div>
@@ -174,10 +178,22 @@ export function StorageLocationPage({
 	locations: StorageLocationResponse[];
 	paginationMeta: Pagination;
 }) {
-	const [searchQuery, setSearchQuery] = useState("");
-	const [typeFilter, setTypeFilter] = useState<string>("all");
-	const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
-	const [isCreateOpen, setIsCreateOpen] = useState(false);
+	// Calculate stats
+	const activeCount = locations.filter((l) => l.active).length;
+	const temperatureControlledCount = locations.filter(
+		(l) => l.temperatureControlled,
+	).length;
+	const totalItemsStored = locations.reduce(
+		(sum, l) => sum + (l.totalProductsStored || 0),
+		0,
+	);
+	const totalCapacity = locations.reduce(
+		(sum, l) => sum + (l.totalCapacity || 0),
+		0,
+	);
+	const avgOccupancy =
+		totalCapacity > 0 ? (totalItemsStored / totalCapacity) * 100 : 0;
+
 	const [pagination, onPaginationChange] = usePaginationSearchParams()
 
 	const table = useReactTable({
@@ -194,19 +210,6 @@ export function StorageLocationPage({
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
-	// Calculate stats
-	const activeCount = locations.filter((l) => l.active).length;
-	const temperatureControlledCount = locations.filter(
-		(l) => l.temperatureControlled,
-	).length;
-	const totalItemsStored = locations.reduce(
-		(sum, l) => sum + (l.totalProductsStored || 0),
-		0,
-	);
-	const avgOccupancy =
-		locations.reduce((sum, l) => sum + (l.totalCapacity || 0), 0) /
-		locations.length;
-
 	return (
 		<div className="space-y-6 p-6">
 			{/* Header */}
@@ -219,7 +222,7 @@ export function StorageLocationPage({
 						Manage warehouse and storage facility information
 					</p>
 				</div>
-				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+				<Dialog>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" />
@@ -230,7 +233,7 @@ export function StorageLocationPage({
 						<DialogHeader>
 							<DialogTitle>Add Storage Location</DialogTitle>
 						</DialogHeader>
-						<CreateLocationForm onSuccess={() => setIsCreateOpen(false)} />
+						<CreateLocationForm />
 					</DialogContent>
 				</Dialog>
 			</div>
@@ -244,15 +247,7 @@ export function StorageLocationPage({
 			/>
 
 			{/* Search and Filters */}
-			<LocationsToolbar
-				table={table}
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				typeFilter={typeFilter}
-				setTypeFilter={setTypeFilter}
-				temperatureFilter={temperatureFilter}
-				setTemperatureFilter={setTemperatureFilter}
-			/>
+			<LocationsToolbar table={table} />
 
 			{/* Locations Table */}
 			<LocationTable

@@ -15,6 +15,8 @@ const loadSearchParams = createLoader({
 	...paginationSearchParams,
 	productSearch: parseAsString,
 	locationSearch: parseAsString,
+	search: parseAsString.withDefault(""),
+	status: parseAsString,
 }, {
 	urlKeys: {
 		locationSearch: "location-list:search",
@@ -38,6 +40,8 @@ export default function Page({ searchParams }: PageProps) {
 				query: {
 					page: query.page < 1 ? query.page : query.page - 1,
 					size: query.size,
+					search: query.search,
+					status: query.status as any,
 				},
 				throw: true,
 			})

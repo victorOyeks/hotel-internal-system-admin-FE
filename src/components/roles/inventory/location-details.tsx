@@ -95,19 +95,29 @@ export function LocationDetails({
 										{
 											Intl.NumberFormat("en-US", {
 												style: "percent",
-											}).format(location.totalProductsStored / location.totalCapacity)
+												maximumFractionDigits: 1,
+											}).format(
+												location.totalCapacity > 0
+													? location.totalProductsStored / location.totalCapacity
+													: 0
+											)
 										}
 									</span>
 								</div>
 								<div className="w-full bg-secondary rounded-full h-1.5 mt-2">
 									<div
-										className={`h-1.5 rounded-full ${(location.totalProductsStored / location.totalCapacity) > 80
-											? "bg-red-500"
-											: (location.totalProductsStored / location.totalCapacity) > 60
-												? "bg-orange-500"
-												: "bg-green-500"
+										className={`h-1.5 rounded-full ${location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.8
+												? "bg-red-500"
+												: location.totalCapacity > 0 && (location.totalProductsStored / location.totalCapacity) > 0.6
+													? "bg-orange-500"
+													: "bg-green-500"
 											}`}
-										style={{ width: `${location.totalProductsStored / location.totalCapacity}%` }}
+										style={{
+											width: `${location.totalCapacity > 0
+													? (location.totalProductsStored / location.totalCapacity) * 100
+													: 0
+												}%`
+										}}
 									/>
 								</div>
 							</div>

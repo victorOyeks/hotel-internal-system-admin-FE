@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -9,7 +8,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusIcon, EyeIcon, CheckCircleIcon } from "lucide-react";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PlusIcon, MoreHorizontal } from "lucide-react";
 import {
 	createColumnHelper,
 	getCoreRowModel,
@@ -22,7 +28,7 @@ import type {
 	PurchaseOrderResponse,
 	InventoryPurchaseOrderStatistics,
 	InventorySuppliers,
-	InventoryProduct,
+	InventoryProductResponse,
 } from "@/lib/fetch";
 import { PurchaseOrderTable } from "./purchase-order-table";
 import { PurchaseOrderToolbar } from "./purchase-order-filters";
@@ -33,7 +39,7 @@ import { CreatePOForm } from "./purchase-order-form";
 const columnHelper = createColumnHelper<PurchaseOrderResponse>();
 
 const columnDefs = [
-	columnHelper.accessor("orderNumber", {
+	columnHelper.accessor("poNumber", {
 		header: "PO Number",
 		cell: (info) => (
 			<span className="font-mono font-medium">{info.getValue()}</span>
@@ -44,12 +50,17 @@ const columnDefs = [
 		cell: (info) => {
 			const order = info.row.original;
 			return (
-				<div>
-					<p className="font-medium">{order.supplierName}</p>
-					<p className="text-xs text-muted-foreground">
-						{order.items.length} items
-					</p>
-				</div>
+				<PurchaseOrderDetails
+					order={order}
+				>
+
+					<div className="cursor-pointer hover:underline">
+						<p className="font-medium">{order.supplierName}</p>
+						<p className="text-xs text-muted-foreground">
+							{order.items.length} items
+						</p>
+					</div>
+				</PurchaseOrderDetails>
 			);
 		},
 	}),
@@ -59,7 +70,11 @@ const columnDefs = [
 	}),
 	columnHelper.accessor("expectedDeliveryDate", {
 		header: "Expected Delivery",
-		cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+		cell: (info) => {
+			const date = info.getValue();
+			if (!date) return "N/A";
+			return new Date(date).toLocaleDateString();
+		},
 	}),
 	columnHelper.accessor("status", {
 		header: "Status",
@@ -102,40 +117,38 @@ const columnDefs = [
 			);
 		},
 	}),
-	columnHelper.accessor("amountPaid", {
+	columnHelper.accessor("totalAmount", {
 		header: "Amount Paid",
 		cell: (info) => (
-			<div className="text-right font-semibold">
+			<div className="font-semibold">
 				{formatCurrency(info.getValue())}
 			</div>
 		),
 	}),
 	columnHelper.display({
 		id: "actions",
-		header: "Actions",
 		cell: (info) => {
-			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 			const order = info.row.original;
 
 			return (
-				<div className="flex gap-2 justify-end">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => setIsDetailsOpen(true)}
-					>
-						<EyeIcon className="w-4 h-4" />
-					</Button>
-					{order.status === "PENDING_APPROVAL" && (
-						<Button variant="ghost" size="sm" className="text-green-600">
-							<CheckCircleIcon className="w-4 h-4" />
-						</Button>
-					)}
-					<PurchaseOrderDetails
-						open={isDetailsOpen}
-						onOpenChange={setIsDetailsOpen}
-						order={order}
-					/>
+				<div className="text-right">
+					<DropdownMenu modal>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" className="h-8 w-8 p-0">
+								<span className="sr-only">Open menu</span>
+								<MoreHorizontal />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuLabel>Actions</DropdownMenuLabel>
+							{order.status === "PENDING_APPROVAL" && (
+								<DropdownMenuItem>
+									Approve Order
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+
 				</div>
 			);
 		},
@@ -147,26 +160,12 @@ interface PurchaseOrderPageProps {
 	stats: InventoryPurchaseOrderStatistics;
 	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" |
 		"phone">[];
-	products: InventoryProduct[];
+	products: InventoryProductResponse[];
 }
 
 export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
-	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-	// Filter data
-	const filteredData = orders.filter((order) => {
-		const matchesSearch =
-			order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			order.supplierName?.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesStatus =
-			statusFilter === "all" || order.status === statusFilter;
-		return matchesSearch && matchesStatus;
-	});
-
 	const table = useReactTable({
-		data: filteredData,
+		data: orders,
 		columns: columnDefs,
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
@@ -182,7 +181,7 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 						Create and manage purchase orders for suppliers
 					</p>
 				</div>
-				<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+				<Dialog>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" />
@@ -194,7 +193,6 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 							<DialogTitle>Create Purchase Order</DialogTitle>
 						</DialogHeader>
 						<CreatePOForm
-							onClose={() => setIsCreateDialogOpen(false)}
 							suppliers={suppliers}
 							products={products}
 						/>
@@ -206,12 +204,7 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 			<PurchaseOrderStats stats={stats} />
 
 			{/* Filters */}
-			<PurchaseOrderToolbar
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				statusFilter={statusFilter}
-				setStatusFilter={setStatusFilter}
-			/>
+			<PurchaseOrderToolbar />
 
 			{/* Table */}
 			<PurchaseOrderTable table={table} />

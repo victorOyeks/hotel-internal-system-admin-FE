@@ -17,6 +17,8 @@ import {
   FileIcon,
   PinIcon,
   ClockAlertIcon,
+  FileDiffIcon,
+  ArrowLeftRightIcon,
   UserIcon,
   BarChart3Icon,
 } from "lucide-react";
@@ -102,11 +104,18 @@ export const inventoryOfficerLinks = [
   },
   {
     title: "Stock takes",
+    icon: <ClipboardListIcon />,
     url: "/dashboard/stock-takes",
   },
   {
     title: "Stock Movements",
+    icon: <ArrowLeftRightIcon />,
     url: "/dashboard/stock-movements",
+  },
+  {
+    title: "Stock Adjustments",
+    icon: <FileDiffIcon />,
+    url: "/dashboard/adjustments",
   },
 ];
 

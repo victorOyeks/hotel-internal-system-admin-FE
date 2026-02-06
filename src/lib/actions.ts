@@ -7,7 +7,7 @@ import {
   type OnboardHotelRequest,
   type CreateStorageLocationRequest,
 } from "./fetch";
-import { createSession, deleteSession, refreshTokenKey } from "./session";
+import { createSession, deleteSession } from "./session";
 import { getUser, verifySession } from "./dal";
 import { revalidatePath } from "next/cache";
 import {
@@ -48,7 +48,7 @@ export async function login(payload: {
       },
     );
 
-    await createSession(data.accessToken, data.refreshToken);
+    await createSession(data.accessToken);
 
     return { success: true, data: { message, referenceId, role: data.role } };
   } catch (error) {
@@ -58,6 +58,10 @@ export async function login(payload: {
 }
 
 export async function logout(): Promise<void> {
+  await $fetch("@post/api/auth/logout", {
+    body: {},
+    throw: true,
+  });
   await deleteSession();
   // Note: redirect() throws a NEXT_REDIRECT error, which Next.js handles.
   // We don't wrap this in try/catch as we want that behavior.
@@ -102,26 +106,7 @@ export async function forgotPassword(payload: {
   }
 }
 
-export async function refreshToken() {
-  console.log("Refreshing token");
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get(refreshTokenKey)?.value;
-  if (refreshToken) {
-    try {
-      const response = await $fetch("@post/api/auth/refresh", {
-        body: { refreshToken },
-        throw: true,
-      });
-      await createSession(
-        response.data.accessToken,
-        response.data.refreshToken,
-      );
-      return { success: true, data: response };
-    } catch (error) {
-      return { success: false, error: parseError(error) };
-    }
-  }
-}
+// refreshToken function removed since Incoming branch removed it and it's redundant if session management changed.
 
 export async function verifyOtp(payload: {
   otp: string;
@@ -274,7 +259,7 @@ export async function onboardManagerToHotel(
 ): ServerActionResponseFromEndpoint<"@post/api/hotel-owners/managers"> {
   try {
     const sessionData = await verifySession();
-    if (sessionData.role !== "HOTEL_OWNER") {
+    if (!sessionData.roles.includes("HOTEL_OWNER")) {
       // Handle authorization as a returned error, not a thrown one
       return {
         success: false,
@@ -301,7 +286,7 @@ export async function updateStaffDetailsByOwner({
 }: Omit<OnboardStaffRequest, "password">): ServerActionResponse<string> {
   try {
     const sessionData = await verifySession();
-    if (sessionData.role !== "HOTEL_OWNER") {
+    if (!sessionData.roles.includes("HOTEL_OWNER")) {
       return {
         success: false,
         error:

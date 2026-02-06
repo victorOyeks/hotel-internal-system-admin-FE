@@ -16,14 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EyeIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { Pagination, StockMovementResponse } from "@/lib/fetch";
 import { StockMovementTable } from "./stock-movement-table";
 import { StockMovementToolbar } from "./stock-movement-toolbar";
-import { StockMovementDetails } from "./stock-movement-details";
 import { CreateStockIssueForm } from "./create-stock-issue-form";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { ProductHistorySheet } from "./product-history-sheet";
 
 const columnHelper = createColumnHelper<StockMovementResponse>();
 
@@ -59,22 +59,33 @@ const columns = [
     columnHelper.accessor("productName", {
         header: "Product",
         cell: (info) => (
+            <ProductHistorySheet
+                productId={info.row.original.productId}
+                productName={info.getValue() || "Unknown Product"}
+                movement={info.row.original}
+            >
+                <div className="cursor-pointer hover:underline">
+                    <p className="font-medium">{info.getValue()}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {info.row.original.productSku}
+                    </p>
+                </div>
+            </ProductHistorySheet>
+        ),
+    }),
+    columnHelper.accessor("fromLocationName", {
+        header: "From",
+        cell: (info) => (
             <div>
-                <p className="font-medium">{info.getValue()}</p>
-                <p className="text-xs text-muted-foreground">
-                    {info.row.original.productSku}
-                </p>
+                <p className="font-medium text-sm">{info.getValue() || "-"}</p>
             </div>
         ),
     }),
-    columnHelper.accessor("locationName", {
-        header: "Location",
+    columnHelper.accessor("toLocationName", {
+        header: "To",
         cell: (info) => (
             <div>
-                <p className="font-medium">{info.getValue()}</p>
-                <p className="text-xs text-muted-foreground">
-                    {info.row.original.locationCode}
-                </p>
+                <p className="font-medium text-sm">{info.getValue() || "-"}</p>
             </div>
         ),
     }),
@@ -99,31 +110,6 @@ const columns = [
     }),
     columnHelper.accessor("performedBy", {
         header: "Performed By",
-    }),
-    columnHelper.display({
-        id: "actions",
-        header: "Actions",
-        cell: (info) => {
-            const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-            const movement = info.row.original;
-
-            return (
-                <div className="flex justify-end">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsDetailsOpen(true)}
-                    >
-                        <EyeIcon className="w-4 h-4" />
-                    </Button>
-                    <StockMovementDetails
-                        open={isDetailsOpen}
-                        onOpenChange={setIsDetailsOpen}
-                        movement={movement}
-                    />
-                </div>
-            );
-        },
     }),
 ];
 
@@ -187,7 +173,7 @@ export function StockMovementPage({
             </div>
 
             {/* Toolbar */}
-            <StockMovementToolbar />
+            <StockMovementToolbar locations={locations} products={products} />
 
             {/* Table */}
             <StockMovementTable table={table} />

@@ -3,20 +3,17 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getCookieData } from "./server-fns";
-import { decrypt, refreshSession, tokenKey } from "./session";
+import { activeRoleKey, decrypt, tokenKey } from "./session";
 import { redirect } from "next/navigation";
 import { $fetch } from "./fetch";
 import type { HotelRole } from "./types";
+import { env } from "@/env";
 
 export const verifySession = cache(async (role?: HotelRole) => {
-	let cookie = (await cookies()).get(tokenKey)?.value;
+	const cookie = (await cookies()).get(tokenKey)?.value;
 
 	if (!cookie) {
-		const newSession = await refreshSession();
-		if (!newSession) {
-			redirect("/auth");
-		}
-		cookie = newSession.accessToken;
+		redirect("/auth");
 	}
 
 	const session = decrypt(cookie);
@@ -25,7 +22,7 @@ export const verifySession = cache(async (role?: HotelRole) => {
 		redirect("/login");
 	}
 
-	if (role && session.role !== role) {
+	if (role && !session.roles.includes(role)) {
 		redirect("/unauthorized");
 	}
 
@@ -64,7 +61,7 @@ export const getManagerCurrentHotel = cache(async () => {
 		return null;
 	}
 
-	if (user.role !== "MANAGER") {
+	if (!user.roles.includes("MANAGER")) {
 		return null;
 	}
 
@@ -82,4 +79,32 @@ export const getManagerCurrentHotel = cache(async () => {
 		return firstHotel;
 	}
 	return currentHotel;
+});
+
+export const setActiveRole = cache(async (role: HotelRole) => {
+	const session = await verifySession();
+	if (!session) {
+		return null;
+	}
+
+	const userHasRole = session.roles.includes(role);
+
+	if (!userHasRole) {
+		return null;
+	}
+
+	const cookieStore = await cookies();
+	cookieStore.set(activeRoleKey, role, {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		expires: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
+		sameSite: "lax",
+		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
+	});
+});
+
+export const getActiveRole = cache(async () => {
+	await verifySession();
+	const cookieStore = await cookies();
+	return cookieStore.get(activeRoleKey)?.value;
 });

@@ -1,13 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { HotelRole } from "./lib/types";
-import {
-  tokenKey,
-  refreshTokenKey,
-  decrypt,
-  createSession,
-  deleteSession,
-} from "./lib/session";
-import { $fetch } from "./lib/fetch";
+import { tokenKey, decrypt, createSession, activeRoleKey } from "./lib/session";
 
 const PREFIX_PATH = "/dashboard";
 
@@ -20,9 +13,13 @@ const roleToPath: Record<HotelRole, string> = {
   MAINTENANCE: "/maintenance",
   RENTALS: "/rentals",
   SUPER_ADMIN: "/admin",
+  LAUNDRY: "/laundry",
+  FINANCIALS: "/financials",
 };
 
 const publicPaths = ["/auth", "/forgot-password", "/reset-password"];
+
+const protectedRoleIndependentRoute = ["/select-role"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -31,62 +28,40 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicPaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
+  const isProtectedRoleIndependentRoute = protectedRoleIndependentRoute.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
 
   // 2. Initialize Redirect URL
   const loginUrl = new URL("/auth", request.url);
   loginUrl.searchParams.set("from", pathname);
+  const selectRoleUrl = new URL("/select-role", request.url);
 
   // 3. Get Tokens
-  let accessToken = request.cookies.get(tokenKey)?.value;
-  const refreshToken = request.cookies.get(refreshTokenKey)?.value;
+  const accessToken = request.cookies.get(tokenKey)?.value;
 
   // 4. Verify Access Token (Decrypt returns null if expired/invalid)
-  let session = accessToken ? decrypt(accessToken) : null;
+  const session = accessToken ? decrypt(accessToken) : null;
 
-  // Flag to track if we need to set new cookies on the response
-  let newTokens: { accessToken: string; refreshToken: string } | null = null;
-
-  // 5. REFRESH LOGIC: If session is invalid/missing BUT we have a refresh token
-  if (!session && refreshToken) {
-    const response = await $fetch("@post/api/auth/refresh", {
-      body: { refreshToken },
-    });
-
-    if (response.data && !response.error) {
-      // Success! Capture new tokens
-      newTokens = {
-        accessToken: response.data.data.accessToken,
-        refreshToken: response.data.data.refreshToken,
-      };
-
-      // Update the local accessToken so RBAC below works with the new user
-      accessToken = newTokens.accessToken;
-      session = decrypt(accessToken);
-    } else {
-      console.error(
-        "Token refresh failed inside middleware",
-        refreshToken,
-        response.error,
-      );
-      await deleteSession();
-      // Fall through to the auth check below
-    }
-  }
-
-  // 6. Auth Check: If still no valid session, redirect (unless public)
-  if (!session && !isPublicRoute) {
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // 7. Allow public routes to pass if they have no session
+  // 6. Allow public routes to pass if they have no session
   if (isPublicRoute && !session) {
     return NextResponse.next();
   }
 
+  // 7. If no session, redirect to login
+  if (!session) {
+    return NextResponse.redirect(loginUrl);
+  }
+
   // --- RBAC & REWRITES (Only runs if we have a valid session) ---
 
-  const userRole = session?.role as HotelRole;
-  const expectedPath = roleToPath[userRole];
+  const userRole = request.cookies.get(activeRoleKey)?.value;
+
+  if (!userRole && !isPublicRoute && !isProtectedRoleIndependentRoute) {
+    return NextResponse.redirect(selectRoleUrl);
+  }
+
+  const expectedPath = roleToPath[userRole as HotelRole];
 
   // Handle Rewrite Logic
   if (pathname.startsWith(PREFIX_PATH)) {
@@ -120,9 +95,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 8. FINAL STEP: Attach new cookies if we refreshed
-  if (newTokens) {
-    console.log("attaching new tokens", newTokens);
-    await createSession(newTokens.accessToken, newTokens.refreshToken);
+  if (accessToken) {
+    await createSession(accessToken);
   }
 
   return NextResponse.next();

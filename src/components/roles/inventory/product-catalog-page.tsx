@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -38,7 +38,6 @@ import {
 	CalendarIcon,
 	MoreVerticalIcon,
 	EditIcon,
-	TrashIcon,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ProductsToolbar } from "./products";
@@ -87,16 +86,8 @@ import {
 } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
-import { addProduct } from "@/lib/inventory-actions";
-
-const categories = [
-	{ value: "FOOD", label: "Food" },
-	{ value: "BEVERAGE", label: "Beverage" },
-	{ value: "SUPPLIES", label: "Supplies" },
-	{ value: "EQUIPMENT", label: "Equipment" },
-	{ value: "LINEN", label: "Linen" },
-	{ value: "AMENITIES", label: "Amenities" },
-];
+import { addProduct, deleteProduct, editProduct } from "@/lib/inventory-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 function StatCard({
 	icon,
@@ -318,62 +309,9 @@ export function ProductCatalogPage({
 				/>
 			</div>
 
-			{/* Filters and Search */}
-			{/* <Card>
-				<CardHeader>
-					<CardTitle>Search & Filter Products</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="flex gap-4 flex-wrap">
-						<div className="flex-1 min-w-[200px]">
-							<div className="relative">
-								<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-								<Input
-									placeholder="Search by name, SKU, or description..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
-						</div>
-
-						<Select
-							value={selectedCategory}
-							onValueChange={setSelectedCategory}
-						>
-							<SelectTrigger className="w-[180px]">
-								<FilterIcon className="w-4 h-4 mr-2" />
-								<SelectValue placeholder="Category" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Categories</SelectItem>
-								{categories.map((cat) => (
-									<SelectItem key={cat.value} value={cat.value}>
-										{cat.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
-						<Select value={selectedStatus} onValueChange={setSelectedStatus}>
-							<SelectTrigger className="w-[180px]">
-								<SelectValue placeholder="Status" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Status</SelectItem>
-								<SelectItem value="ACTIVE">Active</SelectItem>
-								<SelectItem value="INACTIVE">Inactive</SelectItem>
-								<SelectItem value="DISCONTINUED">Discontinued</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-				</CardContent>
-			</Card> */}
-
 			<ProductsToolbar table={table} />
 
 			{/* Products Table */}
-
 			<div className="overflow-hidden rounded-md border bg-card">
 				<Table>
 					<TableHeader className="bg-gray-100">
@@ -385,9 +323,9 @@ export function ProductCatalogPage({
 											{header.isPlaceholder
 												? null
 												: flexRender(
-														header.column.columnDef.header,
-														header.getContext(),
-													)}
+													header.column.columnDef.header,
+													header.getContext(),
+												)}
 										</TableHead>
 									);
 								})}
@@ -443,21 +381,69 @@ export function ProductCatalogPage({
 // Add Product Form Component
 function AddProductForm({ onClose }: { onClose: () => void }) {
 	const { mutate, isPending } = useMutation({
+		mutationKey: ["add-product-inventory"],
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
 			const response = await addProduct(payload);
 
 			if (!response.success) {
 				throw Error(response.error);
 			}
+
+			return response.data.message
 		},
-		onSuccess: () => {
-			toast.success("Product created successfully");
+		onSuccess: async (message) => {
+			toast.success(message);
+			await revalidateRoute("/dashboard/products")
 			onClose();
 		},
 		onError: (error) => {
 			toast.error(error.message);
 		},
 	});
+
+	const categories = useMemo(() => {
+		const c = [
+			"FOOD_FRESH",
+			"FOOD_FROZEN",
+			"FOOD_DRY_GOODS",
+			"BEVERAGES_ALCOHOLIC",
+			"BEVERAGES_NON_ALCOHOLIC",
+			"BEVERAGES_HOT",
+			"CLEANING_SUPPLIES",
+			"LAUNDRY_SUPPLIES",
+			"GUEST_AMENITIES",
+			"LINENS_TOWELS",
+			"MAINTENANCE_SUPPLIES",
+			"ELECTRICAL_SUPPLIES",
+			"PLUMBING_SUPPLIES",
+			"HVAC_SUPPLIES",
+			"STATIONERY",
+			"OFFICE_EQUIPMENT",
+			"PRINTING_SUPPLIES",
+			"MINIBAR_ITEMS",
+			"ROOM_SUPPLIES",
+			"WELCOME_ITEMS",
+			"KITCHEN_EQUIPMENT",
+			"TABLEWARE",
+			"DISPOSABLES",
+			"UNIFORMS",
+			"SAFETY_EQUIPMENT",
+			"MARKETING_MATERIALS",
+			"GENERAL_SUPPLIES",
+			"OTHER",
+		]
+
+		return c.reduce((p, c) => {
+			return [...p, { value: c, label: c.replaceAll("_", " ").toLocaleLowerCase() }]
+		}, [] as { value: string; label: string }[])
+	}, [])
+
+	const units = useMemo(() => {
+		const u = ["PCS", "EACH", "SET", "UNIT", "IN", "BOTTLE", "G", "BAG", "CM", "BOX", "L", "M", "FT", "CASE", "GAL", "TON", "LB", "DOZEN", "PACK", "PAIR", "KG", "ROLL", "ML", "OZ", "CAN", "CARTON"]
+		return u.reduce((p, c) => {
+			return [...p, { value: c, label: c }]
+		}, [] as { value: string; label: string }[])
+	}, [])
 
 	const form = useForm({
 		resolver: zodResolver(ApiInputInventoryProduct),
@@ -471,6 +457,7 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 			baseUnit: "KG",
 		},
 	});
+
 
 	function onSubmit(values: z.infer<typeof ApiInputInventoryProduct>) {
 		mutate(values);
@@ -603,13 +590,13 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 												defaultValue={field.value}
 											>
 												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select category" />
+													<SelectTrigger className="capitalize w-full">
+														<SelectValue placeholder="Select category" className="capitalize" />
 													</SelectTrigger>
 												</FormControl>
-												<SelectContent>
+												<SelectContent className="w-full">
 													{categories.map((cat) => (
-														<SelectItem key={cat.value} value={cat.value}>
+														<SelectItem key={cat.value} value={cat.value} className="capitalize">
 															{cat.label}
 														</SelectItem>
 													))}
@@ -680,11 +667,23 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 										<FormItem>
 											<FormLabel>Purchase Unit</FormLabel>
 											<FormControl>
-												<Input
-													placeholder="e.g., box"
-													{...field}
-													value={field.value || ""}
-												/>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger className="capitalize w-full">
+															<SelectValue placeholder="Select unit" className="capitalize" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent className="w-full">
+														{units.map((unit) => (
+															<SelectItem key={unit.value} value={unit.value} className="capitalize">
+																{unit.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -1052,7 +1051,7 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 						<EditIcon />
 						Edit
 					</DropdownMenuItem>
-					<DropdownMenuItem
+					{/* <DropdownMenuItem
 						onClick={() => {
 							setIsMenuOpen(false);
 							setIsDeleteOpen(true);
@@ -1061,7 +1060,7 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 					>
 						<TrashIcon />
 						Delete
-					</DropdownMenuItem>
+					</DropdownMenuItem> */}
 				</DropdownMenuContent>
 			</DropdownMenu>
 
@@ -1104,6 +1103,47 @@ function ProductActions({ product }: { product: InventoryProductResponse }) {
 	);
 }
 
+// Delete Product Action Component
+function DeleteProductAction({
+	productId,
+	onClose,
+}: {
+	productId: string;
+	onClose: () => void;
+}) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async () => {
+			const response = await deleteProduct({ productId });
+			if (!response.success) {
+				throw Error(response.error);
+			}
+			return response.data;
+		},
+		onSuccess: async () => {
+			await revalidateRoute("/dashboard/products");
+			toast.success("Product deleted successfully");
+			onClose();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	return (
+		<AlertDialogAction
+			onClick={(e) => {
+				e.preventDefault();
+				mutate();
+			}}
+			disabled={isPending}
+			className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+		>
+			{isPending ? "Deleting..." : "Delete"}
+		</AlertDialogAction>
+	);
+}
+
+
 // Edit Product Form Component
 function EditProductForm({
 	product,
@@ -1114,15 +1154,18 @@ function EditProductForm({
 }) {
 	const { mutate, isPending } = useMutation({
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
-			// TODO: Replace with actual update endpoint
-			const response = await addProduct(payload);
+			const response = await editProduct(product.id, payload);
 
 			if (!response.success) {
 				throw Error(response.error);
 			}
+
+			//@ts-ignore
+			return response.data.message;
 		},
 		onSuccess: () => {
 			toast.success("Product updated successfully");
+			revalidateRoute("/dashboard/products")
 			onClose();
 		},
 		onError: (error) => {
@@ -1258,40 +1301,5 @@ function EditProductForm({
 				</div>
 			</form>
 		</Form>
-	);
-}
-
-// Delete Product Action Component
-function DeleteProductAction({
-	productId,
-	onClose,
-}: {
-	productId: string;
-	onClose: () => void;
-}) {
-	const { mutate, isPending } = useMutation({
-		mutationFn: async () => {
-			// TODO: Replace with actual delete endpoint
-			// For now, simulate a delete operation
-			console.log("Deleting product", productId);
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-		},
-		onSuccess: () => {
-			toast.success("Product deleted successfully");
-			onClose();
-		},
-		onError: (_error) => {
-			toast.error("Failed to delete product");
-		},
-	});
-
-	return (
-		<AlertDialogAction
-			onClick={() => mutate()}
-			disabled={isPending}
-			className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-		>
-			{isPending ? "Deleting..." : "Delete"}
-		</AlertDialogAction>
 	);
 }

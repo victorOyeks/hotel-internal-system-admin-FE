@@ -23,93 +23,106 @@ import { GRNTable } from "./grn-table";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+
 import type {
 	InventoryGRNResponse,
 	InventoryGRNStatistics,
 	InventoryLocationResponse,
-	InventorySuppliers,
+	InventoryProduct,
+	InventorySupplierMini,
+	PurchaseOrderListItem,
 } from "@/lib/fetch";
+import { GRNActions } from "./grn-actions";
 
 const columnHelper = createColumnHelper<InventoryGRNResponse>();
 
-const columnDefs = [
-	columnHelper.accessor("grnNumber", {
-		header: "GRN Number",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("supplierName", {
-		header: "Supplier",
-		cell: (info) => {
-			const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-			const selectedGRN = info.row.original;
 
-			return (
-				<GRNDetails
-					open={isDetailsOpen}
-					onOpenChange={setIsDetailsOpen}
-					grn={selectedGRN}
-				/>
-			);
-		},
-	}),
-	columnHelper.accessor("purchaseOrderNumber", {
-		header: "PO Number",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("status", {
-		header: "Status",
-		cell: (info) => {
-			const value = info.getValue();
-
-			if (value === "ACCEPTED") {
-				return <Badge variant={"green"}>Accepted</Badge>;
-			}
-
-			return <Badge variant={"yellow"}>Draft</Badge>;
-		},
-	}),
-	columnHelper.accessor("stockPosted", {
-		header: "Posted",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("totalAmount", {
-		header: "Total Amount",
-		cell: (info) => formatCurrency(info.getValue()),
-	}),
-	columnHelper.accessor("updatedAt", {
-		header: "Created Date",
-		cell: (info) => {
-			// e.g 21st oct, 2025. 7:30 pm
-			const value = formatDate(new Date(info.getValue()), "PPpp");
-
-			return value;
-		},
-	}),
-];
 
 export function GRNPage({
 	grnsData,
 	statsData,
 	grnLocations,
 	suppliers,
+	products,
+	purchaseOrders,
 }: {
 	grnsData: InventoryGRNResponse[];
 	statsData: InventoryGRNStatistics;
 	grnLocations: InventoryLocationResponse[];
-	suppliers: InventorySuppliers[];
+	suppliers: InventorySupplierMini[];
+	products: InventoryProduct[];
+	purchaseOrders: PurchaseOrderListItem[];
 }) {
+	const columnDefs = [
+		columnHelper.accessor("grnNumber", {
+			header: "GRN Number",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("supplierName", {
+			header: "Supplier",
+			cell: (info) => {
+				const selectedGRN = info.row.original;
+
+				return (
+					<GRNDetails
+						grn={selectedGRN}
+					/>
+				);
+			},
+		}),
+		columnHelper.accessor("purchaseOrderNumber", {
+			header: "PO Number",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("status", {
+			header: "Status",
+			cell: (info) => {
+				const value = info.getValue();
+
+				if (value === "ACCEPTED") {
+					return <Badge variant={"green"}>Accepted</Badge>;
+				}
+
+				return <Badge variant={"yellow"}>Draft</Badge>;
+			},
+		}),
+		columnHelper.accessor("stockPosted", {
+			header: "Posted",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("totalAmount", {
+			header: "Total Amount",
+			cell: (info) => formatCurrency(info.getValue()),
+		}),
+		columnHelper.accessor("updatedAt", {
+			header: "Created Date",
+			cell: (info) => {
+				const value = formatDate(new Date(info.getValue()), "PPpp");
+				return value;
+			},
+		}),
+		columnHelper.display({
+			id: "actions",
+			cell: ({ row }) => (
+				<GRNActions
+					grn={row.original}
+					grnLocations={grnLocations}
+					suppliers={suppliers}
+					products={products}
+					purchaseOrders={purchaseOrders}
+				/>
+			),
+		}),
+	];
+
 	const table = useReactTable({
 		columns: columnDefs,
 		data: grnsData,
 		getCoreRowModel: getCoreRowModel(),
 	});
+
 	// UI State
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
-
-	// Filter State
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState<string>("all");
-	const [postedFilter, setPostedFilter] = useState<string>("all");
 
 	return (
 		<div className="space-y-6 p-6">
@@ -137,6 +150,8 @@ export function GRNPage({
 						<CreateGRNForm
 							grnLocations={grnLocations}
 							suppliers={suppliers}
+							products={products}
+							purchaseOrders={purchaseOrders}
 							onClose={() => setIsCreateOpen(false)}
 						/>
 					</DialogContent>
@@ -151,15 +166,7 @@ export function GRNPage({
 			/>
 
 			{/* Filters */}
-			<GRNToolbar
-				table={table}
-				searchQuery={searchQuery}
-				setSearchQuery={setSearchQuery}
-				statusFilter={statusFilter}
-				setStatusFilter={setStatusFilter}
-				postedFilter={postedFilter}
-				setPostedFilter={setPostedFilter}
-			/>
+			<GRNToolbar table={table} />
 
 			{/* Table */}
 			<GRNTable table={table} />

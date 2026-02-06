@@ -6,6 +6,7 @@ import {
 	ImageIcon,
 	Link2,
 	LogOutIcon,
+	RepeatIcon,
 	SettingsIcon,
 	Trash2Icon,
 	XIcon,
@@ -93,6 +94,17 @@ function ProfilePopover({ user }: { user: UserInfoResponse }) {
 						<Link href="/profile">
 							<SettingsIcon />
 							<span>Profile settings</span>
+						</Link>
+					</Button>
+
+					<Button
+						variant={"ghost"}
+						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
+						asChild
+					>
+						<Link href="/select-role">
+							<RepeatIcon />
+							<span>Select role</span>
 						</Link>
 					</Button>
 

@@ -4,14 +4,13 @@ import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
-import type { HotelRole } from "@/lib/types";
-import { getManagerCurrentHotel, getUser } from "@/lib/dal";
+import { getActiveRole, getManagerCurrentHotel, getUser } from "@/lib/dal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { throttle } from "nuqs/server";
+import type { HotelRole } from "@/lib/types";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
 	const user = use(getUser());
-
 	if (!user) {
 		redirect("/auth");
 	}
@@ -21,6 +20,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 	}
 
 	const activeHotel = use(getManagerCurrentHotel());
+	const activeRole = use(getActiveRole());
 	return (
 		<NuqsAdapter
 			defaultOptions={{
@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 				<SidebarProvider>
 					<AppSidebar
 						collapsible="icon"
-						role={user.role as HotelRole}
+						role={activeRole as HotelRole}
 						hotels={user.hotels}
 						activeHotel={activeHotel ?? undefined}
 					/>

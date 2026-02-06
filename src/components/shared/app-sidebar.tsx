@@ -53,6 +53,8 @@ export function AppSidebar({
     RENTALS: rentalsLinks,
     MANAGER: managerOwnerLinks,
     SUPER_ADMIN: [],
+    LAUNDRY: [],
+    FINANCIALS: [],
   };
 
   return (
