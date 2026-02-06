@@ -1,112 +1,73 @@
 import { RentalItemsPage } from "@/components/roles/rentals/rental-items";
+import { $fetch } from "@/lib/fetch";
+import { verifySession } from "@/lib/dal";
 
 const breadcrumbs = {
-	title: "Rental Items",
-	breadcrumbs: [
-		{ label: "Dashboard", href: "/dashboard" },
-		{ label: "Rental Items", href: "/dashboard/items" },
-	],
+  title: "Rental Items",
+  breadcrumbs: [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Rental Items", href: "/rentals/items" },
+  ],
 };
 
-// TODO: Replace with actual API call when backend is ready
-const mockItems = [
-	{
-		id: "1",
-		name: "Wheelchair - Standard",
-		category: "MOBILITY_AIDS",
-		dailyRate: 15.0,
-		depositAmount: 100.0,
-		totalQuantity: 10,
-		availableQuantity: 7,
-		active: true,
-	},
-	{
-		id: "2",
-		name: "Laptop - Dell XPS 15",
-		category: "ELECTRONICS",
-		dailyRate: 45.0,
-		depositAmount: 500.0,
-		totalQuantity: 5,
-		availableQuantity: 2,
-		active: true,
-	},
-	{
-		id: "3",
-		name: "Projector - HD 1080p",
-		category: "CONFERENCE_EQUIPMENT",
-		dailyRate: 75.0,
-		depositAmount: 300.0,
-		totalQuantity: 8,
-		availableQuantity: 5,
-		active: true,
-	},
-	{
-		id: "4",
-		name: "Baby Stroller - Premium",
-		category: "BABY_ITEMS",
-		dailyRate: 20.0,
-		depositAmount: 150.0,
-		totalQuantity: 6,
-		availableQuantity: 4,
-		active: true,
-	},
-	{
-		id: "5",
-		name: "Tennis Racket Set",
-		category: "SPORTS_EQUIPMENT",
-		dailyRate: 25.0,
-		depositAmount: 75.0,
-		totalQuantity: 12,
-		availableQuantity: 8,
-		active: true,
-	},
-	{
-		id: "6",
-		name: "Mountain Bike",
-		category: "RECREATION",
-		dailyRate: 35.0,
-		depositAmount: 200.0,
-		totalQuantity: 15,
-		availableQuantity: 10,
-		active: true,
-	},
-	{
-		id: "7",
-		name: "Conference Phone System",
-		category: "CONFERENCE_EQUIPMENT",
-		dailyRate: 30.0,
-		depositAmount: 250.0,
-		totalQuantity: 4,
-		availableQuantity: 3,
-		active: true,
-	},
-	{
-		id: "8",
-		name: "Golf Cart",
-		category: "VEHICLES",
-		dailyRate: 80.0,
-		depositAmount: 500.0,
-		totalQuantity: 3,
-		availableQuantity: 1,
-		active: true,
-	},
-];
+export default async function RentalItemsPageRoute(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+  await verifySession(); // Ensure user is authenticated
+  const { token } = await verifySession();
 
-const mockPaginationMeta = {
-	pageNumber: 0,
-	pageSize: 10,
-	totalElements: 8,
-	totalPages: 1,
-	last: true,
-	first: true,
-};
+  const page = Number(searchParams?.page) || 0;
+  const size = Number(searchParams?.size) || 10;
+  const search =
+    typeof searchParams?.search === "string" && searchParams.search.length > 0
+      ? searchParams.search
+      : undefined;
 
-export default function RentalItemsPageRoute() {
-	return (
-		<RentalItemsPage
-			items={mockItems}
-			paginationMeta={mockPaginationMeta}
-			breadcrumbs={breadcrumbs}
-		/>
-	);
+  // Status filter logic
+  let activeOnly: boolean | undefined = undefined;
+  if (searchParams?.status === "available") {
+    activeOnly = true;
+  } else if (searchParams?.status === "active") {
+    activeOnly = true;
+  }
+
+  const category =
+    typeof searchParams?.category === "string" &&
+    searchParams.category !== "all"
+      ? searchParams.category
+      : undefined;
+
+  const response = await $fetch("@get/api/hotels/rentals/items", {
+    query: {
+      page,
+      size,
+      search,
+      category,
+      activeOnly,
+    },
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  const items = Array.isArray(response.data?.data) ? response.data.data : [];
+
+  const paginationMeta = {
+    pageNumber: 0,
+    pageSize: items.length > 0 ? items.length : 10,
+    totalElements: items.length,
+    totalPages: 1,
+    last: true,
+    first: true,
+  };
+
+  return (
+    <RentalItemsPage
+      items={items}
+      paginationMeta={paginationMeta}
+      breadcrumbs={breadcrumbs}
+    />
+  );
 }
