@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -164,6 +165,7 @@ interface PurchaseOrderPageProps {
 }
 
 export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const table = useReactTable({
 		data: orders,
 		columns: columnDefs,
@@ -181,20 +183,21 @@ export function PurchaseOrderPage({ orders, stats, suppliers, products }: Purcha
 						Create and manage purchase orders for suppliers
 					</p>
 				</div>
-				<Dialog>
+				<Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
 					<DialogTrigger asChild>
 						<Button>
 							<PlusIcon className="w-4 h-4 mr-2" />
 							Create PO
 						</Button>
 					</DialogTrigger>
-					<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+					<DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>Create Purchase Order</DialogTitle>
 						</DialogHeader>
 						<CreatePOForm
 							suppliers={suppliers}
 							products={products}
+							onClose={() => setIsCreateOpen(false)}
 						/>
 					</DialogContent>
 				</Dialog>
