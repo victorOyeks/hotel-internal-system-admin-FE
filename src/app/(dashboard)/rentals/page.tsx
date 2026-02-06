@@ -1,36 +1,51 @@
 import { RentalsDashboard } from "@/components/roles/rentals/dashboard";
+import { $fetch } from "@/lib/fetch";
+import { verifySession } from "@/lib/dal";
 
 const breadcrumbs = {
-	title: "Dashboard",
-	breadcrumbs: [
-		{
-			label: "Dashboard",
-			href: "/dashboard",
-		},
-	],
+  title: "Dashboard",
+  breadcrumbs: [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+    },
+  ],
 };
 
-// TODO: Replace with actual API call when backend is ready
-const mockDashboardStats = {
-	totalActiveItems: 45,
-	totalQuantity: 180,
-	currentlyRented: 68,
-	availableItems: 112,
-	totalOrders: 342,
-	activeRentals: 28,
-	overdueRentals: 5,
-	completedRentals: 287,
-	ordersToday: 12,
-	completedToday: 8,
-	totalRevenue: 125480.5,
-	outstandingAmount: 8750.0,
-	revenueToday: 2340.0,
-	depositsHeld: 15600.0,
-	pendingRefunds: 450.0,
-};
+export default async function RentalsHomePage() {
+  await verifySession();
+  const { token } = await verifySession();
 
-export default function RentalsHomePage() {
-	return (
-		<RentalsDashboard stats={mockDashboardStats} breadcrumbs={breadcrumbs} />
-	);
+  const response = await $fetch("@get/api/hotels/rentals/dashboard/stats", {
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  const apiStats = response.data?.data;
+
+  const stats = {
+    totalActiveItems: apiStats?.totalActiveItems ?? 0,
+    totalQuantity: apiStats?.totalQuantity ?? 0,
+    currentlyRented: apiStats?.currentlyRented ?? 0,
+    availableItems: apiStats?.availableItems ?? 0,
+    totalOrders: apiStats?.totalOrders ?? 0,
+    activeRentals: apiStats?.activeRentals ?? 0,
+    overdueRentals: apiStats?.overdueRentals ?? 0,
+    completedRentals: apiStats?.completedRentals ?? 0,
+    ordersToday: apiStats?.ordersToday ?? 0,
+    completedToday: apiStats?.completedToday ?? 0,
+    totalRevenue: apiStats?.totalRevenue ?? 0,
+    outstandingAmount: apiStats?.outstandingAmount ?? 0,
+    revenueToday: apiStats?.revenueToday ?? 0,
+    depositsHeld: apiStats?.depositsHeld ?? 0,
+    pendingRefunds: apiStats?.pendingRefunds ?? 0,
+    lateFeeRevenue: apiStats?.lateFeeRevenue ?? 0,
+    damageFeeRevenue: apiStats?.damageFeeRevenue ?? 0,
+    averageRentalDuration: apiStats?.averageRentalDuration ?? 0,
+    mostPopularItems: apiStats?.mostPopularItems ?? [],
+  };
+
+  return <RentalsDashboard stats={stats} breadcrumbs={breadcrumbs} />;
 }

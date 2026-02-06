@@ -1,87 +1,73 @@
 import { RentalOrdersPage } from "@/components/roles/rentals/rental-orders";
+import { $fetch } from "@/lib/fetch";
+import { verifySession } from "@/lib/dal";
 
 const breadcrumbs = {
-	title: "Rental Orders",
-	breadcrumbs: [
-		{ label: "Dashboard", href: "/dashboard" },
-		{ label: "Orders", href: "/dashboard/orders" },
-	],
+  title: "Rental Orders",
+  breadcrumbs: [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Orders", href: "/rentals/orders" },
+  ],
 };
 
-// TODO: Replace with actual API call when backend is ready
-const mockOrders = [
-	{
-		id: "1",
-		orderNumber: "RO-2024-001",
-		customerName: "John Smith",
-		customerPhone: "+1-555-0101",
-		status: "ACTIVE",
-		paymentStatus: "PAID",
-		totalAmount: 450.0,
-		rentalStartDate: "2024-01-15",
-		rentalEndDate: "2024-01-25",
-	},
-	{
-		id: "2",
-		orderNumber: "RO-2024-002",
-		customerName: "Sarah Johnson",
-		customerPhone: "+1-555-0102",
-		status: "ACTIVE",
-		paymentStatus: "PARTIAL",
-		totalAmount: 890.0,
-		rentalStartDate: "2024-01-18",
-		rentalEndDate: "2024-01-28",
-	},
-	{
-		id: "3",
-		orderNumber: "RO-2024-003",
-		customerName: "Michael Brown",
-		customerPhone: "+1-555-0103",
-		status: "COMPLETED",
-		paymentStatus: "PAID",
-		totalAmount: 320.0,
-		rentalStartDate: "2024-01-10",
-		rentalEndDate: "2024-01-20",
-	},
-	{
-		id: "4",
-		orderNumber: "RO-2024-004",
-		customerName: "Emily Davis",
-		customerPhone: "+1-555-0104",
-		status: "ACTIVE",
-		paymentStatus: "PENDING",
-		totalAmount: 675.0,
-		rentalStartDate: "2024-01-20",
-		rentalEndDate: "2024-01-30",
-	},
-	{
-		id: "5",
-		orderNumber: "RO-2024-005",
-		customerName: "David Wilson",
-		customerPhone: "+1-555-0105",
-		status: "RESERVED",
-		paymentStatus: "DEPOSIT_PAID",
-		totalAmount: 1200.0,
-		rentalStartDate: "2024-02-01",
-		rentalEndDate: "2024-02-10",
-	},
-];
+export default async function RentalOrdersPageRoute(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
+  await verifySession();
+  const { token } = await verifySession();
 
-const mockPaginationMeta = {
-	pageNumber: 0,
-	pageSize: 10,
-	totalElements: 5,
-	totalPages: 1,
-	last: true,
-	first: true,
-};
+  const page = Number(searchParams?.page) || 0;
+  const size = Number(searchParams?.size) || 10;
+  const search =
+    typeof searchParams?.search === "string" ? searchParams.search : undefined;
+  const status =
+    typeof searchParams?.status === "string" && searchParams.status !== "all"
+      ? searchParams.status
+      : undefined;
+  const paymentStatus =
+    typeof searchParams?.paymentStatus === "string" &&
+    searchParams.paymentStatus !== "all"
+      ? searchParams.paymentStatus
+      : undefined;
 
-export default function RentalOrdersPageRoute() {
-	return (
-		<RentalOrdersPage
-			orders={mockOrders}
-			paginationMeta={mockPaginationMeta}
-			breadcrumbs={breadcrumbs}
-		/>
-	);
+  const response = await $fetch("@get/api/hotels/rentals/orders", {
+    query: {
+      page,
+      size,
+      search,
+      status,
+      paymentStatus,
+    },
+    auth: {
+      type: "Bearer",
+      token,
+    },
+  });
+
+  const orders = (response.data?.data.content || []).map((order) => ({
+    ...order,
+    totalAmount: order.totalAmount ?? 0,
+    lateFees: order.lateFees ?? 0,
+    rentalStartDate: order.rentalStartDate || new Date().toISOString(),
+    rentalEndDate: order.rentalEndDate || new Date().toISOString(),
+  }));
+
+  const paginationMeta = {
+    pageNumber: response.data?.data.pageNumber || 0,
+    pageSize: response.data?.data.pageSize || 10,
+    totalElements: response.data?.data.totalElements || 0,
+    totalPages: response.data?.data.totalPages || 0,
+    last: response.data?.data.last ?? true,
+    first: response.data?.data.first ?? true,
+  };
+
+  return (
+    <RentalOrdersPage
+      orders={orders}
+      paginationMeta={paginationMeta}
+      breadcrumbs={breadcrumbs}
+      currentPage={page}
+    />
+  );
 }
