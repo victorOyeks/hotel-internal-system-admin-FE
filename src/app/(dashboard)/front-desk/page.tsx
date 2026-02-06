@@ -53,7 +53,7 @@ function Page({ searchParams }: PageProps) {
 					"@get/api/front-desks/all-rooms-by-type",
 					{
 						query: {
-							roomType: query["room:type"] ?? roomTypes[0],
+							roomType: query["room:type"],
 							roomStatus: "AVAILABLE",
 						},
 						signal,

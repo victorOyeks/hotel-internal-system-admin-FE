@@ -2971,7 +2971,7 @@ export const schema = createSchema({
 		input: z.object({
 			itemName: z.string().nonempty(),
 			description: z.string().nonempty(),
-			imageUrl: z.string().url().nullable().optional(),
+			imageUrl: z.url().nullable().optional(),
 			location: z.string().nonempty().optional(),
 			dateFound: z.string().nonempty(), // yyyy-mm-dd
 		}),
@@ -2992,12 +2992,30 @@ export const schema = createSchema({
 		}),
 	},
 	"@get/api/front-desks/all-rooms-by-type": {
-		query: z.object({
-			roomType: z.string().nonempty(),
-			roomStatus: z.literal("AVAILABLE"),
-		}),
+		query: z
+			.object({
+				roomType: z.string().nonempty().nullable(),
+				roomStatus: z.literal("AVAILABLE").nullable(),
+			})
+			.partial(),
 		output: ApiResponseObject.extend({
-			data: z.array(z.string()),
+			data: z
+				.object({
+					id: z.string(),
+					roomIdentifier: z.string(),
+					roomType: z.string(),
+					roomPrice: z.number(),
+					status: z.string(),
+					facilities: z.array(z.string()),
+					reservationPeriods: z
+						.object({
+							checkInDate: z.string(),
+							checkOutDate: z.string(),
+							status: z.string(),
+						})
+						.array(),
+				})
+				.array(),
 		}),
 	},
 	"@delete/api/front-desks/lost-and-found/:itemId": {

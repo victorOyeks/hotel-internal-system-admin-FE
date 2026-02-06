@@ -467,7 +467,7 @@ function CreateNewBookingForm({
 	setOpen: (open: boolean) => void;
 	open: boolean;
 	data: {
-		rooms: Array<string>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 }) {
@@ -507,15 +507,18 @@ const checkInFormSchema = z.object({
 	noOfChildren: z
 		.number()
 		.int()
-		.nonnegative("Number of children cannot be negative"),
+		.nonnegative("Number of children cannot be negative")
+		.default(0),
 	nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
 	dailySpendingCap: z
 		.number()
-		.nonnegative("Daily spending cap must be 0 or greater"),
+		.nonnegative("Daily spending cap must be 0 or greater")
+		.default(0),
 	amountPaid: z
 		.number()
 		.nonnegative("You cannot pay a negative amount")
-		.min(0, "Please enter a valid amount"),
+		.min(0, "Please enter a valid amount")
+		.default(0),
 	roomStatus: z.enum(["CHECKED_IN"]),
 	checkInDate: z.string().nonempty("Check-in date is required"),
 });
@@ -558,7 +561,7 @@ function SelectRoomBox({
 	rooms,
 }: {
 	setValue: (value: string) => void;
-	rooms: Array<string>;
+	rooms: Array<RoomType>;
 }) {
 	const [open, setOpen] = useState(false);
 	return (
@@ -575,8 +578,8 @@ function SelectRoomBox({
 			<SelectContent className="w-full">
 				{rooms.length > 0 ? (
 					rooms.map((room) => (
-						<SelectItem key={room} value={room}>
-							{room}
+						<SelectItem key={room.id} value={room.id}>
+							{room.roomIdentifier}
 						</SelectItem>
 					))
 				) : (
@@ -594,7 +597,7 @@ export function CheckInForm({
 	setOpen,
 }: {
 	data: {
-		rooms: Array<string>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
@@ -612,11 +615,6 @@ export function CheckInForm({
 		defaultValues: {
 			guestName: "",
 			phoneNumber: "",
-			noOfAdults: 1,
-			noOfChildren: 0,
-			nightlyRate: 0,
-			dailySpendingCap: 0,
-			amountPaid: 0,
 			roomStatus: "CHECKED_IN" as "CHECKED_IN",
 			checkInDate: new Date().toISOString().split("T")[0],
 		},
@@ -873,7 +871,19 @@ export function ReservationForm({
 	setOpen,
 }: {
 	data: {
-		rooms: Array<string>;
+		rooms: Array<{
+			id: string;
+			roomIdentifier: string;
+			roomType: string;
+			roomPrice: number;
+			status: string;
+			facilities: string[];
+			reservationPeriods: Array<{
+				checkInDate: string;
+				checkOutDate: string;
+				status: string;
+			}>;
+		}>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
@@ -1037,9 +1047,9 @@ export function ReservationForm({
 										minDate={
 											form.watch("checkInDate")
 												? new Date(
-														new Date(form.watch("checkInDate")).getTime() +
-															24 * 60 * 60 * 1000,
-													)
+													new Date(form.watch("checkInDate")).getTime() +
+													24 * 60 * 60 * 1000,
+												)
 												: new Date()
 										}
 									/>
@@ -1096,7 +1106,7 @@ export function ReservationForm({
 										{Math.ceil(
 											(new Date(form.watch("checkOutDate")).getTime() -
 												new Date(form.watch("checkInDate")).getTime()) /
-												(1000 * 60 * 60 * 24),
+											(1000 * 60 * 60 * 24),
 										)}{" "}
 										night(s)
 									</span>
@@ -1115,7 +1125,7 @@ export function ReservationForm({
 											Math.ceil(
 												(new Date(form.watch("checkOutDate")).getTime() -
 													new Date(form.watch("checkInDate")).getTime()) /
-													(1000 * 60 * 60 * 24),
+												(1000 * 60 * 60 * 24),
 											) * form.watch("nightlyRate")
 										).toLocaleString()}
 									</span>
@@ -1185,11 +1195,25 @@ const actions = [
 	},
 ];
 
+type RoomType = {
+	id: string;
+	roomIdentifier: string;
+	roomType: string;
+	roomPrice: number;
+	status: string;
+	facilities: string[];
+	reservationPeriods: Array<{
+		checkInDate: string;
+		checkOutDate: string;
+		status: string;
+	}>;
+};
+
 export function QuickActions({
 	rooms,
 	roomTypes,
 }: {
-	rooms: string[];
+	rooms: Array<RoomType>;
 	roomTypes: string[];
 }) {
 	const [open, setOpen] = useState<false | string>(false);
