@@ -71,7 +71,7 @@ import {
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
-import { CheckInForm, ReservationForm } from "./dashboard";
+import { CheckInForm, ReservationForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
 
 type BookingViewResponse = Prettify<
@@ -109,27 +109,27 @@ function ChangeBookingStatus({
 		label: string;
 		description: string;
 	}> = [
-		{
-			value: "RESERVED",
-			label: "Reserved",
-			description: "Room is reserved for the guest",
-		},
-		{
-			value: "CHECKED_IN",
-			label: "Checked In",
-			description: "Guest has checked into the room",
-		},
-		{
-			value: "CHECKED_OUT",
-			label: "Checked Out",
-			description: "Guest has checked out from the room",
-		},
-		{
-			value: "CANCELLED",
-			label: "Cancelled",
-			description: "Booking has been cancelled",
-		},
-	];
+			{
+				value: "RESERVED",
+				label: "Reserved",
+				description: "Room is reserved for the guest",
+			},
+			{
+				value: "CHECKED_IN",
+				label: "Checked In",
+				description: "Guest has checked into the room",
+			},
+			{
+				value: "CHECKED_OUT",
+				label: "Checked Out",
+				description: "Guest has checked out from the room",
+			},
+			{
+				value: "CANCELLED",
+				label: "Cancelled",
+				description: "Booking has been cancelled",
+			},
+		];
 
 	const currentStatus = booking?.bookingStatus;
 
@@ -329,11 +329,10 @@ function ChangeBookingStatus({
 								<div className="flex justify-between text-sm">
 									<span className="text-gray-600">Balance:</span>
 									<span
-										className={`font-medium ${
-											booking.amountRemaining > 0
+										className={`font-medium ${booking.amountRemaining > 0
 												? "text-amber-600"
 												: "text-green-600"
-										}`}
+											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
 										{booking.amountRemaining > 0 && " due"}
@@ -448,11 +447,10 @@ function ChangeBookingStatus({
 										Amount Remaining:
 									</span>
 									<span
-										className={`font-bold ${
-											booking.amountRemaining > 0
+										className={`font-bold ${booking.amountRemaining > 0
 												? "text-red-600"
 												: "text-green-600"
-										}`}
+											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
 									</span>
@@ -506,7 +504,7 @@ function ChangeBookingStatus({
 									/>
 									{optionalFields.finalAmountPaid !== undefined &&
 										optionalFields.finalAmountPaid !==
-											booking.amountRemaining && (
+										booking.amountRemaining && (
 											<p className="text-xs text-amber-600">
 												Note: Amount entered (
 												{formatCurrency(optionalFields.finalAmountPaid)}) is
@@ -665,8 +663,8 @@ function ChangeBookingStatus({
 								<>
 									<CheckIcon className="w-4 h-4 mr-2" />
 									{selectedStatus === "CHECKED_OUT" &&
-									booking &&
-									booking.amountRemaining > 0
+										booking &&
+										booking.amountRemaining > 0
 										? optionalFields.paymentType === "FINAL"
 											? "Record Payment & Check Out"
 											: "Record Payment"
@@ -722,13 +720,12 @@ const columns = [
 					<div className="flex items-center gap-1">
 						<div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
 							<div
-								className={`h-full ${
-									isFullyPaid
+								className={`h-full ${isFullyPaid
 										? "bg-green-500"
 										: paymentPercentage > 50
 											? "bg-blue-500"
 											: "bg-amber-500"
-								}`}
+									}`}
 								style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
 							/>
 						</div>
@@ -832,9 +829,9 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}
@@ -892,11 +889,11 @@ function BookingsFilter({
 	roomTypes: string[];
 	queryState: {
 		bookingStatus:
-			| "RESERVED"
-			| "CHECKED_OUT"
-			| "CHECKED_IN"
-			| "CANCELLED"
-			| null;
+		| "RESERVED"
+		| "CHECKED_OUT"
+		| "CHECKED_IN"
+		| "CANCELLED"
+		| null;
 		search: string | null;
 		roomType: string | null;
 	};
@@ -1069,7 +1066,7 @@ function BookingsListToolbar({
 	roomTypes,
 	table,
 }: {
-	rooms: string[];
+	rooms: Array<RoomType>;
 	roomTypes: string[];
 	table: TableType<BookingViewResponse>;
 }) {
@@ -1097,11 +1094,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === null}
 					onClick={() => setQueryState({ bookingStatus: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === null
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === null
 							? "bg-primary text-primary-foreground border-primary"
 							: ""
-					}`}
+						}`}
 				>
 					All Bookings{" "}
 					{queryState.bookingStatus === null &&
@@ -1113,11 +1109,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === "RESERVED"}
 					onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === "RESERVED"
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "RESERVED"
 							? "bg-primary text-primary-foreground border-primary"
 							: ""
-					}`}
+						}`}
 				>
 					Reservations{" "}
 					{queryState.bookingStatus === "RESERVED" &&
@@ -1129,11 +1124,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === "CHECKED_OUT"}
 					onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === "CHECKED_OUT"
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "CHECKED_OUT"
 							? "bg-primary text-primary-foreground border-primary"
 							: ""
-					}`}
+						}`}
 				>
 					Booking history{" "}
 					{queryState.bookingStatus === "CHECKED_OUT" &&
@@ -1259,7 +1253,7 @@ export function BookingsPage({
 	roomTypes,
 }: {
 	bookings: BookingViewResponse[];
-	rooms: string[];
+	rooms: RoomType[];
 	roomTypes: string[];
 	paginationMeta: Pagination;
 	breadcrumb: {

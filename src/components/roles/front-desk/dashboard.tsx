@@ -1195,7 +1195,7 @@ const actions = [
 	},
 ];
 
-type RoomType = {
+export type RoomType = {
 	id: string;
 	roomIdentifier: string;
 	roomType: string;

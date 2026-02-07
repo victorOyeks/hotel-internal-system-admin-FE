@@ -126,6 +126,7 @@ export const frontDeskLinks = [
 		icon: <FolderClosedIcon />,
 		url: "/dashboard/lost-and-found",
 	},
+	{ title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
 ];
 
 export const restaurantLinks = [

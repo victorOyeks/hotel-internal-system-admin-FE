@@ -88,6 +88,8 @@ function Page({ searchParams }: PageProps) {
 		}),
 	);
 
+	console.log({ rooms: content, rooms2: rooms });
+
 	const stats = use(
 		queryClient.ensureQueryData({
 			queryKey: ["front-desks", "stats"],

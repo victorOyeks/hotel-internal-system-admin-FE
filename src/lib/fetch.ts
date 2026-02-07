@@ -2209,6 +2209,70 @@ export const ExportStockLevelsResponse = z.any(); // Byte stream
 export const ExportStockTakesResponse = z.any(); // Byte stream
 export const ExportStockAdjustmentsResponse = z.any(); // Byte stream
 
+export const PaymentMethod = z.enum([
+	"CASH",
+	"CARD",
+	"CREDIT_CARD",
+	"DEBIT_CARD",
+	"BANK_TRANSFER",
+	"MOBILE_MONEY",
+	"CHEQUE",
+	"ONLINE_PAYMENT",
+	"PAYPAL",
+	"CRYPTOCURRENCY",
+	"DIRECT_DEBIT",
+	"PETTY_CASH",
+	"OTHERS",
+]);
+
+export type PaymentMethod = z.infer<typeof PaymentMethod>;
+
+export const PaymentStatus = z.enum([
+	"SUCCESS",
+	"FAILED",
+	"PENDING",
+	"CANCELLED",
+	"REFUNDED",
+	"PARTLY_PAID",
+	"FULLY_PAID",
+]);
+
+export type PaymentStatus = z.infer<typeof PaymentStatus>;
+
+export const PaymentType = z.enum([
+	"DEPOSIT",
+	"INSTALLMENT",
+	"FINAL",
+	"REFUND",
+	"OTHER",
+]);
+
+export type PaymentType = z.infer<typeof PaymentType>;
+
+export const BookingPaymentResponse = z.object({
+	id: z.string(),
+	amount: z.number(),
+	currency: z.string(),
+	method: PaymentMethod,
+	reference: z.string(),
+	status: PaymentStatus,
+	type: PaymentType,
+	paymentDate: z.coerce.date(),
+	createdAt: z.coerce.date(),
+	bookingId: z.string(),
+	guestName: z.string(),
+	roomIdentifier: z.string(),
+	roomType: z.string(),
+});
+
+export type BookingPaymentResponse = z.infer<typeof BookingPaymentResponse>;
+
+const ApiResponseBookingPaymentListResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(BookingPaymentResponse),
+	}),
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -2896,6 +2960,20 @@ export const schema = createSchema({
 				size: z.number().nullable().default(10),
 			})
 			.partial(),
+	},
+	"@get/api/front-desks/payments": {
+		query: z
+			.object({
+				page: z.number().default(0),
+				size: z.number().default(20),
+				search: z.string(),
+				method: PaymentMethod,
+				status: PaymentStatus,
+				startDate: z.string(),
+				endDate: z.string(),
+			})
+			.partial(),
+		output: ApiResponseBookingPaymentListResponse,
 	},
 	"@get/api/front-desks/bookings/:bookingId/payments": {
 		output: ApiResponseObject.extend({
