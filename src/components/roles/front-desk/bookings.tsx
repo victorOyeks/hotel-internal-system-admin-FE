@@ -24,6 +24,7 @@ import {
 	Loader2Icon,
 	AlertCircleIcon,
 	RotateCcwIcon,
+	MoreHorizontalIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,15 +59,22 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
 	cancelReservation,
 	checkInGuest,
 	checkOutGuest,
+	getBookingPayments,
 	recordPayment,
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
@@ -330,8 +338,8 @@ function ChangeBookingStatus({
 									<span className="text-gray-600">Balance:</span>
 									<span
 										className={`font-medium ${booking.amountRemaining > 0
-												? "text-amber-600"
-												: "text-green-600"
+											? "text-amber-600"
+											: "text-green-600"
 											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
@@ -448,8 +456,8 @@ function ChangeBookingStatus({
 									</span>
 									<span
 										className={`font-bold ${booking.amountRemaining > 0
-												? "text-red-600"
-												: "text-green-600"
+											? "text-red-600"
+											: "text-green-600"
 											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
@@ -679,6 +687,108 @@ function ChangeBookingStatus({
 	);
 }
 
+function PaymentHistoryDialog({
+	bookingId,
+	open,
+	setOpen,
+}: {
+	bookingId: string;
+	open: boolean;
+	setOpen: (open: boolean) => void;
+}) {
+	const { data: payments, isLoading } = useQuery({
+		queryKey: ["booking-payments", bookingId],
+		queryFn: async () => {
+			if (!bookingId) return [];
+			const res = await getBookingPayments({ bookingId });
+			if (!res.success && res.error) throw new Error(res.error);
+			return res.success ? res.data.data : [];
+		},
+		enabled: open && !!bookingId,
+	});
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen} modal={false}>
+			<DialogContent className="max-w-4xl">
+				<DialogHeader>
+					<DialogTitle>Payment History</DialogTitle>
+					<DialogDescription>
+						View all payments recorded for this booking.
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="mt-4">
+					{isLoading ? (
+						<div className="flex justify-center p-8">
+							<Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+						</div>
+					) : !payments || payments.length === 0 ? (
+						<div className="text-center p-8 text-gray-500 bg-gray-50 rounded-lg">
+							No payments recorded for this booking.
+						</div>
+					) : (
+						<div className="rounded-md border overflow-hidden">
+							<Table>
+								<TableHeader className="bg-gray-100">
+									<TableRow>
+										<TableHead>Date</TableHead>
+										<TableHead>Method</TableHead>
+										<TableHead>Type</TableHead>
+										<TableHead>Reference</TableHead>
+										<TableHead className="text-right">Amount</TableHead>
+										<TableHead>Status</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{payments.map((payment) => (
+										<TableRow key={payment.id}>
+											<TableCell>
+												{new Date(payment.paymentDate).toLocaleDateString()}
+												<div className="text-xs text-gray-500">
+													{new Date(payment.paymentDate).toLocaleTimeString()}
+												</div>
+											</TableCell>
+											<TableCell className="capitalize">
+												{payment.method.toLowerCase().replace(/_/g, " ")}
+											</TableCell>
+											<TableCell className="capitalize">
+												<Badge variant="outline">
+													{payment.type.toLowerCase().replace(/_/g, " ")}
+												</Badge>
+											</TableCell>
+											<TableCell className="font-mono text-xs">
+												{payment.reference}
+											</TableCell>
+											<TableCell className="text-right font-medium">
+												{formatCurrency(payment.amount)}
+											</TableCell>
+											<TableCell>
+												<Badge
+													variant={
+														payment.status === "SUCCESS"
+															? "green"
+															: payment.status === "PENDING"
+																? "yellow"
+																: payment.status === "FAILED"
+																	? "destructive"
+																	: "secondary"
+													}
+												>
+													{payment.status.toLowerCase()}
+												</Badge>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
+					)}
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 const columnHelper = createColumnHelper<BookingViewResponse>();
 
 const columns = [
@@ -721,10 +831,10 @@ const columns = [
 						<div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
 							<div
 								className={`h-full ${isFullyPaid
-										? "bg-green-500"
-										: paymentPercentage > 50
-											? "bg-blue-500"
-											: "bg-amber-500"
+									? "bg-green-500"
+									: paymentPercentage > 50
+										? "bg-blue-500"
+										: "bg-amber-500"
 									}`}
 								style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
 							/>
@@ -796,21 +906,42 @@ const columns = [
 	columnHelper.display({
 		id: "actions",
 		cell: (info) => {
-			const [open, setOpen] = useState(false);
+			const [openStatusDialog, setOpenStatusDialog] = useState(false);
+			const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
 
 			return (
-				<Dialog open={open} onOpenChange={setOpen} modal>
-					<DialogTrigger asChild>
-						<Button variant={"ghost"} size="sm">
-							<EditIcon className="w-4 h-4" />
-						</Button>
-					</DialogTrigger>
+				<>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+								<MoreHorizontalIcon className="h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={() => setOpenStatusDialog(true)}>
+								<EditIcon className="mr-2 h-4 w-4" />
+								Update Status
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setOpenPaymentHistory(true)}>
+								<RotateCcwIcon className="mr-2 h-4 w-4" />
+								Payment History
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
-					<ChangeBookingStatus
-						booking={info.row.original}
-						onClose={() => setOpen(false)}
+					<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog} modal={false}>
+						<ChangeBookingStatus
+							booking={info.row.original}
+							onClose={() => setOpenStatusDialog(false)}
+						/>
+					</Dialog>
+
+					<PaymentHistoryDialog
+						bookingId={info.row.original.id}
+						open={openPaymentHistory}
+						setOpen={setOpenPaymentHistory}
 					/>
-				</Dialog>
+				</>
 			);
 		},
 	}),
@@ -1095,8 +1226,8 @@ function BookingsListToolbar({
 					data-active={queryState.bookingStatus === null}
 					onClick={() => setQueryState({ bookingStatus: null })}
 					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === null
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
 						}`}
 				>
 					All Bookings{" "}
@@ -1110,8 +1241,8 @@ function BookingsListToolbar({
 					data-active={queryState.bookingStatus === "RESERVED"}
 					onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
 					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "RESERVED"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
 						}`}
 				>
 					Reservations{" "}
@@ -1125,8 +1256,8 @@ function BookingsListToolbar({
 					data-active={queryState.bookingStatus === "CHECKED_OUT"}
 					onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
 					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "CHECKED_OUT"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
 						}`}
 				>
 					Booking history{" "}

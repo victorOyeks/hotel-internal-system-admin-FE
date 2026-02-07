@@ -2273,6 +2273,10 @@ const ApiResponseBookingPaymentListResponse = ApiResponseObject.extend({
 	}),
 });
 
+export const ApiResponseListBookingPaymentResponse = ApiResponseObject.extend({
+	data: z.array(BookingPaymentResponse),
+});
+
 // --- Main Fetch Schema ---
 export const schema = createSchema({
 	// Auth APIs
@@ -2976,21 +2980,8 @@ export const schema = createSchema({
 		output: ApiResponseBookingPaymentListResponse,
 	},
 	"@get/api/front-desks/bookings/:bookingId/payments": {
-		output: ApiResponseObject.extend({
-			data: z.array(
-				z.object({
-					id: z.string(),
-					amount: z.number(),
-					currency: z.string(),
-					method: z.string(),
-					reference: z.string(),
-					status: z.string(),
-					type: z.string(),
-					paymentDate: z.coerce.date(),
-					createdAt: z.coerce.date(),
-				}),
-			),
-		}),
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseListBookingPaymentResponse,
 	},
 	"@post/api/front-desks/bookings/:bookingId/payments": {
 		params: z.object({ bookingId: z.string() }),
