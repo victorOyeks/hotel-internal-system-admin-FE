@@ -81,12 +81,46 @@ const columns = [
 			const guestName = info.getValue();
 			const guestDetails = info.row.original.guestDetails;
 
+			if (!guestName) return <span className="text-gray-400">-</span>;
+
 			return (
 				<div className="flex flex-col">
-					<span>{guestName}</span>
-					{guestDetails?.organizationName && (
-						<span>{guestDetails.organizationName}</span>
-					)}
+					<div className="flex items-center gap-2">
+						<span className="font-medium">{guestName}</span>
+						{guestDetails?.isCurrentGuest && (
+							<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-200 text-green-700 bg-green-50">
+								Current
+							</Badge>
+						)}
+					</div>
+					<div className="flex flex-col text-xs text-muted-foreground">
+						{guestDetails?.organizationName && (
+							<span>{guestDetails.organizationName}</span>
+						)}
+						{guestDetails?.bookingId && (
+							<span className="font-mono text-[10px] text-gray-400">#{guestDetails.bookingId.slice(-6)}</span>
+						)}
+					</div>
+				</div>
+			);
+		},
+	}),
+	columnHelper.accessor("guestDetails.amountRemaining", {
+		header: "Balance",
+		cell: (info) => {
+			const amount = info.getValue();
+			const guestDetails = info.row.original.guestDetails;
+
+			if (!guestDetails) return <span className="text-gray-400">-</span>;
+
+			return (
+				<div className="flex flex-col items-end">
+					<span className={amount > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+						{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount || 0)}
+					</span>
+					<span className="text-[10px] text-muted-foreground">
+						Due: {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(guestDetails.amountDue || 0)}
+					</span>
 				</div>
 			);
 		},
