@@ -386,6 +386,115 @@ const ApiResponseListGetHotelResponse = z.object({
 	}),
 });
 
+const BookingPaymentResponse = z.object({
+	amount: z.number(),
+	currency: z.string(),
+	method: z.enum([
+		"CASH",
+		"CARD",
+		"CREDIT_CARD",
+		"DEBIT_CARD",
+		"BANK_TRANSFER",
+		"MOBILE_MONEY",
+		"CHEQUE",
+		"ONLINE_PAYMENT",
+		"PAYPAL",
+		"CRYPTOCURRENCY",
+		"DIRECT_DEBIT",
+		"PETTY_CASH",
+		"OTHERS",
+	]),
+	reference: z.string(),
+	status: z.enum([
+		"SUCCESS",
+		"FAILED",
+		"PENDING",
+		"CANCELLED",
+		"REFUNDED",
+		"PARTLY_PAID",
+		"FULLY_PAID",
+	]),
+	type: z.enum(["DEPOSIT", "INSTALLMENT", "FINAL", "REFUND", "OTHER"]),
+	paymentDate: z.coerce.date(),
+});
+
+const CheckInResponse = z.object({
+	id: z.string(),
+	customId: z.string(),
+	title: z.string(),
+	guestName: z.string(),
+	noOfAdults: z.number(),
+	noOfChildren: z.number(),
+	roomIdentifier: z.string(),
+	branchName: z.string(),
+	roomType: z.string(),
+	bookingStatus: z.string(),
+	checkInDate: z.coerce.date(),
+	checkOutDate: z.coerce.date(),
+	amountPaid: z.number(),
+	checkIn: z.coerce.date(),
+	checkOut: z.coerce.date(),
+	discountValue: z.number(),
+	discountType: z.enum(["PERCENTAGE", "FIXED"]),
+	nightlyRate: z.number(),
+	effectiveNightlyRate: z.number(),
+	initialPayment: BookingPaymentResponse,
+});
+
+const ApiResponseCheckInResponse = ApiResponseObject.extend({
+	data: CheckInResponse,
+});
+
+const RecordBookingPaymentRequest = z.object({
+	amount: z.number(),
+	currency: z.string(),
+	method: z.enum([
+		"CASH",
+		"CARD",
+		"CREDIT_CARD",
+		"DEBIT_CARD",
+		"BANK_TRANSFER",
+		"MOBILE_MONEY",
+		"CHEQUE",
+		"ONLINE_PAYMENT",
+		"PAYPAL",
+		"CRYPTOCURRENCY",
+		"DIRECT_DEBIT",
+		"PETTY_CASH",
+		"OTHERS",
+	]),
+	reference: z.string(),
+	status: z.enum([
+		"SUCCESS",
+		"FAILED",
+		"PENDING",
+		"CANCELLED",
+		"REFUNDED",
+		"PARTLY_PAID",
+		"FULLY_PAID",
+	]),
+	type: z.enum(["DEPOSIT", "INSTALLMENT", "FINAL", "REFUND", "OTHER"]),
+	paymentDate: z.coerce.date(),
+});
+
+export const CheckInRequest = z.object({
+	title: z.string(),
+	guestName: z.string(),
+	guestEmail: z.string(),
+	phoneNumber: z.string(),
+	noOfAdults: z.number(),
+	noOfChildren: z.number(),
+	nightlyRate: z.number(),
+	dailySpendingCap: z.number(),
+	checkInDate: z.string(),
+	checkOutDate: z.string(),
+	discountValue: z.number(),
+	discountType: z.enum(["PERCENTAGE", "FIXED"]),
+	initialPayment: RecordBookingPaymentRequest,
+});
+
+export type CheckInRequest = z.infer<typeof CheckInRequest>;
+
 export const BookingStatus = z.enum([
 	"CHECKED_IN",
 	"CHECKED_OUT",
@@ -2270,24 +2379,6 @@ export const PaymentType = z.enum([
 ]);
 
 export type PaymentType = z.infer<typeof PaymentType>;
-
-export const BookingPaymentResponse = z.object({
-	id: z.string(),
-	amount: z.number(),
-	currency: z.string(),
-	method: PaymentMethod,
-	reference: z.string(),
-	status: PaymentStatus,
-	type: PaymentType,
-	paymentDate: z.coerce.date(),
-	createdAt: z.coerce.date(),
-	bookingId: z.string(),
-	guestName: z.string(),
-	roomIdentifier: z.string(),
-	roomType: z.string(),
-});
-
-export type BookingPaymentResponse = z.infer<typeof BookingPaymentResponse>;
 
 const ApiResponseBookingPaymentListResponse = ApiResponseObject.extend({
 	data: Pagination.extend({
@@ -4545,9 +4636,9 @@ export const schema = createSchema({
 		output: ApiResponseObject,
 	},
 	"@post/api/front-desks/:roomIdentifier/check-in": {
-		input: z.any(),
+		input: CheckInRequest,
 		params: z.object({ roomIdentifier: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseCheckInResponse,
 	},
 	"@post/api/front-desks/:roomIdentifier/check-out": {
 		input: z.any(),
@@ -4990,10 +5081,9 @@ export const $fetch = createFetch({
 	},
 	timeout: 50000,
 	retry: {
-		type: "exponential",
+		type: "linear",
 		attempts: 3,
-		baseDelay: 1000, // 1 second
-		maxDelay: 5000, // 5 seconds
+		delay: 1000,
 		shouldRetry: (response) => {
 			// No response indicates a network error, so we should retry.
 			if (!response) {

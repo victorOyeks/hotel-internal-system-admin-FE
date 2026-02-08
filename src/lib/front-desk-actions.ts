@@ -6,7 +6,7 @@ import type {
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
-import { $fetch } from "./fetch";
+import { $fetch, type CheckInRequest } from "./fetch";
 
 export async function makeReservation({
 	roomId,
@@ -82,8 +82,8 @@ export async function checkInGuest({
 }: Prettify<
 	{
 		roomId: string;
-	} & APIInput<"@post/api/front-desks/:roomId/check-in">
->): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomId/check-in"> {
+	} & CheckInRequest
+>): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomIdentifier/check-in"> {
 	const { token } = await verifySession("FRONT_DESK");
 
 	const response = await $fetch("@post/api/front-desks/:roomId/check-in", {

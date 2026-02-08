@@ -501,8 +501,10 @@ function CreateNewBookingForm({
 }
 
 const checkInFormSchema = z.object({
-	guestName: z.string().nonempty("Guest name is required"),
-	phoneNumber: z.string().nonempty("Phone number is required"),
+	title: z.string().min(1, "Title is required"),
+	guestName: z.string().min(1, "Guest name is required"),
+	guestEmail: z.email("Invalid email address"),
+	phoneNumber: z.string().min(1, "Phone number is required"),
 	noOfAdults: z.number().int().positive("Number of adults must be at least 1"),
 	noOfChildren: z
 		.number()
@@ -514,14 +516,47 @@ const checkInFormSchema = z.object({
 		.number()
 		.nonnegative("Daily spending cap must be 0 or greater")
 		.default(0),
-	amountPaid: z
-		.number()
-		.nonnegative("You cannot pay a negative amount")
-		.min(0, "Please enter a valid amount")
-		.default(0),
-	roomStatus: z.enum(["CHECKED_IN"]),
-	checkInDate: z.string().nonempty("Check-in date is required"),
-	checkOutDate: z.string().nonempty("Check-out date is required"),
+	discountValue: z.number().nonnegative().default(0),
+	discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
+	initialPayment: z.object({
+		amount: z.number().nonnegative(),
+		currency: z.string().default("NGN"),
+		method: z.enum([
+			"CASH",
+			"CARD",
+			"CREDIT_CARD",
+			"DEBIT_CARD",
+			"BANK_TRANSFER",
+			"MOBILE_MONEY",
+			"CHEQUE",
+			"ONLINE_PAYMENT",
+			"PAYPAL",
+			"CRYPTOCURRENCY",
+			"DIRECT_DEBIT",
+			"PETTY_CASH",
+			"OTHERS",
+		]),
+		reference: z.string().min(1, "Payment reference is required"),
+		status: z.enum([
+			"SUCCESS",
+			"FAILED",
+			"PENDING",
+			"CANCELLED",
+			"REFUNDED",
+			"PARTLY_PAID",
+			"FULLY_PAID",
+		]),
+		type: z.enum([
+			"DEPOSIT",
+			"INSTALLMENT",
+			"FINAL",
+			"REFUND",
+			"OTHER",
+		]),
+		paymentDate: z.string(),
+	}),
+	checkInDate: z.string().min(1, "Check-in date is required"),
+	checkOutDate: z.string().min(1, "Check-out date is required"),
 });
 
 const reservationFormSchema = z
@@ -614,11 +649,23 @@ export function CheckInForm({
 	const form = useForm({
 		resolver: zodResolver(checkInFormSchema),
 		defaultValues: {
+			title: "Mr",
 			guestName: "",
+			guestEmail: "",
 			phoneNumber: "",
-			roomStatus: "CHECKED_IN" as "CHECKED_IN",
 			checkInDate: new Date().toISOString().split("T")[0],
 			checkOutDate: new Date().toISOString().split("T")[0],
+			discountValue: 0,
+			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
+			initialPayment: {
+				amount: 0,
+				currency: "NGN",
+				method: "CASH" as const,
+				reference: `REF-${Date.now()}`,
+				status: "SUCCESS" as const,
+				type: "DEPOSIT" as const,
+				paymentDate: new Date().toISOString(),
+			},
 		},
 		mode: "onSubmit",
 		reValidateMode: "onChange"
@@ -634,6 +681,10 @@ export function CheckInForm({
 			const response = await checkInGuest({
 				roomId,
 				...restData,
+				initialPayment: {
+					...restData.initialPayment,
+					paymentDate: new Date(restData.initialPayment.paymentDate),
+				},
 			});
 
 			if (!response.success) {
@@ -682,12 +733,49 @@ export function CheckInForm({
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
 					<FormField
 						control={form.control}
+						name="title"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Title</FormLabel>
+								<Select onValueChange={field.onChange} defaultValue={field.value}>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select title" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										{["Mr", "Mrs", "Ms", "Dr", "Prof", "Chief", "Alhaji", "Hajia"].map((title) => (
+											<SelectItem key={title} value={title}>
+												{title}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
 						name="guestName"
 						render={({ field }) => (
-							<FormItem className="col-span-2">
+							<FormItem>
 								<FormLabel>Guest Name</FormLabel>
 								<FormControl>
 									<Input placeholder="e.g John Doe" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="guestEmail"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g guest@example.com" {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -808,9 +896,7 @@ export function CheckInForm({
 								<FormControl>
 									<Input
 										type="number"
-										placeholder="e.g 10000"
 										min="0"
-										step="0.01"
 										{...form.register("dailySpendingCap", {
 											valueAsNumber: true,
 										})}
@@ -821,23 +907,123 @@ export function CheckInForm({
 						)}
 					/>
 
-					<FormField
-						control={form.control}
-						name="amountPaid"
-						render={() => (
-							<FormItem>
-								<FormLabel>Amount Paid</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 100"
-										{...form.register("amountPaid", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+
+					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
+						<h4 className="font-medium text-sm text-muted-foreground mb-2">
+							Payment & Discount
+						</h4>
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="discountType"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Type</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select type" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="FIXED">Fixed Amount</SelectItem>
+												<SelectItem value="PERCENTAGE">Percentage</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="discountValue"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Value</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+												className="w-full"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="initialPayment.amount"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Initial Payment</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="initialPayment.method"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Payment Method</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select method" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												{[
+													"CASH",
+													"CARD",
+													"CREDIT_CARD",
+													"DEBIT_CARD",
+													"BANK_TRANSFER",
+													"MOBILE_MONEY",
+													"CHEQUE",
+													"ONLINE_PAYMENT",
+													"PAYPAL",
+													"CRYPTOCURRENCY",
+													"DIRECT_DEBIT",
+													"PETTY_CASH",
+													"OTHERS",
+												].map((method) => (
+													<SelectItem key={method} value={method}>
+														{method.replace(/_/g, " ")}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
 
 					<FormField
 						control={form.control}
