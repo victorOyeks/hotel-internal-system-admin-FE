@@ -73,6 +73,22 @@ export interface OrderRequest {
 	}[];
 	bookingId?: string;
 	note?: string;
+	isPaid?: boolean;
+	paymentMethod?:
+		| "CASH"
+		| "CARD"
+		| "CREDIT_CARD"
+		| "DEBIT_CARD"
+		| "BANK_TRANSFER"
+		| "MOBILE_MONEY"
+		| "CHEQUE"
+		| "ONLINE_PAYMENT"
+		| "PAYPAL"
+		| "CRYPTOCURRENCY"
+		| "DIRECT_DEBIT"
+		| "PETTY_CASH"
+		| "OTHERS";
+	paymentReference?: string;
 }
 
 export async function placeOrder(

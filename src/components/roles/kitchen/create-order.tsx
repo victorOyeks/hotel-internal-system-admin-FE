@@ -43,6 +43,14 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { useMutation } from "@tanstack/react-query";
 import { type OrderRequest, placeOrder } from "@/lib/restaurant-actions";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
@@ -51,7 +59,7 @@ import { Badge } from "@/components/ui/badge";
 type FoodItemAPIResponse =
 	APIOutput<"@get/api/restaurants/items/all">["data"][number];
 
-interface MenuItem extends FoodItemAPIResponse {}
+interface MenuItem extends FoodItemAPIResponse { }
 
 interface CartItem extends MenuItem {
 	quantity: number;
@@ -441,8 +449,8 @@ function OrderSummary({
 }) {
 	return (
 		<div className="flex flex-col h-full relative isolate">
-			<ScrollArea className="flex-1 px-4 -mx-4">
-				<div className="space-y-3 px-2">
+			<ScrollArea className="flex-1 px-4 -mx-4 max-h-[calc(100vh-270px)]">
+				<div className="space-y-3 px-2 pb-4">
 					<div className="grid grid-cols-2 gap-x-4">
 						{/* Destination */}
 						<div>
@@ -510,6 +518,85 @@ function OrderSummary({
 							className="mt-1 resize-none h-16 text-sm"
 						/>
 					</div>
+
+					{/* Payment Status */}
+					<div className="flex items-center justify-between">
+						<Label htmlFor="isPaid" className="text-xs">
+							Mark as Paid
+						</Label>
+						<Switch
+							id="isPaid"
+							checked={orderDetails.isPaid || false}
+							onCheckedChange={(checked) =>
+								onOrderDetailsChange({
+									...orderDetails,
+									isPaid: checked,
+									paymentMethod: checked ? orderDetails.paymentMethod : undefined,
+									paymentReference: checked
+										? orderDetails.paymentReference
+										: undefined,
+								})
+							}
+						/>
+					</div>
+
+					{/* Payment Method (Conditional) */}
+					{orderDetails.isPaid && (
+						<>
+							<div>
+								<Label htmlFor="paymentMethod" className="text-xs">
+									Payment Method *
+								</Label>
+								<Select
+									value={orderDetails.paymentMethod || ""}
+									onValueChange={(value) =>
+										onOrderDetailsChange({
+											...orderDetails,
+											paymentMethod: value as OrderRequest["paymentMethod"],
+										})
+									}
+								>
+									<SelectTrigger className="mt-1 w-full">
+										<SelectValue placeholder="Select payment method" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="CASH">Cash</SelectItem>
+										<SelectItem value="CARD">Card</SelectItem>
+										<SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+										<SelectItem value="DEBIT_CARD">Debit Card</SelectItem>
+										<SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+										<SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+										<SelectItem value="CHEQUE">Cheque</SelectItem>
+										<SelectItem value="ONLINE_PAYMENT">Online Payment</SelectItem>
+										<SelectItem value="PAYPAL">PayPal</SelectItem>
+										<SelectItem value="CRYPTOCURRENCY">Cryptocurrency</SelectItem>
+										<SelectItem value="DIRECT_DEBIT">Direct Debit</SelectItem>
+										<SelectItem value="PETTY_CASH">Petty Cash</SelectItem>
+										<SelectItem value="OTHERS">Others</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							{/* Payment Reference (Optional) */}
+							<div>
+								<Label htmlFor="paymentReference" className="text-xs">
+									Payment Reference (Optional)
+								</Label>
+								<Input
+									id="paymentReference"
+									value={orderDetails.paymentReference || ""}
+									onChange={(e) =>
+										onOrderDetailsChange({
+											...orderDetails,
+											paymentReference: e.target.value,
+										})
+									}
+									placeholder="e.g., Transaction ID, Receipt Number"
+									className="mt-1"
+								/>
+							</div>
+						</>
+					)}
 				</div>
 			</ScrollArea>
 
@@ -647,6 +734,10 @@ export function OrderPage({
 
 			if (!orderData.destinationId || orderData.destinationId.trim() === "") {
 				throw new Error("Please enter a destination");
+			}
+
+			if (orderData.isPaid && !orderData.paymentMethod) {
+				throw new Error("Please select a payment method for paid orders");
 			}
 
 			const response = await placeOrder(orderData);
