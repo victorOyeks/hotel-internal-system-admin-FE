@@ -687,15 +687,7 @@ function ChangeBookingStatus({
 	);
 }
 
-function PaymentHistoryDialog({
-	bookingId,
-	open,
-	setOpen,
-}: {
-	bookingId: string;
-	open: boolean;
-	setOpen: (open: boolean) => void;
-}) {
+function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
 	const { data: payments, isLoading } = useQuery({
 		queryKey: ["booking-payments", bookingId],
 		queryFn: async () => {
@@ -704,88 +696,135 @@ function PaymentHistoryDialog({
 			if (!res.success && res.error) throw new Error(res.error);
 			return res.success ? res.data.data : [];
 		},
-		enabled: open && !!bookingId,
 	});
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen} modal={false}>
-			<DialogContent className="max-w-4xl">
-				<DialogHeader>
-					<DialogTitle>Payment History</DialogTitle>
-					<DialogDescription>
-						View all payments recorded for this booking.
-					</DialogDescription>
-				</DialogHeader>
+		<DialogContent className="min-w-3xl">
+			<DialogHeader>
+				<DialogTitle>Payment History</DialogTitle>
+				<DialogDescription>
+					View all payments recorded for this booking.
+				</DialogDescription>
+			</DialogHeader>
 
-				<div className="mt-4">
-					{isLoading ? (
-						<div className="flex justify-center p-8">
-							<Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-						</div>
-					) : !payments || payments.length === 0 ? (
-						<div className="text-center p-8 text-gray-500 bg-gray-50 rounded-lg">
-							No payments recorded for this booking.
-						</div>
-					) : (
-						<div className="rounded-md border overflow-hidden">
-							<Table>
-								<TableHeader className="bg-gray-100">
-									<TableRow>
-										<TableHead>Date</TableHead>
-										<TableHead>Method</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Reference</TableHead>
-										<TableHead className="text-right">Amount</TableHead>
-										<TableHead>Status</TableHead>
+			<div className="mt-4">
+				{isLoading ? (
+					<div className="flex justify-center p-8">
+						<Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+					</div>
+				) : !payments || payments.length === 0 ? (
+					<div className="text-center p-8 text-gray-500 bg-gray-50 rounded-lg">
+						No payments recorded for this booking.
+					</div>
+				) : (
+					<div className="rounded-md border overflow-hidden">
+						<Table>
+							<TableHeader className="bg-gray-100">
+								<TableRow>
+									<TableHead>Date</TableHead>
+									<TableHead>Method</TableHead>
+									<TableHead>Type</TableHead>
+									<TableHead>Reference</TableHead>
+									<TableHead className="text-right">Amount</TableHead>
+									<TableHead>Status</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{payments.map((payment) => (
+									<TableRow key={payment.id}>
+										<TableCell>
+											{new Date(payment.paymentDate).toLocaleDateString()}
+											<div className="text-xs text-gray-500">
+												{new Date(payment.paymentDate).toLocaleTimeString()}
+											</div>
+										</TableCell>
+										<TableCell className="capitalize">
+											{payment.method.toLowerCase().replace(/_/g, " ")}
+										</TableCell>
+										<TableCell className="capitalize">
+											<Badge variant="outline">
+												{payment.type.toLowerCase().replace(/_/g, " ")}
+											</Badge>
+										</TableCell>
+										<TableCell className="font-mono text-xs">
+											{payment.reference}
+										</TableCell>
+										<TableCell className="text-right font-medium">
+											{formatCurrency(payment.amount)}
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													payment.status === "SUCCESS"
+														? "green"
+														: payment.status === "PENDING"
+															? "yellow"
+															: payment.status === "FAILED"
+																? "destructive"
+																: "secondary"
+												}
+											>
+												{payment.status.toLowerCase()}
+											</Badge>
+										</TableCell>
 									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{payments.map((payment) => (
-										<TableRow key={payment.id}>
-											<TableCell>
-												{new Date(payment.paymentDate).toLocaleDateString()}
-												<div className="text-xs text-gray-500">
-													{new Date(payment.paymentDate).toLocaleTimeString()}
-												</div>
-											</TableCell>
-											<TableCell className="capitalize">
-												{payment.method.toLowerCase().replace(/_/g, " ")}
-											</TableCell>
-											<TableCell className="capitalize">
-												<Badge variant="outline">
-													{payment.type.toLowerCase().replace(/_/g, " ")}
-												</Badge>
-											</TableCell>
-											<TableCell className="font-mono text-xs">
-												{payment.reference}
-											</TableCell>
-											<TableCell className="text-right font-medium">
-												{formatCurrency(payment.amount)}
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant={
-														payment.status === "SUCCESS"
-															? "green"
-															: payment.status === "PENDING"
-																? "yellow"
-																: payment.status === "FAILED"
-																	? "destructive"
-																	: "secondary"
-													}
-												>
-													{payment.status.toLowerCase()}
-												</Badge>
-											</TableCell>
-										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</div>
-					)}
-				</div>
-			</DialogContent>
-		</Dialog>
+								))}
+							</TableBody>
+						</Table>
+					</div>
+				)}
+			</div>
+		</DialogContent>
+	);
+}
+
+function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
+	const [openStatusDialog, setOpenStatusDialog] = useState(false);
+	const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
+
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+					<MoreHorizontalIcon className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<EditIcon className="mr-2 h-4 w-4" />
+							Update Status
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<ChangeBookingStatus
+						booking={booking}
+						onClose={() => setOpenStatusDialog(false)}
+					/>
+				</Dialog>
+
+				<Dialog
+					open={openPaymentHistory}
+					onOpenChange={setOpenPaymentHistory}
+				>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<RotateCcwIcon className="mr-2 h-4 w-4" />
+							Payment History
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<PaymentHistoryContent bookingId={booking.id} />
+				</Dialog>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -905,45 +944,7 @@ const columns = [
 
 	columnHelper.display({
 		id: "actions",
-		cell: (info) => {
-			const [openStatusDialog, setOpenStatusDialog] = useState(false);
-			const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
-
-			return (
-				<>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-								<MoreHorizontalIcon className="h-4 w-4" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem onClick={() => setOpenStatusDialog(true)}>
-								<EditIcon className="mr-2 h-4 w-4" />
-								Update Status
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setOpenPaymentHistory(true)}>
-								<RotateCcwIcon className="mr-2 h-4 w-4" />
-								Payment History
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog} modal={false}>
-						<ChangeBookingStatus
-							booking={info.row.original}
-							onClose={() => setOpenStatusDialog(false)}
-						/>
-					</Dialog>
-
-					<PaymentHistoryDialog
-						bookingId={info.row.original.id}
-						open={openPaymentHistory}
-						setOpen={setOpenPaymentHistory}
-					/>
-				</>
-			);
-		},
+		cell: (info) => <BookingActionsCell booking={info.row.original} />,
 	}),
 ];
 
