@@ -23,8 +23,7 @@ import {
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
 import type { HotelRole } from "@/lib/types";
-import { HotelSwitcher } from "../roles/manager/hotel-switcher";
-import { RoleSwitcher } from "./role-switcher";
+import { SidebarSwitchers } from "./sidebar-switchers";
 
 export function AppSidebar({
 	role,
@@ -83,10 +82,12 @@ export function AppSidebar({
 				<NavMain items={links[role]} />
 			</SidebarContent>
 			<SidebarFooter>
-				{role === "MANAGER" && (
-					<HotelSwitcher hotels={hotels || []} activeHotel={activeHotel} />
-				)}
-				<RoleSwitcher activeRole={role} availableRoles={availableRoles} />
+				<SidebarSwitchers
+					role={role}
+					availableRoles={availableRoles}
+					hotels={hotels}
+					activeHotel={activeHotel}
+				/>
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
