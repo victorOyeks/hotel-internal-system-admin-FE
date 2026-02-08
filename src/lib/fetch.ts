@@ -102,6 +102,28 @@ const RoomResponse = z.object({
 	roomPrice: z.number(),
 	checkInStatus: z.string(),
 	roomFacility: z.array(z.string()),
+	guestDetails: z
+		.object({
+			bookingId: z.string(),
+			customId: z.string(),
+			guestName: z.string(),
+			title: z.string().nullable(),
+			phoneNumber: z.string(),
+			noOfAdults: z.number().nullable(),
+			noOfChildren: z.number().nullable(),
+			roomIdentifier: z.string(),
+			roomType: z.string(),
+			bookingStatus: z.string(),
+			checkInDate: z.string(),
+			checkOutDate: z.string(),
+			nightlyRate: z.number(),
+			amountPaid: z.number(),
+			amountDue: z.number(),
+			amountRemaining: z.number(),
+			isCurrentGuest: z.boolean(),
+			organizationName: z.string().nullable(),
+		})
+		.optional(),
 });
 
 export type RoomDetails = z.infer<typeof RoomResponse>;

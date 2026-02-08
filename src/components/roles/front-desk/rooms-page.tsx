@@ -39,8 +39,8 @@ import {
 	TableCell,
 	TableFooter,
 } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { RoomsTableActions } from "./rooms-table-actions";
 
 function RoomsFilter({
 	rooms,
@@ -244,11 +244,10 @@ function RoomListToolbar({
 					variant="outline"
 					data-active={queryState.roomStatus === null}
 					onClick={() => setQueryState({ roomStatus: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.roomStatus === null
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === null
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					All Rooms{" "}
 					{queryState.roomStatus === null &&
@@ -260,11 +259,10 @@ function RoomListToolbar({
 					variant="outline"
 					data-active={queryState.roomStatus === "AVAILABLE"}
 					onClick={() => setQueryState({ roomStatus: "AVAILABLE" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.roomStatus === "AVAILABLE"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === "AVAILABLE"
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					Available Rooms{" "}
 					{queryState.roomStatus === "AVAILABLE" &&
@@ -318,6 +316,7 @@ function RoomListToolbar({
 
 const columnHelper = createColumnHelper<RoomDetails>();
 
+
 const columns = [
 	columnHelper.accessor("customId", {
 		header: "ID",
@@ -352,7 +351,7 @@ const columns = [
 				RESERVED: "yellow",
 				BOOKED: "blue",
 				CHECKED_IN: "blue",
-				CHECKED_OUT: "red",
+				CHECKED_OUT: "secondary",
 				BLOCKED: "gray",
 				DIRTY: "red",
 			};
@@ -366,10 +365,23 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("guestDetails.guestName", {
+		header: "Guest Name",
+		cell: (info) => {
+			const guestName = info.getValue();
+			const guestDetails = info.row.original.guestDetails;
 
-	columnHelper.accessor("roomPrice", {
-		header: "Price/Night",
-		cell: (info) => formatCurrency(info.getValue()) || "N/A",
+			return (
+				<div className="flex flex-col">
+					<span>{guestName}</span>
+					{guestDetails?.organizationName && (
+						<span className="text-sm text-gray-500">
+							{guestDetails.organizationName}
+						</span>
+					)}
+				</div>
+			);
+		},
 	}),
 	columnHelper.accessor("roomFacility", {
 		header: "Room Facilities",
@@ -383,6 +395,10 @@ const columns = [
 				))}
 			</div>
 		),
+	}),
+	columnHelper.display({
+		id: "actions",
+		cell: ({ row }) => <RoomsTableActions row={row.original} />,
 	}),
 ];
 
@@ -399,9 +415,9 @@ function RoomListTable({ table }: { table: TableType<RoomDetails> }) {
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}

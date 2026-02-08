@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
 	DialogTitle,
 	DialogDescription,
@@ -521,6 +521,7 @@ const checkInFormSchema = z.object({
 		.default(0),
 	roomStatus: z.enum(["CHECKED_IN"]),
 	checkInDate: z.string().nonempty("Check-in date is required"),
+	checkOutDate: z.string().nonempty("Check-out date is required"),
 });
 
 const reservationFormSchema = z
@@ -617,7 +618,10 @@ export function CheckInForm({
 			phoneNumber: "",
 			roomStatus: "CHECKED_IN" as "CHECKED_IN",
 			checkInDate: new Date().toISOString().split("T")[0],
+			checkOutDate: new Date().toISOString().split("T")[0],
 		},
+		mode: "onSubmit",
+		reValidateMode: "onChange"
 	});
 
 	const { isPending, mutate } = useMutation({
@@ -724,10 +728,13 @@ export function CheckInForm({
 
 					<div className="grid gap-2">
 						<Label>Room</Label>
-						<SelectRoomBox setValue={setSelectedRoomId} rooms={data.rooms} />
-						{!selectedRoomId && (
-							<p className="text-sm text-destructive">Room is required</p>
-						)}
+						<SelectRoomBox setValue={(value) => {
+							setSelectedRoomId(value);
+							const room = data.rooms.find((room) => room.id === value);
+							if (room) {
+								form.setValue("nightlyRate", room.roomPrice);
+							}
+						}} rooms={data.rooms} />
 					</div>
 
 					<FormField
@@ -780,7 +787,11 @@ export function CheckInForm({
 										placeholder="e.g 5000"
 										min="0"
 										step="0.01"
-										{...form.register("nightlyRate", { valueAsNumber: true })}
+										value={form.watch("nightlyRate")}
+										onChange={(e) =>
+											form.setValue("nightlyRate", Number(e.target.value))
+										}
+										readOnly
 									/>
 								</FormControl>
 								<FormMessage />
@@ -839,7 +850,33 @@ export function CheckInForm({
 										initialDate={field.value}
 										onChange={field.onChange}
 										placeholder="Select check-in date"
-										minDate={new Date(Date.now() - 24 * 60 * 60 * 1000)}
+										minDate={new Date()}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="checkOutDate"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Check-out Date</FormLabel>
+								<FormControl>
+									<DatePicker
+										initialDate={field.value}
+										onChange={field.onChange}
+										placeholder="Select check-out date"
+										minDate={
+											form.watch("checkInDate")
+												? new Date(
+													new Date(form.watch("checkInDate")).getTime() +
+													24 * 60 * 60 * 1000,
+												)
+												: new Date()
+										}
 									/>
 								</FormControl>
 								<FormMessage />
@@ -847,6 +884,48 @@ export function CheckInForm({
 						)}
 					/>
 				</div>
+
+				{/* Check-in Summary */}
+				{form.watch("checkInDate") &&
+					form.watch("checkOutDate") &&
+					form.watch("nightlyRate") > 0 && (
+						<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+							<h3 className="font-medium text-sm">Check-in Summary</h3>
+							<div className="grid grid-cols-2 gap-2 text-sm">
+								<div>
+									<span className="text-muted-foreground">Duration:</span>
+									<span className="ml-2 font-medium">
+										{Math.ceil(
+											(new Date(form.watch("checkOutDate")).getTime() -
+												new Date(form.watch("checkInDate")).getTime()) /
+											(1000 * 60 * 60 * 24),
+										)}{" "}
+										night(s)
+									</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">Nightly Rate:</span>
+									<span className="ml-2 font-medium">
+										{formatCurrency(form.watch("nightlyRate"))}
+									</span>
+								</div>
+								<div className="col-span-2">
+									<span className="text-muted-foreground">Total Cost:</span>
+									<span className="ml-2 font-medium text-lg">
+
+										{formatCurrency(
+											Math.ceil(
+												(new Date(form.watch("checkOutDate")).getTime() -
+													new Date(form.watch("checkInDate")).getTime()) /
+												(1000 * 60 * 60 * 24),
+											) * form.watch("nightlyRate")
+										)}
+									</span>
+								</div>
+							</div>
+						</div>
+					)}
+
 				<Button
 					type="submit"
 					className="mt-4 w-full font-semibold"
@@ -974,6 +1053,46 @@ export function ReservationForm({
 						)}
 					/>
 
+
+					<div className="grid gap-2">
+						<Label>Room Type</Label>
+						<Select
+							value={roomQuery["room:type"]}
+							onValueChange={(value) => setRoomQuery({ "room:type": value })}
+						>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="e.g Deluxe, Standard" />
+							</SelectTrigger>
+							<SelectContent className="w-full p-0">
+								{data.roomTypes.map((type) => (
+									<SelectItem key={type} value={type}>
+										{type}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<FormField
+						control={form.control}
+						name="roomId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room</FormLabel>
+								<FormControl>
+									<SelectRoomBox setValue={(value) => {
+										field.onChange(value);
+										const room = data.rooms.find((room) => room.id === value);
+										if (room) {
+											form.setValue("nightlyRate", room.roomPrice);
+										}
+									}} rooms={data.rooms} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
 					<FormField
 						control={form.control}
 						name="nightlyRate"
@@ -985,7 +1104,11 @@ export function ReservationForm({
 										type="number"
 										step="0.01"
 										placeholder="e.g 25000"
-										{...form.register("nightlyRate", { valueAsNumber: true })}
+										value={form.watch("nightlyRate")}
+										onChange={(e) =>
+											form.setValue("nightlyRate", Number(e.target.value))
+										}
+										readOnly
 									/>
 								</FormControl>
 								<FormMessage />
@@ -1053,39 +1176,6 @@ export function ReservationForm({
 												: new Date()
 										}
 									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<div className="grid gap-2">
-						<Label>Room Type</Label>
-						<Select
-							value={roomQuery["room:type"]}
-							onValueChange={(value) => setRoomQuery({ "room:type": value })}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="e.g Deluxe, Standard" />
-							</SelectTrigger>
-							<SelectContent className="w-full p-0">
-								{data.roomTypes.map((type) => (
-									<SelectItem key={type} value={type}>
-										{type}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-
-					<FormField
-						control={form.control}
-						name="roomId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Room</FormLabel>
-								<FormControl>
-									<SelectRoomBox setValue={field.onChange} rooms={data.rooms} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>

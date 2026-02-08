@@ -1,6 +1,5 @@
 "use client";
 
-import { atom, useAtom } from "jotai";
 import { useState } from "react";
 import {
 	type ColumnFiltersState,
@@ -24,11 +23,7 @@ import {
 import { DataTablePagination } from "@/components/shared/pagination";
 import type { Pagination, RoomDetails } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-
-const successDialogAtom = atom({
-	show: false,
-	message: "",
-});
+import { RoomsTableActions } from "./rooms-table-actions";
 
 const columnHelper = createColumnHelper<RoomDetails>();
 
@@ -80,6 +75,22 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("guestDetails.guestName", {
+		header: "Guest Name",
+		cell: (info) => {
+			const guestName = info.getValue();
+			const guestDetails = info.row.original.guestDetails;
+
+			return (
+				<div className="flex flex-col">
+					<span>{guestName}</span>
+					{guestDetails?.organizationName && (
+						<span>{guestDetails.organizationName}</span>
+					)}
+				</div>
+			);
+		},
+	}),
 	columnHelper.accessor("roomFacility", {
 		header: "Room Facilities",
 		cell: (info) => (
@@ -92,6 +103,10 @@ const columns = [
 				))}
 			</div>
 		),
+	}),
+	columnHelper.display({
+		id: "actions",
+		cell: ({ row }) => <RoomsTableActions row={row.original} />,
 	}),
 ];
 
@@ -121,7 +136,7 @@ export function RoomsListTable({
 			pagination,
 		},
 	});
-	const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+
 	return (
 		<div className="overflow-hidden rounded-md border bg-card">
 			<Table>
@@ -134,9 +149,9 @@ export function RoomsListTable({
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}
