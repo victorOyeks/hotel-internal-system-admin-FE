@@ -36,6 +36,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 						role={activeRole as HotelRole}
 						hotels={user.hotels}
 						activeHotel={activeHotel ?? undefined}
+						availableRoles={user.roles}
 					/>
 					<SidebarInset className="bg-background-blue">
 						<Header user={user} />

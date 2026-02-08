@@ -24,20 +24,24 @@ import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
 import type { HotelRole } from "@/lib/types";
 import { HotelSwitcher } from "../roles/manager/hotel-switcher";
+import { RoleSwitcher } from "./role-switcher";
 
 export function AppSidebar({
 	role,
 	hotels,
 	activeHotel,
+	availableRoles,
 	...props
 }: React.ComponentProps<typeof Sidebar> & {
 	role: HotelRole;
+	availableRoles: HotelRole[];
 	activeHotel?: { id: string; name: string };
 	hotels?: {
 		id: string;
 		name: string;
 	}[];
 }) {
+
 	const links: Record<
 		HotelRole,
 		React.ComponentProps<typeof NavMain>["items"]
@@ -72,16 +76,18 @@ export function AppSidebar({
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
+
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent className="scrollbar-hidden">
 				<NavMain items={links[role]} />
 			</SidebarContent>
-			{role === "MANAGER" && (
-				<SidebarFooter>
+			<SidebarFooter>
+				{role === "MANAGER" && (
 					<HotelSwitcher hotels={hotels || []} activeHotel={activeHotel} />
-				</SidebarFooter>
-			)}
+				)}
+				<RoleSwitcher activeRole={role} availableRoles={availableRoles} />
+			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
 	);
