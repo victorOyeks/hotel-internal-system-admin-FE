@@ -202,14 +202,28 @@ function ChangeBookingStatus({
 					const response = await checkInGuest({
 						roomId: booking?.roomIdentifier!,
 						guestName: booking?.guestName!,
+						title: "Mr", // Default title as it's not in booking
+						guestEmail: `${booking?.guestName?.toLowerCase()?.replace(/\s/g, ".")}@example.com`, // Generate placeholder email
 						phoneNumber: booking?.guestPhoneNumber!,
 						noOfAdults: booking?.noOfAdults ?? 1,
 						noOfChildren: booking?.noOfChildren ?? 0,
 						nightlyRate: booking?.nightlyRate ?? 0,
-						dailySpendingCap: 0, // Default to 0 as this field is not available in the booking response
-						amountPaid: booking?.amountPaid!,
-						roomStatus: "CHECKED_IN",
-						checkInDate: new Date().toISOString().split("T")[0], // Format as yyyy-mm-dd
+						dailySpendingCap: 0,
+						checkInDate: new Date().toISOString().split("T")[0],
+						checkOutDate: booking?.checkOutDate
+							? new Date(booking.checkOutDate).toISOString().split("T")[0]
+							: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Default to tomorrow if missing
+						discountValue: 0,
+						discountType: "FIXED",
+						initialPayment: {
+							amount: booking?.amountPaid || 0,
+							currency: "NGN",
+							method: "CASH",
+							status: "SUCCESS",
+							type: "DEPOSIT",
+							paymentDate: new Date(),
+							reference: `INIT-${Date.now()}`,
+						},
 					});
 
 					if (!response.success) {
@@ -731,7 +745,7 @@ function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
 							</TableHeader>
 							<TableBody>
 								{payments.map((payment) => (
-									<TableRow key={payment.id}>
+									<TableRow key={payment.reference}>
 										<TableCell>
 											{new Date(payment.paymentDate).toLocaleDateString()}
 											<div className="text-xs text-gray-500">

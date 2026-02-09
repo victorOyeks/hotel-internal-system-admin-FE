@@ -76,12 +76,12 @@ const columns = [
 		},
 	}),
 	columnHelper.accessor("guestDetails.guestName", {
-		header: "Guest Name",
+		header: "Last checked in",
 		cell: (info) => {
 			const guestName = info.getValue();
 			const guestDetails = info.row.original.guestDetails;
 
-			if (!guestName) return <span className="text-gray-400">-</span>;
+			if (!guestName || info.row.original.checkInStatus === "AVAILABLE") return <span className="text-gray-400">-</span>;
 
 			return (
 				<div className="flex flex-col">
@@ -105,38 +105,33 @@ const columns = [
 			);
 		},
 	}),
-	columnHelper.accessor("guestDetails.amountRemaining", {
-		header: "Balance",
-		cell: (info) => {
-			const amount = info.getValue();
-			const guestDetails = info.row.original.guestDetails;
 
-			if (!guestDetails) return <span className="text-gray-400">-</span>;
+	columnHelper.accessor("roomFacility", {
+		header: "Room Facilities",
+		cell: (info) => {
+			const facilities = info.getValue();
+			const limit = 2;
+			const displayed = facilities.slice(0, limit);
+			const remaining = facilities.length - limit;
 
 			return (
-				<div className="flex flex-col items-end">
-					<span className={amount > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-						{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount || 0)}
-					</span>
-					<span className="text-[10px] text-muted-foreground">
-						Due: {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(guestDetails.amountDue || 0)}
-					</span>
+				<div className="flex flex-wrap gap-1 text-xs">
+					{displayed.map((facility) => (
+						<span
+							key={facility}
+							className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
+						>
+							{facility}
+						</span>
+					))}
+					{remaining > 0 && (
+						<span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">
+							+{remaining} more
+						</span>
+					)}
 				</div>
 			);
 		},
-	}),
-	columnHelper.accessor("roomFacility", {
-		header: "Room Facilities",
-		cell: (info) => (
-			<div className="flex flex-wrap gap-2">
-				{info.getValue().map((facility, i) => (
-					<span key={facility}>
-						{facility}
-						{i < info.getValue().length - 1 ? ", " : "."}
-					</span>
-				))}
-			</div>
-		),
 	}),
 	columnHelper.display({
 		id: "actions",

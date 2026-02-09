@@ -15,12 +15,15 @@ import { GuestDetailsContent } from "./guest-details-content";
 import type { RoomDetails } from "@/lib/fetch";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 
+import { RoomDetailsContent } from "./room-details-content";
+
 interface RoomsTableActionsProps {
     row: RoomDetails;
 }
 
 export function RoomsTableActions({ row }: RoomsTableActionsProps) {
     const [showGuestDetails, setShowGuestDetails] = useState(false);
+    const [showRoomDetails, setShowRoomDetails] = useState(false);
 
     return (
         <DropdownMenu modal={false}>
@@ -32,6 +35,15 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <Dialog open={showRoomDetails} onOpenChange={setShowRoomDetails}>
+                    <DialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            View Room Details
+                        </DropdownMenuItem>
+                    </DialogTrigger>
+                    <RoomDetailsContent room={row} />
+                </Dialog>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                     onClick={() => navigator.clipboard.writeText(row.customId)}
                 >

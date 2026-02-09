@@ -41,6 +41,10 @@ import {
 } from "@/components/ui/table";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { RoomsTableActions } from "./rooms-table-actions";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
+import { exportRooms } from "@/lib/front-desk-actions";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 function RoomsFilter({
 	rooms,
@@ -223,6 +227,58 @@ function RoomsFilter({
 	);
 }
 
+function Export({ roomQuery }: { roomQuery: { roomStatus: "AVAILABLE" | null; search: string | null; roomType: string | null } }) {
+	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+	const onExport = async (data: ExportData) => {
+		try {
+			const filters = {
+				search: roomQuery.search || undefined,
+				roomType: roomQuery.roomType || undefined,
+				status: roomQuery.roomStatus || undefined,
+				format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+			};
+
+			const response = await exportRooms(filters);
+
+			if (response.success && response.data) {
+				const blob = new Blob([response.data as unknown as BlobPart], {
+					type:
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				const extension =
+					data.export_type === "excel" ? "xlsx" : data.export_type;
+				a.download = `rooms-export-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+				toast.success("Export downloaded successfully");
+				setIsExportDialogOpen(false);
+			} else {
+				toast.error(response.error || "Failed to export rooms");
+			}
+		} catch {
+			toast.error("An error occurred during export");
+		}
+	};
+
+	return (
+		<ExportDialog
+			open={isExportDialogOpen}
+			setOpenAction={setIsExportDialogOpen}
+			onSubmitAction={onExport}
+		/>
+	);
+}
+
 function RoomListToolbar({
 	table,
 	rooms,
@@ -290,6 +346,8 @@ function RoomListToolbar({
 							setQueryState={setQueryState}
 						/>
 					</TableFilter>
+
+					<Export roomQuery={queryState} />
 
 					{/* Applied Filters Display */}
 					{queryState.roomType && (
@@ -366,12 +424,12 @@ const columns = [
 		},
 	}),
 	columnHelper.accessor("guestDetails.guestName", {
-		header: "Guest Name",
+		header: "Last checked in",
 		cell: (info) => {
 			const guestName = info.getValue();
 			const guestDetails = info.row.original.guestDetails;
 
-			if (!guestName) return <span className="text-gray-400">-</span>;
+			if (!guestName || info.row.original.checkInStatus === "AVAILABLE") return <span className="text-gray-400">-</span>;
 
 			return (
 				<div className="flex flex-col">
@@ -395,38 +453,32 @@ const columns = [
 			);
 		},
 	}),
-	columnHelper.accessor("guestDetails.amountRemaining", {
-		header: "Balance",
+	columnHelper.accessor("roomFacility", {
+		header: "Room Facilities",
 		cell: (info) => {
-			const amount = info.getValue();
-			const guestDetails = info.row.original.guestDetails;
-
-			if (!guestDetails) return <span className="text-gray-400">-</span>;
+			const facilities = info.getValue();
+			const limit = 2;
+			const displayed = facilities.slice(0, limit);
+			const remaining = facilities.length - limit;
 
 			return (
-				<div className="flex flex-col items-end">
-					<span className={amount > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-						{new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount || 0)}
-					</span>
-					<span className="text-[10px] text-muted-foreground">
-						Due: {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(guestDetails.amountDue || 0)}
-					</span>
+				<div className="flex flex-wrap gap-1 text-xs">
+					{displayed.map((facility) => (
+						<span
+							key={facility}
+							className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
+						>
+							{facility}
+						</span>
+					))}
+					{remaining > 0 && (
+						<span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">
+							+{remaining} more
+						</span>
+					)}
 				</div>
 			);
 		},
-	}),
-	columnHelper.accessor("roomFacility", {
-		header: "Room Facilities",
-		cell: (info) => (
-			<div className="flex flex-wrap gap-2">
-				{info.getValue().map((facility, i) => (
-					<span key={facility}>
-						{facility}
-						{i < info.getValue().length - 1 ? ", " : "."}
-					</span>
-				))}
-			</div>
-		),
 	}),
 	columnHelper.display({
 		id: "actions",
