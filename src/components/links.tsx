@@ -1,6 +1,7 @@
 import {
 	BookOpenIcon,
 	BookTextIcon,
+	BarChart3Icon,
 	ChartNoAxesCombined,
 	FolderClosedIcon,
 	HomeIcon,
@@ -102,6 +103,11 @@ export const inventoryOfficerLinks = [
 		title: "Stock takes",
 		icon: <ClipboardListIcon />,
 		url: "/dashboard/stock-takes",
+	},
+	{
+		title: "Stock Levels",
+		icon: <BarChart3Icon />,
+		url: "/dashboard/stock-levels",
 	},
 	{
 		title: "Stock Movements",
