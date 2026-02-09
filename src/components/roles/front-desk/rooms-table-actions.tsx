@@ -35,6 +35,13 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+                <DropdownMenuItem
+                    onClick={() => navigator.clipboard.writeText(row.customId)}
+                >
+                    Copy Room ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <Dialog open={showRoomDetails} onOpenChange={setShowRoomDetails}>
                     <DialogTrigger asChild>
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -43,27 +50,23 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
                     </DialogTrigger>
                     <RoomDetailsContent room={row} />
                 </Dialog>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                    onClick={() => navigator.clipboard.writeText(row.customId)}
-                >
-                    Copy Room ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <Dialog open={showGuestDetails} onOpenChange={setShowGuestDetails}>
-                    <DialogTrigger asChild>
-                        <DropdownMenuItem
-                            disabled={!row.guestDetails}
-                            onSelect={(e) => e.preventDefault()}
-                        >
-                            View Guest Details
-                        </DropdownMenuItem>
-                    </DialogTrigger>
-                    <GuestDetailsContent
-                        guestDetails={row.guestDetails}
-                        roomIdentifier={row.roomIdentifier}
-                    />
-                </Dialog>
+
+                {row.checkInStatus !== "AVAILABLE" && (
+                    <Dialog open={showGuestDetails} onOpenChange={setShowGuestDetails}>
+                        <DialogTrigger asChild>
+                            <DropdownMenuItem
+                                disabled={!row.guestDetails}
+                                onSelect={(e) => e.preventDefault()}
+                            >
+                                View Guest Details
+                            </DropdownMenuItem>
+                        </DialogTrigger>
+                        <GuestDetailsContent
+                            guestDetails={row.guestDetails}
+                            roomIdentifier={row.roomIdentifier}
+                        />
+                    </Dialog>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );
