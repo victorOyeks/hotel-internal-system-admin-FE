@@ -1227,6 +1227,48 @@ export type InventoryProductResponse = z.infer<
 	typeof ApiResponseInventoryProductResponse
 >["data"]["content"][number];
 
+export const ApiResponseCustomPageStockLevelResponse = ApiResponseObject.extend(
+	{
+		data: Pagination.extend({
+			content: z
+				.object({
+					id: z.string(),
+					hotelId: z.string(),
+					productId: z.string(),
+					productSku: z.string(),
+					productName: z.string(),
+					productCategory: z.string(),
+					locationId: z.string(),
+					locationCode: z.string(),
+					locationName: z.string(),
+					quantityOnHand: z.number(),
+					quantityReserved: z.number(),
+					quantityAvailable: z.number(),
+					quantityInTransit: z.number(),
+					quantityAllocated: z.number(),
+					averageCost: z.number(),
+					totalValue: z.number(),
+					lastPurchaseCost: z.number(),
+					isBelowReorderLevel: z.boolean(),
+					isBelowMinLevel: z.boolean(),
+					isAboveMaxLevel: z.boolean(),
+					isOutOfStock: z.boolean(),
+					lastStockInDate: z.string().optional().nullable(),
+					lastStockOutDate: z.string().optional().nullable(),
+					lastStockCountDate: z.string().optional().nullable(),
+					createdAt: z.string().optional().nullable(),
+					updatedAt: z.string().optional().nullable(),
+					lastRecalculatedAt: z.string().optional().nullable(),
+				})
+				.array(),
+		}),
+	},
+);
+
+export type StockLevelResponse = z.infer<
+	typeof ApiResponseCustomPageStockLevelResponse
+>["data"]["content"][number];
+
 const InventoryProductsStatistics = z.object({
 	totalProducts: z.number(),
 	activeProducts: z.number(),
@@ -2011,32 +2053,32 @@ const ApiResponseStockAdjustmentResponse = ApiResponseObject.extend({
 // --- Stock Issue Schemas ---
 
 const StockIssueItemRequest = z.object({
-	productId: z.string(),
+	productId: z.string().min(1),
 	batchId: z.string().optional(),
 	quantity: z.number().min(0),
-	notes: z.string().optional(),
+	notes: z.string().max(1000).optional(),
 });
 
 export type StockIssueItemRequest = z.infer<typeof StockIssueItemRequest>;
 
 const StockIssueRequest = z.object({
-	locationId: z.string(),
-	issueDate: z.string(), // date-time
+	locationId: z.string().min(1),
+	issueDate: z.string().datetime(),
 	issueType: z.enum([
 		"INTERNAL_CONSUMPTION",
 		"SALES_ISSUE",
 		"TRANSFER_OUT",
 		"OTHERS",
 	]),
-	departmentId: z.string().optional(),
-	receivedBy: z.string().optional(),
-	orderId: z.string().optional(),
-	bookingId: z.string().optional(),
+	departmentId: z.string().max(100).optional(),
+	receivedBy: z.string().max(200).optional(),
+	orderId: z.string().max(100).optional(),
+	bookingId: z.string().max(100).optional(),
 	toLocationId: z.string().optional(),
 	autoCompleteTransfer: z.boolean().optional(),
 	items: z.array(StockIssueItemRequest).min(1),
-	notes: z.string().optional(),
-	reason: z.string().optional(),
+	notes: z.string().max(1000).optional(),
+	reason: z.string().max(1000).optional(),
 });
 
 export type StockIssueRequest = z.infer<typeof StockIssueRequest>;
@@ -2392,6 +2434,22 @@ export const ApiResponseListBookingPaymentResponse = ApiResponseObject.extend({
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
+	"@get/api/inventories/stock-levels": {
+		query: z
+			.object({
+				locationId: z.string().optional().nullable(),
+				productId: z.string().optional().nullable(),
+				category: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				lowStock: z.boolean().optional().nullable(),
+				outOfStock: z.boolean().optional().nullable(),
+				pageable: z.string().optional().nullable(),
+				page: z.number().optional(),
+				size: z.number().optional(),
+			})
+			.partial(),
+		output: ApiResponseCustomPageStockLevelResponse,
+	},
 	// Auth APIs
 	"@post/api/auth/sign-in": {
 		input: LoginRequest,
@@ -4715,6 +4773,11 @@ export const schema = createSchema({
 		input: z.any(),
 		output: ApiResponseObject,
 	},
+	"@put/api/inventories/locations/:id": {
+		input: CreateStorageLocationRequest.partial(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
 	"@post/api/inventories/products/bulk-upload": {
 		input: z.object({ file: z.string() }),
 		output: ApiResponseObject,
@@ -4760,7 +4823,7 @@ export const schema = createSchema({
 		output: ApiResponseObject,
 	},
 	"@post/api/inventories/stock/issue": {
-		input: z.any(),
+		input: StockIssueRequest,
 		output: ApiResponseObject,
 	},
 	"@post/api/inventories/stock-movements/:id/reverse": {

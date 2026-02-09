@@ -32,41 +32,28 @@ export async function addToInventory(payload: {
 	return response.data;
 }
 
-export async function issueStockItem({
-	itemId,
-	...payload
-}: {
-	itemId: string;
-	quantity: number;
-	department: string;
-	receivingStaff: string;
-	remarks?: string | undefined;
-}): ServerActionResponse<string> {
-	console.log(payload);
-
+export async function issueStockItem(
+	payload: z.infer<typeof import("./fetch").StockIssueRequest>,
+): ServerActionResponseFromEndpoint<"@post/api/inventories/stock/issue"> {
 	const sessionData = await verifySession();
 
-	const response = await $fetch("@post/api/inventories/items/issue", {
-		body: {
-			...payload,
-		},
-		query: {
-			itemId,
-		},
-		auth: { type: "Bearer", token: sessionData.token },
-	});
+	try {
+		const response = await $fetch("@post/api/inventories/stock/issue", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
 
-	if (response.error) {
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
 		return {
 			success: false,
-			error: response.error.message || "Unable to issue stock item",
+			error: error instanceof Error ? error.message : "Unable to issue stock",
 		};
 	}
-
-	return {
-		success: true,
-		data: (response.data as { message: string }).message,
-	};
 }
 
 export async function addProduct(
@@ -600,6 +587,32 @@ export async function exportStockAdjustments(filters: {
 	}
 }
 
+export async function editStorageLocation(
+	locationId: string,
+	payload: Partial<z.infer<typeof import("./fetch").CreateStorageLocationRequest>>,
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/locations/:id", {
+			body: payload,
+			params: { id: locationId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit location",
+		};
+	}
+}
+
 export async function exportGRNs(
 	filters: {
 		search?: string;
@@ -719,6 +732,29 @@ export async function getStockAdjustments(
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Failed to fetch adjustments",
+		};
+	}
+}
+
+export async function getStorageLocations(search?: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/locations/list", {
+			query: { search },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch locations",
 		};
 	}
 }

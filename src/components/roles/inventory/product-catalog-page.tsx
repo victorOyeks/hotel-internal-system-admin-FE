@@ -379,7 +379,13 @@ export function ProductCatalogPage({
 }
 
 // Add Product Form Component
-function AddProductForm({ onClose }: { onClose: () => void }) {
+export function AddProductForm({
+	onClose,
+	data,
+}: {
+	onClose: () => void;
+	data?: InventoryProductResponse[];
+}) {
 	const { mutate, isPending } = useMutation({
 		mutationKey: ["add-product-inventory"],
 		mutationFn: async (payload: z.infer<typeof ApiInputInventoryProduct>) => {
