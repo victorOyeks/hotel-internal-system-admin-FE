@@ -424,7 +424,7 @@ const columns = [
 		},
 	}),
 	columnHelper.accessor("guestDetails.guestName", {
-		header: "Last checked in",
+		header: "Guest",
 		cell: (info) => {
 			const guestName = info.getValue();
 			const guestDetails = info.row.original.guestDetails;

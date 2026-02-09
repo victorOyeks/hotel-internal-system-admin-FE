@@ -137,10 +137,10 @@ export function RoomDetailsContent({ room }: RoomDetailsContentProps) {
                     <div className="bg-card border rounded-xl p-5 h-full flex flex-col">
                         <h3 className="font-semibold text-lg flex items-center gap-2 text-primary mb-4">
                             <User className="h-5 w-5" />
-                            Current Occupancy
+                            {room.checkInStatus === "AVAILABLE" ? "Last Known Guest" : "Current Occupancy"}
                         </h3>
 
-                        {room.checkInStatus !== "AVAILABLE" && room.guestDetails ? (
+                        {room.guestDetails ? (
                             <div className="space-y-6 flex-1">
                                 <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-lg">
                                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">

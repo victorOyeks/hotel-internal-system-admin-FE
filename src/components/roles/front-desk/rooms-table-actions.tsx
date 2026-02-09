@@ -51,22 +51,20 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
                     <RoomDetailsContent room={row} />
                 </Dialog>
 
-                {row.checkInStatus !== "AVAILABLE" && (
-                    <Dialog open={showGuestDetails} onOpenChange={setShowGuestDetails}>
-                        <DialogTrigger asChild>
-                            <DropdownMenuItem
-                                disabled={!row.guestDetails}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                View Guest Details
-                            </DropdownMenuItem>
-                        </DialogTrigger>
-                        <GuestDetailsContent
-                            guestDetails={row.guestDetails}
-                            roomIdentifier={row.roomIdentifier}
-                        />
-                    </Dialog>
-                )}
+                <Dialog open={showGuestDetails} onOpenChange={setShowGuestDetails}>
+                    <DialogTrigger asChild>
+                        <DropdownMenuItem
+                            disabled={!row.guestDetails}
+                            onSelect={(e) => e.preventDefault()}
+                        >
+                            {row.checkInStatus === "AVAILABLE" ? "View Last Guest" : "View Guest Details"}
+                        </DropdownMenuItem>
+                    </DialogTrigger>
+                    <GuestDetailsContent
+                        guestDetails={row.guestDetails}
+                        roomIdentifier={row.roomIdentifier}
+                    />
+                </Dialog>
             </DropdownMenuContent>
         </DropdownMenu>
     );
