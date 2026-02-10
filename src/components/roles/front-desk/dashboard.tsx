@@ -614,7 +614,7 @@ function SelectRoomBox({
 			<SelectContent className="w-full">
 				{rooms.length > 0 ? (
 					rooms.map((room) => (
-						<SelectItem key={room.id} value={room.id}>
+						<SelectItem key={room.id} value={room.roomIdentifier}>
 							{room.roomIdentifier}
 						</SelectItem>
 					))
