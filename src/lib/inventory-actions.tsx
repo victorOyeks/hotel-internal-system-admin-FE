@@ -1,15 +1,15 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation> */
 "use server";
 
 import type { CreatePurchaseOrderRequest } from "@/lib/fetch";
 
 import type z from "zod";
 import type {
-	ServerActionResponse,
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type ApiInputInventoryProduct } from "./fetch";
-import { ExportData } from "@/components/shared/shared-dialogs";
+import type { ExportData } from "@/components/shared/shared-dialogs";
 import { getCookieData } from "./server-fns";
 
 export async function addToInventory(payload: {
@@ -33,7 +33,7 @@ export async function addToInventory(payload: {
 }
 
 export async function issueStockItem(
-	payload: z.infer<typeof import("./fetch").StockIssueRequest>,
+	payload: z.infer<any>,
 ): ServerActionResponseFromEndpoint<"@post/api/inventories/stock/issue"> {
 	const sessionData = await verifySession();
 
@@ -126,8 +126,6 @@ export async function deleteProduct(params: {
 				throw: true,
 			},
 		);
-
-		console.log("response", response);
 
 		return {
 			success: true,
@@ -589,7 +587,7 @@ export async function exportStockAdjustments(filters: {
 
 export async function editStorageLocation(
 	locationId: string,
-	payload: Partial<z.infer<typeof import("./fetch").CreateStorageLocationRequest>>,
+	payload: Partial<import("./fetch").CreateStorageLocationRequest>,
 ) {
 	const sessionData = await verifySession();
 
@@ -755,6 +753,67 @@ export async function getStorageLocations(search?: string) {
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Unable to fetch locations",
+		};
+	}
+}
+
+
+export async function exportProducts(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	status?: string;
+	category?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/products/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export products",
+		};
+	}
+
+}
+
+export async function exportSuppliers(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	search?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/suppliers/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export suppliers",
 		};
 	}
 }

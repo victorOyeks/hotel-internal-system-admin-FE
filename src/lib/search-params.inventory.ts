@@ -82,3 +82,8 @@ export const adjustmentSearchParams = {
 	startDate: parseAsString,
 	endDate: parseAsString,
 };
+
+export const supplierSearchParams = {
+	search: parseAsString.withDefault(""),
+	hasProducts: parseAsBoolean,
+};

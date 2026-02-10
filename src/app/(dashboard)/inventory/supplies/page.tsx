@@ -21,18 +21,19 @@ type PageProps = {
 
 const loadSearchParams = createLoader(
 	{
+		productSearch: parseAsString,
 		search: parseAsString,
 		...paginationSearchParams,
 	},
 	{
 		urlKeys: {
-			search: "product-list:search",
+			productSearch: "product-list:search",
 		},
 	},
 );
 
 function Page({ searchParams }: PageProps) {
-	const query = use(loadSearchParams(searchParams));
+	const { productSearch, ...query } = use(loadSearchParams(searchParams));
 	const { token } = use(getCookieData())!;
 	const queryClient = getQueryClient();
 
@@ -61,7 +62,7 @@ function Page({ searchParams }: PageProps) {
 					auth: { type: "Bearer", token },
 					throw: true,
 					query: {
-						search: query.search,
+						search: productSearch,
 					},
 				});
 				return response;

@@ -83,7 +83,6 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}))
 
-	console.log(products)
 
 	return (
 		<BreadCrumbWrapper

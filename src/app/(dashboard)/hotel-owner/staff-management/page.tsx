@@ -65,12 +65,6 @@ function StaffManagementPage({ searchParams }: PageProps) {
 		}),
 	);
 
-	console.log({
-		query,
-		content,
-		paginationMeta,
-	});
-
 	return (
 		<HydrationBoundary state={dehydrate(queryClient)}>
 			<HotelOwnerStaff
