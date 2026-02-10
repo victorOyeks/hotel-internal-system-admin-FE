@@ -31,7 +31,6 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet";
-import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const stockLevelColumnHelper = createColumnHelper<StockLevelResponse>();
@@ -43,57 +42,13 @@ const stockLevelColumns = [
     }),
     stockLevelColumnHelper.accessor("productName", {
         header: "Product",
-        cell: (info) => <span className="font-medium text-foreground">{info.getValue()}</span>,
-    }),
-    stockLevelColumnHelper.accessor("productCategory", {
-        header: "Category",
-        cell: (info) => (
-            <span className="capitalize text-muted-foreground">
-                {info.getValue()?.replace(/_/g, " ").toLowerCase() || "N/A"}
-            </span>
-        ),
-    }),
-    stockLevelColumnHelper.accessor("locationName", {
-        header: "Location",
-        cell: (info) => <span>{info.getValue()}</span>,
-    }),
-    stockLevelColumnHelper.accessor("quantityOnHand", {
-        header: "On Hand",
-        cell: (info) => <span>{info.getValue()}</span>,
-    }),
-    stockLevelColumnHelper.accessor("quantityAvailable", {
-        header: "Available",
-        cell: (info) => <span className="font-semibold text-foreground">{info.getValue()}</span>,
-    }),
-    stockLevelColumnHelper.accessor("quantityReserved", {
-        header: "Reserved",
-        cell: (info) => <span>{info.getValue()}</span>,
-    }),
-    stockLevelColumnHelper.display({
-        id: "status",
-        header: "Status",
-        cell: ({ row }) => {
-            const { isOutOfStock, isBelowMinLevel, isBelowReorderLevel } = row.original;
-            if (isOutOfStock) {
-                return <Badge variant="destructive">Out of Stock</Badge>;
-            }
-            if (isBelowMinLevel || isBelowReorderLevel) {
-                return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Low Stock</Badge>;
-            }
-            return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">In Stock</Badge>;
-        },
-    }),
-    stockLevelColumnHelper.display({
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => {
-            const item = row.original;
+        cell: (info) => {
+            const item = info.row.original;
             return (
                 <Sheet>
                     <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View details</span>
+                        <Button variant="link">
+                            {info.getValue()}
                         </Button>
                     </SheetTrigger>
                     <SheetContent className="overflow-y-auto">
@@ -214,9 +169,47 @@ const stockLevelColumns = [
                         </div>
                     </SheetContent>
                 </Sheet>
-            );
+            )
         },
     }),
+    stockLevelColumnHelper.accessor("productCategory", {
+        header: "Category",
+        cell: (info) => (
+            <span className="capitalize text-muted-foreground">
+                {info.getValue()?.replace(/_/g, " ").toLowerCase() || "N/A"}
+            </span>
+        ),
+    }),
+    stockLevelColumnHelper.accessor("locationName", {
+        header: "Location",
+        cell: (info) => <span>{info.getValue()}</span>,
+    }),
+    stockLevelColumnHelper.accessor("quantityOnHand", {
+        header: "On Hand",
+        cell: (info) => <span>{info.getValue()}</span>,
+    }),
+    stockLevelColumnHelper.accessor("quantityAvailable", {
+        header: "Available",
+        cell: (info) => <span className="font-semibold text-foreground">{info.getValue()}</span>,
+    }),
+    stockLevelColumnHelper.accessor("quantityReserved", {
+        header: "Reserved",
+        cell: (info) => <span>{info.getValue()}</span>,
+    }),
+    stockLevelColumnHelper.display({
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => {
+            const { isOutOfStock, isBelowMinLevel, isBelowReorderLevel } = row.original;
+            if (isOutOfStock) {
+                return <Badge variant="destructive">Out of Stock</Badge>;
+            }
+            if (isBelowMinLevel || isBelowReorderLevel) {
+                return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Low Stock</Badge>;
+            }
+            return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">In Stock</Badge>;
+        },
+    })
 ];
 
 function StockLevelTableView({

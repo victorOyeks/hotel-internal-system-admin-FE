@@ -1,10 +1,10 @@
 "use client";
 
 import { useQueryState } from "nuqs";
-import { type StockLevelResponse, type Pagination } from "@/lib/fetch";
+import type { StockLevelResponse, Pagination } from "@/lib/fetch";
 import { StockLevelTable } from "./stock-level-table";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, XIcon, RotateCcwIcon } from "lucide-react";
+import { SearchIcon, RotateCcwIcon } from "lucide-react";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,15 +14,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useMemo, useState } from "react";
-import { productSearchParams } from "@/lib/search-params.inventory"; // Reuse or create new ones?
+import { useState } from "react";
 
 // Define search params mapping locally if not exporting from shared file yet
 // We'll use simple strings for now or reuse where appropriate
-import { parseAsString, parseAsInteger, parseAsBoolean } from "nuqs";
+import { parseAsBoolean } from "nuqs";
 
 export function StockLevelToolbar() {
-    const [search, setSearch] = useQueryState("search", { throttleMs: 500 });
+    const [search, setSearch] = useQueryState("search");
     const [category, setCategory] = useQueryState("category");
     const [locationId, setLocationId] = useQueryState("locationId");
     const [lowStock, setLowStock] = useQueryState("lowStock", parseAsBoolean);
@@ -82,7 +81,7 @@ export function StockLevelToolbar() {
                 </div>
 
                 <TableFilter count={activeFilterCount}>
-                    <div className="space-y-4 w-[250px]">
+                    <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h4 className="font-semibold text-sm">Filters</h4>
                             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-1 text-xs text-muted-foreground">
@@ -96,7 +95,7 @@ export function StockLevelToolbar() {
                                 value={tempFilters.stockStatus}
                                 onValueChange={(val) => setTempFilters(prev => ({ ...prev, stockStatus: val }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                     <SelectValue placeholder="All Status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -114,7 +113,7 @@ export function StockLevelToolbar() {
                                 value={tempFilters.category || "all"}
                                 onValueChange={(val) => setTempFilters(prev => ({ ...prev, category: val === "all" ? null : val }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="w-full">
                                     <SelectValue placeholder="All Categories" />
                                 </SelectTrigger>
                                 <SelectContent>

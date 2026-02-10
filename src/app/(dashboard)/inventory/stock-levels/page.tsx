@@ -11,6 +11,7 @@ import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
 import { redirect } from "next/navigation";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 
 const loadSearchParams = createLoader({
     ...paginationSearchParams,
@@ -63,16 +64,32 @@ export default function Page({
     }
 
     return (
-        <StockLevelPageContent
-            data={data.content}
-            paginationMeta={{
-                pageNumber: data.pageNumber,
-                pageSize: data.pageSize,
-                totalElements: data.totalElements,
-                totalPages: data.totalPages,
-                last: data.last,
-                first: data.first,
+        <BreadCrumbWrapper
+            breadcrumbs={{
+                title: "Stock Levels",
+                breadcrumbs: [
+                    {
+                        label: "Inventory",
+                        href: "/dashboard",
+                    },
+                    {
+                        label: "Stock Levels",
+                        href: "/dashboard/stock-levels",
+                    },
+                ],
             }}
-        />
+        >
+            <StockLevelPageContent
+                data={data.content}
+                paginationMeta={{
+                    pageNumber: data.pageNumber,
+                    pageSize: data.pageSize,
+                    totalElements: data.totalElements,
+                    totalPages: data.totalPages,
+                    last: data.last,
+                    first: data.first,
+                }}
+            />
+        </BreadCrumbWrapper>
     );
 }
