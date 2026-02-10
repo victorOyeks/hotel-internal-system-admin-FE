@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, formatCurrency } from "@/lib/utils";
+import type { RoomDetails } from "@/lib/fetch";
 import {
 	DialogTitle,
 	DialogDescription,
@@ -8,7 +9,28 @@ import {
 	DialogTrigger,
 	DialogContent,
 } from "@/components/ui/dialog";
-import { BedIcon, ChevronRightIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Combobox } from "@/components/ui/combobox";
+import {
+	BedIcon,
+	ChevronRightIcon,
+	Loader2Icon,
+	PlusIcon,
+	CheckIcon,
+	ChevronsUpDownIcon,
+} from "lucide-react";
 import {
 	useEffect,
 	useState,
@@ -38,7 +60,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { parseAsString, useQueryStates } from "nuqs";
+import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import type * as React from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -592,41 +614,73 @@ const lostItemFormSchema = z.object({
 	dateFound: z.string().nonempty("Date found is required"),
 });
 
-function SelectRoomBox({
-	setValue,
+function RoomListCombobox({
+	value,
+	onSelect,
 	rooms,
 }: {
-	setValue: (value: string) => void;
+	value: string;
+	onSelect: (value: string) => void;
 	rooms: Array<RoomType>;
 }) {
 	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"room:search",
+		parseAsString.withDefault(""),
+	);
+
 	return (
-		<Select
-			open={open}
-			onOpenChange={(open) => {
-				setOpen(open);
-			}}
-			onValueChange={(value) => setValue(value)}
-		>
-			<SelectTrigger className="w-full">
-				<SelectValue placeholder="Select a room" />
-			</SelectTrigger>
-			<SelectContent className="w-full">
-				{rooms.length > 0 ? (
-					rooms.map((room) => (
-						<SelectItem key={room.id} value={room.roomIdentifier}>
-							{room.roomIdentifier}
-						</SelectItem>
-					))
-				) : (
-					<SelectItem disabled value="__EMPTY__ ">
-						No rooms available
-					</SelectItem>
-				)}
-			</SelectContent>
-		</Select>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between"
+				>
+					{value
+						? rooms.find((room) => room.id === value)?.roomIdentifier
+						: "Select a room"}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search rooms..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+					/>
+					<CommandList>
+						<CommandEmpty>No room found.</CommandEmpty>
+						<CommandGroup>
+							{rooms.map((room) => (
+								<CommandItem
+									key={room.id}
+									value={room.id}
+									onSelect={(currentValue) => {
+										onSelect(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === room.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{room.roomIdentifier}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
 	);
 }
+
+
 
 export function CheckInForm({
 	data,
@@ -797,32 +851,31 @@ export function CheckInForm({
 
 					<div className="grid gap-2">
 						<Label>Room Type</Label>
-						<Select
+						<Combobox
+							options={data.roomTypes.map((type) => ({
+								label: type,
+								value: type,
+							}))}
 							value={roomQuery["room:type"]}
-							onValueChange={(value) => setRoomQuery({ "room:type": value })}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="e.g Deluxe, Standard" />
-							</SelectTrigger>
-							<SelectContent className="w-full p-0">
-								{data.roomTypes.map((type) => (
-									<SelectItem key={type} value={type}>
-										{type}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+							onSelect={(value) => setRoomQuery({ "room:type": value })}
+							placeholder="Select room type..."
+							emptyText="No room types found"
+						/>
 					</div>
 
 					<div className="grid gap-2">
 						<Label>Room</Label>
-						<SelectRoomBox setValue={(value) => {
-							setSelectedRoomId(value);
-							const room = data.rooms.find((room) => room.id === value);
-							if (room) {
-								form.setValue("nightlyRate", room.roomPrice);
-							}
-						}} rooms={data.rooms} />
+						<RoomListCombobox
+							rooms={data.rooms}
+							value={selectedRoomId}
+							onSelect={(value) => {
+								setSelectedRoomId(value);
+								const room = data.rooms.find((room) => room.id === value);
+								if (room) {
+									form.setValue("nightlyRate", room.roomPrice);
+								}
+							}}
+						/>
 					</div>
 
 					<FormField
@@ -1136,19 +1189,7 @@ export function ReservationForm({
 	setOpen,
 }: {
 	data: {
-		rooms: Array<{
-			id: string;
-			roomIdentifier: string;
-			roomType: string;
-			roomPrice: number;
-			status: string;
-			facilities: string[];
-			reservationPeriods: Array<{
-				checkInDate: string;
-				checkOutDate: string;
-				status: string;
-			}>;
-		}>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
@@ -1242,21 +1283,16 @@ export function ReservationForm({
 
 					<div className="grid gap-2">
 						<Label>Room Type</Label>
-						<Select
+						<Combobox
+							options={data.roomTypes.map((type) => ({
+								label: type,
+								value: type,
+							}))}
 							value={roomQuery["room:type"]}
-							onValueChange={(value) => setRoomQuery({ "room:type": value })}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="e.g Deluxe, Standard" />
-							</SelectTrigger>
-							<SelectContent className="w-full p-0">
-								{data.roomTypes.map((type) => (
-									<SelectItem key={type} value={type}>
-										{type}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+							onSelect={(value) => setRoomQuery({ "room:type": value })}
+							placeholder="Select room type..."
+							emptyText="No room types found"
+						/>
 					</div>
 
 					<FormField
@@ -1266,13 +1302,17 @@ export function ReservationForm({
 							<FormItem>
 								<FormLabel>Room</FormLabel>
 								<FormControl>
-									<SelectRoomBox setValue={(value) => {
-										field.onChange(value);
-										const room = data.rooms.find((room) => room.id === value);
-										if (room) {
-											form.setValue("nightlyRate", room.roomPrice);
-										}
-									}} rooms={data.rooms} />
+									<RoomListCombobox
+										rooms={data.rooms}
+										value={field.value}
+										onSelect={(value) => {
+											field.onChange(value);
+											const room = data.rooms.find((room) => room.id === value);
+											if (room) {
+												form.setValue("nightlyRate", room.roomPrice);
+											}
+										}}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -1471,19 +1511,9 @@ const actions = [
 	},
 ];
 
-export type RoomType = {
-	id: string;
-	roomIdentifier: string;
-	roomType: string;
-	roomPrice: number;
-	status: string;
-	facilities: string[];
-	reservationPeriods: Array<{
-		checkInDate: string;
-		checkOutDate: string;
-		status: string;
-	}>;
-};
+
+
+export type RoomType = RoomDetails;
 
 export function QuickActions({
 	rooms,
