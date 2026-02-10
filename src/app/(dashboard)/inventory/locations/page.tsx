@@ -33,12 +33,7 @@ const loadSearchParams = createLoader(
 		]),
 		active: parseAsBoolean,
 		temperatureControlled: parseAsBoolean,
-	},
-	{
-		urlKeys: {
-			search: "item:search",
-		},
-	},
+	}
 )
 
 function Page({ searchParams }: PageProps) {
