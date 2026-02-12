@@ -1,10 +1,11 @@
 import { StockAdjustmentPage } from "@/components/roles/inventory/stock-adjustment-page";
 import { $fetch } from "@/lib/fetch";
+import { getProducts, getStorageLocations } from "@/lib/inventory-actions";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import { adjustmentSearchParams } from "@/lib/search-params.inventory.server";
-import { createLoader, type SearchParams } from "nuqs/server";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
@@ -14,6 +15,8 @@ type PageProps = {
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
 	...adjustmentSearchParams,
+	productSearch: parseAsString.withDefault(""),
+	locationSearch: parseAsString.withDefault(""),
 });
 
 function Page({ searchParams }: PageProps) {
@@ -22,6 +25,32 @@ function Page({ searchParams }: PageProps) {
 	// 2. Parse search params
 	const query = use(loadSearchParams(searchParams));
 	const qc = getQueryClient();
+
+	const products = use(
+		qc.ensureQueryData({
+			queryKey: ["products", query.productSearch],
+			queryFn: async () => {
+				const res = await getProducts(query.productSearch);
+				if (res.success && res.data) {
+					return res.data;
+				}
+				return [];
+			},
+		}),
+	);
+
+	const locations = use(
+		qc.ensureQueryData({
+			queryKey: ["locations", query.locationSearch],
+			queryFn: async () => {
+				const res = await getStorageLocations(query.locationSearch);
+				if (res.success && res.data) {
+					return res.data;
+				}
+				return [];
+			},
+		}),
+	);
 
 	// 3. Fetch Data
 	const { content: adjustments, ...paginationMeta } = use(
@@ -84,6 +113,8 @@ function Page({ searchParams }: PageProps) {
 			adjustments={adjustments}
 			stats={emptyStats}
 			paginationMeta={paginationMeta}
+			products={products}
+			locations={locations}
 		/>
 	);
 }

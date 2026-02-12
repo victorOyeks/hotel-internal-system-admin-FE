@@ -125,6 +125,7 @@ function StockTakeContent({
 	onPostAdjustments,
 	isMobile,
 }: StockTakeContentProps) {
+	console.log(stockTake);
 	return (
 		<div className="space-y-6">
 			<div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}>
@@ -184,8 +185,6 @@ function StockTakeContent({
 					</p>
 				</div>
 			</div>
-
-			<Separator />
 
 			<div className="space-y-4">
 				<h3 className="font-semibold text-lg">Items</h3>

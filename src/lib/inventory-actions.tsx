@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: explanation> */
 "use server";
 
-import type { CreatePurchaseOrderRequest } from "@/lib/fetch";
+import type { CreatePurchaseOrderRequest, CreateStockAdjustmentRequest } from "@/lib/fetch";
+import { revalidatePath } from "next/cache";
 
 import type z from "zod";
 import type {
@@ -814,6 +815,108 @@ export async function exportSuppliers(filters: {
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Unable to export suppliers",
+		};
+	}
+}
+
+export async function createStockAdjustment(payload: CreateStockAdjustmentRequest) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/adjustments", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to create stock adjustment",
+		};
+	}
+}
+
+export async function getProducts(search?: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/products/list", {
+			query: { search },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch products",
+		};
+	}
+}
+
+export async function approveStockAdjustment(adjustmentId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/adjustments/:adjustmentId/approve",
+			{
+				params: { adjustmentId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/inventory/adjustments");
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to approve stock adjustment",
+		};
+	}
+}
+
+export async function postStockAdjustment(adjustmentId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/adjustments/:adjustmentId/post",
+			{
+				params: { adjustmentId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/inventory/adjustments");
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to post stock adjustment",
 		};
 	}
 }

@@ -47,10 +47,10 @@ export function Combobox({
                     aria-expanded={open}
                     className={cn("w-full justify-between", className)}
                 >
-                    {value
+                    <span className="truncate">{value
                         ? options.find((option) => option.value === value)?.label
-                        : placeholder}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        : placeholder}</span>
+                    <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0" align="start">

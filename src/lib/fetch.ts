@@ -98,6 +98,7 @@ const RoomResponse = z.object({
 	customId: z.string(),
 	hotelName: z.string(),
 	roomIdentifier: z.string(),
+
 	roomType: z.string(),
 	roomPrice: z.number(),
 	checkInStatus: z.string(),
@@ -1949,25 +1950,22 @@ const ApiResponseInventoryStockTakeStatistics = ApiResponseObject.extend({
 
 // --- Stock Adjustment Schemas ---
 
-const CreateStockAdjustmentRequest = z.object({
+export const CreateStockAdjustmentRequest = z.object({
 	productId: z.string(),
 	locationId: z.string(),
-	batchId: z.string().optional(),
 	adjustmentDate: z.string(), // date-time
 	reason: z.enum([
 		"DAMAGED",
 		"EXPIRED",
-		"STOLEN",
-		"LOST",
-		"QUALITY_ISSUE",
-		"STOCK_COUNT_VARIANCE",
-		"SPILLAGE",
-		"BREAKAGE",
-		"OBSOLETE",
-		"DATA_ENTRY_ERROR",
-		"RETURNED_TO_SUPPLIER",
+		"THEFT",
+		"LOSS",
 		"FOUND",
 		"OTHER",
+		"RETURNED_TO_SUPPLIER",
+		"STOCK_TAKE_VARIANCE",
+		"INTERNAL_USE",
+		"PROMOTION",
+		"TRANSFER",
 	]),
 	adjustmentType: z.enum(["INCREASE", "DECREASE"]),
 	adjustmentQuantity: z.number().min(0),
@@ -4754,7 +4752,7 @@ export const schema = createSchema({
 		output: ApiResponseObject,
 	},
 	"@post/api/inventories/adjustments": {
-		input: z.any(),
+		input: CreateStockAdjustmentRequest,
 		output: ApiResponseObject,
 	},
 	"@post/api/inventories/adjustments/:adjustmentId/approve": {

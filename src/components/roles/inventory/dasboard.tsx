@@ -684,7 +684,7 @@ function ProductListCard({
 								</div>
 								<div className="text-right">
 									<p className="text-sm font-semibold text-gray-900">
-										${product.value}
+										{formatCurrency(product.value)}
 									</p>
 								</div>
 							</div>
