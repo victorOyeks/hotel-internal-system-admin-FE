@@ -13,41 +13,90 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+
 import { formatCurrency } from "@/lib/utils";
 import type { StockTake } from "@/lib/fetch";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-	MapPin,
 	Calendar,
 	User,
 	ClipboardList,
+	Loader2,
+	MapPin,
 } from "lucide-react";
 
-interface StockTakeDetailsProps {
-	stockTake: StockTake | null;
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getStockTake } from "@/lib/inventory-actions";
+import { StockTakeItemsTable } from "./stock-take-items-table";
+import { useState } from "react";
+import { toast } from "sonner";
+
+export interface StockTakeDetailsProps {
+	stockTake?: StockTake | null;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onComplete: (id: string) => void;
-	onPostAdjustments: (id: string) => void;
+	onComplete: (id: string) => Promise<any>;
+	onPostAdjustments: (id: string) => Promise<any>;
+	onStart: (id: string) => Promise<any>;
+	onCancel: (id: string) => Promise<any>;
+	onRecordCount: (stockTakeId: string, itemId: string, quantity: number) => Promise<any>;
 }
 
 export function StockTakeDetails({
-	stockTake,
+	stockTake: initialStockTake,
 	open,
 	onOpenChange,
 	onComplete,
 	onPostAdjustments,
+	onStart,
+	onCancel,
+	onRecordCount,
 }: StockTakeDetailsProps) {
 	const isMobile = useIsMobile();
+	const queryClient = useQueryClient();
+
+	const { data: stockTakeResponse, isPending } = useQuery({
+		queryKey: ["stock-take", initialStockTake?.id],
+		queryFn: async () => {
+			if (!initialStockTake?.id) throw new Error("No ID");
+			const res = await getStockTake(initialStockTake.id);
+			if (!res.success || !res.data) throw new Error(res.error);
+			return res.data;
+		},
+	});
+
+	const stockTake = stockTakeResponse || initialStockTake;
+
+	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
+		const res = await onRecordCount(stockTakeId, itemId, quantity);
+		if (res && !res.success) {
+			toast.error(res.error || "Failed to record count");
+		}
+		await queryClient.invalidateQueries({ queryKey: ["stock-take", stockTakeId] });
+	};
+
+	const handleStart = async (id: string) => {
+		const res = await onStart(id);
+		if (res && !res.success) {
+			toast.error(res.error || "Failed to start stock take");
+		} else {
+			toast.success("Stock take started");
+		}
+		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+	};
+
+	const handleCancel = async (id: string) => {
+		const res = await onCancel(id);
+		if (res && !res.success) {
+			toast.error(res.error || "Failed to cancel stock take");
+		} else {
+			toast.success("Stock take cancelled");
+		}
+		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+	};
+
+	// Note: handling Complete and PostAdjustments might also require invalidation or closing dialog.
+	// The parent closes the dialog on complete/post.
 
 	if (!stockTake) return null;
 
@@ -66,7 +115,11 @@ export function StockTakeDetails({
 						onClose={() => onOpenChange(false)}
 						onComplete={onComplete}
 						onPostAdjustments={onPostAdjustments}
+						onStart={handleStart}
+						onCancel={handleCancel}
+						onRecordCount={handleRecordCount}
 						isMobile={true}
+						isLoading={isPending}
 					/>
 				</SheetContent>
 			</Sheet>
@@ -75,7 +128,7 @@ export function StockTakeDetails({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl! max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-w-4xl! max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<div className="flex items-center justify-between mr-8">
 						<DialogTitle>Stock Take - {stockTake.stockTakeNumber}</DialogTitle>
@@ -87,7 +140,11 @@ export function StockTakeDetails({
 					onClose={() => onOpenChange(false)}
 					onComplete={onComplete}
 					onPostAdjustments={onPostAdjustments}
+					onStart={handleStart}
+					onCancel={handleCancel}
+					onRecordCount={handleRecordCount}
 					isMobile={false}
+					isLoading={isPending}
 				/>
 			</DialogContent>
 		</Dialog>
@@ -99,7 +156,7 @@ function StatusBadge({ status }: { status: string }) {
 		<Badge
 			variant={
 				status === "COMPLETED"
-					? "default"
+					? "green"
 					: status === "IN_PROGRESS"
 						? "secondary"
 						: "outline"
@@ -113,9 +170,13 @@ function StatusBadge({ status }: { status: string }) {
 interface StockTakeContentProps {
 	stockTake: StockTake;
 	onClose: () => void;
-	onComplete: (id: string) => void;
-	onPostAdjustments: (id: string) => void;
+	onComplete: (id: string) => Promise<any>;
+	onPostAdjustments: (id: string) => Promise<any>;
+	onStart: (id: string) => Promise<any>;
+	onCancel: (id: string) => Promise<any>;
+	onRecordCount: (stockTakeId: string, itemId: string, quantity: number) => Promise<any>;
 	isMobile: boolean;
+	isLoading: boolean;
 }
 
 function StockTakeContent({
@@ -123,9 +184,86 @@ function StockTakeContent({
 	onClose,
 	onComplete,
 	onPostAdjustments,
+	onStart,
+	onCancel,
+	onRecordCount,
 	isMobile,
+	isLoading,
 }: StockTakeContentProps) {
-	console.log(stockTake);
+	const isEditing = stockTake.status === "IN_PROGRESS";
+
+	const [isStarting, setIsStarting] = useState(false);
+	const [isCanceling, setIsCanceling] = useState(false);
+	const [isCompleting, setIsCompleting] = useState(false);
+	const [isPosting, setIsPosting] = useState(false);
+
+	if (isLoading) {
+		return (
+			<div className="flex h-96 items-center justify-center">
+				<div className="flex flex-col items-center gap-2">
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+					<p className="text-sm text-muted-foreground">Loading stock take details...</p>
+				</div>
+			</div>
+		);
+	}
+
+	const handleStart = async () => {
+		setIsStarting(true);
+		try {
+			const res = await onStart(stockTake.id);
+			if (res && !res.success) {
+				toast.error(res.error || "Failed to start stock take");
+			} else {
+				toast.success("Stock take started");
+			}
+		} finally {
+			setIsStarting(false);
+		}
+	};
+
+	const handleCancel = async () => {
+		setIsCanceling(true);
+		try {
+			const res = await onCancel(stockTake.id);
+			if (res && !res.success) {
+				toast.error(res.error || "Failed to cancel stock take");
+			} else {
+				toast.success("Stock take cancelled");
+			}
+		} finally {
+			setIsCanceling(false);
+		}
+	};
+
+	const handleComplete = async () => {
+		setIsCompleting(true);
+		try {
+			const res = await onComplete(stockTake.id);
+			if (res && !res.success) {
+				toast.error(res.error || "Failed to complete stock take");
+			} else {
+				toast.success("Stock take completed");
+			}
+		} finally {
+			setIsCompleting(false);
+		}
+	};
+
+	const handlePostAdjustments = async () => {
+		setIsPosting(true);
+		try {
+			const res = await onPostAdjustments(stockTake.id);
+			if (res && !res.success) {
+				toast.error(res.error || "Failed to post adjustments");
+			} else {
+				toast.success("Adjustments posted");
+			}
+		} finally {
+			setIsPosting(false);
+		}
+	};
+
 	return (
 		<div className="space-y-6">
 			<div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}>
@@ -220,7 +358,22 @@ function StockTakeContent({
 										</div>
 										<div>
 											<p className="text-muted-foreground">Actual Qty</p>
-											<p>{item.actualQuantity ?? "-"}</p>
+											{/* <p>{item.actualQuantity ?? "-"}</p> */}
+											{isEditing ? (
+												<input
+													type="number"
+													defaultValue={item.actualQuantity ?? ""}
+													className="w-20 border rounded px-1"
+													onBlur={(e) => {
+														const val = parseFloat(e.target.value);
+														if (!Number.isNaN(val)) {
+															onRecordCount(stockTake.id, item.id, val);
+														}
+													}}
+												/>
+											) : (
+												<p>{item.actualQuantity ?? "-"}</p>
+											)}
 										</div>
 										<div>
 											<p className="text-muted-foreground">Variance</p>
@@ -260,96 +413,68 @@ function StockTakeContent({
 						))}
 					</div>
 				) : (
-					<div className="rounded-md border overflow-x-auto">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Product</TableHead>
-									<TableHead className="text-right">System Qty</TableHead>
-									<TableHead className="text-right">Actual Qty</TableHead>
-									<TableHead className="text-right">Variance</TableHead>
-									<TableHead className="text-right">Value</TableHead>
-									<TableHead>Status</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{(stockTake.items || []).map((item) => (
-									<TableRow key={item.id}>
-										<TableCell>
-											<div>
-												<p className="font-medium">{item.productName}</p>
-												<p className="text-xs text-muted-foreground">
-													{item.productSku}
-												</p>
-											</div>
-										</TableCell>
-										<TableCell className="text-right">
-											{item.systemQuantity}
-										</TableCell>
-										<TableCell className="text-right">
-											{item.actualQuantity ?? "-"}
-										</TableCell>
-										<TableCell className="text-right">
-											{item.varianceQuantity !== 0 ? (
-												<span
-													className={
-														item.varianceQuantity < 0
-															? "text-red-600"
-															: "text-orange-600"
-													}
-												>
-													{item.varianceQuantity > 0 ? "+" : ""}
-													{item.varianceQuantity}
-												</span>
-											) : (
-												"-"
-											)}
-										</TableCell>
-										<TableCell className="text-right">
-											{formatCurrency(item.varianceValue)}
-										</TableCell>
-										<TableCell>
-											{item.counted ? (
-												<Badge variant="outline" className="text-green-600">
-													Counted
-												</Badge>
-											) : (
-												<Badge variant="outline" className="text-gray-500">
-													Pending
-												</Badge>
-											)}
-											{item.requiresInvestigation && (
-												<Badge
-													variant="outline"
-													className="ml-2 text-red-600 border-red-200 bg-red-50"
-												>
-													Investigate
-												</Badge>
-											)}
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
+					<StockTakeItemsTable
+						data={stockTake.items || []}
+						isEditing={isEditing}
+						onRecordCount={(itemId, quantity) =>
+							onRecordCount(stockTake.id, itemId, quantity)
+						}
+					/>
 				)}
 			</div>
 
 			<div className="flex justify-end gap-2 pt-4">
-				<Button variant="outline" onClick={onClose}>
+				<Button variant="outline" onClick={onClose} disabled={isStarting || isCanceling || isCompleting || isPosting}>
 					Close
 				</Button>
+				{stockTake.status === "SCHEDULED" && (
+					<>
+						<Button
+							variant="destructive"
+							onClick={handleCancel}
+							disabled={isCanceling || isStarting}
+						>
+							{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Cancel
+						</Button>
+						<Button
+							onClick={handleStart}
+							disabled={isStarting || isCanceling}
+						>
+							{isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Start Stock Take
+						</Button>
+					</>
+				)}
+				{stockTake.status === "IN_PROGRESS" && (
+					<Button
+						variant="destructive"
+						onClick={handleCancel}
+						disabled={isCanceling}
+					>
+						{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Cancel (Stop)
+					</Button>
+				)}
 				{stockTake.status === "PENDING_REVIEW" && (
-					<Button onClick={() => onComplete(stockTake.id)}>
+					<Button
+						onClick={handleComplete}
+						disabled={isCompleting}
+					>
+						{isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 						Complete & Approve
 					</Button>
 				)}
 				{stockTake.status === "COMPLETED" && (
-					<Button onClick={() => onPostAdjustments(stockTake.id)}>
+					<Button
+						onClick={handlePostAdjustments}
+						disabled={isPosting}
+					>
+						{isPosting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 						Post Adjustments
 					</Button>
 				)}
 			</div>
-		</div>
+		</div >
 	);
 }

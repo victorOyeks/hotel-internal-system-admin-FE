@@ -26,8 +26,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { addStockTake } from "@/lib/inventory-actions";
 import { toast } from "sonner";
-import type { InventoryLocationListResponse, InventoryProduct } from "@/lib/fetch";
-import { MultiSelect, MultiSelectTrigger, MultiSelectValue, MultiSelectContent, MultiSelectItem } from "@/components/ui/multi-select";
+import type { InventoryLocationListResponse } from "@/lib/fetch";
 import { useQueryState, parseAsString } from "nuqs";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -120,16 +119,14 @@ const stockTakeFormSchema = z.object({
 		.min(0)
 		.max(100, "Must be between 0 and 100"),
 	stockFrozen: z.boolean().default(false),
-	productIds: z.array(z.string()).default([]),
 	notes: z.string().optional(),
 });
 
 interface CreateStockTakeFormProps {
 	onClose: () => void;
 	inventoryLocations: InventoryLocationListResponse[]
-	products: InventoryProduct[]
 }
-export function CreateStockTakeForm({ onClose, inventoryLocations, products }: CreateStockTakeFormProps) {
+export function CreateStockTakeForm({ onClose, inventoryLocations }: CreateStockTakeFormProps) {
 	const form = useForm({
 		resolver: zodResolver(stockTakeFormSchema),
 		defaultValues: {
@@ -140,14 +137,8 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 			countedBy: "",
 			acceptableVariancePercent: 100,
 			stockFrozen: true,
-			productIds: [],
 		},
 	});
-
-	const [search, setSearch] = useQueryState(
-		"product-list:search",
-		parseAsString.withDefault(""),
-	);
 
 	const { mutateAsync, isPending } = useMutation({
 		mutationFn: addStockTake,
@@ -164,7 +155,7 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit((data) => mutateAsync(data))} className="space-y-6">
+			<form onSubmit={form.handleSubmit((data) => mutateAsync({ ...data, productIds: [] }))} className="space-y-6">
 				<div className="grid grid-cols-2 gap-2">
 					<FormField
 						control={form.control}
@@ -297,42 +288,6 @@ export function CreateStockTakeForm({ onClose, inventoryLocations, products }: C
 										{...field}
 										value={field.value as number}
 									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="productIds"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Products</FormLabel>
-								<FormControl>
-									<MultiSelect
-										values={field.value}
-										onValuesChange={field.onChange}
-									>
-										<MultiSelectTrigger className="w-full">
-											<MultiSelectValue placeholder="Select products" />
-										</MultiSelectTrigger>
-										<MultiSelectContent
-											shouldFilter={false}
-											searchValue={search}
-											onSearchValueChange={setSearch}
-											search={{
-												emptyMessage: "No products found.",
-												placeholder: "Search products",
-											}}
-										>
-											{products.map((product) => (
-												<MultiSelectItem key={product.id} value={product.id}>
-													{product.name}
-												</MultiSelectItem>
-											))}
-										</MultiSelectContent>
-									</MultiSelect>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
