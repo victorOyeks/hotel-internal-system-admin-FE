@@ -799,6 +799,77 @@ const ApiResponseLostItem = ApiResponseObject.extend({
 	}),
 });
 
+const StockLevelResponse = z.object({
+	id: z.string(),
+	hotelId: z.string(),
+	productId: z.string(),
+	productSku: z.string(),
+	productName: z.string(),
+	productCategory: z.string(),
+	locationId: z.string(),
+	locationCode: z.string(),
+	locationName: z.string(),
+	quantityOnHand: z.number(),
+	quantityReserved: z.number(),
+	quantityAvailable: z.number(),
+	quantityInTransit: z.number(),
+	quantityAllocated: z.number(),
+	minLevel: z.number().nullable().optional(), // Not in the jq output but in my previous schema, might be needed or I saw it earlier?
+	// tailored to what I saw in jq output actually
+	// reorderLevel/minLevel/maxLevel are NOT in the jq output above?
+	// Wait, let me re-check the jq output carefully.
+	// The previous jq output did show isBelowReorderLevel etc.
+	// But it did NOT show reorderLevel, minLevel, maxLevel as properties?
+	// Let me double check usage in stock-level-table.tsx
+	// The table uses: isBelowMinLevel, isBelowReorderLevel
+	// It doesn't seem to display min/max/reorder levels directly in the table columns, but maybe in the sheet?
+	// In table sheet: item.averageCost, item.totalValue, lastStockInDate etc.
+	// It doesn't show min/max levels in the sheet either.
+	// So I will stick to what jq outputted.
+	averageCost: z.number(),
+	totalValue: z.number(),
+	lastPurchaseCost: z.number(),
+	isBelowReorderLevel: z.boolean(),
+	isBelowMinLevel: z.boolean(),
+	isAboveMaxLevel: z.boolean(),
+	isOutOfStock: z.boolean(),
+	lastStockInDate: z.string().nullable(), // API docs say date-time string
+	lastStockOutDate: z.string().nullable(),
+	lastStockCountDate: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+	lastRecalculatedAt: z.string(),
+});
+
+export type StockLevelResponse2 = z.infer<typeof StockLevelResponse>;
+
+const ApiResponseListStockLevelResponse = ApiResponseObject.extend({
+	data: z.array(StockLevelResponse),
+});
+
+const ApiResponseStockLevelResponse = ApiResponseObject.extend({
+	data: Pagination.extend({
+		content: z.array(StockLevelResponse),
+	}),
+});
+
+const StockLevelStatisticsResponse = z.object({
+	totalInventoryValue: z.number(),
+	totalQuantityOnHand: z.number(),
+	totalQuantityReserved: z.number(),
+	totalQuantityAvailable: z.number(),
+	outOfStockCount: z.number(),
+	lowStockCount: z.number(),
+});
+
+export type StockLevelStatisticsResponse = z.infer<
+	typeof StockLevelStatisticsResponse
+>;
+
+const ApiResponseStockLevelStatisticsResponse = ApiResponseObject.extend({
+	data: StockLevelStatisticsResponse,
+});
+
 export type LostItem = z.infer<
 	typeof ApiResponseLostItem
 >["data"]["content"][number];
@@ -2446,7 +2517,28 @@ export const schema = createSchema({
 				size: z.number().optional(),
 			})
 			.partial(),
-		output: ApiResponseCustomPageStockLevelResponse,
+		output: ApiResponseStockLevelResponse,
+	},
+	"@get/api/inventories/stock-levels/by-location/:locationId": {
+		params: z.object({ locationId: z.string() }),
+		output: ApiResponseStockLevelResponse,
+	},
+	"@get/api/inventories/stock-levels/by-product/:productId": {
+		params: z.object({ productId: z.string() }),
+		output: ApiResponseListStockLevelResponse,
+	},
+	"@get/api/inventories/stock-levels/low-stock": {
+		output: ApiResponseListStockLevelResponse,
+	},
+	"@get/api/inventories/stock-levels/out-of-stock": {
+		output: ApiResponseListStockLevelResponse,
+	},
+	"@get/api/inventories/stock-levels/statistics": {
+		output: ApiResponseStockLevelStatisticsResponse,
+	},
+	"@get/api/inventories/stock-levels/:stockLevelId": {
+		params: z.object({ stockLevelId: z.string() }),
+		output: ApiResponseStockLevelResponse,
 	},
 	// Auth APIs
 	"@post/api/auth/sign-in": {

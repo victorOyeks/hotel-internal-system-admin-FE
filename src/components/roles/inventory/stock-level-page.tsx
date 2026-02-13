@@ -1,12 +1,13 @@
-"use client";
+"use client"
 
-import { useQueryState } from "nuqs";
+import { useQueryStates, parseAsBoolean, parseAsString } from "nuqs";
 import type { StockLevelResponse, Pagination } from "@/lib/fetch";
 import { StockLevelTable } from "./stock-level-table";
 import { Button } from "@/components/ui/button";
 import { SearchIcon, RotateCcwIcon } from "lucide-react";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
@@ -16,102 +17,138 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 
-// Define search params mapping locally if not exporting from shared file yet
-// We'll use simple strings for now or reuse where appropriate
-import { parseAsBoolean } from "nuqs";
-
-export function StockLevelToolbar() {
-    const [search, setSearch] = useQueryState("search");
-    const [category, setCategory] = useQueryState("category");
-    const [locationId, setLocationId] = useQueryState("locationId");
-    const [lowStock, setLowStock] = useQueryState("lowStock", parseAsBoolean);
-    const [outOfStock, setOutOfStock] = useQueryState("outOfStock", parseAsBoolean);
-
-    const [tempFilters, setTempFilters] = useState({
-        category: category || null,
-        locationId: locationId || null,
-        stockStatus: lowStock ? "low" : outOfStock ? "out" : "all",
+export function StockLevelToolbar({
+    totalCount,
+}: {
+    totalCount?: number;
+}) {
+    const [queryState, setQueryState] = useQueryStates({
+        search: parseAsString,
+        category: parseAsString,
+        lowStock: parseAsBoolean,
+        outOfStock: parseAsBoolean,
+        locationId: parseAsString,
     });
 
-    // For demo purposes, we might need to fetch locations or categories. 
-    // Assuming categories are static enum or fetched elsewhere.
-    // We'll use a simple input for locationId for now or just text search.
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-    const applyFilters = () => {
-        setCategory(tempFilters.category);
-        setLocationId(tempFilters.locationId);
-        if (tempFilters.stockStatus === "low") {
-            setLowStock(true);
-            setOutOfStock(null);
-        } else if (tempFilters.stockStatus === "out") {
-            setLowStock(null);
-            setOutOfStock(true);
-        } else {
-            setLowStock(null);
-            setOutOfStock(null);
-        }
-    };
+    // Helper to calculate active filter count
+    const activeFilterCount = [
+        queryState.category,
+        queryState.locationId,
+        queryState.lowStock,
+        queryState.outOfStock,
+    ].filter(Boolean).length;
 
     const clearFilters = () => {
-        setTempFilters({ category: null, locationId: null, stockStatus: "all" });
-        setCategory(null);
-        setLocationId(null);
-        setLowStock(null);
-        setOutOfStock(null);
+        setQueryState({
+            category: null,
+            locationId: null,
+            lowStock: null,
+            outOfStock: null,
+            search: null,
+        });
     };
-
-    const activeFilterCount = [category, locationId, lowStock, outOfStock].filter(Boolean).length;
 
     return (
         <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
             <div>
-                <p className="font-medium px-2">Stock Levels</p>
+                <p className="font-medium px-2 text-primary">
+                    Stock Levels {totalCount !== undefined && `(${totalCount})`}
+                </p>
             </div>
 
             <div className="flex items-center gap-x-2">
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Search product..."
-                        value={search || ""}
-                        onChange={(e) => setSearch(e.target.value || null)}
-                        className="w-full pl-9 py-2 bg-primary-5/10 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
+                <div className="relative w-[250px]">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                    <Input
+                        placeholder="Search products..."
+                        value={queryState.search ?? ""}
+                        onChange={(e) =>
+                            setQueryState({ search: e.target.value || null })
+                        }
+                        className="pl-9 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full border-none"
                     />
-                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary h-4 w-4" />
                 </div>
 
-                <TableFilter count={activeFilterCount}>
-                    <div className="space-y-4">
+                <TableFilter
+                    open={isFilterOpen}
+                    setOpen={setIsFilterOpen}
+                    count={activeFilterCount}
+                >
+                    <div className="flex flex-col gap-y-4">
                         <div className="flex items-center justify-between">
                             <h4 className="font-semibold text-sm">Filters</h4>
-                            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-auto p-1 text-xs text-muted-foreground">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="h-auto p-1 text-xs text-muted-foreground"
+                            >
                                 <RotateCcwIcon className="h-3 w-3 mr-1" />
                                 Clear
                             </Button>
                         </div>
+
+                        {/* Stock Status Filter */}
                         <div className="space-y-2">
                             <Label>Stock Status</Label>
-                            <Select
-                                value={tempFilters.stockStatus}
-                                onValueChange={(val) => setTempFilters(prev => ({ ...prev, stockStatus: val }))}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
-                                    <SelectItem value="low">Low Stock</SelectItem>
-                                    <SelectItem value="out">Out of Stock</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                        setQueryState({
+                                            lowStock: null,
+                                            outOfStock: null,
+                                        })
+                                    }
+                                    className="text-xs"
+                                    data-active={
+                                        !queryState.lowStock && !queryState.outOfStock
+                                    }
+                                >
+                                    All
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                        setQueryState({
+                                            lowStock: true,
+                                            outOfStock: null,
+                                        })
+                                    }
+                                    className={`text-xs ${queryState.lowStock ? "border-primary bg-primary/5" : ""}`}
+                                >
+                                    Low Stock
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                        setQueryState({
+                                            lowStock: null,
+                                            outOfStock: true,
+                                        })
+                                    }
+                                    className={`text-xs ${queryState.outOfStock ? "border-primary bg-primary/5" : ""}`}
+                                >
+                                    Out of Stock
+                                </Button>
+                            </div>
                         </div>
 
+                        {/* Category Filter */}
                         <div className="space-y-2">
                             <Label>Category</Label>
-                            {/* Ideally this comes from a fetched list of categories */}
                             <Select
-                                value={tempFilters.category || "all"}
-                                onValueChange={(val) => setTempFilters(prev => ({ ...prev, category: val === "all" ? null : val }))}
+                                value={queryState.category || "all"}
+                                onValueChange={(val) =>
+                                    setQueryState({
+                                        category: val === "all" ? null : val,
+                                    })
+                                }
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="All Categories" />
@@ -121,13 +158,29 @@ export function StockLevelToolbar() {
                                     <SelectItem value="FOOD_FRESH">Food Fresh</SelectItem>
                                     <SelectItem value="FOOD_FROZEN">Food Frozen</SelectItem>
                                     <SelectItem value="BEVERAGES">Beverages</SelectItem>
-                                    <SelectItem value="CLEANING_SUPPLIES">Cleaning Supplies</SelectItem>
-                                    {/* Add more as needed */}
+                                    <SelectItem value="CLEANING_SUPPLIES">
+                                        Cleaning Supplies
+                                    </SelectItem>
+                                    {/* Add more categories as needed or fetch dynamically */}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <Button onClick={applyFilters} className="w-full">Apply Filters</Button>
+                        <div className="flex items-center justify-end gap-x-2 pt-2">
+                            <Button
+                                size={"sm"}
+                                variant={"ghost"}
+                                onClick={clearFilters}
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                size={"sm"}
+                                onClick={() => setIsFilterOpen(false)}
+                            >
+                                Done
+                            </Button>
+                        </div>
                     </div>
                 </TableFilter>
             </div>

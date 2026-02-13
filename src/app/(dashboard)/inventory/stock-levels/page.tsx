@@ -1,6 +1,6 @@
-import { $fetch } from "@/lib/fetch";
 import { StockLevelPageContent } from "@/components/roles/inventory/stock-level-page";
 import { getCookieData } from "@/lib/server-fns";
+import { getStockLevels } from "@/lib/inventory-actions";
 import {
     createLoader,
     parseAsBoolean,
@@ -41,19 +41,18 @@ export default function Page({
         queryClient.ensureQueryData({
             queryKey: ["stock-levels", params],
             queryFn: async () => {
-                const response = await $fetch("@get/api/inventories/stock-levels", {
-                    auth: { type: "Bearer", token },
-                    query: {
-                        page: params.page,
-                        size: params.size,
-                        search: params.search ?? undefined,
-                        category: params.category ?? undefined,
-                        lowStock: params.lowStock ?? undefined,
-                        outOfStock: params.outOfStock ?? undefined,
-                        locationId: params.locationId ?? undefined,
-                    },
-                    throw: true,
+                const response = await getStockLevels({
+                    page: params.page,
+                    size: params.size,
+                    search: params.search ?? undefined,
+                    category: params.category ?? undefined,
+                    lowStock: params.lowStock ?? undefined,
+                    outOfStock: params.outOfStock ?? undefined,
+                    locationId: params.locationId ?? undefined,
                 });
+                if (!response.success || !response.data) {
+                    throw new Error(response.error || "Failed to fetch stock levels");
+                }
                 return response.data;
             },
         }),

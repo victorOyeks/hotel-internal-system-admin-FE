@@ -920,3 +920,202 @@ export async function postStockAdjustment(adjustmentId: string) {
 		};
 	}
 }
+
+export async function getStockLevels(filters: {
+	locationId?: string;
+	productId?: string;
+	category?: string;
+	search?: string;
+	lowStock?: boolean;
+	outOfStock?: boolean;
+	page?: number;
+	size?: number;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-levels", {
+			query: {
+				...filters,
+				page: filters.page || 0,
+				size: filters.size || 20,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch stock levels",
+		};
+	}
+}
+
+export async function getStockLevelsByLocation(locationId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/by-location/:locationId",
+			{
+				params: { locationId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock levels by location",
+		};
+	}
+}
+
+export async function getStockLevelsByProduct(productId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/by-product/:productId",
+			{
+				params: { productId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock levels by product",
+		};
+	}
+}
+
+export async function getLowStockItems() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/low-stock",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch low stock items",
+		};
+	}
+}
+
+export async function getOutOfStockItems() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/out-of-stock",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch out of stock items",
+		};
+	}
+}
+
+export async function getStockLevelStatistics() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/statistics",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock level statistics",
+		};
+	}
+}
+
+export async function getStockLevel(stockLevelId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/:stockLevelId",
+			{
+				params: { stockLevelId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch stock level",
+		};
+	}
+}

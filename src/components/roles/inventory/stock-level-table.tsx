@@ -32,6 +32,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/utils";
 
 const stockLevelColumnHelper = createColumnHelper<StockLevelResponse>();
 
@@ -122,19 +123,19 @@ const stockLevelColumns = [
                                     <div>
                                         <span className="text-muted-foreground block">Average Cost</span>
                                         <span className="font-medium">
-                                            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.averageCost)}
+                                            {formatCurrency(item.averageCost)}
                                         </span>
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground block">Total Value</span>
                                         <span className="font-medium">
-                                            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.totalValue)}
+                                            {formatCurrency(item.totalValue)}
                                         </span>
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground block">Last Purchase Cost</span>
                                         <span className="font-medium">
-                                            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(item.lastPurchaseCost)}
+                                            {formatCurrency(item.lastPurchaseCost)}
                                         </span>
                                     </div>
                                 </div>

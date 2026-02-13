@@ -155,18 +155,18 @@ function BaseModal({
 
 export function RestaurantInventoryPage({
 	section,
-	statData,
+	// statData,
 	inventoryData,
 	paginationMeta,
 }: {
 	section: "restock" | null;
 	inventoryData: InventoryResponse[] | InventoryRestockRequest[];
-	statData: InventorySummaryResponse;
+	// statData: InventorySummaryResponse;
 	paginationMeta: Pagination;
 }) {
 	return (
 		<div className="p-4 md:p-6 space-y-2 md:space-y-4">
-			<InventoryStat data={statData} />
+			{/* <InventoryStat data={statData} /> */}
 			<QuickActions />
 			<RestaurantInventoryTable
 				data={inventoryData}
