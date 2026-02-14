@@ -22,7 +22,6 @@ import {
 	ArrowLeftRightIcon,
 	UsersIcon,
 	WrenchIcon,
-	BarChart3Icon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
