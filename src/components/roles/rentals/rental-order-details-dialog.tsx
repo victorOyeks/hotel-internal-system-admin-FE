@@ -1,9 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	getOrderDetails,
 	getOrderPaymentSummary,
+	updateOrderStatus,
 } from "@/lib/rental-actions";
 import {
 	Dialog,
@@ -12,6 +15,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -23,6 +33,8 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
 	CalendarIcon,
 	UserIcon,
@@ -35,6 +47,7 @@ import {
 	AlertCircleIcon,
 	ShieldCheckIcon,
 	RefreshCwIcon,
+	EditIcon,
 } from "lucide-react";
 
 type RentalOrderDetailsDialogProps = {
@@ -69,6 +82,46 @@ const paymentStatusColors: Record<string, string> = {
 	OVERDUE_CHARGES_PENDING: "bg-red-100 text-red-800 border-red-200",
 };
 
+// Valid status transitions based on rental order flow
+const validTransitions: Record<string, string[]> = {
+	PENDING: ["CONFIRMED", "CANCELLED"],
+	CONFIRMED: ["PICKED_UP", "CANCELLED"],
+	PICKED_UP: ["ACTIVE"],
+	ACTIVE: ["RETURNED"],
+	OVERDUE: ["RETURNED"],
+	RETURNED: ["COMPLETED", "DAMAGED", "LOST"],
+	// Terminal statuses - no transitions
+	COMPLETED: [],
+	CANCELLED: [],
+	LOST: [],
+	DAMAGED: [],
+};
+
+// Action labels for status transitions (friendly names shown in dropdown)
+const transitionLabels: Record<string, string> = {
+	CONFIRMED: "Confirm",
+	CANCELLED: "Cancel Order",
+	PICKED_UP: "Mark Picked Up",
+	ACTIVE: "Mark Active",
+	RETURNED: "Mark Returned",
+	COMPLETED: "Complete",
+	DAMAGED: "Mark Damaged",
+	LOST: "Mark Lost",
+};
+
+const statusLabels: Record<string, string> = {
+	PENDING: "Pending",
+	CONFIRMED: "Confirmed",
+	PICKED_UP: "Picked Up",
+	ACTIVE: "Active",
+	OVERDUE: "Overdue",
+	RETURNED: "Returned",
+	COMPLETED: "Completed",
+	CANCELLED: "Cancelled",
+	LOST: "Lost",
+	DAMAGED: "Damaged",
+};
+
 function formatCurrency(amount: number) {
 	return new Intl.NumberFormat("en-NG", {
 		style: "currency",
@@ -83,6 +136,12 @@ export function RentalOrderDetailsDialog({
 	open,
 	onOpenChange,
 }: RentalOrderDetailsDialogProps) {
+	const [isChangingStatus, setIsChangingStatus] = useState(false);
+	const [selectedStatus, setSelectedStatus] = useState("");
+	const [statusNotes, setStatusNotes] = useState("");
+	const queryClient = useQueryClient();
+	const router = useRouter();
+
 	const {
 		data: order,
 		isLoading,
@@ -109,6 +168,26 @@ export function RentalOrderDetailsDialog({
 		},
 		enabled: !!orderId && open && !!order,
 		retry: 1,
+	});
+
+	const statusMutation = useMutation({
+		mutationFn: async ({ status, notes }: { status: string; notes?: string }) => {
+			const result = await updateOrderStatus(orderId!, { status, notes });
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		onSuccess: () => {
+			toast.success("Order status updated successfully");
+			setIsChangingStatus(false);
+			setSelectedStatus("");
+			setStatusNotes("");
+			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "dashboard-stats"] });
+			router.refresh();
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to update status");
+		},
 	});
 
 	if (!orderId) return null;
@@ -161,7 +240,7 @@ export function RentalOrderDetailsDialog({
 
 						<div className="space-y-6">
 							{/* Status Section */}
-							<div className="flex flex-wrap gap-3">
+							<div className="flex flex-wrap items-center gap-3">
 								<Badge
 									className={
 										statusColors[order.status] ||
@@ -196,7 +275,88 @@ export function RentalOrderDetailsDialog({
 										Inspected
 									</Badge>
 								)}
+								{!isChangingStatus && (
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={!(validTransitions[order.status]?.length > 0)}
+										onClick={() => {
+											setSelectedStatus("");
+											setIsChangingStatus(true);
+										}}
+									>
+										<EditIcon className="w-3.5 h-3.5 mr-1.5" />
+										Change Status
+									</Button>
+								)}
 							</div>
+
+							{isChangingStatus && (
+								<div className="bg-muted/50 p-4 rounded-lg space-y-3">
+									<p className="text-sm font-medium">Update Order Status</p>
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<label className="text-xs text-muted-foreground mb-1 block">
+												New Status
+											</label>
+											<Select
+												value={selectedStatus}
+												onValueChange={setSelectedStatus}
+											>
+												<SelectTrigger>
+													<SelectValue placeholder="Select status" />
+												</SelectTrigger>
+												<SelectContent>
+													{(validTransitions[order.status] || []).map((status) => (
+															<SelectItem key={status} value={status}>
+																{transitionLabels[status] || statusLabels[status]}
+															</SelectItem>
+														))}
+												</SelectContent>
+											</Select>
+										</div>
+										<div>
+											<label className="text-xs text-muted-foreground mb-1 block">
+												Notes (optional)
+											</label>
+											<Input
+												placeholder="Reason for status change..."
+												value={statusNotes}
+												onChange={(e) => setStatusNotes(e.target.value)}
+											/>
+										</div>
+									</div>
+									<div className="flex gap-2">
+										<Button
+											size="sm"
+											disabled={!selectedStatus || selectedStatus === order.status || statusMutation.isPending}
+											onClick={() =>
+												statusMutation.mutate({
+													status: selectedStatus,
+													notes: statusNotes || undefined,
+												})
+											}
+										>
+											{statusMutation.isPending && (
+												<Loader2Icon className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+											)}
+											Update Status
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={statusMutation.isPending}
+											onClick={() => {
+												setIsChangingStatus(false);
+												setSelectedStatus("");
+												setStatusNotes("");
+											}}
+										>
+											Cancel
+										</Button>
+									</div>
+								</div>
+							)}
 
 							<Separator />
 

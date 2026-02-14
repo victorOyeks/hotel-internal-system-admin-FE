@@ -160,9 +160,12 @@ export function RentalOrdersPage({
 										<TableHead className="text-right">
 											Amount
 										</TableHead>
+										<TableHead className="text-right">
+											Balance Due
+										</TableHead>
 										<TableHead>Status</TableHead>
 										<TableHead>Payment</TableHead>
-										<TableHead className="text-right">
+										<TableHead className="text-center">
 											Actions
 										</TableHead>
 									</TableRow>
@@ -171,7 +174,7 @@ export function RentalOrdersPage({
 									{filtered.length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={8}
+												colSpan={9}
 												className="text-center py-12 text-muted-foreground"
 											>
 												{search
@@ -247,17 +250,22 @@ export function RentalOrdersPage({
 													</div>
 												</TableCell>
 												<TableCell className="text-right">
-													<span className="font-semibold text-sm block">
+													<span className="font-semibold text-sm">
 														{formatCurrency(
 															order.totalAmount,
 														)}
 													</span>
-													{order.balanceDue > 0 && (
-														<span className="text-[11px] text-orange-600 font-medium">
+												</TableCell>
+												<TableCell className="text-right">
+													{order.balanceDue > 0 ? (
+														<span className="text-sm text-orange-600 font-medium">
 															{formatCurrency(
 																order.balanceDue,
-															)}{" "}
-															due
+															)}
+														</span>
+													) : (
+														<span className="text-sm text-muted-foreground">
+															—
 														</span>
 													)}
 												</TableCell>
@@ -298,9 +306,9 @@ export function RentalOrdersPage({
 														)}
 													</Badge>
 												</TableCell>
-												<TableCell className="text-right">
+												<TableCell className="text-center">
 													<div
-														className="flex items-center justify-end gap-1"
+														className="flex items-center justify-center gap-1"
 														onClick={(e) =>
 															e.stopPropagation()
 														}
@@ -308,83 +316,82 @@ export function RentalOrdersPage({
 														<TooltipProvider
 															delayDuration={300}
 														>
-															{(order.status ===
-																"ACTIVE" ||
-																order.status ===
-																	"PICKED_UP") && (
-																<>
-																	<Tooltip>
-																		<TooltipTrigger
-																			asChild
-																		>
-																			<div>
-																				<ExtensionDialog
-																					orderId={
-																						order.id
-																					}
-																					currentReturnDate={
-																						new Date(
-																							order.rentalEndTime,
-																						)
-																					}
-																					trigger={
-																						<Button
-																							variant="ghost"
-																							size="icon"
-																							className="h-8 w-8 text-muted-foreground hover:text-blue-600"
-																						>
-																							<ClockIcon className="w-4 h-4" />
-																						</Button>
-																					}
-																				/>
-																			</div>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			Extend
-																			Rental
-																		</TooltipContent>
-																	</Tooltip>
-
-																	<Tooltip>
-																		<TooltipTrigger
-																			asChild
-																		>
-																			<div>
-																				<ReturnDialog
-																					orderId={
-																						order.id
-																					}
-																					trigger={
-																						<Button
-																							variant="ghost"
-																							size="icon"
-																							className="h-8 w-8 text-muted-foreground hover:text-green-600"
-																						>
-																							<PackageCheckIcon className="w-4 h-4" />
-																						</Button>
-																					}
-																				/>
-																			</div>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			Process
-																			Return
-																		</TooltipContent>
-																	</Tooltip>
-																</>
-															)}
-
-															{order.balanceDue >
-																0 && (
-																<Tooltip>
-																	<TooltipTrigger
-																		asChild
-																	>
-																		<div>
-																			<PaymentDialog
-																				orderId={
-																					order.id
+															{/* Extend Rental */}
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<div>
+																		{order.status === "ACTIVE" || order.status === "PICKED_UP" ? (
+																			<ExtensionDialog
+																				orderId={order.id}
+																				currentReturnDate={new Date(order.rentalEndTime)}
+																				trigger={
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+																					>
+																						<ClockIcon className="w-4 h-4" />
+																					</Button>
 																				}
+																			/>
+																		) : (
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className="h-8 w-8 text-muted-foreground/25"
+																				disabled
+																			>
+																				<ClockIcon className="w-4 h-4" />
+																			</Button>
+																		)}
+																	</div>
+																</TooltipTrigger>
+																<TooltipContent>
+																	Extend Rental
+																</TooltipContent>
+															</Tooltip>
+
+															{/* Process Return */}
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<div>
+																		{order.status === "ACTIVE" || order.status === "PICKED_UP" || order.status === "OVERDUE" ? (
+																			<ReturnDialog
+																				orderId={order.id}
+																				trigger={
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						className="h-8 w-8 text-muted-foreground hover:text-green-600"
+																					>
+																						<PackageCheckIcon className="w-4 h-4" />
+																					</Button>
+																				}
+																			/>
+																		) : (
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className="h-8 w-8 text-muted-foreground/25"
+																				disabled
+																			>
+																				<PackageCheckIcon className="w-4 h-4" />
+																			</Button>
+																		)}
+																	</div>
+																</TooltipTrigger>
+																<TooltipContent>
+																	Process Return
+																</TooltipContent>
+															</Tooltip>
+
+															{/* Record Payment */}
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<div>
+																		{order.balanceDue > 0 ? (
+																			<PaymentDialog
+																				orderId={order.id}
 																				trigger={
 																					<Button
 																						variant="ghost"
@@ -395,14 +402,22 @@ export function RentalOrdersPage({
 																					</Button>
 																				}
 																			/>
-																		</div>
-																	</TooltipTrigger>
-																	<TooltipContent>
-																		Record
-																		Payment
-																	</TooltipContent>
-																</Tooltip>
-															)}
+																		) : (
+																			<Button
+																				variant="ghost"
+																				size="icon"
+																				className="h-8 w-8 text-muted-foreground/25"
+																				disabled
+																			>
+																				<CreditCardIcon className="w-4 h-4" />
+																			</Button>
+																		)}
+																	</div>
+																</TooltipTrigger>
+																<TooltipContent>
+																	Record Payment
+																</TooltipContent>
+															</Tooltip>
 														</TooltipProvider>
 													</div>
 												</TableCell>

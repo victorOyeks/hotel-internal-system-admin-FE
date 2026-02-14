@@ -36,7 +36,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PackageCheckIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const returnInspectionSchema = z.object({
 	inspectionType: z.literal("RETURN"),
@@ -151,14 +150,14 @@ export function ReturnDialog({
 			</DialogTrigger>
 			<DialogContent className="max-w-lg">
 				<DialogHeader>
-					<DialogTitle className="text-2xl">Process Rental Return</DialogTitle>
+					<DialogTitle>Process Rental Return</DialogTitle>
 					<DialogDescription>
 						Inspect returned items and record their condition
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
 						{/* Item Condition */}
 						<FormField
 							control={form.control}
@@ -191,167 +190,127 @@ export function ReturnDialog({
 						/>
 
 						{/* Damage/Loss Checkboxes */}
-						<Card className="bg-blue-50 border-blue-200">
-							<CardContent className="pt-4 space-y-3">
-								<FormField
-									control={form.control}
-									name="damaged"
-									render={({ field }) => (
-										<FormItem className="flex flex-row items-start space-x-3 space-y-0">
-											<FormControl>
-												<Checkbox
-													checked={field.value}
-													onCheckedChange={field.onChange}
-												/>
-											</FormControl>
-											<div className="space-y-1 leading-none">
-												<FormLabel className="font-semibold">
-													Item(s) have damage
-												</FormLabel>
-												<FormDescription>
-													Check this if any returned items are damaged
-												</FormDescription>
-											</div>
-										</FormItem>
-									)}
-								/>
+						<div className="flex gap-4 rounded-lg bg-muted/50 p-3">
+							<FormField
+								control={form.control}
+								name="damaged"
+								render={({ field }) => (
+									<FormItem className="flex items-center space-x-2 space-y-0">
+										<FormControl>
+											<Checkbox
+												checked={field.value}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<FormLabel className="text-sm font-medium cursor-pointer">
+											Items damaged
+										</FormLabel>
+									</FormItem>
+								)}
+							/>
 
-								<FormField
-									control={form.control}
-									name="lost"
-									render={({ field }) => (
-										<FormItem className="flex flex-row items-start space-x-3 space-y-0">
-											<FormControl>
-												<Checkbox
-													checked={field.value}
-													onCheckedChange={field.onChange}
-												/>
-											</FormControl>
-											<div className="space-y-1 leading-none">
-												<FormLabel className="font-semibold">
-													Item(s) are lost
-												</FormLabel>
-												<FormDescription>
-													Check if any items are missing or not returned
-												</FormDescription>
-											</div>
-										</FormItem>
-									)}
-								/>
-							</CardContent>
-						</Card>
+							<FormField
+								control={form.control}
+								name="lost"
+								render={({ field }) => (
+									<FormItem className="flex items-center space-x-2 space-y-0">
+										<FormControl>
+											<Checkbox
+												checked={field.value}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<FormLabel className="text-sm font-medium cursor-pointer">
+											Items lost
+										</FormLabel>
+									</FormItem>
+								)}
+							/>
+						</div>
 
-						{/* Damage Details */}
+						{/* Damage Details - Inline */}
 						{isDamaged && (
-							<Card>
-								<CardHeader className="pb-3">
-									<CardTitle className="text-sm font-medium text-red-700">
-										Damage Details
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-3">
-									<FormField
-										control={form.control}
-										name="damageDescription"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Damage Description *</FormLabel>
-												<FormControl>
-													<Textarea
-														placeholder="Describe the damage..."
-														className="min-h-[80px]"
-														{...field}
-													/>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-
-									<FormField
-										control={form.control}
-										name="damageCharge"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Damage Charge (NGN)</FormLabel>
-												<FormControl>
-													<Input
-														type="number"
-														min="0"
-														step="0.01"
-														placeholder="0.00"
-														{...field}
-														onChange={(e) =>
-															field.onChange(parseFloat(e.target.value) || 0)
-														}
-													/>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-								</CardContent>
-							</Card>
+							<div className="space-y-2 border-l-2 border-red-300 pl-3">
+								<FormField
+									control={form.control}
+									name="damageDescription"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel className="text-xs">Damage Description *</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Describe the damage..."
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="damageCharge"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel className="text-xs">Damage Charge (NGN)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min="0"
+													step="0.01"
+													placeholder="0.00"
+													{...field}
+													onChange={(e) =>
+														field.onChange(parseFloat(e.target.value) || 0)
+													}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
 						)}
 
 						{/* Lost Item Charges */}
 						{isLost && (
-							<FormField
-								control={form.control}
-								name="replacementCharge"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Replacement Charge (NGN)</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												step="0.01"
-												placeholder="0.00"
-												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
-											/>
-										</FormControl>
-										<FormDescription>
-											Charge for lost/unreturned items
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+							<div className="border-l-2 border-orange-300 pl-3">
+								<FormField
+									control={form.control}
+									name="replacementCharge"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel className="text-xs">Replacement Charge (NGN)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min="0"
+													step="0.01"
+													placeholder="0.00"
+													{...field}
+													onChange={(e) =>
+														field.onChange(parseFloat(e.target.value) || 0)
+													}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
 						)}
 
-						{/* Inspection Notes */}
-						<FormField
-							control={form.control}
-							name="inspectionNotes"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Inspection Notes</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder="Additional inspection notes..."
-											className="min-h-[60px]"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
+						{/* Notes - single field */}
 						<FormField
 							control={form.control}
 							name="notes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Overall Notes</FormLabel>
+									<FormLabel>Notes</FormLabel>
 									<FormControl>
 										<Textarea
-											placeholder="General return notes..."
-											className="min-h-[60px]"
+											placeholder="Return notes, inspection details..."
+											className="min-h-[50px] resize-none"
 											{...field}
 										/>
 									</FormControl>
@@ -360,7 +319,7 @@ export function ReturnDialog({
 							)}
 						/>
 
-						<div className="flex justify-end gap-3 pt-4">
+						<div className="flex justify-end gap-3 pt-2">
 							<Button
 								type="button"
 								variant="outline"

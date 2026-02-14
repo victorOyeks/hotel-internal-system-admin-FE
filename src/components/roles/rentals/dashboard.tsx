@@ -21,6 +21,13 @@ import {
 	UsersIcon,
 	WrenchIcon,
 	BarChart3Icon,
+	CheckCircle2Icon,
+	BoxIcon,
+	PlusCircleIcon,
+	CreditCardIcon,
+	RotateCcwIcon,
+	ClockIcon,
+	MessageSquareIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { RentalOrderDialog } from "./rental-order-dialog";
@@ -49,20 +56,20 @@ type DashboardProps = {
 export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
-			<div className="flex flex-col gap-6 p-6">
+			<div className="flex flex-col gap-4 p-4 md:p-6">
 				{/* Header Section */}
 				<div className="flex items-center justify-between">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">
+						<h1 className="text-2xl font-bold tracking-tight">
 							Rentals Dashboard
 						</h1>
-						<p className="text-muted-foreground mt-1">
+						<p className="text-sm text-muted-foreground">
 							Manage rental items, orders, and payments
 						</p>
 					</div>
 					<div className="flex gap-2">
 						<Link href="/dashboard/items">
-							<Button variant="outline">
+							<Button variant="outline" size="sm">
 								<PackageIcon className="w-4 h-4 mr-2" />
 								Manage Items
 							</Button>
@@ -73,44 +80,41 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 
 				{/* Alert Section - Overdue Rentals */}
 				{stats.overdueRentals > 0 && (
-					<Card className="border-l-4 border-l-red-500 bg-red-50/50">
-						<CardContent className="pt-6">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<div className="p-2 bg-red-100 rounded-lg">
-										<AlertCircleIcon className="w-6 h-6 text-red-600" />
-									</div>
-									<div>
-										<h3 className="font-semibold text-red-900">
-											{stats.overdueRentals} Overdue Rental
-											{stats.overdueRentals > 1 ? "s" : ""}
-										</h3>
-										<p className="text-sm text-red-700">
-											Immediate attention required for late returns
-										</p>
-									</div>
-								</div>
-								<Link href="/dashboard/overdue">
-									<Button
-										variant="outline"
-										className="border-red-300 text-red-700 hover:bg-red-100"
-									>
-										View Details
-										<ArrowRightIcon className="w-4 h-4 ml-2" />
-									</Button>
-								</Link>
+					<div className="flex items-center justify-between border-l-4 border-l-red-500 bg-red-50/50 rounded-lg px-4 py-3">
+						<div className="flex items-center gap-3">
+							<div className="p-1.5 bg-red-100 rounded-md">
+								<AlertCircleIcon className="w-4 h-4 text-red-600" />
 							</div>
-						</CardContent>
-					</Card>
+							<div>
+								<p className="text-sm font-semibold text-red-900">
+									{stats.overdueRentals} Overdue Rental
+									{stats.overdueRentals > 1 ? "s" : ""}
+								</p>
+								<p className="text-xs text-red-700">
+									Immediate attention required
+								</p>
+							</div>
+						</div>
+						<Link href="/dashboard/overdue">
+							<Button
+								variant="outline"
+								size="sm"
+								className="border-red-300 text-red-700 hover:bg-red-100"
+							>
+								View Details
+								<ArrowRightIcon className="w-3.5 h-3.5 ml-1.5" />
+							</Button>
+						</Link>
+					</div>
 				)}
 
 				{/* Key Metrics Grid */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 					<MetricCard
 						title="Active Items"
 						value={stats.totalActiveItems}
-						subtitle={`${stats.totalItemsRentedOut} currently rented out`}
-						icon={<PackageIcon className="w-5 h-5" />}
+						subtitle={`${stats.totalItemsRentedOut} rented out`}
+						icon={<PackageIcon className="w-4 h-4" />}
 						color="blue"
 					/>
 
@@ -118,7 +122,7 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 						title="Active Rentals"
 						value={stats.activeRentals}
 						subtitle={`${stats.ordersToday} orders today`}
-						icon={<ClipboardListIcon className="w-5 h-5" />}
+						icon={<ClipboardListIcon className="w-4 h-4" />}
 						color="green"
 						trend={{
 							label: `${stats.completedRentals} completed`,
@@ -130,7 +134,7 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 						title="Total Revenue"
 						value={formatCurrency(stats.totalRevenue)}
 						subtitle={`${formatCurrency(stats.revenueToday)} today`}
-						icon={<DollarSignIcon className="w-5 h-5" />}
+						icon={<DollarSignIcon className="w-4 h-4" />}
 						color="purple"
 						trend={{
 							label: `${formatCurrency(stats.outstandingAmount)} outstanding`,
@@ -142,7 +146,7 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 						title="Overdue Rentals"
 						value={stats.overdueRentals}
 						subtitle={`${stats.totalOrders} total orders`}
-						icon={<AlertCircleIcon className="w-5 h-5" />}
+						icon={<AlertCircleIcon className="w-4 h-4" />}
 						color={stats.overdueRentals > 0 ? "red" : "gray"}
 						trend={{
 							label:
@@ -153,170 +157,180 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 				</div>
 
 				{/* Secondary Metrics */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<Card className="hover:shadow-lg transition-shadow">
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Outstanding Amount
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+				<div className="grid grid-cols-3 gap-3">
+					<div className="bg-white rounded-xl p-3 flex items-center gap-3 border">
+						<div className="p-2 bg-orange-50 rounded-lg">
+							<DollarSignIcon className="w-4 h-4 text-orange-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Outstanding</p>
+							<p className="text-lg font-bold">
 								{formatCurrency(stats.outstandingAmount)}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Pending payments from active rentals
 							</p>
-						</CardContent>
-					</Card>
+							<p className="text-[11px] text-muted-foreground">Pending payments</p>
+						</div>
+					</div>
 
-					<Card className="hover:shadow-lg transition-shadow">
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Completed Rentals
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+					<div className="bg-white rounded-xl p-3 flex items-center gap-3 border">
+						<div className="p-2 bg-green-50 rounded-lg">
+							<CheckCircle2Icon className="w-4 h-4 text-green-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Completed</p>
+							<p className="text-lg font-bold">
 								{stats.completedRentals.toLocaleString()}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								All-time rentals completed
 							</p>
-						</CardContent>
-					</Card>
+							<p className="text-[11px] text-muted-foreground">All-time rentals</p>
+						</div>
+					</div>
 
-					<Card className="hover:shadow-lg transition-shadow">
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Items Rented Out
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
+					<div className="bg-white rounded-xl p-3 flex items-center gap-3 border">
+						<div className="p-2 bg-blue-50 rounded-lg">
+							<BoxIcon className="w-4 h-4 text-blue-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Rented Out</p>
+							<p className="text-lg font-bold">
 								{stats.totalItemsRentedOut}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Currently with customers
 							</p>
-						</CardContent>
-					</Card>
+							<p className="text-[11px] text-muted-foreground">With customers</p>
+						</div>
+					</div>
 				</div>
 
-				{/* Quick Actions Section */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Quick Actions</CardTitle>
-						<CardDescription>Common rental management tasks</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-							<Link href="/dashboard/orders">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<ClipboardListIcon className="w-4 h-4" />
-											<span className="font-semibold">View All Orders</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											Manage rental orders and returns
-										</span>
-									</div>
-								</Button>
-							</Link>
-
-							<Link href="/dashboard/items">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<PackageIcon className="w-4 h-4" />
-											<span className="font-semibold">Manage Inventory</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											Add or update rental items
-										</span>
-									</div>
-								</Button>
-							</Link>
-
-							<Link href="/dashboard/payments">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<DollarSignIcon className="w-4 h-4" />
-											<span className="font-semibold">Payment History</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											View deposits and transactions
-										</span>
-									</div>
-								</Button>
-							</Link>
-
-							<Link href="/dashboard/customers">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<UsersIcon className="w-4 h-4" />
-											<span className="font-semibold">Customer History</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											View customer rental activity
-										</span>
-									</div>
-								</Button>
-							</Link>
-
-							<Link href="/dashboard/maintenance">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<WrenchIcon className="w-4 h-4" />
-											<span className="font-semibold">Maintenance</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											Track items in maintenance
-										</span>
-									</div>
-								</Button>
-							</Link>
-
-							<Link href="/dashboard/reports">
-								<Button
-									variant="outline"
-									className="w-full justify-start h-auto py-4"
-								>
-									<div className="flex flex-col items-start gap-1">
-										<div className="flex items-center gap-2">
-											<BarChart3Icon className="w-4 h-4" />
-											<span className="font-semibold">Reports</span>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											Performance analytics and insights
-										</span>
-									</div>
-								</Button>
-							</Link>
+				{/* Primary Actions */}
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+					<RentalOrderDialog
+						trigger={
+							<button className="flex items-center gap-2.5 bg-primary text-primary-foreground rounded-xl px-4 py-3 hover:bg-primary/90 transition-colors cursor-pointer text-left">
+								<PlusCircleIcon className="w-5 h-5 shrink-0" />
+								<div>
+									<p className="text-sm font-semibold">New Order</p>
+									<p className="text-[11px] opacity-80">Create rental order</p>
+								</div>
+							</button>
+						}
+					/>
+					<Link href="/dashboard/payments">
+						<div className="flex items-center gap-2.5 bg-green-600 text-white rounded-xl px-4 py-3 hover:bg-green-700 transition-colors cursor-pointer">
+							<CreditCardIcon className="w-5 h-5 shrink-0" />
+							<div>
+								<p className="text-sm font-semibold">Record Payment</p>
+								<p className="text-[11px] opacity-80">Process a payment</p>
+							</div>
 						</div>
-					</CardContent>
-				</Card>
+					</Link>
+					<Link href="/dashboard/orders">
+						<div className="flex items-center gap-2.5 bg-blue-600 text-white rounded-xl px-4 py-3 hover:bg-blue-700 transition-colors cursor-pointer">
+							<RotateCcwIcon className="w-5 h-5 shrink-0" />
+							<div>
+								<p className="text-sm font-semibold">Process Return</p>
+								<p className="text-[11px] opacity-80">Handle item returns</p>
+							</div>
+						</div>
+					</Link>
+					<Link href="/dashboard/overdue">
+						<div className="flex items-center gap-2.5 bg-amber-600 text-white rounded-xl px-4 py-3 hover:bg-amber-700 transition-colors cursor-pointer">
+							<ClockIcon className="w-5 h-5 shrink-0" />
+							<div>
+								<p className="text-sm font-semibold">Overdue Items</p>
+								<p className="text-[11px] opacity-80">Check late returns</p>
+							</div>
+						</div>
+					</Link>
+				</div>
+
+				{/* Quick Navigation */}
+				<div>
+					<h3 className="text-sm font-semibold text-muted-foreground mb-2">Quick Navigation</h3>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+						<Link href="/dashboard/orders">
+							<QuickAction
+								icon={<ClipboardListIcon className="w-4 h-4" />}
+								title="All Orders"
+								subtitle="Manage orders & returns"
+							/>
+						</Link>
+
+						<Link href="/dashboard/items">
+							<QuickAction
+								icon={<PackageIcon className="w-4 h-4" />}
+								title="Inventory"
+								subtitle="Add or update items"
+							/>
+						</Link>
+
+						<Link href="/dashboard/payments">
+							<QuickAction
+								icon={<DollarSignIcon className="w-4 h-4" />}
+								title="Payments"
+								subtitle="Deposits & transactions"
+							/>
+						</Link>
+
+						<Link href="/dashboard/customers">
+							<QuickAction
+								icon={<UsersIcon className="w-4 h-4" />}
+								title="Customers"
+								subtitle="Rental activity"
+							/>
+						</Link>
+
+						<Link href="/dashboard/maintenance">
+							<QuickAction
+								icon={<WrenchIcon className="w-4 h-4" />}
+								title="Maintenance"
+								subtitle="Items in maintenance"
+							/>
+						</Link>
+
+						<Link href="/dashboard/messages">
+							<QuickAction
+								icon={<MessageSquareIcon className="w-4 h-4" />}
+								title="Messages"
+								subtitle="Customer communication"
+							/>
+						</Link>
+
+						<Link href="/dashboard/reports">
+							<QuickAction
+								icon={<BarChart3Icon className="w-4 h-4" />}
+								title="Reports"
+								subtitle="Analytics & insights"
+							/>
+						</Link>
+
+						<Link href="/dashboard/overdue">
+							<QuickAction
+								icon={<AlertCircleIcon className="w-4 h-4" />}
+								title="Overdue"
+								subtitle="Late return tracking"
+							/>
+						</Link>
+					</div>
+				</div>
 			</div>
 		</BreadCrumbWrapper>
+	);
+}
+
+function QuickAction({
+	icon,
+	title,
+	subtitle,
+}: {
+	icon: React.ReactNode;
+	title: string;
+	subtitle: string;
+}) {
+	return (
+		<div className="flex items-center gap-3 bg-white border rounded-xl px-3 py-2.5 hover:bg-muted/50 hover:shadow-sm transition-all cursor-pointer">
+			<div className="text-muted-foreground">{icon}</div>
+			<div>
+				<p className="text-sm font-medium">{title}</p>
+				<p className="text-[11px] text-muted-foreground">{subtitle}</p>
+			</div>
+		</div>
 	);
 }
 
@@ -349,47 +363,41 @@ function MetricCard({
 	color,
 	trend,
 }: MetricCardProps) {
-	const colorClasses = {
-		blue: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-		green: "bg-green-500/10 text-green-600 border-green-500/20",
-		purple: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-		red: "bg-red-500/10 text-red-600 border-red-500/20",
-		gray: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+	const iconBg = {
+		blue: "bg-blue-50 text-blue-600",
+		green: "bg-green-50 text-green-600",
+		purple: "bg-purple-50 text-purple-600",
+		red: "bg-red-50 text-red-600",
+		gray: "bg-gray-50 text-gray-500",
 	};
 
 	return (
-		<Card className="hover:shadow-lg transition-all duration-300 border-l-4">
-			<CardHeader className="pb-2">
-				<div className="flex items-center justify-between">
-					<CardTitle className="text-sm font-medium text-muted-foreground">
-						{title}
-					</CardTitle>
-					<div className={cn("p-2 rounded-lg", colorClasses[color])}>
-						{icon}
-					</div>
+		<div className="bg-white border rounded-xl p-3">
+			<div className="flex items-center justify-between mb-2">
+				<p className="text-xs font-medium text-muted-foreground">{title}</p>
+				<div className={cn("p-1.5 rounded-md", iconBg[color])}>
+					{icon}
 				</div>
-			</CardHeader>
-			<CardContent>
-				<div className="text-3xl font-bold">{value}</div>
-				<p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-				{trend && (
-					<div className="flex items-center gap-1 mt-2">
-						{trend.isPositive ? (
-							<TrendingUpIcon className="w-3 h-3 text-green-600" />
-						) : (
-							<TrendingDownIcon className="w-3 h-3 text-amber-600" />
+			</div>
+			<p className="text-2xl font-bold">{value}</p>
+			<p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+			{trend && (
+				<div className="flex items-center gap-1 mt-1.5">
+					{trend.isPositive ? (
+						<TrendingUpIcon className="w-3 h-3 text-green-600" />
+					) : (
+						<TrendingDownIcon className="w-3 h-3 text-amber-600" />
+					)}
+					<span
+						className={cn(
+							"text-[11px] font-medium",
+							trend.isPositive ? "text-green-600" : "text-amber-600",
 						)}
-						<span
-							className={cn(
-								"text-xs font-medium",
-								trend.isPositive ? "text-green-600" : "text-amber-600",
-							)}
-						>
-							{trend.label}
-						</span>
-					</div>
-				)}
-			</CardContent>
-		</Card>
+					>
+						{trend.label}
+					</span>
+				</div>
+			)}
+		</div>
 	);
 }

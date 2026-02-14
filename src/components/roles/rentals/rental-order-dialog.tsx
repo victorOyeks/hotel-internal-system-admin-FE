@@ -206,7 +206,7 @@ export function RentalOrderDialog({
 					</Button>
 				)}
 			</DialogTrigger>
-			<DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-hidden">
 				<DialogHeader>
 					<DialogTitle className="text-2xl">Create Rental Order</DialogTitle>
 					<DialogDescription>
@@ -474,127 +474,138 @@ export function RentalOrderDialog({
 									return (
 										<div
 											key={field.id}
-											className="flex gap-3 items-start border rounded-lg p-3"
+											className="border rounded-lg p-4 space-y-0"
 										>
-											<div className="flex-1 grid grid-cols-[2fr_1fr_1.5fr] gap-4">
-												<FormField
-													control={form.control}
-													name={`items.${index}.rentalItemId`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Item *</FormLabel>
-															<Select
-																onValueChange={(value) => {
-																	field.onChange(value);
-																	const item = availableItems?.find(
-																		(i: any) => i.id === value,
-																	);
-																	if (item) {
-																		const currentQty = form.getValues(
-																			`items.${index}.quantity`,
+											<div className="flex gap-3 items-start">
+												<div className="flex-1 grid grid-cols-[minmax(0,1fr)_80px] gap-3 items-start">
+													<FormField
+														control={form.control}
+														name={`items.${index}.rentalItemId`}
+														render={({ field }) => (
+															<FormItem>
+																<FormLabel>Item *</FormLabel>
+																<Select
+																	onValueChange={(value) => {
+																		field.onChange(value);
+																		const item = availableItems?.find(
+																			(i: any) => i.id === value,
 																		);
-																		if (
-																			currentQty > item.availableQuantity
-																		) {
-																			form.setValue(
+																		if (item) {
+																			const currentQty = form.getValues(
 																				`items.${index}.quantity`,
-																				item.availableQuantity,
 																			);
-																		}
-																	}
-																}}
-																value={field.value}
-															>
-																<FormControl>
-																	<SelectTrigger>
-																		<SelectValue placeholder="Select item" />
-																	</SelectTrigger>
-																</FormControl>
-																<SelectContent>
-																	{availableItems?.map((item: any) => (
-																		<SelectItem
-																			key={item.id}
-																			value={item.id}
-																			disabled={
-																				item.availableQuantity === 0
+																			if (
+																				currentQty > item.availableQuantity
+																			) {
+																				form.setValue(
+																					`items.${index}.quantity`,
+																					item.availableQuantity,
+																				);
 																			}
-																		>
-																			{item.name} (
-																			{item.availableQuantity} avail.)
-																		</SelectItem>
-																	))}
-																</SelectContent>
-															</Select>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
-
-												<FormField
-													control={form.control}
-													name={`items.${index}.quantity`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Qty *</FormLabel>
-															<FormControl>
-																<Input
-																	type="number"
-																	min={1}
-																	max={maxQty}
-																	{...field}
-																	onChange={(e) => {
-																		const val =
-																			parseInt(e.target.value) || 1;
-																		if (val > maxQty) {
-																			field.onChange(maxQty);
-																			toast.error(
-																				`Only ${maxQty} available for this item`,
-																			);
-																		} else {
-																			field.onChange(Math.max(1, val));
 																		}
 																	}}
-																/>
-															</FormControl>
-															{selectedItem && (
-																<FormDescription className="text-xs">
-																	Max: {maxQty}
-																</FormDescription>
-															)}
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
+																	value={field.value}
+																>
+																	<FormControl>
+																		<SelectTrigger className="w-full min-w-0 overflow-hidden">
+																			<SelectValue placeholder="Select item" />
+																		</SelectTrigger>
+																	</FormControl>
+																	<SelectContent>
+																		{availableItems?.map((item: any) => (
+																			<SelectItem
+																				key={item.id}
+																				value={item.id}
+																				disabled={
+																					item.availableQuantity === 0
+																				}
+																			>
+																				{item.name} (
+																				{item.availableQuantity} avail.)
+																			</SelectItem>
+																		))}
+																	</SelectContent>
+																</Select>
+																<FormMessage />
+															</FormItem>
+														)}
+													/>
 
-												<FormField
-													control={form.control}
-													name={`items.${index}.specialInstructions`}
-													render={({ field }) => (
-														<FormItem>
-															<FormLabel>Notes</FormLabel>
-															<FormControl>
-																<Input
-																	placeholder="Optional"
-																	{...field}
-																/>
-															</FormControl>
-															<FormMessage />
-														</FormItem>
-													)}
-												/>
+													<FormField
+														control={form.control}
+														name={`items.${index}.quantity`}
+														render={({ field }) => (
+															<FormItem>
+																<FormLabel>Qty *</FormLabel>
+																<FormControl>
+																	<Input
+																		inputMode="numeric"
+																		pattern="[0-9]*"
+																		className="text-center"
+																		value={field.value || ""}
+																		onChange={(e) => {
+																			const raw = e.target.value.replace(/\D/g, "");
+																			if (raw === "") {
+																				field.onChange("");
+																				return;
+																			}
+																			const val = parseInt(raw);
+																			if (val > maxQty) {
+																				field.onChange(maxQty);
+																				toast.error(
+																					`Only ${maxQty} available for this item`,
+																				);
+																			} else {
+																				field.onChange(val);
+																			}
+																		}}
+																		onBlur={() => {
+																			if (!field.value || field.value < 1) {
+																				field.onChange(1);
+																			}
+																		}}
+																	/>
+																</FormControl>
+																{selectedItem && (
+																	<FormDescription className="text-xs">
+																		Max: {maxQty}
+																	</FormDescription>
+																)}
+																<FormMessage />
+															</FormItem>
+														)}
+													/>
+												</div>
+
+												{fields.length > 1 && (
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon"
+														className="mt-8 shrink-0"
+														onClick={() => remove(index)}
+													>
+														<TrashIcon className="w-4 h-4 text-red-600" />
+													</Button>
+												)}
 											</div>
 
-											{fields.length > 1 && (
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon"
-													className="mt-8"
-													onClick={() => remove(index)}
-												>
-													<TrashIcon className="w-4 h-4 text-red-600" />
-												</Button>
-											)}
+											<FormField
+												control={form.control}
+												name={`items.${index}.specialInstructions`}
+												render={({ field }) => (
+													<FormItem>
+														<FormLabel>Notes</FormLabel>
+														<FormControl>
+															<Input
+																placeholder="Optional notes..."
+																{...field}
+															/>
+														</FormControl>
+														<FormMessage />
+													</FormItem>
+												)}
+											/>
 										</div>
 									);
 								})}

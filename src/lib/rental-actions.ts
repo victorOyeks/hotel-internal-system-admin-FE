@@ -52,6 +52,27 @@ export async function createRentalOrder(payload: any) {
 	}
 }
 
+export async function updateOrderStatus(
+	orderId: string,
+	payload: { status: string; notes?: string },
+) {
+	try {
+		const session = await verifySession();
+		const response = await $fetch(
+			"@patch/api/hotels/rentals/orders/:orderId/status",
+			{
+				params: { orderId },
+				body: payload,
+				auth: { type: "Bearer", token: session.token },
+				throw: true,
+			},
+		);
+		return { success: true as const, data: response.data };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
+}
+
 export async function extendRentalOrder(
 	orderId: string,
 	payload: { newEndTime: string; notes?: string },
