@@ -39,8 +39,12 @@ import {
 	TableCell,
 	TableFooter,
 } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { RoomsTableActions } from "./rooms-table-actions";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
+import { exportRooms } from "@/lib/front-desk-actions";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 function RoomsFilter({
 	rooms,
@@ -223,6 +227,58 @@ function RoomsFilter({
 	);
 }
 
+function Export({ roomQuery }: { roomQuery: { roomStatus: "AVAILABLE" | null; search: string | null; roomType: string | null } }) {
+	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+	const onExport = async (data: ExportData) => {
+		try {
+			const filters = {
+				search: roomQuery.search || undefined,
+				roomType: roomQuery.roomType || undefined,
+				status: roomQuery.roomStatus || undefined,
+				format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+			};
+
+			const response = await exportRooms(filters);
+
+			if (response.success && response.data) {
+				const blob = new Blob([response.data as unknown as BlobPart], {
+					type:
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				const extension =
+					data.export_type === "excel" ? "xlsx" : data.export_type;
+				a.download = `rooms-export-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+				toast.success("Export downloaded successfully");
+				setIsExportDialogOpen(false);
+			} else {
+				toast.error(response.error || "Failed to export rooms");
+			}
+		} catch {
+			toast.error("An error occurred during export");
+		}
+	};
+
+	return (
+		<ExportDialog
+			open={isExportDialogOpen}
+			setOpenAction={setIsExportDialogOpen}
+			onSubmitAction={onExport}
+		/>
+	);
+}
+
 function RoomListToolbar({
 	table,
 	rooms,
@@ -244,11 +300,10 @@ function RoomListToolbar({
 					variant="outline"
 					data-active={queryState.roomStatus === null}
 					onClick={() => setQueryState({ roomStatus: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.roomStatus === null
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === null
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					All Rooms{" "}
 					{queryState.roomStatus === null &&
@@ -260,11 +315,10 @@ function RoomListToolbar({
 					variant="outline"
 					data-active={queryState.roomStatus === "AVAILABLE"}
 					onClick={() => setQueryState({ roomStatus: "AVAILABLE" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.roomStatus === "AVAILABLE"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === "AVAILABLE"
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					Available Rooms{" "}
 					{queryState.roomStatus === "AVAILABLE" &&
@@ -293,6 +347,8 @@ function RoomListToolbar({
 						/>
 					</TableFilter>
 
+					<Export roomQuery={queryState} />
+
 					{/* Applied Filters Display */}
 					{queryState.roomType && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -317,6 +373,7 @@ function RoomListToolbar({
 }
 
 const columnHelper = createColumnHelper<RoomDetails>();
+
 
 const columns = [
 	columnHelper.accessor("customId", {
@@ -352,7 +409,7 @@ const columns = [
 				RESERVED: "yellow",
 				BOOKED: "blue",
 				CHECKED_IN: "blue",
-				CHECKED_OUT: "red",
+				CHECKED_OUT: "secondary",
 				BLOCKED: "gray",
 				DIRTY: "red",
 			};
@@ -366,23 +423,66 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("guestDetails.guestName", {
+		header: "Guest",
+		cell: (info) => {
+			const guestName = info.getValue();
+			const guestDetails = info.row.original.guestDetails;
 
-	columnHelper.accessor("roomPrice", {
-		header: "Price/Night",
-		cell: (info) => formatCurrency(info.getValue()) || "N/A",
+			if (!guestName || info.row.original.checkInStatus === "AVAILABLE") return <span className="text-gray-400">-</span>;
+
+			return (
+				<div className="flex flex-col">
+					<div className="flex items-center gap-2">
+						<span className="font-medium">{guestName}</span>
+						{guestDetails?.isCurrentGuest && (
+							<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-200 text-green-700 bg-green-50">
+								Current
+							</Badge>
+						)}
+					</div>
+					<div className="flex flex-col text-xs text-muted-foreground">
+						{guestDetails?.organizationName && (
+							<span>{guestDetails.organizationName}</span>
+						)}
+						{guestDetails?.bookingId && (
+							<span className="font-mono text-[10px] text-gray-400">#{guestDetails.bookingId.slice(-6)}</span>
+						)}
+					</div>
+				</div>
+			);
+		},
 	}),
 	columnHelper.accessor("roomFacility", {
 		header: "Room Facilities",
-		cell: (info) => (
-			<div className="flex flex-wrap gap-2">
-				{info.getValue().map((facility, i) => (
-					<span key={facility}>
-						{facility}
-						{i < info.getValue().length - 1 ? ", " : "."}
-					</span>
-				))}
-			</div>
-		),
+		cell: (info) => {
+			const facilities = info.getValue();
+			const limit = 2;
+			const displayed = facilities.slice(0, limit);
+			const remaining = facilities.length - limit;
+
+			return (
+				<div className="flex flex-wrap gap-1 text-xs">
+					{displayed.map((facility) => (
+						<span
+							key={facility}
+							className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
+						>
+							{facility}
+						</span>
+					))}
+					{remaining > 0 && (
+						<span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">
+							+{remaining} more
+						</span>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.display({
+		id: "actions",
+		cell: ({ row }) => <RoomsTableActions row={row.original} />,
 	}),
 ];
 
@@ -399,9 +499,9 @@ function RoomListTable({ table }: { table: TableType<RoomDetails> }) {
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}

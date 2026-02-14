@@ -132,7 +132,7 @@ export function LocationsToolbar({
 
 				<div className="flex items-center gap-2">
 					<TableFilter open={open} setOpen={setOpen} count={(queryState.type ? 1 : 0) + (queryState.temperature ? 1 : 0)}>
-						<div className="flex flex-col gap-y-4 w-[280px]">
+						<div className="flex flex-col gap-y-4">
 							<div className="space-y-2">
 								<h4 className="font-medium leading-none">Type</h4>
 								<Select
@@ -143,7 +143,7 @@ export function LocationsToolbar({
 										})
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="w-full">
 										<SelectValue placeholder="All types" />
 									</SelectTrigger>
 									<SelectContent>
@@ -167,7 +167,7 @@ export function LocationsToolbar({
 										})
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="w-full">
 										<SelectValue placeholder="All locations" />
 									</SelectTrigger>
 									<SelectContent>

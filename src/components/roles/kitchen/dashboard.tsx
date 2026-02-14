@@ -571,11 +571,10 @@ export function KitchenToolbar() {
 					variant="outline"
 					data-active={queryState.status === null}
 					onClick={() => setQueryState({ status: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.status === null
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.status === null
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					All Orders
 				</Button>
@@ -585,11 +584,10 @@ export function KitchenToolbar() {
 					variant="outline"
 					data-active={queryState.status === "COMPLETED"}
 					onClick={() => setQueryState({ status: "COMPLETED" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.status === "COMPLETED"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.status === "COMPLETED"
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					Order History
 				</Button>
@@ -712,7 +710,7 @@ export function KitchenToolbar() {
 					<ExportDialog
 						onSubmitAction={() => Promise.resolve()}
 						open={false}
-						setOpenAction={() => {}}
+						setOpenAction={() => { }}
 					/>
 				</div>
 			</div>
@@ -771,10 +769,13 @@ function OrderCard({
 		},
 	});
 
+	const firstItem = order.orderItems[0];
+	const remainingItemsCount = order.orderItems.length - 1;
+
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: true
 		<div
-			className="border border-primary-5/20 rounded-2xl p-4 bg-white h-full flex flex-col justify-between"
+			className="border border-primary-5/20 rounded-2xl p-4 bg-white h-full flex flex-col justify-between cursor-pointer hover:border-primary-5/40 transition-colors"
 			onClick={onClick}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" || e.key === " ") {
@@ -801,6 +802,7 @@ function OrderCard({
 								<button
 									type="button"
 									className="flex items-center gap-x-1 text-xs bg-muted text-muted-foreground rounded-full px-2 py-1"
+									onClick={(e) => e.stopPropagation()}
 								>
 									Update <ChevronDownIcon className="size-4" />
 								</button>
@@ -812,7 +814,10 @@ function OrderCard({
 										size="sm"
 										variant="ghost"
 										className="w-full justify-between"
-										onClick={() => mutate("PENDING")}
+										onClick={(e) => {
+											e.stopPropagation();
+											mutate("PENDING");
+										}}
 									>
 										New order{" "}
 										<Checkbox
@@ -829,7 +834,10 @@ function OrderCard({
 										size="sm"
 										variant="ghost"
 										className="w-full justify-between"
-										onClick={() => mutate("COMPLETED")}
+										onClick={(e) => {
+											e.stopPropagation();
+											mutate("COMPLETED");
+										}}
 									>
 										Completed{" "}
 										<Checkbox
@@ -846,7 +854,10 @@ function OrderCard({
 										size="sm"
 										variant="ghost"
 										className="w-full justify-between"
-										onClick={() => mutate("CANCELLED")}
+										onClick={(e) => {
+											e.stopPropagation();
+											mutate("CANCELLED");
+										}}
 									>
 										Cancel{" "}
 										<Checkbox
@@ -877,20 +888,24 @@ function OrderCard({
 					<p>{order.orderItems.length} items</p>
 					<p>Total: {formatCurrency(order.totalAmount)}</p>
 				</div>
-				{order.orderItems.map((item) => (
-					<div
-						key={item.itemName}
-						className="flex justify-between items-center text-sm"
-					>
+
+				{firstItem && (
+					<div className="flex justify-between items-center text-sm">
 						<div>
-							<p className="font-medium">{item.itemName}</p>
+							<p className="font-medium">{firstItem.itemName}</p>
 							<p className="text-muted-foreground text-xs font-medium">
-								{formatCurrency(item.price)}
+								{formatCurrency(firstItem.price)}
 							</p>
 						</div>
-						<p className="font-medium">x{item.quantity}</p>
+						<p className="font-medium">x{firstItem.quantity}</p>
 					</div>
-				))}
+				)}
+
+				{remainingItemsCount > 0 && (
+					<div className="text-sm text-muted-foreground font-medium pt-1">
+						+ {remainingItemsCount} more item{remainingItemsCount !== 1 ? 's' : ''}...
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -923,7 +938,7 @@ function OrderDetailSheet({ order }: { order: OrderItem }) {
 							<Badge
 								variant={
 									statusToVariant[
-										order.status as keyof typeof statusToVariant
+									order.status as keyof typeof statusToVariant
 									] || "blue"
 								}
 								className="capitalize"

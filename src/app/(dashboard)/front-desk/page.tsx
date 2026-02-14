@@ -47,14 +47,16 @@ function Page({ searchParams }: PageProps) {
 
 	const rooms = use(
 		queryClient.ensureQueryData({
-			queryKey: ["front-desks", "rooms"],
+			queryKey: ["front-desks", "rooms", query["room:search"], query["room:type"]],
 			queryFn: async ({ signal }) => {
 				const response = await $fetch(
-					"@get/api/front-desks/all-rooms-by-type",
+					"@get/api/front-desks/rooms",
 					{
 						query: {
-							roomType: query["room:type"] ?? roomTypes[0],
+							roomType: query["room:type"] || undefined,
+							search: query["room:search"] || undefined,
 							roomStatus: "AVAILABLE",
+							size: 100, // Limit for dropdown
 						},
 						signal,
 						throw: true,
@@ -62,7 +64,7 @@ function Page({ searchParams }: PageProps) {
 					},
 				);
 
-				return response.data;
+				return response.data.content;
 			},
 		}),
 	);

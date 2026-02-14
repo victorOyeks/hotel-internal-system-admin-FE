@@ -1,16 +1,29 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: explanation> */
 "use server";
 
-import type { CreatePurchaseOrderRequest } from "@/lib/fetch";
+import type { CreatePurchaseOrderRequest, CreateStockAdjustmentRequest, RecordStockCountRequest } from "@/lib/fetch";
+import { revalidatePath } from "next/cache";
 
 import type z from "zod";
 import type {
-	ServerActionResponse,
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type ApiInputInventoryProduct } from "./fetch";
-import { ExportData } from "@/components/shared/shared-dialogs";
+import type { ExportData } from "@/components/shared/shared-dialogs";
 import { getCookieData } from "./server-fns";
+
+// Helper function to parse error messages
+function parseError(error: any): string {
+	if (error?.data?.message) {
+		return error.data.message;
+	}
+	if (error?.message) {
+		return error.message;
+	}
+	return "An unexpected error occurred";
+}
+
 
 export async function addToInventory(payload: {
 	name: string;
@@ -32,41 +45,28 @@ export async function addToInventory(payload: {
 	return response.data;
 }
 
-export async function issueStockItem({
-	itemId,
-	...payload
-}: {
-	itemId: string;
-	quantity: number;
-	department: string;
-	receivingStaff: string;
-	remarks?: string | undefined;
-}): ServerActionResponse<string> {
-	console.log(payload);
-
+export async function issueStockItem(
+	payload: z.infer<any>,
+): ServerActionResponseFromEndpoint<"@post/api/inventories/stock/issue"> {
 	const sessionData = await verifySession();
 
-	const response = await $fetch("@post/api/inventories/items/issue", {
-		body: {
-			...payload,
-		},
-		query: {
-			itemId,
-		},
-		auth: { type: "Bearer", token: sessionData.token },
-	});
+	try {
+		const response = await $fetch("@post/api/inventories/stock/issue", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
 
-	if (response.error) {
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
 		return {
 			success: false,
-			error: response.error.message || "Unable to issue stock item",
+			error: parseError(error),
 		};
 	}
-
-	return {
-		success: true,
-		data: (response.data as { message: string }).message,
-	};
 }
 
 export async function addProduct(
@@ -91,7 +91,7 @@ export async function addProduct(
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to add product",
+			error: parseError(error),
 		};
 	}
 }
@@ -120,7 +120,7 @@ export async function editProduct(
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to edit product",
+			error: parseError(error),
 		};
 	}
 }
@@ -140,8 +140,6 @@ export async function deleteProduct(params: {
 			},
 		);
 
-		console.log("response", response);
-
 		return {
 			success: true,
 			data: response,
@@ -149,7 +147,7 @@ export async function deleteProduct(params: {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to delete product",
+			error: parseError(error),
 		};
 	}
 }
@@ -171,7 +169,7 @@ export async function addGRNItem(payload: unknown) {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to add GRN",
+			error: parseError(error),
 		};
 	}
 }
@@ -198,7 +196,7 @@ export async function addSupplier(payload: {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to add supplier",
+			error: parseError(error),
 		};
 	}
 }
@@ -229,7 +227,7 @@ export async function editSupplier(
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to edit supplier",
+			error: parseError(error),
 		};
 	}
 }
@@ -254,7 +252,7 @@ export async function deleteSupplier(supplierId: string) {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to delete supplier",
+			error: parseError(error),
 		};
 	}
 }
@@ -279,8 +277,7 @@ export async function postGRNToStock(grnId: string) {
 	} catch (error) {
 		return {
 			success: false,
-			error:
-				error instanceof Error ? error.message : "Unable to post GRN to stock",
+			error: parseError(error),
 		};
 	}
 }
@@ -295,6 +292,7 @@ export async function addStockTake(payload: {
 	acceptableVariancePercent: number;
 	stockFrozen: boolean;
 	productIds: string[];
+	notes?: string;
 }) {
 	const sessionData = await verifySession();
 
@@ -312,7 +310,237 @@ export async function addStockTake(payload: {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to add stock take",
+			error: parseError(error),
+		};
+	}
+}
+
+export async function getStockTakes(
+	params: {
+		page?: number;
+		size?: number;
+		search?: string;
+		status?: z.infer<typeof import("./fetch").StockTakeStatusEnum>;
+		startDate?: string;
+		endDate?: string;
+	} = {},
+) {
+	const sessionData = await verifySession();
+
+	try {
+		// Build query object matching the schema
+		const query: any = {
+			page: params.page ?? 0,
+			size: params.size ?? 10,
+		};
+		if (params.search) query.search = params.search;
+		if (params.status) query.status = params.status;
+
+		const response = await $fetch("@get/api/inventories/stock-takes", {
+			query,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function getStockTake(stockTakeId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-takes/:stockTakeId",
+			{
+				params: { stockTakeId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function startStockTake(stockTakeId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/start",
+			{
+				params: { stockTakeId },
+				body: {}, // Empty body if required
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/dashboard/inventory/stock-takes");
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function cancelStockTake(stockTakeId: string, reason: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/cancel",
+			{
+				params: { stockTakeId },
+				body: { reason },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/dashboard/inventory/stock-takes");
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function completeStockTake(stockTakeId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/complete",
+			{
+				params: { stockTakeId },
+				body: {},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/dashboard/inventory/stock-takes");
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function recordStockCount(
+	stockTakeId: string,
+	itemId: string,
+	payload: RecordStockCountRequest
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/items/:itemId/record-count",
+			{
+				params: { stockTakeId, itemId },
+				body: payload,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath(`/dashboard/inventory/stock-takes/${stockTakeId}`);
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function postStockTakeAdjustments(stockTakeId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/post-adjustments",
+			{
+				params: { stockTakeId },
+				body: {},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath(`/dashboard/inventory/stock-takes/${stockTakeId}`);
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function reviewStockTake(stockTakeId: string, payload?: any) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/stock-takes/:stockTakeId/review",
+			{
+				params: { stockTakeId },
+				body: payload ?? {},
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath(`/dashboard/inventory/stock-takes/${stockTakeId}`);
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
 		};
 	}
 }
@@ -334,8 +562,7 @@ export async function addPurchaseOrder(payload: CreatePurchaseOrderRequest) {
 	} catch (error) {
 		return {
 			success: false,
-			error:
-				error instanceof Error ? error.message : "Unable to create purchase order",
+			error: parseError(error),
 		};
 	}
 }
@@ -361,7 +588,7 @@ export async function editGRN(
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to edit GRN",
+			error: parseError(error),
 		};
 	}
 }
@@ -386,7 +613,7 @@ export async function deleteGRN(grnId: string) {
 	} catch (error) {
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unable to delete GRN",
+			error: parseError(error),
 		};
 	}
 }
@@ -600,6 +827,32 @@ export async function exportStockAdjustments(filters: {
 	}
 }
 
+export async function editStorageLocation(
+	locationId: string,
+	payload: Partial<import("./fetch").CreateStorageLocationRequest>,
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@put/api/inventories/locations/:id", {
+			body: payload,
+			params: { id: locationId },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unable to edit location",
+		};
+	}
+}
+
 export async function exportGRNs(
 	filters: {
 		search?: string;
@@ -719,6 +972,391 @@ export async function getStockAdjustments(
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Failed to fetch adjustments",
+		};
+	}
+}
+
+export async function getStorageLocations(search?: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/locations/list", {
+			query: { search },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch locations",
+		};
+	}
+}
+
+
+export async function exportProducts(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	status?: string;
+	category?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/products/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export products",
+		};
+	}
+
+}
+
+export async function exportSuppliers(filters: {
+	format?: "EXCEL" | "CSV" | "PDF";
+	search?: string;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/suppliers/export", {
+			query: {
+				...filters,
+				format: filters.format || "CSV",
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to export suppliers",
+		};
+	}
+}
+
+export async function createStockAdjustment(payload: CreateStockAdjustmentRequest) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@post/api/inventories/adjustments", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to create stock adjustment",
+		};
+	}
+}
+
+export async function getProducts(search?: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/products/list", {
+			query: { search },
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch products",
+		};
+	}
+}
+
+export async function approveStockAdjustment(adjustmentId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/adjustments/:adjustmentId/approve",
+			{
+				params: { adjustmentId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/inventory/adjustments");
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to approve stock adjustment",
+		};
+	}
+}
+
+export async function postStockAdjustment(adjustmentId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@post/api/inventories/adjustments/:adjustmentId/post",
+			{
+				params: { adjustmentId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		revalidatePath("/inventory/adjustments");
+		return {
+			success: true,
+			data: response,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to post stock adjustment",
+		};
+	}
+}
+
+export async function getStockLevels(filters: {
+	locationId?: string;
+	productId?: string;
+	category?: string;
+	search?: string;
+	lowStock?: boolean;
+	outOfStock?: boolean;
+	page?: number;
+	size?: number;
+}) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch("@get/api/inventories/stock-levels", {
+			query: {
+				...filters,
+				page: filters.page || 0,
+				size: filters.size || 20,
+			},
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch stock levels",
+		};
+	}
+}
+
+export async function getStockLevelsByLocation(locationId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/by-location/:locationId",
+			{
+				params: { locationId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock levels by location",
+		};
+	}
+}
+
+export async function getStockLevelsByProduct(productId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/by-product/:productId",
+			{
+				params: { productId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock levels by product",
+		};
+	}
+}
+
+export async function getLowStockItems() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/low-stock",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch low stock items",
+		};
+	}
+}
+
+export async function getOutOfStockItems() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/out-of-stock",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch out of stock items",
+		};
+	}
+}
+
+export async function getStockLevelStatistics() {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/statistics",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch stock level statistics",
+		};
+	}
+}
+
+export async function getStockLevel(stockLevelId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/stock-levels/:stockLevelId",
+			{
+				params: { stockLevelId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error ? error.message : "Unable to fetch stock level",
 		};
 	}
 }

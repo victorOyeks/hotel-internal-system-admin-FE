@@ -50,8 +50,6 @@ export default function Page({ searchParams }: PageProps) {
 		},
 	}));
 
-	console.log(orders)
-
 	const stats = use(qc.ensureQueryData({
 		queryKey: ["purchase-orders-stats"],
 		queryFn: async () => {

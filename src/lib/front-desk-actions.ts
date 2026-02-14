@@ -6,7 +6,7 @@ import type {
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
-import { $fetch } from "./fetch";
+import { $fetch, type CheckInRequest } from "./fetch";
 
 export async function makeReservation({
 	roomId,
@@ -82,8 +82,8 @@ export async function checkInGuest({
 }: Prettify<
 	{
 		roomId: string;
-	} & APIInput<"@post/api/front-desks/:roomId/check-in">
->): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomId/check-in"> {
+	} & CheckInRequest
+>): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomIdentifier/check-in"> {
 	const { token } = await verifySession("FRONT_DESK");
 
 	const response = await $fetch("@post/api/front-desks/:roomId/check-in", {
@@ -305,4 +305,48 @@ export async function getBookingPayments({
 		success: true,
 		data: response.data,
 	};
+}
+
+export async function exportRooms(filters: {
+	search?: string;
+	roomType?: string;
+	status?: string;
+	format: "CSV" | "PDF" | "EXCEL";
+}): Promise<{ success: boolean; data?: string; error?: string }> {
+	try {
+		const { token } = await verifySession("FRONT_DESK");
+
+		const response = await $fetch("@get/api/front-desks/rooms/export", {
+			query: {
+				search: filters.search,
+				roomType: filters.roomType,
+				roomStatus: filters.status,
+				format: filters.format,
+			},
+			auth: {
+				type: "Bearer",
+				token,
+			},
+		});
+
+		if (response.error) {
+			return {
+				success: false,
+				error: response.error.message || "Failed to export rooms",
+			};
+		}
+
+		return {
+			success: true,
+			data: response.data as string,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "An error occurred during export",
+		};
+	}
 }

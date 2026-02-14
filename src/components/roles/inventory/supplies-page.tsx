@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { DataTablePagination } from "@/components/shared/pagination";
-import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -88,9 +87,13 @@ import {
 	addSupplier,
 	deleteSupplier,
 	editSupplier,
+	exportSuppliers,
 } from "@/lib/inventory-actions";
 import { parseAsString, useQueryState } from "nuqs";
 import { revalidateRoute } from "@/lib/actions";
+import { type ExportData, ExportDialog } from "@/components/shared/shared-dialogs";
+import { format } from "date-fns";
+
 
 const addSupplierFormSchema = z.object({
 	name: z.string().nonempty(),
@@ -291,32 +294,74 @@ function AddSupplierForm({
 	);
 }
 
-function BookingsListToolbar({ products }: { products: InventoryProduct[] }) {
+function SuppliersListToolbar({ products }: { products: InventoryProduct[] }) {
+	const [exportDialogOpen, setExportDialogOpen] = useState(false);
+	const [search, setSearch] = useQueryState(
+		"search",
+		parseAsString.withDefault(""),
+	);
+
+	const handleExport = async (data: ExportData) => {
+		try {
+			const filters = {
+				search: search || undefined,
+				format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+			};
+
+			const response = await exportSuppliers(filters);
+
+			if (response.success && response.data) {
+				const blob = new Blob([response.data as unknown as BlobPart], {
+					type:
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				const extension =
+					data.export_type === "excel" ? "xlsx" : data.export_type;
+				a.download = `suppliers-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+				toast.success("Export downloaded successfully");
+				setExportDialogOpen(false);
+			} else {
+				toast.error(response.error || "Failed to export suppliers");
+			}
+		} catch {
+			toast.error("An error occurred during export");
+		}
+	};
+
 	return (
 		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
 			<div className="flex items-center gap-x-2">
-				<Button
-					size="sm"
-					variant="outline"
-					data-active
-					className="shadow-none text-xs hover:border-transparent rounded-full"
-				>
-					All Suppliers
-				</Button>
-			</div>
-
-			<div className="flex items-center gap-x-2 ">
 				<div className="relative">
 					<input
 						type="text"
 						placeholder="Search"
+						value={search ?? ""}
+						onChange={(e) => setSearch(e.target.value)}
 						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
 					/>
 					<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
 				</div>
-				<TableFilter></TableFilter>
+			</div>
 
+			<div className="flex items-center gap-x-2 ">
 				<AddSupplier products={products} />
+
+				<ExportDialog
+					open={exportDialogOpen}
+					setOpenAction={setExportDialogOpen}
+					onSubmitAction={handleExport}
+				/>
 			</div>
 		</div>
 	);
@@ -452,8 +497,19 @@ function SuppliesActions({
 						<AlertDialogAction
 							onClick={() => deleteMutate(row.id)}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={isPending}
 						>
-							Delete
+							{isPending ? (
+								<>
+									<Loader2Icon className="animate-spin" />
+									Deleting...
+								</>
+							) : (
+								<>
+									<TrashIcon />
+									Delete
+								</>
+							)}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -609,7 +665,7 @@ export function SuppliesPage({
 	}, [breadcrumb, setBreadcrumb]);
 	return (
 		<div className="space-y-4 px-4 py-4">
-			<BookingsListToolbar products={productsList} />
+			<SuppliersListToolbar products={productsList} />
 
 			<SuppliesTable data={data} paginationMeta={paginationMeta} />
 		</div>

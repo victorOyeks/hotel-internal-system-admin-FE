@@ -1,61 +1,17 @@
 import { getUser } from "@/lib/dal";
 import type { HotelRole } from "@/lib/types";
-import {
-    Briefcase,
-    ConciergeBell,
-    Hammer,
-    Key,
-    LayoutDashboard,
-    Package,
-    ShieldAlert,
-    Utensils,
-    WashingMachine,
-    PiggyBank,
-} from "lucide-react";
+
 import { redirect } from "next/navigation";
 import { selectRole } from "./actions";
 import { RoleButton } from "./role-button";
 import { LogoutButton } from "./logout-button";
 import { logout } from "@/lib/actions";
 
-const roleIcons: Record<HotelRole, React.ReactNode> = {
-    HOTEL_OWNER: <Briefcase className="size-5" />,
-    MANAGER: <LayoutDashboard className="size-5" />,
-    FRONT_DESK: <ConciergeBell className="size-5" />,
-    MAINTENANCE: <Hammer className="size-5" />,
-    INVENTORY: <Package className="size-5" />,
-    RESTAURANT: <Utensils className="size-5" />,
-    RENTALS: <Key className="size-5" />,
-    SUPER_ADMIN: <ShieldAlert className="size-5" />,
-    LAUNDRY: <WashingMachine className="size-5" />,
-    FINANCIALS: <PiggyBank className="size-5" />,
-};
-
-const roleLabels: Record<HotelRole, string> = {
-    HOTEL_OWNER: "Hotel Owner",
-    MANAGER: "Manager",
-    FRONT_DESK: "Front Desk",
-    MAINTENANCE: "Maintenance",
-    INVENTORY: "Inventory Officer",
-    RESTAURANT: "Restaurant",
-    RENTALS: "Rentals",
-    SUPER_ADMIN: "Super Admin",
-    LAUNDRY: "Laundry",
-    FINANCIALS: "Financials",
-};
-
-const roleDescriptions: Record<HotelRole, string> = {
-    HOTEL_OWNER: "Manage properties and business operations",
-    MANAGER: "Oversee hotel operations and staff",
-    FRONT_DESK: "Handle guest check-ins and reservations",
-    MAINTENANCE: "Maintain facilities and equipment",
-    INVENTORY: "Manage stock and supplies",
-    RESTAURANT: "Oversee food and beverage services",
-    RENTALS: "Manage rental properties",
-    SUPER_ADMIN: "Full system administration access",
-    LAUNDRY: "Manage laundry services",
-    FINANCIALS: "Manage financial operations",
-};
+import {
+    roleDescriptions,
+    roleIcons,
+    roleLabels
+} from "@/lib/role-utils";
 
 export default async function SelectRolePage() {
     const user = await getUser();
@@ -66,7 +22,7 @@ export default async function SelectRolePage() {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-            <div className="w-full max-w-lg space-y-6">
+            <div className="w-full max-w-lg lg:max-w-4xl space-y-6">
                 {/* Header */}
                 <div className="space-y-1">
                     <h1 className="text-2xl font-semibold text-foreground">
@@ -78,7 +34,7 @@ export default async function SelectRolePage() {
                 </div>
 
                 {/* Role List */}
-                <div className="space-y-1">
+                <div className="space-y-1 lg:space-y-0 grid lg:grid-cols-2 lg:gap-px lg:bg-border rounded-lg overflow-hidden">
                     {user.roles.map((role) => (
                         <form
                             key={role}
@@ -88,7 +44,10 @@ export default async function SelectRolePage() {
                             }}
                         >
                             <RoleButton
-                                icon={roleIcons[role as HotelRole]}
+                                icon={(() => {
+                                    const Icon = roleIcons[role as HotelRole];
+                                    return <Icon className="size-5" />;
+                                })()}
                                 label={roleLabels[role as HotelRole] || role}
                                 description={roleDescriptions[role as HotelRole]}
                             />
@@ -97,7 +56,7 @@ export default async function SelectRolePage() {
                 </div>
 
                 {/* Logout */}
-                <div>
+                <div className="max-w-sm mx-auto">
                     <LogoutButton logoutAction={logout} />
                 </div>
             </div>

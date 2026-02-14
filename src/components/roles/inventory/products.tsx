@@ -1,6 +1,5 @@
 "use client";
 
-import { atom, useSetAtom } from "jotai";
 import type { Table as TableType } from "@tanstack/react-table";
 import type { InventoryProductResponse } from "@/lib/fetch";
 import { useCallback, useState } from "react";
@@ -10,11 +9,6 @@ import {
 } from "@/components/shared/shared-dialogs";
 import { SearchIcon } from "lucide-react";
 import { TableFilter } from "@/components/shared/table-filter";
-
-const successDialogAtom = atom({
-	show: false,
-	message: "",
-});
 
 import {
 	LOCATION_TYPES,
@@ -34,13 +28,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
 
+import { exportProducts } from "@/lib/inventory-actions";
+import { format } from "date-fns";
+import { toast } from "sonner";
+
 export function ProductsToolbar({
 	table,
 }: {
 	table: TableType<InventoryProductResponse>;
 }) {
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
-	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 	const [search, setSearch] = useQueryState(
 		"search",
 		productSearchParams.search.withOptions({ throttleMs: 500 }),
@@ -60,15 +57,44 @@ export function ProductsToolbar({
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
-			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
+			try {
+				const filters = {
+					status: status || undefined,
+					category: category || undefined,
+					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+				};
+
+				const response = await exportProducts(filters);
+
+				if (response.success && response.data) {
+					const blob = new Blob([response.data as unknown as BlobPart], {
+						type:
+							data.export_type === "csv"
+								? "text/csv"
+								: data.export_type === "pdf"
+									? "application/pdf"
+									: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					});
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					const extension =
+						data.export_type === "excel" ? "xlsx" : data.export_type;
+					a.download = `products-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					toast.success("Export downloaded successfully");
+					setExportDialogOpen(false);
+				} else {
+					toast.error(response.error || "Failed to export products");
+				}
+			} catch {
+				toast.error("An error occurred during export");
+			}
 		},
-		[setSuccessDialogOpen],
+		[status, category],
 	);
 
 	const [open, setOpen] = useState(false);

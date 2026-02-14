@@ -1,9 +1,21 @@
 "use client";
 
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { format } from "date-fns";
+import {
+	CalendarIcon,
+	CheckIcon,
+	ChevronsUpDownIcon,
+	Loader2Icon,
+	PlusIcon,
+	TrashIcon,
+} from "lucide-react";
+import { parseAsString, useQueryState } from "nuqs";
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DialogClose } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	Form,
 	FormControl,
@@ -12,42 +24,45 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { addPurchaseOrder } from "@/lib/inventory-actions";
-import { toast } from "sonner";
-import { ChevronsUpDownIcon, CheckIcon, Loader2Icon } from "lucide-react";
-import { revalidateRoute } from "@/lib/actions";
-import type { InventoryProductResponse, InventorySuppliers } from "@/lib/fetch";
 import {
-	MultiSelect,
-	MultiSelectTrigger,
-	MultiSelectValue,
-	MultiSelectContent,
-	MultiSelectItem,
-} from "@/components/ui/multi-select";
-import { useQueryState, parseAsString } from "nuqs";
-import { useState } from "react";
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+
+import { Textarea } from "@/components/ui/textarea";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import {
-	Command,
-	CommandInput,
-	CommandList,
-	CommandEmpty,
-	CommandGroup,
-	CommandItem,
-} from "@/components/ui/command";
 import { Separator } from "@/components/ui/separator";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { addPurchaseOrder } from "@/lib/inventory-actions";
+import { revalidateRoute } from "@/lib/actions";
+import type { InventoryProductResponse, InventorySuppliers } from "@/lib/fetch";
+import { DialogClose } from "@/components/ui/dialog";
+
+// --- Schema Definition ---
 
 const purchaseOrderItemSchema = z.object({
 	productId: z.string().nonempty("Product is required"),
+	productName: z.string().optional(),
 	quantityOrdered: z.coerce.number().min(1, "Quantity must be at least 1"),
 	unitPrice: z.coerce.number().min(0, "Unit price must be positive"),
 	unit: z.string().nonempty("Unit is required"),
@@ -59,10 +74,10 @@ const purchaseOrderItemSchema = z.object({
 
 const purchaseOrderFormSchema = z.object({
 	supplierId: z.string().nonempty("Supplier is required"),
-	expectedDeliveryDate: z.string().nonempty("Expected delivery date is required"),
+	expectedDeliveryDate: z.date({ error: "Expected delivery date is required" }),
 	paymentTerms: z.string().max(200).optional(),
 	notes: z.string().max(2000).optional(),
-	items: z.array(purchaseOrderItemSchema).nonempty("At least one item is required"),
+	items: z.array(purchaseOrderItemSchema).min(1, "At least one item is required"),
 
 	// New Fields based on API Schema
 	supplierContactPerson: z.string().max(200).optional(),
@@ -70,7 +85,7 @@ const purchaseOrderFormSchema = z.object({
 	supplierContactEmail: z.string().max(200).email().optional().or(z.literal("")),
 	deliveryLocationId: z.string().optional(),
 	deliveryAddress: z.string().max(500).optional(),
-	orderDate: z.string().optional(), // Usually set by backend or current date
+	orderDate: z.date().optional(), // Usually set by backend or current date
 	taxRate: z.coerce.number().min(0).optional(),
 	shippingCost: z.coerce.number().min(0).optional(),
 	otherCharges: z.coerce.number().min(0).optional(),
@@ -89,7 +104,10 @@ const purchaseOrderFormSchema = z.object({
 interface CreatePOFormProps {
 	suppliers: Pick<InventorySuppliers, "id" | "name" | "email" | "phone">[];
 	products: InventoryProductResponse[];
+	onClose?: () => void;
 }
+
+// --- Components ---
 
 function SupplierCombobox({
 	value,
@@ -102,7 +120,7 @@ function SupplierCombobox({
 }) {
 	const [open, setOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useQueryState(
-		"supplier-list:search",
+		"supplier-search",
 		parseAsString.withDefault(""),
 	);
 
@@ -113,20 +131,21 @@ function SupplierCombobox({
 					variant="outline"
 					role="combobox"
 					aria-expanded={open}
-					className="w-full justify-between"
+					className="w-full justify-between h-8 text-xs truncate"
 				>
 					{value
-						? suppliers.find((supplier) => supplier.id === value)?.name
+						? suppliers.find((supplier) => supplier.id === value)?.name || value
 						: "Select supplier..."}
-					<ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-full p-0">
 				<Command shouldFilter={false}>
 					<CommandInput
-						placeholder="Search suppliers..."
+						placeholder="Search supplier..."
 						value={searchQuery}
-						onValueChange={(value) => setSearchQuery(value)}
+						onValueChange={setSearchQuery}
+						className="h-8 text-xs"
 					/>
 					<CommandList>
 						<CommandEmpty>No supplier found.</CommandEmpty>
@@ -139,6 +158,7 @@ function SupplierCombobox({
 										onValueChange(currentValue === value ? "" : currentValue);
 										setOpen(false);
 									}}
+									className="text-xs"
 								>
 									<CheckIcon
 										className={cn(
@@ -157,15 +177,87 @@ function SupplierCombobox({
 	);
 }
 
+function ProductCombobox({
+	value,
+	onSelectRaw,
+	selectedName,
+	products,
+}: {
+	value: string;
+	onSelectRaw: (value: InventoryProductResponse) => void;
+	selectedName?: string;
+	products: InventoryProductResponse[];
+}) {
+	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between h-7 text-xs truncate"
+				>
+					{value
+						? products.find((product) => product.id === value)?.name ||
+						selectedName ||
+						value
+						: "Select product..."}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command>
+					<CommandInput
+						placeholder="Search product..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+						className="h-8 text-xs"
+					/>
+					<CommandList>
+						<CommandEmpty>No product found.</CommandEmpty>
+						<CommandGroup>
+							{products.map((product) => (
+								<CommandItem
+									key={product.id}
+									value={product.id}
+									onSelect={() => {
+										onSelectRaw(product);
+										setOpen(false);
+									}}
+									className="text-xs"
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === product.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{product.name}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+// --- Component ---
+
 export function CreatePOForm({
 	suppliers,
 	products,
+	onClose,
 }: CreatePOFormProps) {
 	const form = useForm({
 		resolver: zodResolver(purchaseOrderFormSchema),
 		defaultValues: {
 			supplierId: "",
-			expectedDeliveryDate: "",
+			expectedDeliveryDate: new Date(),
 			paymentTerms: "",
 			notes: "",
 			items: [],
@@ -181,7 +273,7 @@ export function CreatePOForm({
 			currency: "NGN",
 			exchangeRate: 1,
 			paymentDueDays: 30,
-			paymentMethod: "",
+			paymentMethod: "Bank Transfer",
 			termsAndConditions: "",
 			deliveryInstructions: "",
 			internalNotes: "",
@@ -195,49 +287,13 @@ export function CreatePOForm({
 		name: "items",
 	});
 
-	const [productSearch, setProductSearch] = useQueryState(
-		"product-list:search",
-		parseAsString.withDefault(""),
-	);
-
-	// Sync MultiSelect with FieldArray
-	const selectedProductIds = fields.map((field) => field.productId);
-
-	const handleProductSelectionChange = (newSelectedIds: string[]) => {
-		const currentIds = new Set(selectedProductIds);
-		const newIds = new Set(newSelectedIds);
-
-		// Add new items
-		newSelectedIds.forEach((id) => {
-			if (!currentIds.has(id)) {
-				const product = products.find((p) => p.id === id);
-				append({
-					productId: id,
-					quantityOrdered: 1,
-					unitPrice: product?.sellingPrice || 0,
-					unit: product?.baseUnit || "PCS",
-					discountPercent: 0,
-					taxRate: 0,
-					notes: "",
-					specifications: "",
-				});
-			}
-		});
-
-		// Remove deselected items
-		fields.forEach((field, index) => {
-			if (!newIds.has(field.productId)) {
-				remove(index);
-			}
-		});
-	};
-
 	const { mutateAsync, isPending } = useMutation({
 		mutationFn: addPurchaseOrder,
 		onSuccess: async (response) => {
 			if (response.success) {
 				toast.success("Purchase order created successfully");
 				await revalidateRoute("/dashboard/inventory/purchase-orders");
+				onClose?.();
 			} else {
 				toast.error(response.error || "Failed to create purchase order");
 			}
@@ -247,11 +303,12 @@ export function CreatePOForm({
 	const onSubmit = async (data: z.infer<typeof purchaseOrderFormSchema>) => {
 		const formattedData = {
 			...data,
-			expectedDeliveryDate: new Date(data.expectedDeliveryDate).toISOString(),
+			expectedDeliveryDate: data.expectedDeliveryDate.toISOString(),
 			items: data.items.map((item) => ({
 				...item,
 				itemId: crypto.randomUUID(),
-				productDescription: products.find(p => p.id === item.productId)?.description || "",
+				productDescription:
+					products.find((p) => p.id === item.productId)?.description || "",
 			})),
 			orderDate: new Date().toISOString(),
 		};
@@ -261,303 +318,346 @@ export function CreatePOForm({
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 h-[80vh] overflow-y-auto pr-2">
-				{/* Basic Details */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-semibold">Basic Details</h3>
-					<div className="grid grid-cols-2 gap-4">
-						<FormField
-							control={form.control}
-							name="supplierId"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Supplier *</FormLabel>
-									<FormControl>
-										<SupplierCombobox
-											suppliers={suppliers}
-											value={field.value}
-											onValueChange={field.onChange}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="expectedDeliveryDate"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Expected Delivery Date *</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="requisitionNumber"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Requisition No.</FormLabel>
-									<FormControl>
-										<Input placeholder="REQ-001" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="quotationNumber"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Quotation No.</FormLabel>
-									<FormControl>
-										<Input placeholder="QUO-001" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-				</div>
-
-				<Separator />
-
-				{/* Supplier Contact Info (Optional) */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-semibold">Supplier Contact (Optional)</h3>
-					<div className="grid grid-cols-3 gap-4">
-						<FormField
-							control={form.control}
-							name="supplierContactPerson"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Contact Person</FormLabel>
-									<FormControl>
-										<Input {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="supplierContactPhone"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Phone</FormLabel>
-									<FormControl>
-										<Input {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="supplierContactEmail"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Email</FormLabel>
-									<FormControl>
-										<Input type="email" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-				</div>
-
-				<Separator />
-
-				{/* Products Section */}
-				<div className="space-y-4">
-					<div className="space-y-2">
-						<FormLabel className="text-lg font-semibold block">Products *</FormLabel>
-						<MultiSelect
-							values={selectedProductIds}
-							onValuesChange={handleProductSelectionChange}
-						>
-							<MultiSelectTrigger className="w-full">
-								<MultiSelectValue placeholder="Select products" />
-							</MultiSelectTrigger>
-							<MultiSelectContent
-								shouldFilter={false}
-								searchValue={productSearch}
-								onSearchValueChange={setProductSearch}
-								search={{
-									emptyMessage: "No products found.",
-									placeholder: "Search products",
-								}}
-							>
-								{products.map((product) => (
-									<MultiSelectItem key={product.id} value={product.id}>
-										{product.name}
-									</MultiSelectItem>
-								))}
-							</MultiSelectContent>
-						</MultiSelect>
-						{form.formState.errors.items && (
-							<p className="text-sm font-medium text-destructive">
-								{form.formState.errors.items.message}
-							</p>
+			<form
+				onSubmit={form.handleSubmit(onSubmit)}
+				className="space-y-4"
+			>
+				{/* Header Section */}
+				<div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+					<FormField
+						control={form.control}
+						name="supplierId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel className="text-xs">Supplier *</FormLabel>
+								<FormControl>
+									<SupplierCombobox
+										suppliers={suppliers}
+										value={field.value}
+										onValueChange={field.onChange}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
 						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="expectedDeliveryDate"
+						render={({ field }) => (
+							<FormItem className="flex flex-col">
+								<FormLabel className="text-xs">Expected Delivery *</FormLabel>
+								<Popover>
+									<PopoverTrigger asChild>
+										<FormControl>
+											<Button
+												variant={"outline"}
+												className={cn(
+													"h-8 text-xs pl-3 text-left font-normal",
+													!field.value && "text-muted-foreground",
+												)}
+											>
+												{field.value ? (
+													format(field.value, "PPP")
+												) : (
+													<span>Pick a date</span>
+												)}
+												<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+											</Button>
+										</FormControl>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={field.value}
+											onSelect={field.onChange}
+											disabled={(date) =>
+												date < new Date("1900-01-01")
+											}
+											initialFocus
+										/>
+									</PopoverContent>
+								</Popover>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="requisitionNumber"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel className="text-xs">Requisition No.</FormLabel>
+								<FormControl>
+									<Input placeholder="REQ-001" {...field} className="h-8 text-xs" />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="quotationNumber"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel className="text-xs">Quotation No.</FormLabel>
+								<FormControl>
+									<Input placeholder="QUO-001" {...field} className="h-8 text-xs" />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="paymentTerms"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel className="text-xs">Payment Terms</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g. Net 30" {...field} className="h-8 text-xs" />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="paymentMethod"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel className="text-xs">Payment Method</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g. Transfer" {...field} className="h-8 text-xs" />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+				</div>
+
+				<Separator />
+
+				{/* Items Section */}
+				<div className="space-y-2">
+					<div className="flex items-center justify-between">
+						<h3 className="text-sm font-semibold">Items</h3>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="h-7 text-xs"
+							onClick={() =>
+								append({
+									productId: "",
+									productName: "",
+									quantityOrdered: 1,
+									unit: "PCS",
+									unitPrice: 0,
+									discountPercent: 0,
+									taxRate: 0,
+									notes: "",
+									specifications: "",
+								})
+							}
+						>
+							<PlusIcon className="w-3 h-3 mr-1" /> Add Item
+						</Button>
 					</div>
 
-					{fields.length > 0 && (
-						<div className="space-y-4 border rounded-md p-4">
-							<h4 className="font-medium text-sm text-muted-foreground mb-2">
-								Selected Items Details
-							</h4>
-							{fields.map((field, index) => {
-								const product = products.find((p) => p.id === field.productId);
-								return (
-									<div
-										key={field.id}
-										className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 border-b pb-4 last:border-0 last:pb-0 mb-4"
-									>
-										<div className="col-span-full font-medium text-sm border-l-4 pl-2 border-primary">
-											{product?.name || "Unknown Product"}
-										</div>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.quantityOrdered`}
-											render={() => (
-												<FormItem>
-													<FormLabel className="text-xs">Quantity</FormLabel>
-													<FormControl>
-														<Input type="number" min="1" className="h-8" {...form.register(`items.${index}.quantityOrdered`, { valueAsNumber: true })} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.unit`}
-											render={() => (
-												<FormItem>
-													<FormLabel className="text-xs">Unit</FormLabel>
-													<FormControl>
-														<Input className="h-8" {...form.register(`items.${index}.unit`)} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.unitPrice`}
-											render={() => (
-												<FormItem>
-													<FormLabel className="text-xs">Unit Price</FormLabel>
-													<FormControl>
-														<Input type="number" min="0" step="0.01" className="h-8" {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.discountPercent`}
-											render={() => (
-												<FormItem>
-													<FormLabel className="text-xs">Discount %</FormLabel>
-													<FormControl>
-														<Input type="number" min="0" max="100" className="h-8" {...form.register(`items.${index}.discountPercent`, { valueAsNumber: true })} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.specifications`}
-											render={() => (
-												<FormItem className="col-span-2">
-													<FormLabel className="text-xs">Specs</FormLabel>
-													<FormControl>
-														<Input className="h-8" placeholder="Specifications..." {...form.register(`items.${index}.specifications`)} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
-											name={`items.${index}.notes`}
-											render={() => (
-												<FormItem className="col-span-2">
-													<FormLabel className="text-xs">Item Notes</FormLabel>
-													<FormControl>
-														<Input className="h-8" placeholder="Notes..." {...form.register(`items.${index}.notes`)} />
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</div>
-								);
-							})}
-						</div>
+					<div className="border rounded-md overflow-x-auto">
+						<Table>
+							<TableHeader>
+								<TableRow className="h-8">
+									<TableHead className="h-8 text-xs w-[180px]">Product</TableHead>
+									<TableHead className="h-8 text-xs w-[80px]">Qty</TableHead>
+									<TableHead className="h-8 text-xs w-[80px]">Unit</TableHead>
+									<TableHead className="h-8 text-xs w-[100px]">Price</TableHead>
+									<TableHead className="h-8 text-xs w-[80px]">Disc %</TableHead>
+									<TableHead className="h-8 text-xs w-[80px]">Tax %</TableHead>
+									<TableHead className="h-8 text-xs min-w-[150px]">Specs/Notes</TableHead>
+									<TableHead className="h-8 text-xs w-[50px]"></TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{fields.map((field, index) => (
+									<TableRow key={field.id} className="h-10">
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.productId`}
+												render={({ field }) => (
+													<ProductCombobox
+														products={products}
+														value={field.value}
+														selectedName={form.watch(`items.${index}.productName`)}
+														onSelectRaw={(product) => {
+															form.setValue(`items.${index}.productName`, product.name);
+															form.setValue(`items.${index}.unit`, product.baseUnit || "PCS");
+															form.setValue(`items.${index}.unitPrice`, product.sellingPrice || 0); // Default to cost price
+															field.onChange(product.id);
+														}}
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.quantityOrdered`}
+												render={() => (
+													<Input
+														type="number"
+														min="1"
+														{...form.register(`items.${index}.quantityOrdered`, {
+															valueAsNumber: true,
+														})}
+														className="h-7 text-xs"
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.unit`}
+												render={() => (
+													<Input
+														{...form.register(`items.${index}.unit`)}
+														className="h-7 text-xs"
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.unitPrice`}
+												render={() => (
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														{...form.register(`items.${index}.unitPrice`, {
+															valueAsNumber: true,
+														})}
+														className="h-7 text-xs"
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.discountPercent`}
+												render={() => (
+													<Input
+														type="number"
+														min="0"
+														max="100"
+														{...form.register(`items.${index}.discountPercent`, {
+															valueAsNumber: true,
+														})}
+														className="h-7 text-xs"
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<FormField
+												control={form.control}
+												name={`items.${index}.taxRate`}
+												render={() => (
+													<Input
+														type="number"
+														min="0"
+														max="100"
+														{...form.register(`items.${index}.taxRate`, {
+															valueAsNumber: true,
+														})}
+														className="h-7 text-xs"
+													/>
+												)}
+											/>
+										</TableCell>
+										<TableCell className="p-2">
+											<div className="flex gap-1">
+												<FormField
+													control={form.control}
+													name={`items.${index}.specifications`}
+													render={() => (
+														<Input
+															placeholder="Specs"
+															{...form.register(`items.${index}.specifications`)}
+															className="h-7 text-xs"
+														/>
+													)}
+												/>
+												<FormField
+													control={form.control}
+													name={`items.${index}.notes`}
+													render={() => (
+														<Input
+															placeholder="Notes"
+															{...form.register(`items.${index}.notes`)}
+															className="h-7 text-xs"
+														/>
+													)}
+												/>
+											</div>
+										</TableCell>
+										<TableCell className="p-2 text-center">
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-7 w-7 text-destructive hover:text-destructive/90"
+												onClick={() => remove(index)}
+											>
+												<TrashIcon className="h-4 w-4" />
+											</Button>
+										</TableCell>
+									</TableRow>
+								))}
+								{fields.length === 0 && (
+									<TableRow>
+										<TableCell
+											colSpan={8}
+											className="h-24 text-center text-xs text-muted-foreground"
+										>
+											No products added. Click "Add Item" to start.
+										</TableCell>
+									</TableRow>
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					{form.formState.errors.items && (
+						<p className="text-xs font-medium text-destructive">
+							{form.formState.errors.items.message}
+						</p>
 					)}
 				</div>
 
 				<Separator />
 
-				{/* Financials & Delivery */}
+				{/* Financials & Additional Info */}
 				<div className="space-y-4">
-					<h3 className="text-lg font-semibold">Financials & Delivery</h3>
-					<div className="grid grid-cols-3 gap-4">
+					<h3 className="text-sm font-semibold">Financials & Logistics</h3>
+					<div className="grid grid-cols-1 md:grid-cols-4 gap-3">
 						<FormField
 							control={form.control}
 							name="currency"
 							render={() => (
 								<FormItem>
-									<FormLabel>Currency</FormLabel>
+									<FormLabel className="text-xs">Currency</FormLabel>
 									<FormControl>
-										<Input placeholder="NGN" {...form.register(`currency`)} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="paymentTerms"
-							render={() => (
-								<FormItem>
-									<FormLabel>Payment Terms</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g. Net 30" {...form.register(`paymentTerms`)} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="paymentMethod"
-							render={() => (
-								<FormItem>
-									<FormLabel>Payment Method</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g. Bank Transfer" {...form.register(`paymentMethod`)} />
+										<Input placeholder="NGN" {...form.register(`currency`)} className="h-8 text-xs" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -569,9 +669,15 @@ export function CreatePOForm({
 							name="shippingCost"
 							render={() => (
 								<FormItem>
-									<FormLabel>Shipping Cost</FormLabel>
+									<FormLabel className="text-xs">Shipping Cost</FormLabel>
 									<FormControl>
-										<Input type="number" min="0" step="0.01" {...form.register(`shippingCost`, { valueAsNumber: true })} />
+										<Input
+											type="number"
+											min="0"
+											step="0.01"
+											{...form.register(`shippingCost`, { valueAsNumber: true })}
+											className="h-8 text-xs"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -582,9 +688,15 @@ export function CreatePOForm({
 							name="otherCharges"
 							render={() => (
 								<FormItem>
-									<FormLabel>Other Charges</FormLabel>
+									<FormLabel className="text-xs">Other Charges</FormLabel>
 									<FormControl>
-										<Input type="number" min="0" step="0.01" {...form.register(`otherCharges`, { valueAsNumber: true })} />
+										<Input
+											type="number"
+											min="0"
+											step="0.01"
+											{...form.register(`otherCharges`, { valueAsNumber: true })}
+											className="h-8 text-xs"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -595,63 +707,61 @@ export function CreatePOForm({
 							name="discountPercent"
 							render={() => (
 								<FormItem>
-									<FormLabel>Global Discount %</FormLabel>
+									<FormLabel className="text-xs">Global Disc %</FormLabel>
 									<FormControl>
-										<Input type="number" min="0" max="100" step="0.1" {...form.register(`discountPercent`, { valueAsNumber: true })} />
+										<Input
+											type="number"
+											min="0"
+											max="100"
+											step="0.1"
+											{...form.register(`discountPercent`, { valueAsNumber: true })}
+											className="h-8 text-xs"
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
-
-						<div className="col-span-3">
-							<FormField
-								control={form.control}
-								name="deliveryAddress"
-								render={() => (
-									<FormItem>
-										<FormLabel>Delivery Address</FormLabel>
-										<FormControl>
-											<Input placeholder="Full delivery address" {...form.register(`deliveryAddress`)} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
-
-						<div className="col-span-3">
-							<FormField
-								control={form.control}
-								name="deliveryInstructions"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Delivery Instructions</FormLabel>
-										<FormControl>
-											<Textarea placeholder="Instructions for delivery..." className="resize-none h-20" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
 					</div>
-				</div>
 
-				<Separator />
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<FormField
+							control={form.control}
+							name="deliveryAddress"
+							render={() => (
+								<FormItem>
+									<FormLabel className="text-xs">Delivery Address</FormLabel>
+									<FormControl>
+										<Input placeholder="Full address" {...form.register(`deliveryAddress`)} className="h-8 text-xs" />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="deliveryInstructions"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel className="text-xs">Delivery Instructions</FormLabel>
+									<FormControl>
+										<Input placeholder="Instructions..." {...field} className="h-8 text-xs" />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
 
-				{/* Terms & Notes */}
-				<div className="space-y-4">
-					<h3 className="text-lg font-semibold">Terms & Notes</h3>
-					<div className="grid grid-cols-1 gap-4">
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 						<FormField
 							control={form.control}
 							name="termsAndConditions"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Terms & Conditions</FormLabel>
+									<FormLabel className="text-xs">Terms & Conditions</FormLabel>
 									<FormControl>
-										<Textarea placeholder="Terms..." className="resize-none h-20" {...field} />
+										<Textarea placeholder="Terms..." className="resize-none h-16 text-xs" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -662,9 +772,9 @@ export function CreatePOForm({
 							name="notes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>External Notes</FormLabel>
+									<FormLabel className="text-xs">External Notes</FormLabel>
 									<FormControl>
-										<Textarea placeholder="Notes for supplier..." className="resize-none h-20" {...field} />
+										<Textarea placeholder="For supplier..." className="resize-none h-16 text-xs" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -675,9 +785,9 @@ export function CreatePOForm({
 							name="internalNotes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Internal Notes</FormLabel>
+									<FormLabel className="text-xs">Internal Notes</FormLabel>
 									<FormControl>
-										<Textarea placeholder="Internal use only..." className="resize-none h-20" {...field} />
+										<Textarea placeholder="Internal use only..." className="resize-none h-16 text-xs" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -686,13 +796,13 @@ export function CreatePOForm({
 					</div>
 				</div>
 
-				<div className="flex justify-end gap-2 pt-4 border-t sticky bottom-0 bg-background pb-2">
+				<div className="flex justify-end gap-2 pt-4 border-t sticky -bottom-0 bg-background pb-2">
 					<DialogClose asChild>
-						<Button variant="outline" type="button">
+						<Button variant="outline" type="button" className="h-8 text-xs" onClick={onClose}>
 							Cancel
 						</Button>
 					</DialogClose>
-					<Button type="submit" disabled={isPending}>
+					<Button type="submit" disabled={isPending} className="h-8 text-xs">
 						{isPending ? <Loader2Icon className="animate-spin mr-2 h-4 w-4" /> : null}
 						Create Purchase Order
 					</Button>

@@ -18,7 +18,7 @@ export function RoleButton({ icon, label, description }: RoleButtonProps) {
             type="submit"
             disabled={pending}
             className={cn(
-                "group w-full flex items-center justify-between py-4 px-4 -mx-4 transition-all disabled:cursor-not-allowed border",
+                "group w-full h-full flex items-center justify-between py-4 px-4 -mx-4 lg:mx-0 transition-all disabled:cursor-not-allowed border bg-background",
                 pending
                     ? "border-primary/20 rounded-lg bg-primary/5 animate-pulse"
                     : "hover:bg-muted border-transparent"

@@ -1,6 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import type { RoomDetails } from "@/lib/fetch";
 import {
 	DialogTitle,
 	DialogDescription,
@@ -8,7 +9,28 @@ import {
 	DialogTrigger,
 	DialogContent,
 } from "@/components/ui/dialog";
-import { BedIcon, ChevronRightIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Combobox } from "@/components/ui/combobox";
+import {
+	BedIcon,
+	ChevronRightIcon,
+	Loader2Icon,
+	PlusIcon,
+	CheckIcon,
+	ChevronsUpDownIcon,
+} from "lucide-react";
 import {
 	useEffect,
 	useState,
@@ -38,7 +60,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { parseAsString, useQueryStates } from "nuqs";
+import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import type * as React from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -467,7 +489,7 @@ function CreateNewBookingForm({
 	setOpen: (open: boolean) => void;
 	open: boolean;
 	data: {
-		rooms: Array<string>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 }) {
@@ -501,23 +523,62 @@ function CreateNewBookingForm({
 }
 
 const checkInFormSchema = z.object({
-	guestName: z.string().nonempty("Guest name is required"),
-	phoneNumber: z.string().nonempty("Phone number is required"),
+	title: z.string().min(1, "Title is required"),
+	guestName: z.string().min(1, "Guest name is required"),
+	guestEmail: z.email("Invalid email address"),
+	phoneNumber: z.string().min(1, "Phone number is required"),
 	noOfAdults: z.number().int().positive("Number of adults must be at least 1"),
 	noOfChildren: z
 		.number()
 		.int()
-		.nonnegative("Number of children cannot be negative"),
+		.nonnegative("Number of children cannot be negative")
+		.default(0),
 	nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
 	dailySpendingCap: z
 		.number()
-		.nonnegative("Daily spending cap must be 0 or greater"),
-	amountPaid: z
-		.number()
-		.nonnegative("You cannot pay a negative amount")
-		.min(0, "Please enter a valid amount"),
-	roomStatus: z.enum(["CHECKED_IN"]),
-	checkInDate: z.string().nonempty("Check-in date is required"),
+		.nonnegative("Daily spending cap must be 0 or greater")
+		.default(0),
+	discountValue: z.number().nonnegative().default(0),
+	discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
+	initialPayment: z.object({
+		amount: z.number().nonnegative(),
+		currency: z.string().default("NGN"),
+		method: z.enum([
+			"CASH",
+			"CARD",
+			"CREDIT_CARD",
+			"DEBIT_CARD",
+			"BANK_TRANSFER",
+			"MOBILE_MONEY",
+			"CHEQUE",
+			"ONLINE_PAYMENT",
+			"PAYPAL",
+			"CRYPTOCURRENCY",
+			"DIRECT_DEBIT",
+			"PETTY_CASH",
+			"OTHERS",
+		]),
+		reference: z.string().min(1, "Payment reference is required"),
+		status: z.enum([
+			"SUCCESS",
+			"FAILED",
+			"PENDING",
+			"CANCELLED",
+			"REFUNDED",
+			"PARTLY_PAID",
+			"FULLY_PAID",
+		]),
+		type: z.enum([
+			"DEPOSIT",
+			"INSTALLMENT",
+			"FINAL",
+			"REFUND",
+			"OTHER",
+		]),
+		paymentDate: z.string(),
+	}),
+	checkInDate: z.string().min(1, "Check-in date is required"),
+	checkOutDate: z.string().min(1, "Check-out date is required"),
 });
 
 const reservationFormSchema = z
@@ -553,48 +614,80 @@ const lostItemFormSchema = z.object({
 	dateFound: z.string().nonempty("Date found is required"),
 });
 
-function SelectRoomBox({
-	setValue,
+function RoomListCombobox({
+	value,
+	onSelect,
 	rooms,
 }: {
-	setValue: (value: string) => void;
-	rooms: Array<string>;
+	value: string;
+	onSelect: (value: string) => void;
+	rooms: Array<RoomType>;
 }) {
 	const [open, setOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useQueryState(
+		"room:search",
+		parseAsString.withDefault(""),
+	);
+
 	return (
-		<Select
-			open={open}
-			onOpenChange={(open) => {
-				setOpen(open);
-			}}
-			onValueChange={(value) => setValue(value)}
-		>
-			<SelectTrigger className="w-full">
-				<SelectValue placeholder="Select a room" />
-			</SelectTrigger>
-			<SelectContent className="w-full">
-				{rooms.length > 0 ? (
-					rooms.map((room) => (
-						<SelectItem key={room} value={room}>
-							{room}
-						</SelectItem>
-					))
-				) : (
-					<SelectItem disabled value="__EMPTY__ ">
-						No rooms available
-					</SelectItem>
-				)}
-			</SelectContent>
-		</Select>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="w-full justify-between"
+				>
+					{value
+						? rooms.find((room) => room.id === value)?.roomIdentifier
+						: "Select a room"}
+					<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-full p-0">
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search rooms..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+					/>
+					<CommandList>
+						<CommandEmpty>No room found.</CommandEmpty>
+						<CommandGroup>
+							{rooms.map((room) => (
+								<CommandItem
+									key={room.id}
+									value={room.id}
+									onSelect={(currentValue) => {
+										onSelect(currentValue === value ? "" : currentValue);
+										setOpen(false);
+									}}
+								>
+									<CheckIcon
+										className={cn(
+											"mr-2 h-4 w-4",
+											value === room.id ? "opacity-100" : "opacity-0",
+										)}
+									/>
+									{room.roomIdentifier}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
 	);
 }
+
+
 
 export function CheckInForm({
 	data,
 	setOpen,
 }: {
 	data: {
-		rooms: Array<string>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
@@ -610,16 +703,26 @@ export function CheckInForm({
 	const form = useForm({
 		resolver: zodResolver(checkInFormSchema),
 		defaultValues: {
+			title: "Mr",
 			guestName: "",
+			guestEmail: "",
 			phoneNumber: "",
-			noOfAdults: 1,
-			noOfChildren: 0,
-			nightlyRate: 0,
-			dailySpendingCap: 0,
-			amountPaid: 0,
-			roomStatus: "CHECKED_IN" as "CHECKED_IN",
 			checkInDate: new Date().toISOString().split("T")[0],
+			checkOutDate: new Date().toISOString().split("T")[0],
+			discountValue: 0,
+			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
+			initialPayment: {
+				amount: 0,
+				currency: "NGN",
+				method: "CASH" as const,
+				reference: `REF-${Date.now()}`,
+				status: "SUCCESS" as const,
+				type: "DEPOSIT" as const,
+				paymentDate: new Date().toISOString(),
+			},
 		},
+		mode: "onSubmit",
+		reValidateMode: "onChange"
 	});
 
 	const { isPending, mutate } = useMutation({
@@ -632,6 +735,10 @@ export function CheckInForm({
 			const response = await checkInGuest({
 				roomId,
 				...restData,
+				initialPayment: {
+					...restData.initialPayment,
+					paymentDate: new Date(restData.initialPayment.paymentDate),
+				},
 			});
 
 			if (!response.success) {
@@ -680,12 +787,49 @@ export function CheckInForm({
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
 					<FormField
 						control={form.control}
+						name="title"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Title</FormLabel>
+								<Select onValueChange={field.onChange} defaultValue={field.value}>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select title" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										{["Mr", "Mrs", "Ms", "Dr", "Prof", "Chief", "Alhaji", "Hajia"].map((title) => (
+											<SelectItem key={title} value={title}>
+												{title}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
 						name="guestName"
 						render={({ field }) => (
-							<FormItem className="col-span-2">
+							<FormItem>
 								<FormLabel>Guest Name</FormLabel>
 								<FormControl>
 									<Input placeholder="e.g John Doe" {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="guestEmail"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Email</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g guest@example.com" {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -707,29 +851,31 @@ export function CheckInForm({
 
 					<div className="grid gap-2">
 						<Label>Room Type</Label>
-						<Select
+						<Combobox
+							options={data.roomTypes.map((type) => ({
+								label: type,
+								value: type,
+							}))}
 							value={roomQuery["room:type"]}
-							onValueChange={(value) => setRoomQuery({ "room:type": value })}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="e.g Deluxe, Standard" />
-							</SelectTrigger>
-							<SelectContent className="w-full p-0">
-								{data.roomTypes.map((type) => (
-									<SelectItem key={type} value={type}>
-										{type}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+							onSelect={(value) => setRoomQuery({ "room:type": value })}
+							placeholder="Select room type..."
+							emptyText="No room types found"
+						/>
 					</div>
 
 					<div className="grid gap-2">
 						<Label>Room</Label>
-						<SelectRoomBox setValue={setSelectedRoomId} rooms={data.rooms} />
-						{!selectedRoomId && (
-							<p className="text-sm text-destructive">Room is required</p>
-						)}
+						<RoomListCombobox
+							rooms={data.rooms}
+							value={selectedRoomId}
+							onSelect={(value) => {
+								setSelectedRoomId(value);
+								const room = data.rooms.find((room) => room.id === value);
+								if (room) {
+									form.setValue("nightlyRate", room.roomPrice);
+								}
+							}}
+						/>
 					</div>
 
 					<FormField
@@ -782,7 +928,11 @@ export function CheckInForm({
 										placeholder="e.g 5000"
 										min="0"
 										step="0.01"
-										{...form.register("nightlyRate", { valueAsNumber: true })}
+										value={form.watch("nightlyRate")}
+										onChange={(e) =>
+											form.setValue("nightlyRate", Number(e.target.value))
+										}
+										readOnly
 									/>
 								</FormControl>
 								<FormMessage />
@@ -799,9 +949,7 @@ export function CheckInForm({
 								<FormControl>
 									<Input
 										type="number"
-										placeholder="e.g 10000"
 										min="0"
-										step="0.01"
 										{...form.register("dailySpendingCap", {
 											valueAsNumber: true,
 										})}
@@ -812,23 +960,123 @@ export function CheckInForm({
 						)}
 					/>
 
-					<FormField
-						control={form.control}
-						name="amountPaid"
-						render={() => (
-							<FormItem>
-								<FormLabel>Amount Paid</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 100"
-										{...form.register("amountPaid", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+
+					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
+						<h4 className="font-medium text-sm text-muted-foreground mb-2">
+							Payment & Discount
+						</h4>
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="discountType"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Type</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select type" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="FIXED">Fixed Amount</SelectItem>
+												<SelectItem value="PERCENTAGE">Percentage</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="discountValue"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Value</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+												className="w-full"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="initialPayment.amount"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Initial Payment</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="initialPayment.method"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Payment Method</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select method" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												{[
+													"CASH",
+													"CARD",
+													"CREDIT_CARD",
+													"DEBIT_CARD",
+													"BANK_TRANSFER",
+													"MOBILE_MONEY",
+													"CHEQUE",
+													"ONLINE_PAYMENT",
+													"PAYPAL",
+													"CRYPTOCURRENCY",
+													"DIRECT_DEBIT",
+													"PETTY_CASH",
+													"OTHERS",
+												].map((method) => (
+													<SelectItem key={method} value={method}>
+														{method.replace(/_/g, " ")}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
 
 					<FormField
 						control={form.control}
@@ -841,7 +1089,33 @@ export function CheckInForm({
 										initialDate={field.value}
 										onChange={field.onChange}
 										placeholder="Select check-in date"
-										minDate={new Date(Date.now() - 24 * 60 * 60 * 1000)}
+										minDate={new Date()}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<FormField
+						control={form.control}
+						name="checkOutDate"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Check-out Date</FormLabel>
+								<FormControl>
+									<DatePicker
+										initialDate={field.value}
+										onChange={field.onChange}
+										placeholder="Select check-out date"
+										minDate={
+											form.watch("checkInDate")
+												? new Date(
+													new Date(form.watch("checkInDate")).getTime() +
+													24 * 60 * 60 * 1000,
+												)
+												: new Date()
+										}
 									/>
 								</FormControl>
 								<FormMessage />
@@ -849,6 +1123,48 @@ export function CheckInForm({
 						)}
 					/>
 				</div>
+
+				{/* Check-in Summary */}
+				{form.watch("checkInDate") &&
+					form.watch("checkOutDate") &&
+					form.watch("nightlyRate") > 0 && (
+						<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+							<h3 className="font-medium text-sm">Check-in Summary</h3>
+							<div className="grid grid-cols-2 gap-2 text-sm">
+								<div>
+									<span className="text-muted-foreground">Duration:</span>
+									<span className="ml-2 font-medium">
+										{Math.ceil(
+											(new Date(form.watch("checkOutDate")).getTime() -
+												new Date(form.watch("checkInDate")).getTime()) /
+											(1000 * 60 * 60 * 24),
+										)}{" "}
+										night(s)
+									</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">Nightly Rate:</span>
+									<span className="ml-2 font-medium">
+										{formatCurrency(form.watch("nightlyRate"))}
+									</span>
+								</div>
+								<div className="col-span-2">
+									<span className="text-muted-foreground">Total Cost:</span>
+									<span className="ml-2 font-medium text-lg">
+
+										{formatCurrency(
+											Math.ceil(
+												(new Date(form.watch("checkOutDate")).getTime() -
+													new Date(form.watch("checkInDate")).getTime()) /
+												(1000 * 60 * 60 * 24),
+											) * form.watch("nightlyRate")
+										)}
+									</span>
+								</div>
+							</div>
+						</div>
+					)}
+
 				<Button
 					type="submit"
 					className="mt-4 w-full font-semibold"
@@ -873,7 +1189,7 @@ export function ReservationForm({
 	setOpen,
 }: {
 	data: {
-		rooms: Array<string>;
+		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
@@ -964,6 +1280,45 @@ export function ReservationForm({
 						)}
 					/>
 
+
+					<div className="grid gap-2">
+						<Label>Room Type</Label>
+						<Combobox
+							options={data.roomTypes.map((type) => ({
+								label: type,
+								value: type,
+							}))}
+							value={roomQuery["room:type"]}
+							onSelect={(value) => setRoomQuery({ "room:type": value })}
+							placeholder="Select room type..."
+							emptyText="No room types found"
+						/>
+					</div>
+
+					<FormField
+						control={form.control}
+						name="roomId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room</FormLabel>
+								<FormControl>
+									<RoomListCombobox
+										rooms={data.rooms}
+										value={field.value}
+										onSelect={(value) => {
+											field.onChange(value);
+											const room = data.rooms.find((room) => room.id === value);
+											if (room) {
+												form.setValue("nightlyRate", room.roomPrice);
+											}
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
 					<FormField
 						control={form.control}
 						name="nightlyRate"
@@ -975,7 +1330,11 @@ export function ReservationForm({
 										type="number"
 										step="0.01"
 										placeholder="e.g 25000"
-										{...form.register("nightlyRate", { valueAsNumber: true })}
+										value={form.watch("nightlyRate")}
+										onChange={(e) =>
+											form.setValue("nightlyRate", Number(e.target.value))
+										}
+										readOnly
 									/>
 								</FormControl>
 								<FormMessage />
@@ -1037,45 +1396,12 @@ export function ReservationForm({
 										minDate={
 											form.watch("checkInDate")
 												? new Date(
-														new Date(form.watch("checkInDate")).getTime() +
-															24 * 60 * 60 * 1000,
-													)
+													new Date(form.watch("checkInDate")).getTime() +
+													24 * 60 * 60 * 1000,
+												)
 												: new Date()
 										}
 									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<div className="grid gap-2">
-						<Label>Room Type</Label>
-						<Select
-							value={roomQuery["room:type"]}
-							onValueChange={(value) => setRoomQuery({ "room:type": value })}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="e.g Deluxe, Standard" />
-							</SelectTrigger>
-							<SelectContent className="w-full p-0">
-								{data.roomTypes.map((type) => (
-									<SelectItem key={type} value={type}>
-										{type}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-
-					<FormField
-						control={form.control}
-						name="roomId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Room</FormLabel>
-								<FormControl>
-									<SelectRoomBox setValue={field.onChange} rooms={data.rooms} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -1096,7 +1422,7 @@ export function ReservationForm({
 										{Math.ceil(
 											(new Date(form.watch("checkOutDate")).getTime() -
 												new Date(form.watch("checkInDate")).getTime()) /
-												(1000 * 60 * 60 * 24),
+											(1000 * 60 * 60 * 24),
 										)}{" "}
 										night(s)
 									</span>
@@ -1115,7 +1441,7 @@ export function ReservationForm({
 											Math.ceil(
 												(new Date(form.watch("checkOutDate")).getTime() -
 													new Date(form.watch("checkInDate")).getTime()) /
-													(1000 * 60 * 60 * 24),
+												(1000 * 60 * 60 * 24),
 											) * form.watch("nightlyRate")
 										).toLocaleString()}
 									</span>
@@ -1185,11 +1511,15 @@ const actions = [
 	},
 ];
 
+
+
+export type RoomType = RoomDetails;
+
 export function QuickActions({
 	rooms,
 	roomTypes,
 }: {
-	rooms: string[];
+	rooms: Array<RoomType>;
 	roomTypes: string[];
 }) {
 	const [open, setOpen] = useState<false | string>(false);

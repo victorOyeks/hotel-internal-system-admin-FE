@@ -1,6 +1,5 @@
 "use client";
 
-import { atom, useAtom } from "jotai";
 import { useState } from "react";
 import {
 	type ColumnFiltersState,
@@ -24,11 +23,7 @@ import {
 import { DataTablePagination } from "@/components/shared/pagination";
 import type { Pagination, RoomDetails } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-
-const successDialogAtom = atom({
-	show: false,
-	message: "",
-});
+import { RoomsTableActions } from "./rooms-table-actions";
 
 const columnHelper = createColumnHelper<RoomDetails>();
 
@@ -80,18 +75,67 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("guestDetails.guestName", {
+		header: "Guest",
+		cell: (info) => {
+			const guestName = info.getValue();
+			const guestDetails = info.row.original.guestDetails;
+
+			if (!guestName || info.row.original.checkInStatus === "AVAILABLE") return <span className="text-gray-400">-</span>;
+
+			return (
+				<div className="flex flex-col">
+					<div className="flex items-center gap-2">
+						<span className="font-medium">{guestName}</span>
+						{guestDetails?.isCurrentGuest && (
+							<Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-200 text-green-700 bg-green-50">
+								Current
+							</Badge>
+						)}
+					</div>
+					<div className="flex flex-col text-xs text-muted-foreground">
+						{guestDetails?.organizationName && (
+							<span>{guestDetails.organizationName}</span>
+						)}
+						{guestDetails?.bookingId && (
+							<span className="font-mono text-[10px] text-gray-400">#{guestDetails.bookingId.slice(-6)}</span>
+						)}
+					</div>
+				</div>
+			);
+		},
+	}),
+
 	columnHelper.accessor("roomFacility", {
 		header: "Room Facilities",
-		cell: (info) => (
-			<div className="flex flex-wrap gap-2">
-				{info.getValue().map((facility, i) => (
-					<span key={facility}>
-						{facility}
-						{i < info.getValue().length - 1 ? ", " : "."}
-					</span>
-				))}
-			</div>
-		),
+		cell: (info) => {
+			const facilities = info.getValue();
+			const limit = 2;
+			const displayed = facilities.slice(0, limit);
+			const remaining = facilities.length - limit;
+
+			return (
+				<div className="flex flex-wrap gap-1 text-xs">
+					{displayed.map((facility) => (
+						<span
+							key={facility}
+							className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
+						>
+							{facility}
+						</span>
+					))}
+					{remaining > 0 && (
+						<span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">
+							+{remaining} more
+						</span>
+					)}
+				</div>
+			);
+		},
+	}),
+	columnHelper.display({
+		id: "actions",
+		cell: ({ row }) => <RoomsTableActions row={row.original} />,
 	}),
 ];
 
@@ -121,7 +165,7 @@ export function RoomsListTable({
 			pagination,
 		},
 	});
-	const [successDialogOpen, setSuccessDialogOpen] = useAtom(successDialogAtom);
+
 	return (
 		<div className="overflow-hidden rounded-md border bg-card">
 			<Table>
@@ -134,9 +178,9 @@ export function RoomsListTable({
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}

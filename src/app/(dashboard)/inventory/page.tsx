@@ -54,8 +54,6 @@ function Page({ searchParams }: PageProps) {
 					throw: true,
 				});
 
-				console.log({ response });
-
 				return response;
 			},
 		}),

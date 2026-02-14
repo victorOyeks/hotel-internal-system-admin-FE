@@ -19,7 +19,7 @@ export function PurchaseOrderStats({ stats }: PurchaseOrderStatsProps) {
 				icon={<DollarSignIcon className="size-6 text-blue-600" />}
 				bgClass="bg-blue-600/10"
 				title="Total Value"
-				value={`${formatCurrency(stats.totalValue)}`!}
+				value={`${formatCurrency(stats.totalValue, "short")}`}
 			/>
 			<StatCard
 				icon={<ClockIcon className="size-6 text-yellow-600" />}
@@ -43,8 +43,8 @@ export function PurchaseOrderStats({ stats }: PurchaseOrderStatsProps) {
 				icon={<CalendarIcon className="size-6 text-purple-600" />}
 				bgClass="bg-purple-600/10"
 				title="Today's Orders"
-				value={`${stats.totalPurchaseOrders.toString()}`!}
-				subtitle={`${formatCurrency(stats.totalValue)}`}
+				value={stats.totalPurchaseOrders.toString()}
+				subtitle={`${formatCurrency(stats.totalValue, "short")}`}
 			/>
 		</div>
 	);

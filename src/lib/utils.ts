@@ -17,6 +17,11 @@ export function formatCurrency(
 	// Define the options based on the type
 	const options: Intl.NumberFormatOptions = {};
 
+	// auto shorten 10M and above
+	if (value >= 10_000_000) {
+		type = "short";
+	}
+
 	switch (type) {
 		case "short":
 			// Example: N1.5M
@@ -33,7 +38,6 @@ export function formatCurrency(
 			options.maximumFractionDigits = 2;
 			break;
 
-		case "default":
 		default:
 			// Example: N1,500.00
 			options.style = "currency";

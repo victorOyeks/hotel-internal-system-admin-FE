@@ -54,23 +54,6 @@ function Page({ searchParams }: PageProps) {
 	const cookieData = use(getCookieData())!;
 	const queryClient = getQueryClient();
 
-	const statData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["inventory-summary", cookieData.token],
-			queryFn: async () => {
-				const response = await $fetch(
-					"@get/api/restaurants/bar-inventory-summary",
-					{
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-
-				return response.data;
-			},
-		}),
-	);
-
 	const { content, ...paginationMeta } = use(
 		queryClient.ensureQueryData({
 			queryKey: [query.section ?? "inventory", cookieData.token, query],
@@ -113,7 +96,6 @@ function Page({ searchParams }: PageProps) {
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
 			<RestaurantInventoryPage
 				section={query.section}
-				statData={statData}
 				inventoryData={content}
 				paginationMeta={paginationMeta}
 			/>

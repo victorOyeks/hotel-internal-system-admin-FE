@@ -10,12 +10,11 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusIcon, EyeIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import type {
 	InventoryLocationListResponse,
-	InventoryProduct,
 	Pagination,
 	StockTake
 } from "@/lib/fetch";
@@ -24,18 +23,18 @@ import { StockTakeToolbar } from "./stock-take-filters";
 // import { StockTakeStats } from "./stock-take-stats";
 import { StockTakeDetails } from "./stock-take-details";
 import { CreateStockTakeForm } from "./stock-take-form";
+import { postStockTakeAdjustments, startStockTake, cancelStockTake, completeStockTake } from "@/lib/inventory-actions";
 
 interface StockTakePageProps {
 	stockTakes: StockTake[];
 	stats: any;
 	paginationSchema: Pagination;
 	inventoryLocations: InventoryLocationListResponse[];
-	products: InventoryProduct[]
 }
 
 const columnHelper = createColumnHelper<StockTake>();
 
-export function StockTakePage({ stockTakes, inventoryLocations, products
+export function StockTakePage({ stockTakes, inventoryLocations
 	, paginationSchema }: StockTakePageProps) {
 	const [selectedStockTake, setSelectedStockTake] =
 		useState<StockTake | null>(null);
@@ -79,7 +78,7 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 					<Badge
 						variant={
 							status === "COMPLETED"
-								? "default"
+								? "green"
 								: status === "IN_PROGRESS"
 									? "secondary"
 									: "outline"
@@ -109,7 +108,7 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 		columnHelper.display({
 			id: "actions",
 			header: "Actions",
-			cell: (info) => (
+			cell: () => (
 				<div>
 					{/* {(info.row.original.status === "SCHEDULED" ||
 						info.row.original.status === "IN_PROGRESS") && (
@@ -133,14 +132,38 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 		}),
 	];
 
-	const handleCompleteStockTake = (id: string) => {
-		console.log("Completing stock take:", id);
-		setIsDetailsDialogOpen(false);
+	const handleCompleteStockTake = async (id: string) => {
+		const res = await completeStockTake(id);
+		if (res.success) {
+			setIsDetailsDialogOpen(false);
+		}
+		return res;
 	};
 
-	const handlePostAdjustments = (id: string) => {
-		console.log("Posting adjustments:", id);
-		setIsDetailsDialogOpen(false);
+	const handlePostAdjustments = async (id: string) => {
+		const res = await postStockTakeAdjustments(id);
+		if (res.success) {
+			setIsDetailsDialogOpen(false);
+		}
+		return res;
+	};
+
+	const handleStartStockTake = async (id: string) => {
+		return await startStockTake(id);
+	};
+
+	const handleCancelStockTake = async (id: string) => {
+		const res = await cancelStockTake(id, "Cancelled by user");
+		if (res.success) {
+			setIsDetailsDialogOpen(false);
+		}
+		return res;
+	};
+
+	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
+		const { recordStockCount } = await import("@/lib/inventory-actions");
+		// Optimistic update could happen here or we rely on revalidatePath
+		return await recordStockCount(stockTakeId, itemId, { actualQuantity: quantity });
 	};
 
 	return (
@@ -169,7 +192,6 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 						</DialogHeader>
 						<CreateStockTakeForm
 							inventoryLocations={inventoryLocations}
-							products={products}
 							onClose={() => setIsCreateDialogOpen(false)}
 						/>
 					</DialogContent>
@@ -196,6 +218,9 @@ export function StockTakePage({ stockTakes, inventoryLocations, products
 				onOpenChange={setIsDetailsDialogOpen}
 				onComplete={handleCompleteStockTake}
 				onPostAdjustments={handlePostAdjustments}
+				onStart={handleStartStockTake}
+				onCancel={handleCancelStockTake}
+				onRecordCount={handleRecordCount}
 			/>
 		</div>
 	);

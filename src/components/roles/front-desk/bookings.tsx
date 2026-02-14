@@ -24,6 +24,7 @@ import {
 	Loader2Icon,
 	AlertCircleIcon,
 	RotateCcwIcon,
+	MoreHorizontalIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,20 +59,27 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
 	cancelReservation,
 	checkInGuest,
 	checkOutGuest,
+	getBookingPayments,
 	recordPayment,
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
-import { CheckInForm, ReservationForm } from "./dashboard";
+import { CheckInForm, ReservationForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
 
 type BookingViewResponse = Prettify<
@@ -109,27 +117,27 @@ function ChangeBookingStatus({
 		label: string;
 		description: string;
 	}> = [
-		{
-			value: "RESERVED",
-			label: "Reserved",
-			description: "Room is reserved for the guest",
-		},
-		{
-			value: "CHECKED_IN",
-			label: "Checked In",
-			description: "Guest has checked into the room",
-		},
-		{
-			value: "CHECKED_OUT",
-			label: "Checked Out",
-			description: "Guest has checked out from the room",
-		},
-		{
-			value: "CANCELLED",
-			label: "Cancelled",
-			description: "Booking has been cancelled",
-		},
-	];
+			{
+				value: "RESERVED",
+				label: "Reserved",
+				description: "Room is reserved for the guest",
+			},
+			{
+				value: "CHECKED_IN",
+				label: "Checked In",
+				description: "Guest has checked into the room",
+			},
+			{
+				value: "CHECKED_OUT",
+				label: "Checked Out",
+				description: "Guest has checked out from the room",
+			},
+			{
+				value: "CANCELLED",
+				label: "Cancelled",
+				description: "Booking has been cancelled",
+			},
+		];
 
 	const currentStatus = booking?.bookingStatus;
 
@@ -194,14 +202,28 @@ function ChangeBookingStatus({
 					const response = await checkInGuest({
 						roomId: booking?.roomIdentifier!,
 						guestName: booking?.guestName!,
+						title: "Mr", // Default title as it's not in booking
+						guestEmail: `${booking?.guestName?.toLowerCase()?.replace(/\s/g, ".")}@example.com`, // Generate placeholder email
 						phoneNumber: booking?.guestPhoneNumber!,
 						noOfAdults: booking?.noOfAdults ?? 1,
 						noOfChildren: booking?.noOfChildren ?? 0,
 						nightlyRate: booking?.nightlyRate ?? 0,
-						dailySpendingCap: 0, // Default to 0 as this field is not available in the booking response
-						amountPaid: booking?.amountPaid!,
-						roomStatus: "CHECKED_IN",
-						checkInDate: new Date().toISOString().split("T")[0], // Format as yyyy-mm-dd
+						dailySpendingCap: 0,
+						checkInDate: new Date().toISOString().split("T")[0],
+						checkOutDate: booking?.checkOutDate
+							? new Date(booking.checkOutDate).toISOString().split("T")[0]
+							: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Default to tomorrow if missing
+						discountValue: 0,
+						discountType: "FIXED",
+						initialPayment: {
+							amount: booking?.amountPaid || 0,
+							currency: "NGN",
+							method: "CASH",
+							status: "SUCCESS",
+							type: "DEPOSIT",
+							paymentDate: new Date(),
+							reference: `INIT-${Date.now()}`,
+						},
 					});
 
 					if (!response.success) {
@@ -329,11 +351,10 @@ function ChangeBookingStatus({
 								<div className="flex justify-between text-sm">
 									<span className="text-gray-600">Balance:</span>
 									<span
-										className={`font-medium ${
-											booking.amountRemaining > 0
-												? "text-amber-600"
-												: "text-green-600"
-										}`}
+										className={`font-medium ${booking.amountRemaining > 0
+											? "text-amber-600"
+											: "text-green-600"
+											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
 										{booking.amountRemaining > 0 && " due"}
@@ -448,11 +469,10 @@ function ChangeBookingStatus({
 										Amount Remaining:
 									</span>
 									<span
-										className={`font-bold ${
-											booking.amountRemaining > 0
-												? "text-red-600"
-												: "text-green-600"
-										}`}
+										className={`font-bold ${booking.amountRemaining > 0
+											? "text-red-600"
+											: "text-green-600"
+											}`}
 									>
 										{formatCurrency(booking.amountRemaining)}
 									</span>
@@ -506,7 +526,7 @@ function ChangeBookingStatus({
 									/>
 									{optionalFields.finalAmountPaid !== undefined &&
 										optionalFields.finalAmountPaid !==
-											booking.amountRemaining && (
+										booking.amountRemaining && (
 											<p className="text-xs text-amber-600">
 												Note: Amount entered (
 												{formatCurrency(optionalFields.finalAmountPaid)}) is
@@ -665,8 +685,8 @@ function ChangeBookingStatus({
 								<>
 									<CheckIcon className="w-4 h-4 mr-2" />
 									{selectedStatus === "CHECKED_OUT" &&
-									booking &&
-									booking.amountRemaining > 0
+										booking &&
+										booking.amountRemaining > 0
 										? optionalFields.paymentType === "FINAL"
 											? "Record Payment & Check Out"
 											: "Record Payment"
@@ -678,6 +698,147 @@ function ChangeBookingStatus({
 				</div>
 			</div>
 		</DialogContent>
+	);
+}
+
+function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
+	const { data: payments, isLoading } = useQuery({
+		queryKey: ["booking-payments", bookingId],
+		queryFn: async () => {
+			if (!bookingId) return [];
+			const res = await getBookingPayments({ bookingId });
+			if (!res.success && res.error) throw new Error(res.error);
+			return res.success ? res.data.data : [];
+		},
+	});
+
+	return (
+		<DialogContent className="min-w-3xl">
+			<DialogHeader>
+				<DialogTitle>Payment History</DialogTitle>
+				<DialogDescription>
+					View all payments recorded for this booking.
+				</DialogDescription>
+			</DialogHeader>
+
+			<div className="mt-4">
+				{isLoading ? (
+					<div className="flex justify-center p-8">
+						<Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+					</div>
+				) : !payments || payments.length === 0 ? (
+					<div className="text-center p-8 text-gray-500 bg-gray-50 rounded-lg">
+						No payments recorded for this booking.
+					</div>
+				) : (
+					<div className="rounded-md border overflow-hidden">
+						<Table>
+							<TableHeader className="bg-gray-100">
+								<TableRow>
+									<TableHead>Date</TableHead>
+									<TableHead>Method</TableHead>
+									<TableHead>Type</TableHead>
+									<TableHead>Reference</TableHead>
+									<TableHead className="text-right">Amount</TableHead>
+									<TableHead>Status</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{payments.map((payment) => (
+									<TableRow key={payment.reference}>
+										<TableCell>
+											{new Date(payment.paymentDate).toLocaleDateString()}
+											<div className="text-xs text-gray-500">
+												{new Date(payment.paymentDate).toLocaleTimeString()}
+											</div>
+										</TableCell>
+										<TableCell className="capitalize">
+											{payment.method.toLowerCase().replace(/_/g, " ")}
+										</TableCell>
+										<TableCell className="capitalize">
+											<Badge variant="outline">
+												{payment.type.toLowerCase().replace(/_/g, " ")}
+											</Badge>
+										</TableCell>
+										<TableCell className="font-mono text-xs">
+											{payment.reference}
+										</TableCell>
+										<TableCell className="text-right font-medium">
+											{formatCurrency(payment.amount)}
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													payment.status === "SUCCESS"
+														? "green"
+														: payment.status === "PENDING"
+															? "yellow"
+															: payment.status === "FAILED"
+																? "destructive"
+																: "secondary"
+												}
+											>
+												{payment.status.toLowerCase()}
+											</Badge>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
+				)}
+			</div>
+		</DialogContent>
+	);
+}
+
+function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
+	const [openStatusDialog, setOpenStatusDialog] = useState(false);
+	const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
+
+	return (
+		<DropdownMenu modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+					<MoreHorizontalIcon className="h-4 w-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<EditIcon className="mr-2 h-4 w-4" />
+							Update Status
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<ChangeBookingStatus
+						booking={booking}
+						onClose={() => setOpenStatusDialog(false)}
+					/>
+				</Dialog>
+
+				<Dialog
+					open={openPaymentHistory}
+					onOpenChange={setOpenPaymentHistory}
+				>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<RotateCcwIcon className="mr-2 h-4 w-4" />
+							Payment History
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<PaymentHistoryContent bookingId={booking.id} />
+				</Dialog>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -722,13 +883,12 @@ const columns = [
 					<div className="flex items-center gap-1">
 						<div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
 							<div
-								className={`h-full ${
-									isFullyPaid
-										? "bg-green-500"
-										: paymentPercentage > 50
-											? "bg-blue-500"
-											: "bg-amber-500"
-								}`}
+								className={`h-full ${isFullyPaid
+									? "bg-green-500"
+									: paymentPercentage > 50
+										? "bg-blue-500"
+										: "bg-amber-500"
+									}`}
 								style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
 							/>
 						</div>
@@ -798,24 +958,7 @@ const columns = [
 
 	columnHelper.display({
 		id: "actions",
-		cell: (info) => {
-			const [open, setOpen] = useState(false);
-
-			return (
-				<Dialog open={open} onOpenChange={setOpen} modal>
-					<DialogTrigger asChild>
-						<Button variant={"ghost"} size="sm">
-							<EditIcon className="w-4 h-4" />
-						</Button>
-					</DialogTrigger>
-
-					<ChangeBookingStatus
-						booking={info.row.original}
-						onClose={() => setOpen(false)}
-					/>
-				</Dialog>
-			);
-		},
+		cell: (info) => <BookingActionsCell booking={info.row.original} />,
 	}),
 ];
 
@@ -832,9 +975,9 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
 										{header.isPlaceholder
 											? null
 											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
 									</TableHead>
 								);
 							})}
@@ -892,11 +1035,11 @@ function BookingsFilter({
 	roomTypes: string[];
 	queryState: {
 		bookingStatus:
-			| "RESERVED"
-			| "CHECKED_OUT"
-			| "CHECKED_IN"
-			| "CANCELLED"
-			| null;
+		| "RESERVED"
+		| "CHECKED_OUT"
+		| "CHECKED_IN"
+		| "CANCELLED"
+		| null;
 		search: string | null;
 		roomType: string | null;
 	};
@@ -1069,7 +1212,7 @@ function BookingsListToolbar({
 	roomTypes,
 	table,
 }: {
-	rooms: string[];
+	rooms: Array<RoomType>;
 	roomTypes: string[];
 	table: TableType<BookingViewResponse>;
 }) {
@@ -1097,11 +1240,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === null}
 					onClick={() => setQueryState({ bookingStatus: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === null
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === null
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					All Bookings{" "}
 					{queryState.bookingStatus === null &&
@@ -1113,11 +1255,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === "RESERVED"}
 					onClick={() => setQueryState({ bookingStatus: "RESERVED" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === "RESERVED"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "RESERVED"
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					Reservations{" "}
 					{queryState.bookingStatus === "RESERVED" &&
@@ -1129,11 +1270,10 @@ function BookingsListToolbar({
 					variant="outline"
 					data-active={queryState.bookingStatus === "CHECKED_OUT"}
 					onClick={() => setQueryState({ bookingStatus: "CHECKED_OUT" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
-						queryState.bookingStatus === "CHECKED_OUT"
-							? "bg-primary text-primary-foreground border-primary"
-							: ""
-					}`}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.bookingStatus === "CHECKED_OUT"
+						? "bg-primary text-primary-foreground border-primary"
+						: ""
+						}`}
 				>
 					Booking history{" "}
 					{queryState.bookingStatus === "CHECKED_OUT" &&
@@ -1259,7 +1399,7 @@ export function BookingsPage({
 	roomTypes,
 }: {
 	bookings: BookingViewResponse[];
-	rooms: string[];
+	rooms: RoomType[];
 	roomTypes: string[];
 	paginationMeta: Pagination;
 	breadcrumb: {

@@ -38,7 +38,7 @@ export function PurchaseOrderDetails({
 			<DialogTrigger asChild>
 				{children}
 			</DialogTrigger>
-			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="min-w-4xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{order.poNumber}</DialogTitle>
 					<DialogDescription>Purchase Order Details</DialogDescription>

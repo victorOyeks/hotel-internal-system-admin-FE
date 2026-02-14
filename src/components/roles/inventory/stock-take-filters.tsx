@@ -174,16 +174,6 @@ export function StockTakeToolbar({
 				)}
 
 				{children}
-
-				<Button
-					variant="outline"
-					size="sm"
-					className="h-8 px-2 lg:px-3 bg-white"
-					onClick={() => setIsExportDialogOpen(true)}
-				>
-					Export
-				</Button>
-
 				<ExportDialog
 					open={isExportDialogOpen}
 					setOpenAction={setIsExportDialogOpen}

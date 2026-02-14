@@ -1,6 +1,7 @@
 import {
 	BookOpenIcon,
 	BookTextIcon,
+	BarChart3Icon,
 	ChartNoAxesCombined,
 	FolderClosedIcon,
 	HomeIcon,
@@ -81,7 +82,7 @@ export const inventoryOfficerLinks = [
 	// { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
-		title: "Supplies",
+		title: "Suppliers",
 		icon: <TruckIcon />,
 		url: "/dashboard/supplies",
 	},
@@ -107,6 +108,11 @@ export const inventoryOfficerLinks = [
 		url: "/dashboard/stock-takes",
 	},
 	{
+		title: "Stock Levels",
+		icon: <BarChart3Icon />,
+		url: "/dashboard/stock-levels",
+	},
+	{
 		title: "Stock Movements",
 		icon: <ArrowLeftRightIcon />,
 		url: "/dashboard/stock-movements",
@@ -129,6 +135,7 @@ export const frontDeskLinks = [
 		icon: <FolderClosedIcon />,
 		url: "/dashboard/lost-and-found",
 	},
+	{ title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
 ];
 
 export const restaurantLinks = [

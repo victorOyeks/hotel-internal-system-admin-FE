@@ -365,7 +365,7 @@ function PurchaseOrderCombobox({
 							{purchaseOrders.map((po) => (
 								<CommandItem
 									key={po.id}
-									value={po.id}
+									value={po.poNumber}
 									onSelect={(currentValue) => {
 										onValueChange(currentValue === value ? "" : currentValue);
 										setOpen(false);

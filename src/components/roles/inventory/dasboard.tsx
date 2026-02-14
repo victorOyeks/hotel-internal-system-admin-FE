@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import type {
 	InventoryProductResponse,
-	InventoryResponse,
 	InventorySummaryResponse,
 } from "@/lib/fetch";
 import {
@@ -49,7 +48,7 @@ import { useMutation } from "@tanstack/react-query";
 import { revalidateRoute } from "@/lib/actions";
 import { toast } from "sonner";
 import { atom, useAtom, useSetAtom } from "jotai";
-import { addToInventory, issueStockItem } from "@/lib/inventory-actions";
+import { issueStockItem } from "@/lib/inventory-actions";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 
 import {
@@ -68,6 +67,16 @@ import {
 } from "@/components/ui/command";
 import { useQueryState, parseAsString } from "nuqs";
 import { formatDate } from "date-fns";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { getStorageLocations } from "@/lib/inventory-actions";
+import { AddProductForm } from "./product-catalog-page";
 
 const successDialogAtom = atom({
 	show: false,
@@ -164,7 +173,7 @@ const actions = [
 	{
 		title: "Add New Product",
 		heading: "Add new Product",
-		Component: AddNewItemForm,
+		Component: AddProductForm,
 		icon: PlusIcon,
 		key: "add-stock-item",
 	},
@@ -174,19 +183,20 @@ const actions = [
 		Component: IssueStockItemForm,
 		icon: PackageCheckIcon,
 		key: "issue-stock-item",
-	},
-	{
-		title: "Request Restock",
-		icon: TruckIcon,
-		key: "request-restock",
-	},
+	}
 ];
 
 const issueStockItemFormSchema = z.object({
-	itemId: z.string().nonempty(),
-	quantity: z.number().min(1).default(1),
-	department: z.string().nonempty(),
-	receivingStaff: z.string().nonempty(),
+	locationId: z.string("Location is required").min(1),
+	issueType: z.enum(
+		["INTERNAL_CONSUMPTION", "SALES_ISSUE", "TRANSFER_OUT", "OTHERS"],
+		"Issue type is required",
+	),
+	issueDate: z.string("Date is required"),
+	itemId: z.string("Item is required").min(1),
+	quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+	department: z.string().optional(),
+	receivingStaff: z.string().optional(),
 	remarks: z.string().optional(),
 });
 
@@ -195,7 +205,7 @@ function ItemSelectorCombobox({
 	value,
 	onValueChange,
 }: {
-	items: InventoryResponse[];
+	items: InventoryProductResponse[];
 	value: string;
 	onValueChange: (value: string) => void;
 }) {
@@ -225,7 +235,7 @@ function ItemSelectorCombobox({
 					variant="outline"
 					role="combobox"
 					aria-expanded={open}
-					className="w-full justify-between"
+					className="w-full justify-between font-normal"
 				>
 					{value
 						? items.find((item) => item.id === value)?.name
@@ -259,7 +269,7 @@ function ItemSelectorCombobox({
 										)}
 									/>
 									<div>
-										<div className="font-medium">{item.customId}</div>
+										<div className="font-medium">{item.sku}</div>
 										<div className="text-sm text-gray-500">{item.name}</div>
 									</div>
 								</CommandItem>
@@ -273,28 +283,59 @@ function ItemSelectorCombobox({
 }
 
 function IssueStockItemForm({
-	_data,
-	setOpen,
+	data,
+	onClose,
 }: {
-	setOpen: (open: boolean) => void;
-	_data: InventoryProductResponse[];
+	onClose: () => void;
+	data: InventoryProductResponse[];
 }) {
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const { data: locations } = useQuery({
+		queryKey: ["locations"],
+		queryFn: async () => {
+			const res = await getStorageLocations();
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+	});
+
 	const form = useForm({
 		resolver: zodResolver(issueStockItemFormSchema),
 		defaultValues: {
+			locationId: "",
+			issueType: undefined,
+			issueDate: new Date().toISOString().split("T")[0],
 			itemId: "",
 			quantity: 1,
 			department: "",
 			receivingStaff: "",
 			remarks: "",
 		},
-		progressive: true,
-		reValidateMode: "onBlur",
 	});
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: async (payload: z.infer<typeof issueStockItemFormSchema>) => {
-			const response = await issueStockItem(payload);
+			const {
+				itemId,
+				quantity,
+				remarks,
+				department,
+				receivingStaff,
+				...rest
+			} = payload;
+
+			const response = await issueStockItem({
+				...rest,
+				departmentId: department,
+				receivedBy: receivingStaff,
+				items: [
+					{
+						productId: itemId,
+						quantity,
+						notes: remarks,
+					},
+				],
+			});
 
 			if (!response.success) {
 				throw new Error(response.error);
@@ -304,10 +345,10 @@ function IssueStockItemForm({
 		},
 		onSuccess: async (data) => {
 			form.reset();
-			setOpen(false);
+			onClose();
 			setShowSuccessDialog({
 				show: true,
-				message: data,
+				message: typeof data === "string" ? data : "Stock issued successfully",
 			});
 			await revalidateRoute("/inventory");
 		},
@@ -318,14 +359,84 @@ function IssueStockItemForm({
 		},
 	});
 
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-
 	return (
 		<Form {...form}>
 			<form
 				onSubmit={form.handleSubmit((data) => mutate(data))}
-				className="space-y-6"
+				className="space-y-4"
 			>
+				<div className="grid grid-cols-2 gap-4">
+					<FormField
+						control={form.control}
+						name="locationId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Location</FormLabel>
+								<Select
+									onValueChange={field.onChange}
+									defaultValue={field.value}
+								>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select location" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										{locations?.map((loc) => (
+											<SelectItem key={loc.id} value={loc.id}>
+												{loc.locationName}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="issueType"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Issue Type</FormLabel>
+								<Select
+									onValueChange={field.onChange}
+									defaultValue={field.value}
+								>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select type" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										<SelectItem value="INTERNAL_CONSUMPTION">
+											Internal Consumption
+										</SelectItem>
+										<SelectItem value="SALES_ISSUE">Sales Issue</SelectItem>
+										<SelectItem value="TRANSFER_OUT">Transfer Out</SelectItem>
+										<SelectItem value="OTHERS">Others</SelectItem>
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+				</div>
+
+				<FormField
+					control={form.control}
+					name="issueDate"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Date</FormLabel>
+							<FormControl>
+								<Input type="date" {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
 				<FormField
 					control={form.control}
 					name="itemId"
@@ -334,7 +445,7 @@ function IssueStockItemForm({
 							<FormLabel>Item</FormLabel>
 							<FormControl>
 								<ItemSelectorCombobox
-									items={[]}
+									items={data || []}
 									value={field.value}
 									onValueChange={field.onChange}
 								/>
@@ -343,32 +454,40 @@ function IssueStockItemForm({
 						</FormItem>
 					)}
 				/>
-				<FormField
-					control={form.control}
-					name="department"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Department</FormLabel>
-							<FormControl>
-								<Input {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				<FormField
-					control={form.control}
-					name="quantity"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Quantity</FormLabel>
-							<FormControl>
-								<Input type="number" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+
+				<div className="grid grid-cols-2 gap-4">
+					<FormField
+						control={form.control}
+						name="department"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Department</FormLabel>
+								<FormControl>
+									<Input {...field} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="quantity"
+						render={() => (
+							<FormItem>
+								<FormLabel>Quantity</FormLabel>
+								<FormControl>
+									<Input
+										type="number"
+										min={1}
+										{...form.register("quantity", { valueAsNumber: true })}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+				</div>
+
 				<FormField
 					control={form.control}
 					name="receivingStaff"
@@ -382,6 +501,7 @@ function IssueStockItemForm({
 						</FormItem>
 					)}
 				/>
+
 				<FormField
 					control={form.control}
 					name="remarks"
@@ -395,137 +515,18 @@ function IssueStockItemForm({
 						</FormItem>
 					)}
 				/>
+
 				<Button type="submit" disabled={isPending} className="w-full">
 					{isPending ? (
 						<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
 					) : null}
-					Issue Stock Item
+					Issue Stock
 				</Button>
 			</form>
 		</Form>
 	);
 }
 
-const inventoryItemFormSchema = z.object({
-	name: z.string().nonempty(),
-	category: z.string().nonempty(),
-	unit: z.string().optional(),
-	quantity: z.number(),
-});
-
-function AddNewItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-	const form = useForm({
-		resolver: zodResolver(inventoryItemFormSchema),
-		defaultValues: {
-			category: "",
-			name: "",
-			quantity: 0,
-			unit: "",
-		},
-		progressive: true,
-		reValidateMode: "onBlur",
-	});
-
-	const { mutate, isPending } = useMutation({
-		mutationFn: addToInventory,
-		onSuccess: async () => {
-			form.reset();
-			setOpen(false);
-			setShowSuccessDialog({
-				show: true,
-				message: "Item added successfully",
-			});
-			await revalidateRoute("/inventory");
-		},
-		onError: () => {
-			toast.error("Something went wrong", {
-				description: "Failed to add item",
-			});
-		},
-	});
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	return (
-		<Form {...form}>
-			<form
-				className="space-y-4"
-				onSubmit={form.handleSubmit((data) => mutate(data))}
-			>
-				<FormField
-					name="name"
-					control={form.control}
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Item Name</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g Tissues" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				<FormField
-					control={form.control}
-					name="category"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Item Category</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g Electronics" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-
-				<FormField
-					control={form.control}
-					name="unit"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Unit</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g Pieces" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-
-				<FormField
-					control={form.control}
-					name="quantity"
-					render={() => (
-						<FormItem>
-							<FormLabel>Quantity</FormLabel>
-							<FormControl>
-								<Input
-									type="number"
-									placeholder="e.g 100"
-									{...form.register("quantity", { valueAsNumber: true })}
-								/>
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				<Button
-					type="submit"
-					className="mt-4 w-full font-semibold"
-					disabled={isPending}
-				>
-					{isPending ? (
-						<>
-							<Loader2Icon className="animate-spin" />
-							<span>Adding, please wait...</span>
-						</>
-					) : (
-						"Add Item"
-					)}
-				</Button>
-			</form>
-		</Form>
-	);
-}
 
 export function QuickActions({ data }: { data: InventoryProductResponse[] }) {
 	const [open, setOpen] = useState<false | string>(false);
@@ -555,8 +556,8 @@ export function QuickActions({ data }: { data: InventoryProductResponse[] }) {
 						<DialogDescription className="sr-only">{title}</DialogDescription>
 						{Component && (
 							<Component
-								_data={data}
-								setOpen={(open) => setOpen(open ? key : false)}
+								onClose={() => setOpen(false)}
+								data={data}
 							/>
 						)}
 					</BaseModal>
@@ -580,7 +581,7 @@ function BaseModal({
 		<Dialog modal open={open} onOpenChange={setOpen}>
 			<DialogTrigger>{trigger}</DialogTrigger>
 
-			<DialogContent className="rounded-4xl max-w-sm">{children}</DialogContent>
+			<DialogContent className="rounded-4xl max-w-2xl max-h-[90vh] overflow-y-auto">{children}</DialogContent>
 		</Dialog>
 	);
 }
@@ -683,7 +684,7 @@ function ProductListCard({
 								</div>
 								<div className="text-right">
 									<p className="text-sm font-semibold text-gray-900">
-										${product.value}
+										{formatCurrency(product.value)}
 									</p>
 								</div>
 							</div>
