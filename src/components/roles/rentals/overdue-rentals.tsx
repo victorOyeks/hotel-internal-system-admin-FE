@@ -13,31 +13,54 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { AlertCircleIcon, PhoneIcon } from "lucide-react";
-import type { Pagination } from "@/lib/fetch";
+import { ReturnDialog } from "./return-dialog";
+import { PaymentDialog } from "./payment-dialog";
 
 type OverdueOrder = {
 	id: string;
 	orderNumber: string;
 	customerName: string;
-	customerPhone: string;
-	daysOverdue: number;
-	lateFees: number;
+	customerPhone?: string;
+	status: string;
+	paymentStatus: string;
+	totalItemsCount: number;
 	totalAmount: number;
-	rentalEndDate: string;
+	amountPaid: number;
+	balanceDue: number;
+	depositPaid: number;
+	rentalStartTime: string;
+	rentalEndTime: string;
+	isOverdue: boolean;
+	createdAt: string;
+	hasIssues: boolean;
 };
 
 type OverdueRentalsPageProps = {
 	orders: OverdueOrder[];
-	paginationMeta: Pagination;
 	breadcrumbs: {
 		title: string;
 		breadcrumbs: Array<{ label: string; href: string }>;
 	};
 };
 
+function formatCurrency(amount: number) {
+	return new Intl.NumberFormat("en-NG", {
+		style: "currency",
+		currency: "NGN",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+	}).format(amount);
+}
+
+function getDaysOverdue(endTime: string): number {
+	const end = new Date(endTime);
+	const now = new Date();
+	const diffMs = now.getTime() - end.getTime();
+	return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
 export function OverdueRentalsPage({
 	orders,
-	paginationMeta,
 	breadcrumbs,
 }: OverdueRentalsPageProps) {
 	return (
@@ -63,69 +86,100 @@ export function OverdueRentalsPage({
 						</div>
 					</CardHeader>
 					<CardContent>
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Order Number</TableHead>
-									<TableHead>Customer</TableHead>
-									<TableHead>Due Date</TableHead>
-									<TableHead className="text-center">Days Overdue</TableHead>
-									<TableHead className="text-right">Total Amount</TableHead>
-									<TableHead className="text-right">Late Fees</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{orders.map((order) => (
-									<TableRow key={order.id} className="hover:bg-red-50/50">
-										<TableCell className="font-medium">
-											{order.orderNumber}
-										</TableCell>
-										<TableCell>
-											<div className="flex flex-col">
-												<span className="font-medium text-sm">
-													{order.customerName}
-												</span>
-												<span className="text-xs text-muted-foreground">
-													{order.customerPhone}
-												</span>
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="flex flex-col">
-												<span className="text-sm text-red-600 font-medium">
-													{new Date(order.rentalEndDate).toLocaleDateString()}
-												</span>
-											</div>
-										</TableCell>
-										<TableCell className="text-center">
-											<Badge className="bg-red-100 text-red-800 border-red-200">
-												{order.daysOverdue}{" "}
-												{order.daysOverdue === 1 ? "day" : "days"}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-right font-semibold">
-											${order.totalAmount.toLocaleString()}
-										</TableCell>
-										<TableCell className="text-right">
-											<span className="text-red-600 font-semibold">
-												+${order.lateFees.toLocaleString()}
-											</span>
-										</TableCell>
-										<TableCell className="text-right">
-											<Button
-												variant="outline"
-												size="sm"
-												className="border-red-300 text-red-700 hover:bg-red-50"
-											>
-												<PhoneIcon className="w-4 h-4 mr-1" />
-												Contact
-											</Button>
-										</TableCell>
+						{orders.length === 0 ? (
+							<div className="text-center py-8 text-muted-foreground">
+								<AlertCircleIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
+								<p className="text-lg font-medium text-green-600">
+									No overdue rentals
+								</p>
+								<p className="text-sm mt-1">All rentals are on track</p>
+							</div>
+						) : (
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Order Number</TableHead>
+										<TableHead>Customer</TableHead>
+										<TableHead>Due Date</TableHead>
+										<TableHead className="text-center">Days Overdue</TableHead>
+										<TableHead className="text-right">Total Amount</TableHead>
+										<TableHead className="text-right">Balance Due</TableHead>
+										<TableHead className="text-right">Actions</TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{orders.map((order) => {
+										const daysOverdue = getDaysOverdue(order.rentalEndTime);
+										return (
+											<TableRow
+												key={order.id}
+												className="hover:bg-red-50/50"
+											>
+												<TableCell className="font-medium">
+													{order.orderNumber}
+												</TableCell>
+												<TableCell>
+													<div className="flex flex-col">
+														<span className="font-medium text-sm">
+															{order.customerName}
+														</span>
+														{order.customerPhone && (
+															<span className="text-xs text-muted-foreground">
+																{order.customerPhone}
+															</span>
+														)}
+													</div>
+												</TableCell>
+												<TableCell>
+													<span className="text-sm text-red-600 font-medium">
+														{new Date(
+															order.rentalEndTime,
+														).toLocaleDateString()}
+													</span>
+												</TableCell>
+												<TableCell className="text-center">
+													<Badge className="bg-red-100 text-red-800 border-red-200">
+														{daysOverdue}{" "}
+														{daysOverdue === 1 ? "day" : "days"}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-right font-semibold">
+													{formatCurrency(order.totalAmount)}
+												</TableCell>
+												<TableCell className="text-right">
+													<span className="text-red-600 font-semibold">
+														{formatCurrency(order.balanceDue)}
+													</span>
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex items-center justify-end gap-1">
+														{order.customerPhone && (
+															<Button
+																variant="outline"
+																size="sm"
+																className="border-red-300 text-red-700 hover:bg-red-50"
+																onClick={() =>
+																	window.open(
+																		`tel:${order.customerPhone}`,
+																	)
+																}
+															>
+																<PhoneIcon className="w-4 h-4 mr-1" />
+																Contact
+															</Button>
+														)}
+														<ReturnDialog orderId={order.id} />
+														{order.balanceDue > 0 && (
+															<PaymentDialog orderId={order.id} />
+														)}
+													</div>
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+						)}
 					</CardContent>
 				</Card>
 			</div>

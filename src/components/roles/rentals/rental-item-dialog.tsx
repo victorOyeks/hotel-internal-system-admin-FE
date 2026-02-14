@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PackageIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -41,25 +42,53 @@ const rentalItemSchema = z.object({
 	name: z.string().min(1, "Item name is required"),
 	description: z.string().optional(),
 	category: z.enum([
+		"BICYCLES",
+		"BEACH_EQUIPMENT",
 		"SPORTS_EQUIPMENT",
+		"BABY_EQUIPMENT",
+		"CONFERENCE_EQUIPMENT",
+		"ENTERTAINMENT",
+		"MOBILITY_AIDS",
+		"WATER_SPORTS",
+		"WINTER_SPORTS",
 		"ELECTRONICS",
 		"VEHICLES",
-		"RECREATION",
-		"CONFERENCE_EQUIPMENT",
-		"BABY_ITEMS",
-		"MOBILITY_AIDS",
-		"OTHER",
+		"PARTY_SUPPLIES",
+		"CAMPING_GEAR",
+		"KITCHEN_APPLIANCES",
+		"OTHERS",
 	]),
+	condition: z.enum([
+		"EXCELLENT",
+		"GOOD",
+		"FAIR",
+		"POOR",
+		"DAMAGED",
+		"OUT_OF_SERVICE",
+	]),
+	pricingType: z.enum(["HOURLY", "DAILY", "WEEKLY", "MONTHLY", "FLAT_RATE"]),
+	brand: z.string().optional(),
+	model: z.string().optional(),
+	serialNumber: z.string().optional(),
 	hourlyRate: z.number().min(0).optional(),
 	dailyRate: z.number().min(0).optional(),
 	weeklyRate: z.number().min(0).optional(),
 	monthlyRate: z.number().min(0).optional(),
+	flatRate: z.number().min(0).optional(),
 	depositAmount: z.number().min(0, "Deposit amount is required"),
 	totalQuantity: z.number().min(1, "At least 1 item required"),
-	minRentalDuration: z.number().min(1).optional(),
-	maxRentalDuration: z.number().min(1).optional(),
-	replacementCost: z.number().min(0).optional(),
-	specialInstructions: z.string().optional(),
+	replacementValue: z.number().min(0).optional(),
+	lateReturnPenaltyPerHour: z.number().min(0).optional(),
+	lateReturnPenaltyPerDay: z.number().min(0).optional(),
+	size: z.string().optional(),
+	color: z.string().optional(),
+	specifications: z.string().optional(),
+	usageInstructions: z.string().optional(),
+	safetyInstructions: z.string().optional(),
+	requiresDeposit: z.boolean(),
+	requiresIdentification: z.boolean(),
+	requiresSignedAgreement: z.boolean(),
+	minimumAge: z.number().min(0).optional(),
 	active: z.boolean(),
 });
 
@@ -69,6 +98,41 @@ type RentalItemDialogProps = {
 	trigger?: React.ReactNode;
 	item?: RentalItemFormData & { id: string };
 	onSuccess?: () => void;
+};
+
+const categoryLabels: Record<string, string> = {
+	BICYCLES: "Bicycles",
+	BEACH_EQUIPMENT: "Beach Equipment",
+	SPORTS_EQUIPMENT: "Sports Equipment",
+	BABY_EQUIPMENT: "Baby Equipment",
+	CONFERENCE_EQUIPMENT: "Conference Equipment",
+	ENTERTAINMENT: "Entertainment",
+	MOBILITY_AIDS: "Mobility Aids",
+	WATER_SPORTS: "Water Sports",
+	WINTER_SPORTS: "Winter Sports",
+	ELECTRONICS: "Electronics",
+	VEHICLES: "Vehicles",
+	PARTY_SUPPLIES: "Party Supplies",
+	CAMPING_GEAR: "Camping Gear",
+	KITCHEN_APPLIANCES: "Kitchen Appliances",
+	OTHERS: "Others",
+};
+
+const conditionLabels: Record<string, string> = {
+	EXCELLENT: "Excellent - Like new",
+	GOOD: "Good - Minor wear",
+	FAIR: "Fair - Visible wear",
+	POOR: "Poor - Limited functionality",
+	DAMAGED: "Damaged - Needs repair",
+	OUT_OF_SERVICE: "Out of Service",
+};
+
+const pricingTypeLabels: Record<string, string> = {
+	HOURLY: "Hourly",
+	DAILY: "Daily",
+	WEEKLY: "Weekly",
+	MONTHLY: "Monthly",
+	FLAT_RATE: "Flat Rate",
 };
 
 export function RentalItemDialog({
@@ -85,17 +149,31 @@ export function RentalItemDialog({
 		defaultValues: item || {
 			name: "",
 			description: "",
-			category: "OTHER",
+			category: "OTHERS",
+			condition: "EXCELLENT",
+			pricingType: "DAILY",
+			brand: "",
+			model: "",
+			serialNumber: "",
 			hourlyRate: 0,
 			dailyRate: 0,
 			weeklyRate: 0,
 			monthlyRate: 0,
+			flatRate: 0,
 			depositAmount: 0,
 			totalQuantity: 1,
-			minRentalDuration: 1,
-			maxRentalDuration: 720,
-			replacementCost: 0,
-			specialInstructions: "",
+			replacementValue: 0,
+			lateReturnPenaltyPerHour: 0,
+			lateReturnPenaltyPerDay: 0,
+			size: "",
+			color: "",
+			specifications: "",
+			usageInstructions: "",
+			safetyInstructions: "",
+			requiresDeposit: true,
+			requiresIdentification: false,
+			requiresSignedAgreement: false,
+			minimumAge: 0,
 			active: true,
 		},
 	});
@@ -105,12 +183,12 @@ export function RentalItemDialog({
 			if (isEditing) {
 				return await $fetch("@put/api/hotels/rentals/items/:itemId", {
 					params: { itemId: item.id },
-					input: data,
+					body: data,
 					throw: true,
 				});
 			} else {
 				return await $fetch("@post/api/hotels/rentals/items", {
-					input: data,
+					body: data,
 					throw: true,
 				});
 			}
@@ -133,17 +211,6 @@ export function RentalItemDialog({
 
 	const onSubmit = (data: RentalItemFormData) => {
 		mutation.mutate(data);
-	};
-
-	const categoryLabels = {
-		SPORTS_EQUIPMENT: "Sports Equipment",
-		ELECTRONICS: "Electronics",
-		VEHICLES: "Vehicles",
-		RECREATION: "Recreation",
-		CONFERENCE_EQUIPMENT: "Conference Equipment",
-		BABY_ITEMS: "Baby Items",
-		MOBILITY_AIDS: "Mobility Aids",
-		OTHER: "Other",
 	};
 
 	return (
@@ -169,10 +236,11 @@ export function RentalItemDialog({
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 						<Tabs defaultValue="basic" className="w-full">
-							<TabsList className="grid w-full grid-cols-3">
+							<TabsList className="grid w-full grid-cols-4">
 								<TabsTrigger value="basic">Basic Info</TabsTrigger>
 								<TabsTrigger value="pricing">Pricing</TabsTrigger>
-								<TabsTrigger value="advanced">Advanced</TabsTrigger>
+								<TabsTrigger value="details">Details</TabsTrigger>
+								<TabsTrigger value="requirements">Requirements</TabsTrigger>
 							</TabsList>
 
 							{/* Basic Information Tab */}
@@ -191,35 +259,67 @@ export function RentalItemDialog({
 									)}
 								/>
 
-								<FormField
-									control={form.control}
-									name="category"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Category *</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
-												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select category" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													{Object.entries(categoryLabels).map(
-														([value, label]) => (
-															<SelectItem key={value} value={value}>
-																{label}
-															</SelectItem>
-														),
-													)}
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-2 gap-4">
+									<FormField
+										control={form.control}
+										name="category"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Category *</FormLabel>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select category" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{Object.entries(categoryLabels).map(
+															([value, label]) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															),
+														)}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="condition"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Condition *</FormLabel>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger>
+															<SelectValue placeholder="Select condition" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{Object.entries(conditionLabels).map(
+															([value, label]) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															),
+														)}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 
 								<FormField
 									control={form.control}
@@ -234,13 +334,54 @@ export function RentalItemDialog({
 													{...field}
 												/>
 											</FormControl>
-											<FormDescription>
-												Include condition, features, or special notes
-											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
 								/>
+
+								<div className="grid grid-cols-3 gap-4">
+									<FormField
+										control={form.control}
+										name="brand"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Brand</FormLabel>
+												<FormControl>
+													<Input placeholder="e.g., Trek" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="model"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Model</FormLabel>
+												<FormControl>
+													<Input placeholder="e.g., X-Cal 8" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="serialNumber"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Serial Number</FormLabel>
+												<FormControl>
+													<Input placeholder="Optional" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 
 								<div className="grid grid-cols-2 gap-4">
 									<FormField
@@ -286,7 +427,7 @@ export function RentalItemDialog({
 													/>
 												</FormControl>
 												<FormDescription>
-													Refundable deposit amount
+													Refundable deposit amount (NGN)
 												</FormDescription>
 												<FormMessage />
 											</FormItem>
@@ -297,6 +438,39 @@ export function RentalItemDialog({
 
 							{/* Pricing Tab */}
 							<TabsContent value="pricing" className="space-y-4 mt-4">
+								<FormField
+									control={form.control}
+									name="pricingType"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Pricing Type *</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select pricing type" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{Object.entries(pricingTypeLabels).map(
+														([value, label]) => (
+															<SelectItem key={value} value={value}>
+																{label}
+															</SelectItem>
+														),
+													)}
+												</SelectContent>
+											</Select>
+											<FormDescription>
+												Primary pricing model for this item
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+
 								<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
 									<p className="text-sm text-blue-800">
 										Set different rates for various rental durations. The system
@@ -310,7 +484,7 @@ export function RentalItemDialog({
 										name="hourlyRate"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Hourly Rate</FormLabel>
+												<FormLabel>Hourly Rate (NGN)</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -327,9 +501,6 @@ export function RentalItemDialog({
 														}
 													/>
 												</FormControl>
-												<FormDescription>
-													For rentals under 24 hours
-												</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -340,7 +511,7 @@ export function RentalItemDialog({
 										name="dailyRate"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Daily Rate</FormLabel>
+												<FormLabel>Daily Rate (NGN)</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -357,7 +528,6 @@ export function RentalItemDialog({
 														}
 													/>
 												</FormControl>
-												<FormDescription>For 1-6 day rentals</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -368,7 +538,7 @@ export function RentalItemDialog({
 										name="weeklyRate"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Weekly Rate</FormLabel>
+												<FormLabel>Weekly Rate (NGN)</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -385,7 +555,6 @@ export function RentalItemDialog({
 														}
 													/>
 												</FormControl>
-												<FormDescription>For 7-29 day rentals</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -396,7 +565,7 @@ export function RentalItemDialog({
 										name="monthlyRate"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Monthly Rate</FormLabel>
+												<FormLabel>Monthly Rate (NGN)</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -413,7 +582,120 @@ export function RentalItemDialog({
 														}
 													/>
 												</FormControl>
-												<FormDescription>For 30+ day rentals</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="flatRate"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Flat Rate (NGN)</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="0.00"
+														{...field}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value
+																	? parseFloat(e.target.value)
+																	: undefined,
+															)
+														}
+													/>
+												</FormControl>
+												<FormDescription>Fixed rate per rental</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="replacementValue"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Replacement Value (NGN)</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="0.00"
+														{...field}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value
+																	? parseFloat(e.target.value)
+																	: undefined,
+															)
+														}
+													/>
+												</FormControl>
+												<FormDescription>
+													Cost if item is lost
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									<FormField
+										control={form.control}
+										name="lateReturnPenaltyPerHour"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Late Penalty / Hour (NGN)</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="0.00"
+														{...field}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value
+																	? parseFloat(e.target.value)
+																	: undefined,
+															)
+														}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="lateReturnPenaltyPerDay"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Late Penalty / Day (NGN)</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="0.00"
+														{...field}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value
+																	? parseFloat(e.target.value)
+																	: undefined,
+															)
+														}
+													/>
+												</FormControl>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -421,33 +703,18 @@ export function RentalItemDialog({
 								</div>
 							</TabsContent>
 
-							{/* Advanced Tab */}
-							<TabsContent value="advanced" className="space-y-4 mt-4">
+							{/* Details Tab */}
+							<TabsContent value="details" className="space-y-4 mt-4">
 								<div className="grid grid-cols-2 gap-4">
 									<FormField
 										control={form.control}
-										name="minRentalDuration"
+										name="size"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Min Rental (hours)</FormLabel>
+												<FormLabel>Size</FormLabel>
 												<FormControl>
-													<Input
-														type="number"
-														min="1"
-														placeholder="1"
-														{...field}
-														onChange={(e) =>
-															field.onChange(
-																e.target.value
-																	? parseInt(e.target.value)
-																	: undefined,
-															)
-														}
-													/>
+													<Input placeholder="e.g., Large, 26 inch" {...field} />
 												</FormControl>
-												<FormDescription>
-													Minimum rental duration
-												</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -455,28 +722,13 @@ export function RentalItemDialog({
 
 									<FormField
 										control={form.control}
-										name="maxRentalDuration"
+										name="color"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Max Rental (hours)</FormLabel>
+												<FormLabel>Color</FormLabel>
 												<FormControl>
-													<Input
-														type="number"
-														min="1"
-														placeholder="720"
-														{...field}
-														onChange={(e) =>
-															field.onChange(
-																e.target.value
-																	? parseInt(e.target.value)
-																	: undefined,
-															)
-														}
-													/>
+													<Input placeholder="e.g., Red" {...field} />
 												</FormControl>
-												<FormDescription>
-													Maximum rental duration
-												</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -485,29 +737,17 @@ export function RentalItemDialog({
 
 								<FormField
 									control={form.control}
-									name="replacementCost"
+									name="specifications"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Replacement Cost</FormLabel>
+											<FormLabel>Specifications</FormLabel>
 											<FormControl>
-												<Input
-													type="number"
-													min="0"
-													step="0.01"
-													placeholder="0.00"
+												<Textarea
+													placeholder="Technical specifications..."
+													className="min-h-[80px]"
 													{...field}
-													onChange={(e) =>
-														field.onChange(
-															e.target.value
-																? parseFloat(e.target.value)
-																: undefined,
-														)
-													}
 												/>
 											</FormControl>
-											<FormDescription>
-												Cost if item is lost or destroyed
-											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -515,24 +755,157 @@ export function RentalItemDialog({
 
 								<FormField
 									control={form.control}
-									name="specialInstructions"
+									name="usageInstructions"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Special Instructions</FormLabel>
+											<FormLabel>Usage Instructions</FormLabel>
 											<FormControl>
 												<Textarea
-													placeholder="Usage instructions, care guidelines, etc."
-													className="min-h-[100px]"
+													placeholder="How to use this item..."
+													className="min-h-[80px]"
 													{...field}
 												/>
 											</FormControl>
-											<FormDescription>
-												Instructions for staff or customers
-											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
 								/>
+
+								<FormField
+									control={form.control}
+									name="safetyInstructions"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Safety Instructions</FormLabel>
+											<FormControl>
+												<Textarea
+													placeholder="Safety guidelines and precautions..."
+													className="min-h-[80px]"
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</TabsContent>
+
+							{/* Requirements Tab */}
+							<TabsContent value="requirements" className="space-y-4 mt-4">
+								<div className="space-y-4">
+									<FormField
+										control={form.control}
+										name="requiresDeposit"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Requires Security Deposit</FormLabel>
+													<FormDescription>
+														Deposit must be paid before rental
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="requiresIdentification"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Requires Identification</FormLabel>
+													<FormDescription>
+														Customer must provide valid ID
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="requiresSignedAgreement"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Requires Signed Agreement</FormLabel>
+													<FormDescription>
+														Customer must sign rental agreement
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="minimumAge"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Minimum Age</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														placeholder="0"
+														{...field}
+														onChange={(e) =>
+															field.onChange(
+																e.target.value
+																	? parseInt(e.target.value)
+																	: undefined,
+															)
+														}
+													/>
+												</FormControl>
+												<FormDescription>
+													Minimum age requirement (0 = no restriction)
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="active"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Active</FormLabel>
+													<FormDescription>
+														Available for rental when active
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+								</div>
 							</TabsContent>
 						</Tabs>
 

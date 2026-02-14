@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
+import { recordPayment } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -37,24 +37,38 @@ import { DollarSignIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 const paymentSchema = z.object({
-	orderId: z.string().min(1, "Order ID is required"),
+	rentalOrderId: z.string().min(1, "Order ID is required"),
 	amount: z.number().min(0.01, "Amount must be greater than 0"),
-	paymentType: z.enum([
+	type: z.enum([
 		"DEPOSIT",
+		"INSTALLMENT",
 		"RENTAL_FEE",
+		"FULL_PAYMENT",
+		"FINAL",
 		"DAMAGE_FEE",
-		"LATE_FEE",
+		"LATE_PENALTY",
 		"EXTENSION_FEE",
+		"DEPOSIT_REFUND",
 		"REFUND",
+		"OTHER",
 	]),
-	paymentMethod: z.enum([
+	method: z.enum([
 		"CASH",
 		"CARD",
-		"MOBILE_MONEY",
+		"CREDIT_CARD",
+		"DEBIT_CARD",
 		"BANK_TRANSFER",
-		"WALLET",
+		"MOBILE_MONEY",
+		"CHEQUE",
+		"ONLINE_PAYMENT",
+		"PAYPAL",
+		"CRYPTOCURRENCY",
+		"DIRECT_DEBIT",
+		"PETTY_CASH",
+		"OTHERS",
 	]),
-	paymentReference: z.string().optional(),
+	reference: z.string().optional(),
+	currency: z.string().optional(),
 	notes: z.string().optional(),
 });
 
@@ -77,26 +91,24 @@ export function PaymentDialog({
 	const form = useForm<PaymentFormData>({
 		resolver: zodResolver(paymentSchema),
 		defaultValues: {
-			orderId: orderId || "",
+			rentalOrderId: orderId || "",
 			amount: 0,
-			paymentType: "RENTAL_FEE",
-			paymentMethod: "CASH",
-			paymentReference: "",
+			type: "RENTAL_FEE",
+			method: "CASH",
+			reference: "",
+			currency: "NGN",
 			notes: "",
 		},
 	});
 
 	const mutation = useMutation({
 		mutationFn: async (data: PaymentFormData) => {
-			return await $fetch("@post/api/hotels/rentals/payments", {
-				input: data,
-				throw: true,
-			});
+			const result = await recordPayment(data);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
-		onSuccess: (response) => {
-			toast.success("Payment recorded successfully", {
-				description: `Receipt #${response.data.receiptNumber}`,
-			});
+		onSuccess: () => {
+			toast.success("Payment recorded successfully");
 			queryClient.invalidateQueries({ queryKey: ["rentals", "payments"] });
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({
@@ -115,21 +127,34 @@ export function PaymentDialog({
 		mutation.mutate(data);
 	};
 
-	const paymentTypeLabels = {
+	const paymentTypeLabels: Record<string, string> = {
 		DEPOSIT: "Security Deposit",
+		INSTALLMENT: "Installment",
 		RENTAL_FEE: "Rental Fee",
+		FULL_PAYMENT: "Full Payment",
+		FINAL: "Final Payment",
 		DAMAGE_FEE: "Damage Fee",
-		LATE_FEE: "Late Fee",
+		LATE_PENALTY: "Late Penalty",
 		EXTENSION_FEE: "Extension Fee",
+		DEPOSIT_REFUND: "Deposit Refund",
 		REFUND: "Refund",
+		OTHER: "Other",
 	};
 
-	const paymentMethodLabels = {
+	const paymentMethodLabels: Record<string, string> = {
 		CASH: "Cash",
-		CARD: "Credit/Debit Card",
-		MOBILE_MONEY: "Mobile Money",
+		CARD: "Card",
+		CREDIT_CARD: "Credit Card",
+		DEBIT_CARD: "Debit Card",
 		BANK_TRANSFER: "Bank Transfer",
-		WALLET: "Hotel Wallet",
+		MOBILE_MONEY: "Mobile Money",
+		CHEQUE: "Cheque",
+		ONLINE_PAYMENT: "Online Payment",
+		PAYPAL: "PayPal",
+		CRYPTOCURRENCY: "Cryptocurrency",
+		DIRECT_DEBIT: "Direct Debit",
+		PETTY_CASH: "Petty Cash",
+		OTHERS: "Other",
 	};
 
 	return (
@@ -155,12 +180,12 @@ export function PaymentDialog({
 						{!orderId && (
 							<FormField
 								control={form.control}
-								name="orderId"
+								name="rentalOrderId"
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Order ID *</FormLabel>
 										<FormControl>
-											<Input placeholder="RNT-20250122-0001" {...field} />
+											<Input placeholder="Order ID" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -186,7 +211,7 @@ export function PaymentDialog({
 											}
 										/>
 									</FormControl>
-									<FormDescription>Enter amount in USD</FormDescription>
+									<FormDescription>Enter amount in NGN</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -194,7 +219,7 @@ export function PaymentDialog({
 
 						<FormField
 							control={form.control}
-							name="paymentType"
+							name="type"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Payment Type *</FormLabel>
@@ -224,7 +249,7 @@ export function PaymentDialog({
 
 						<FormField
 							control={form.control}
-							name="paymentMethod"
+							name="method"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Payment Method *</FormLabel>
@@ -254,7 +279,7 @@ export function PaymentDialog({
 
 						<FormField
 							control={form.control}
-							name="paymentReference"
+							name="reference"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Reference Number</FormLabel>

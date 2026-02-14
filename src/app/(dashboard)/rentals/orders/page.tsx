@@ -1,4 +1,16 @@
 import { RentalOrdersPage } from "@/components/roles/rentals/rental-orders";
+import { $fetch } from "@/lib/fetch";
+import { paginationSearchParams } from "@/lib/nuqs.server";
+import { getQueryClient } from "@/lib/queries";
+import { getCookieData } from "@/lib/server-fns";
+import { createLoader, type SearchParams } from "nuqs/server";
+import { use } from "react";
+
+type PageProps = {
+	searchParams: Promise<SearchParams>;
+};
+
+const loadSearchParams = createLoader(paginationSearchParams);
 
 const breadcrumbs = {
 	title: "Rental Orders",
@@ -8,79 +20,33 @@ const breadcrumbs = {
 	],
 };
 
-// TODO: Replace with actual API call when backend is ready
-const mockOrders = [
-	{
-		id: "1",
-		orderNumber: "RO-2024-001",
-		customerName: "John Smith",
-		customerPhone: "+1-555-0101",
-		status: "ACTIVE",
-		paymentStatus: "PAID",
-		totalAmount: 450.0,
-		rentalStartDate: "2024-01-15",
-		rentalEndDate: "2024-01-25",
-	},
-	{
-		id: "2",
-		orderNumber: "RO-2024-002",
-		customerName: "Sarah Johnson",
-		customerPhone: "+1-555-0102",
-		status: "ACTIVE",
-		paymentStatus: "PARTIAL",
-		totalAmount: 890.0,
-		rentalStartDate: "2024-01-18",
-		rentalEndDate: "2024-01-28",
-	},
-	{
-		id: "3",
-		orderNumber: "RO-2024-003",
-		customerName: "Michael Brown",
-		customerPhone: "+1-555-0103",
-		status: "COMPLETED",
-		paymentStatus: "PAID",
-		totalAmount: 320.0,
-		rentalStartDate: "2024-01-10",
-		rentalEndDate: "2024-01-20",
-	},
-	{
-		id: "4",
-		orderNumber: "RO-2024-004",
-		customerName: "Emily Davis",
-		customerPhone: "+1-555-0104",
-		status: "ACTIVE",
-		paymentStatus: "PENDING",
-		totalAmount: 675.0,
-		rentalStartDate: "2024-01-20",
-		rentalEndDate: "2024-01-30",
-	},
-	{
-		id: "5",
-		orderNumber: "RO-2024-005",
-		customerName: "David Wilson",
-		customerPhone: "+1-555-0105",
-		status: "RESERVED",
-		paymentStatus: "DEPOSIT_PAID",
-		totalAmount: 1200.0,
-		rentalStartDate: "2024-02-01",
-		rentalEndDate: "2024-02-10",
-	},
-];
+export default function RentalOrdersPageRoute({ searchParams }: PageProps) {
+	const { token } = use(getCookieData())!;
+	const query = use(loadSearchParams(searchParams));
+	const qc = getQueryClient();
 
-const mockPaginationMeta = {
-	pageNumber: 0,
-	pageSize: 10,
-	totalElements: 5,
-	totalPages: 1,
-	last: true,
-	first: true,
-};
+	const { content: orders, ...paginationMeta } = use(
+		qc.ensureQueryData({
+			queryKey: ["rentals", "orders", query],
+			queryFn: async ({ signal }) => {
+				const response = await $fetch("@get/api/hotels/rentals/orders", {
+					query: {
+						page: query.page < 1 ? query.page : query.page - 1,
+						size: query.size,
+					},
+					auth: { type: "Bearer", token },
+					signal,
+					throw: true,
+				});
+				return response.data;
+			},
+		}),
+	);
 
-export default function RentalOrdersPageRoute() {
 	return (
 		<RentalOrdersPage
-			orders={mockOrders}
-			paginationMeta={mockPaginationMeta}
+			orders={orders}
+			paginationMeta={paginationMeta}
 			breadcrumbs={breadcrumbs}
 		/>
 	);

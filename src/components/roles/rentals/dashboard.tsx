@@ -8,7 +8,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -18,33 +17,25 @@ import {
 	DollarSignIcon,
 	TrendingUpIcon,
 	TrendingDownIcon,
-	PlusCircleIcon,
 	ArrowRightIcon,
+	UsersIcon,
+	WrenchIcon,
+	BarChart3Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { RentalOrderDialog } from "./rental-order-dialog";
 
 type DashboardStats = {
-	// Inventory Metrics
 	totalActiveItems: number;
-	totalQuantity: number;
-	currentlyRented: number;
-	availableItems: number;
-
-	// Operational Metrics
 	totalOrders: number;
 	activeRentals: number;
 	overdueRentals: number;
 	completedRentals: number;
-	ordersToday: number;
-	completedToday: number;
-
-	// Financial Metrics
 	totalRevenue: number;
 	outstandingAmount: number;
+	ordersToday: number;
 	revenueToday: number;
-	depositsHeld: number;
-	pendingRefunds: number;
+	totalItemsRentedOut: number;
 };
 
 type DashboardProps = {
@@ -56,11 +47,6 @@ type DashboardProps = {
 };
 
 export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
-	const utilizationRate =
-		stats.totalQuantity > 0
-			? ((stats.currentlyRented / stats.totalQuantity) * 100).toFixed(1)
-			: "0";
-
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
 			<div className="flex flex-col gap-6 p-6">
@@ -120,20 +106,14 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 
 				{/* Key Metrics Grid */}
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-					{/* Inventory Metric */}
 					<MetricCard
-						title="Inventory Status"
-						value={stats.availableItems}
-						subtitle={`${stats.currentlyRented} currently rented`}
+						title="Active Items"
+						value={stats.totalActiveItems}
+						subtitle={`${stats.totalItemsRentedOut} currently rented out`}
 						icon={<PackageIcon className="w-5 h-5" />}
 						color="blue"
-						trend={{
-							label: `${utilizationRate}% utilization`,
-							isPositive: Number(utilizationRate) > 50,
-						}}
 					/>
 
-					{/* Active Rentals */}
 					<MetricCard
 						title="Active Rentals"
 						value={stats.activeRentals}
@@ -141,25 +121,23 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 						icon={<ClipboardListIcon className="w-5 h-5" />}
 						color="green"
 						trend={{
-							label: `${stats.completedToday} completed today`,
+							label: `${stats.completedRentals} completed`,
 							isPositive: true,
 						}}
 					/>
 
-					{/* Revenue */}
 					<MetricCard
 						title="Total Revenue"
-						value={`$${stats.totalRevenue.toLocaleString()}`}
-						subtitle={`$${stats.revenueToday.toLocaleString()} today`}
+						value={formatCurrency(stats.totalRevenue)}
+						subtitle={`${formatCurrency(stats.revenueToday)} today`}
 						icon={<DollarSignIcon className="w-5 h-5" />}
 						color="purple"
 						trend={{
-							label: `$${stats.outstandingAmount.toLocaleString()} outstanding`,
+							label: `${formatCurrency(stats.outstandingAmount)} outstanding`,
 							isPositive: false,
 						}}
 					/>
 
-					{/* Overdue */}
 					<MetricCard
 						title="Overdue Rentals"
 						value={stats.overdueRentals}
@@ -179,19 +157,15 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Deposits Held
+								Outstanding Amount
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
-								${stats.depositsHeld.toLocaleString()}
+								{formatCurrency(stats.outstandingAmount)}
 							</div>
 							<p className="text-xs text-muted-foreground mt-1">
-								{stats.pendingRefunds > 0 && (
-									<span className="text-amber-600">
-										${stats.pendingRefunds.toLocaleString()} pending refund
-									</span>
-								)}
+								Pending payments from active rentals
 							</p>
 						</CardContent>
 					</Card>
@@ -215,13 +189,15 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-medium text-muted-foreground">
-								Total Items
+								Items Rented Out
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{stats.totalActiveItems}</div>
+							<div className="text-2xl font-bold">
+								{stats.totalItemsRentedOut}
+							</div>
 							<p className="text-xs text-muted-foreground mt-1">
-								{stats.totalQuantity} total units
+								Currently with customers
 							</p>
 						</CardContent>
 					</Card>
@@ -285,12 +261,72 @@ export function RentalsDashboard({ stats, breadcrumbs }: DashboardProps) {
 									</div>
 								</Button>
 							</Link>
+
+							<Link href="/dashboard/customers">
+								<Button
+									variant="outline"
+									className="w-full justify-start h-auto py-4"
+								>
+									<div className="flex flex-col items-start gap-1">
+										<div className="flex items-center gap-2">
+											<UsersIcon className="w-4 h-4" />
+											<span className="font-semibold">Customer History</span>
+										</div>
+										<span className="text-xs text-muted-foreground">
+											View customer rental activity
+										</span>
+									</div>
+								</Button>
+							</Link>
+
+							<Link href="/dashboard/maintenance">
+								<Button
+									variant="outline"
+									className="w-full justify-start h-auto py-4"
+								>
+									<div className="flex flex-col items-start gap-1">
+										<div className="flex items-center gap-2">
+											<WrenchIcon className="w-4 h-4" />
+											<span className="font-semibold">Maintenance</span>
+										</div>
+										<span className="text-xs text-muted-foreground">
+											Track items in maintenance
+										</span>
+									</div>
+								</Button>
+							</Link>
+
+							<Link href="/dashboard/reports">
+								<Button
+									variant="outline"
+									className="w-full justify-start h-auto py-4"
+								>
+									<div className="flex flex-col items-start gap-1">
+										<div className="flex items-center gap-2">
+											<BarChart3Icon className="w-4 h-4" />
+											<span className="font-semibold">Reports</span>
+										</div>
+										<span className="text-xs text-muted-foreground">
+											Performance analytics and insights
+										</span>
+									</div>
+								</Button>
+							</Link>
 						</div>
 					</CardContent>
 				</Card>
 			</div>
 		</BreadCrumbWrapper>
 	);
+}
+
+function formatCurrency(amount: number) {
+	return new Intl.NumberFormat("en-NG", {
+		style: "currency",
+		currency: "NGN",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+	}).format(amount);
 }
 
 type MetricCardProps = {

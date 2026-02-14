@@ -19,6 +19,9 @@ import {
 	ClockAlertIcon,
 	FileDiffIcon,
 	ArrowLeftRightIcon,
+	UsersIcon,
+	WrenchIcon,
+	BarChart3Icon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -153,5 +156,12 @@ export const rentalsLinks = [
 		url: "/dashboard/overdue",
 	},
 	{ title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
+	{ title: "Customers", icon: <UsersIcon />, url: "/dashboard/customers" },
+	{
+		title: "Maintenance",
+		icon: <WrenchIcon />,
+		url: "/dashboard/maintenance",
+	},
+	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
+import { processReturn } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -23,42 +23,55 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PackageCheckIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const returnSchema = z
-	.object({
-		orderId: z.string().min(1, "Order ID is required"),
-		hasDamage: z.boolean(),
-		damageDescription: z.string().optional(),
-		damageFee: z.number().min(0).optional(),
-		lateFee: z.number().min(0).optional(),
-		notes: z.string().optional(),
-	})
-	.refine(
-		(data) => {
-			if (data.hasDamage && !data.damageDescription) {
-				return false;
-			}
-			return true;
-		},
-		{
-			message: "Damage description is required when item has damage",
-			path: ["damageDescription"],
-		},
-	);
+const returnInspectionSchema = z.object({
+	inspectionType: z.literal("RETURN"),
+	notes: z.string().optional(),
+	condition: z.enum([
+		"EXCELLENT",
+		"GOOD",
+		"FAIR",
+		"POOR",
+		"DAMAGED",
+		"OUT_OF_SERVICE",
+	]),
+	damaged: z.boolean(),
+	lost: z.boolean(),
+	damageDescription: z.string().optional(),
+	damageCharge: z.number().min(0).optional(),
+	replacementCharge: z.number().min(0).optional(),
+	inspectionNotes: z.string().optional(),
+});
 
-type ReturnFormData = z.infer<typeof returnSchema>;
+type ReturnInspectionFormData = z.infer<typeof returnInspectionSchema>;
 
 type ReturnDialogProps = {
 	trigger?: React.ReactNode;
-	orderId?: string;
+	orderId: string;
 	onSuccess?: () => void;
+};
+
+const conditionLabels: Record<string, string> = {
+	EXCELLENT: "Excellent - Like new",
+	GOOD: "Good - Minor wear",
+	FAIR: "Fair - Visible wear",
+	POOR: "Poor - Limited functionality",
+	DAMAGED: "Damaged - Needs repair",
+	OUT_OF_SERVICE: "Out of Service",
 };
 
 export function ReturnDialog({
@@ -69,36 +82,46 @@ export function ReturnDialog({
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
 
-	const form = useForm<ReturnFormData>({
-		resolver: zodResolver(returnSchema),
+	const form = useForm<ReturnInspectionFormData>({
+		resolver: zodResolver(returnInspectionSchema),
 		defaultValues: {
-			orderId: orderId || "",
-			hasDamage: false,
-			damageDescription: "",
-			damageFee: 0,
-			lateFee: 0,
+			inspectionType: "RETURN",
 			notes: "",
+			condition: "GOOD",
+			damaged: false,
+			lost: false,
+			damageDescription: "",
+			damageCharge: 0,
+			replacementCharge: 0,
+			inspectionNotes: "",
 		},
 	});
 
-	const hasDamage = form.watch("hasDamage");
+	const isDamaged = form.watch("damaged");
+	const isLost = form.watch("lost");
 
-	const mutation = useMutation({
-		mutationFn: async (data: ReturnFormData) => {
-			return await $fetch("@post/api/hotels/rentals/orders/:orderId/return", {
-				params: { orderId: data.orderId },
-				input: {
-					hasDamage: data.hasDamage,
-					damageDescription: data.damageDescription,
-					damageFee: data.damageFee,
-					lateFee: data.lateFee,
-					notes: data.notes,
-				},
-				throw: true,
+	const inspectionMutation = useMutation({
+		mutationFn: async (data: ReturnInspectionFormData) => {
+			const result = await processReturn(orderId, {
+				inspectionType: "RETURN",
+				notes: data.notes,
+				items: [
+					{
+						condition: data.condition,
+						inspectionNotes: data.inspectionNotes,
+						damaged: data.damaged,
+						lost: data.lost,
+						damageDescription: data.damageDescription,
+						damageCharge: data.damageCharge,
+						replacementCharge: data.replacementCharge,
+					},
+				],
 			});
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
 		onSuccess: () => {
-			toast.success("Rental return processed successfully");
+			toast.success("Return processed successfully");
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
@@ -112,8 +135,8 @@ export function ReturnDialog({
 		},
 	});
 
-	const onSubmit = (data: ReturnFormData) => {
-		mutation.mutate(data);
+	const onSubmit = (data: ReturnInspectionFormData) => {
+		inspectionMutation.mutate(data);
 	};
 
 	return (
@@ -130,33 +153,49 @@ export function ReturnDialog({
 				<DialogHeader>
 					<DialogTitle className="text-2xl">Process Rental Return</DialogTitle>
 					<DialogDescription>
-						Mark items as returned and assess any damage or late fees
+						Inspect returned items and record their condition
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						{!orderId && (
-							<FormField
-								control={form.control}
-								name="orderId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Order ID *</FormLabel>
+						{/* Item Condition */}
+						<FormField
+							control={form.control}
+							name="condition"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Item Condition *</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										defaultValue={field.value}
+									>
 										<FormControl>
-											<Input placeholder="RNT-20250122-0001" {...field} />
+											<SelectTrigger>
+												<SelectValue placeholder="Select condition" />
+											</SelectTrigger>
 										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						)}
+										<SelectContent>
+											{Object.entries(conditionLabels).map(
+												([value, label]) => (
+													<SelectItem key={value} value={value}>
+														{label}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
+						{/* Damage/Loss Checkboxes */}
 						<Card className="bg-blue-50 border-blue-200">
-							<CardContent className="pt-4">
+							<CardContent className="pt-4 space-y-3">
 								<FormField
 									control={form.control}
-									name="hasDamage"
+									name="damaged"
 									render={({ field }) => (
 										<FormItem className="flex flex-row items-start space-x-3 space-y-0">
 											<FormControl>
@@ -176,78 +215,128 @@ export function ReturnDialog({
 										</FormItem>
 									)}
 								/>
+
+								<FormField
+									control={form.control}
+									name="lost"
+									render={({ field }) => (
+										<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+											<FormControl>
+												<Checkbox
+													checked={field.value}
+													onCheckedChange={field.onChange}
+												/>
+											</FormControl>
+											<div className="space-y-1 leading-none">
+												<FormLabel className="font-semibold">
+													Item(s) are lost
+												</FormLabel>
+												<FormDescription>
+													Check if any items are missing or not returned
+												</FormDescription>
+											</div>
+										</FormItem>
+									)}
+								/>
 							</CardContent>
 						</Card>
 
-						{hasDamage && (
-							<>
-								<FormField
-									control={form.control}
-									name="damageDescription"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Damage Description *</FormLabel>
-											<FormControl>
-												<Textarea
-													placeholder="Describe the damage..."
-													className="min-h-[80px]"
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+						{/* Damage Details */}
+						{isDamaged && (
+							<Card>
+								<CardHeader className="pb-3">
+									<CardTitle className="text-sm font-medium text-red-700">
+										Damage Details
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-3">
+									<FormField
+										control={form.control}
+										name="damageDescription"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Damage Description *</FormLabel>
+												<FormControl>
+													<Textarea
+														placeholder="Describe the damage..."
+														className="min-h-[80px]"
+														{...field}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
 
-								<FormField
-									control={form.control}
-									name="damageFee"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Damage Fee</FormLabel>
-											<FormControl>
-												<Input
-													type="number"
-													min="0"
-													step="0.01"
-													placeholder="0.00"
-													{...field}
-													onChange={(e) =>
-														field.onChange(parseFloat(e.target.value) || 0)
-													}
-												/>
-											</FormControl>
-											<FormDescription>
-												Amount to charge for damage
-											</FormDescription>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</>
+									<FormField
+										control={form.control}
+										name="damageCharge"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Damage Charge (NGN)</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="0.00"
+														{...field}
+														onChange={(e) =>
+															field.onChange(parseFloat(e.target.value) || 0)
+														}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</CardContent>
+							</Card>
 						)}
 
+						{/* Lost Item Charges */}
+						{isLost && (
+							<FormField
+								control={form.control}
+								name="replacementCharge"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Replacement Charge (NGN)</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												step="0.01"
+												placeholder="0.00"
+												{...field}
+												onChange={(e) =>
+													field.onChange(parseFloat(e.target.value) || 0)
+												}
+											/>
+										</FormControl>
+										<FormDescription>
+											Charge for lost/unreturned items
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						)}
+
+						{/* Inspection Notes */}
 						<FormField
 							control={form.control}
-							name="lateFee"
+							name="inspectionNotes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Late Fee</FormLabel>
+									<FormLabel>Inspection Notes</FormLabel>
 									<FormControl>
-										<Input
-											type="number"
-											min="0"
-											step="0.01"
-											placeholder="0.00"
+										<Textarea
+											placeholder="Additional inspection notes..."
+											className="min-h-[60px]"
 											{...field}
-											onChange={(e) =>
-												field.onChange(parseFloat(e.target.value) || 0)
-											}
 										/>
 									</FormControl>
-									<FormDescription>
-										Fee for late return (if applicable)
-									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -258,10 +347,10 @@ export function ReturnDialog({
 							name="notes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Notes</FormLabel>
+									<FormLabel>Overall Notes</FormLabel>
 									<FormControl>
 										<Textarea
-											placeholder="Additional notes about the return..."
+											placeholder="General return notes..."
 											className="min-h-[60px]"
 											{...field}
 										/>
@@ -276,16 +365,16 @@ export function ReturnDialog({
 								type="button"
 								variant="outline"
 								onClick={() => setOpen(false)}
-								disabled={mutation.isPending}
+								disabled={inspectionMutation.isPending}
 							>
 								Cancel
 							</Button>
 							<Button
 								type="submit"
-								disabled={mutation.isPending}
+								disabled={inspectionMutation.isPending}
 								className="bg-gradient-to-r from-blue-600 to-indigo-600"
 							>
-								{mutation.isPending && (
+								{inspectionMutation.isPending && (
 									<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
 								)}
 								Complete Return

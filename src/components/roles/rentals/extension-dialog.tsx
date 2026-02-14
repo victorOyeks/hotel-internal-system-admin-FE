@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
+import { extendRentalOrder } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -23,7 +23,6 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -39,11 +38,9 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const extensionSchema = z.object({
-	orderId: z.string().min(1, "Order ID is required"),
-	newReturnDate: z.date({
-		error: "New return date is required",
+	newEndTime: z.date({
+		error: "New end date is required",
 	}),
-	extensionReason: z.string().optional(),
 	notes: z.string().optional(),
 });
 
@@ -51,7 +48,7 @@ type ExtensionFormData = z.infer<typeof extensionSchema>;
 
 type ExtensionDialogProps = {
 	trigger?: React.ReactNode;
-	orderId?: string;
+	orderId: string;
 	currentReturnDate?: Date;
 	onSuccess?: () => void;
 };
@@ -68,27 +65,22 @@ export function ExtensionDialog({
 	const form = useForm<ExtensionFormData>({
 		resolver: zodResolver(extensionSchema),
 		defaultValues: {
-			orderId: orderId || "",
-			extensionReason: "",
 			notes: "",
 		},
 	});
 
 	const mutation = useMutation({
 		mutationFn: async (data: ExtensionFormData) => {
-			return await $fetch("@post/api/hotels/rentals/orders/:orderId/extend", {
-				params: { orderId: data.orderId },
-				input: {
-					newReturnDate: data.newReturnDate.toISOString(),
-					extensionReason: data.extensionReason,
-					notes: data.notes,
-				},
-				throw: true,
+			const result = await extendRentalOrder(orderId, {
+				newEndTime: data.newEndTime.toISOString(),
+				notes: data.notes,
 			});
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
-		onSuccess: (response) => {
+		onSuccess: () => {
 			toast.success("Rental extended successfully", {
-				description: `New return date: ${format(form.watch("newReturnDate"), "PPP")}`,
+				description: `New end date: ${format(form.watch("newEndTime"), "PPP")}`,
 			});
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({
@@ -104,15 +96,15 @@ export function ExtensionDialog({
 	});
 
 	const onSubmit = (data: ExtensionFormData) => {
-		if (currentReturnDate && data.newReturnDate <= currentReturnDate) {
-			toast.error("New return date must be after current return date");
+		if (currentReturnDate && data.newEndTime <= currentReturnDate) {
+			toast.error("New end date must be after current return date");
 			return;
 		}
 		mutation.mutate(data);
 	};
 
 	const calculateExtension = () => {
-		const newDate = form.watch("newReturnDate");
+		const newDate = form.watch("newEndTime");
 		if (currentReturnDate && newDate) {
 			const hours = Math.ceil(
 				(newDate.getTime() - currentReturnDate.getTime()) / (1000 * 60 * 60),
@@ -145,22 +137,6 @@ export function ExtensionDialog({
 
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						{!orderId && (
-							<FormField
-								control={form.control}
-								name="orderId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Order ID *</FormLabel>
-										<FormControl>
-											<Input placeholder="RNT-20250122-0001" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						)}
-
 						{currentReturnDate && (
 							<Card className="bg-gray-50">
 								<CardContent className="pt-4">
@@ -178,10 +154,10 @@ export function ExtensionDialog({
 
 						<FormField
 							control={form.control}
-							name="newReturnDate"
+							name="newEndTime"
 							render={({ field }) => (
 								<FormItem className="flex flex-col">
-									<FormLabel>New Return Date *</FormLabel>
+									<FormLabel>New End Date *</FormLabel>
 									<Popover>
 										<PopoverTrigger asChild>
 											<FormControl>
@@ -244,27 +220,13 @@ export function ExtensionDialog({
 
 						<FormField
 							control={form.control}
-							name="extensionReason"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Reason for Extension</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g., Customer request" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
 							name="notes"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Additional Notes</FormLabel>
+									<FormLabel>Notes</FormLabel>
 									<FormControl>
 										<Textarea
-											placeholder="Any additional notes..."
+											placeholder="Reason for extension or additional notes..."
 											className="min-h-[60px]"
 											{...field}
 										/>

@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
+import { createRentalOrder, getAvailableItems } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -35,9 +35,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-	ClipboardListIcon,
 	Loader2Icon,
 	PlusCircleIcon,
 	TrashIcon,
@@ -56,26 +55,32 @@ import { cn } from "@/lib/utils";
 const orderItemSchema = z.object({
 	rentalItemId: z.string().min(1, "Please select an item"),
 	quantity: z.number().min(1, "Quantity must be at least 1"),
-	notes: z.string().optional(),
+	specialInstructions: z.string().optional(),
 });
 
 const rentalOrderSchema = z.object({
 	bookingId: z.string().optional(),
 	customerName: z.string().min(1, "Customer name is required"),
 	customerPhone: z.string().min(1, "Phone number is required"),
-	customerIdType: z
+	customerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
+	identificationType: z
 		.enum(["PASSPORT", "DRIVERS_LICENSE", "NATIONAL_ID", "OTHER"])
 		.optional(),
-	customerIdNumber: z.string().optional(),
-	roomIdentifier: z.string().optional(),
-	rentalStartDate: z.date({
+	identificationNumber: z.string().optional(),
+	rentalStartTime: z.date({
 		error: "Start date is required",
 	}),
-	rentalEndDate: z.date({
+	rentalEndTime: z.date({
 		error: "End date is required",
 	}),
-	orderItems: z.array(orderItemSchema).min(1, "At least one item is required"),
-	notes: z.string().optional(),
+	items: z.array(orderItemSchema).min(1, "At least one item is required"),
+	specialInstructions: z.string().optional(),
+	customerNotes: z.string().optional(),
+	chargeOverduePenalty: z.boolean(),
+	sendOverdueNotice: z.boolean(),
+	sendReminders: z.boolean(),
+	requireDeposit: z.boolean(),
+	requireAgreement: z.boolean(),
 });
 
 type RentalOrderFormData = z.infer<typeof rentalOrderSchema>;
@@ -97,44 +102,49 @@ export function RentalOrderDialog({
 		defaultValues: {
 			customerName: "",
 			customerPhone: "",
-			roomIdentifier: "",
-			orderItems: [{ rentalItemId: "", quantity: 1, notes: "" }],
-			notes: "",
+			customerEmail: "",
+			identificationNumber: "",
+			items: [{ rentalItemId: "", quantity: 1, specialInstructions: "" }],
+			specialInstructions: "",
+			customerNotes: "",
+			chargeOverduePenalty: true,
+			sendOverdueNotice: true,
+			sendReminders: true,
+			requireDeposit: true,
+			requireAgreement: false,
 		},
 	});
 
 	const { fields, append, remove } = useFieldArray({
 		control: form.control,
-		name: "orderItems",
+		name: "items",
 	});
 
-	// Fetch available rental items
 	const { data: availableItems } = useQuery({
 		queryKey: ["rentals", "items", "available"],
 		queryFn: async () => {
-			const response = await $fetch("@get/api/hotels/rentals/items/available", {
-				throw: true,
-			});
-			return response.data;
+			const result = await getAvailableItems();
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
+		enabled: open,
 	});
 
 	const mutation = useMutation({
 		mutationFn: async (data: RentalOrderFormData) => {
-			// Transform dates to ISO strings for API
 			const payload = {
 				...data,
-				rentalStartDate: data.rentalStartDate.toISOString(),
-				rentalEndDate: data.rentalEndDate.toISOString(),
+				rentalStartTime: data.rentalStartTime.toISOString(),
+				rentalEndTime: data.rentalEndTime.toISOString(),
+				customerEmail: data.customerEmail || undefined,
 			};
-			return await $fetch("@post/api/hotels/rentals/orders", {
-				input: payload,
-				throw: true,
-			});
+			const result = await createRentalOrder(payload);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
 		onSuccess: (response) => {
 			toast.success("Rental order created successfully", {
-				description: `Order #${response.data.orderNumber}`,
+				description: `Order #${response.orderNumber}`,
 			});
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({
@@ -150,17 +160,30 @@ export function RentalOrderDialog({
 	});
 
 	const onSubmit = (data: RentalOrderFormData) => {
-		// Validation: End date must be after start date
-		if (data.rentalEndDate <= data.rentalStartDate) {
+		if (data.rentalEndTime <= data.rentalStartTime) {
 			toast.error("End date must be after start date");
 			return;
 		}
+
+		// Validate quantities against available stock
+		for (const item of data.items) {
+			const availableItem = availableItems?.find(
+				(ai: any) => ai.id === item.rentalItemId,
+			);
+			if (availableItem && item.quantity > availableItem.availableQuantity) {
+				toast.error(
+					`"${availableItem.name}" only has ${availableItem.availableQuantity} available, but you requested ${item.quantity}`,
+				);
+				return;
+			}
+		}
+
 		mutation.mutate(data);
 	};
 
 	const calculateDuration = () => {
-		const start = form.watch("rentalStartDate");
-		const end = form.watch("rentalEndDate");
+		const start = form.watch("rentalStartTime");
+		const end = form.watch("rentalEndTime");
 		if (start && end) {
 			const hours = Math.ceil(
 				(end.getTime() - start.getTime()) / (1000 * 60 * 60),
@@ -183,7 +206,7 @@ export function RentalOrderDialog({
 					</Button>
 				)}
 			</DialogTrigger>
-			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="text-2xl">Create Rental Order</DialogTitle>
 					<DialogDescription>
@@ -221,7 +244,7 @@ export function RentalOrderDialog({
 											<FormItem>
 												<FormLabel>Phone Number *</FormLabel>
 												<FormControl>
-													<Input placeholder="+1234567890" {...field} />
+													<Input placeholder="+234..." {...field} />
 												</FormControl>
 												<FormMessage />
 											</FormItem>
@@ -229,10 +252,28 @@ export function RentalOrderDialog({
 									/>
 								</div>
 
-								<div className="grid grid-cols-3 gap-4">
+								<FormField
+									control={form.control}
+									name="customerEmail"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Email Address</FormLabel>
+											<FormControl>
+												<Input
+													type="email"
+													placeholder="customer@example.com"
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+
+								<div className="grid grid-cols-2 gap-4">
 									<FormField
 										control={form.control}
-										name="customerIdType"
+										name="identificationType"
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel>ID Type</FormLabel>
@@ -263,7 +304,7 @@ export function RentalOrderDialog({
 
 									<FormField
 										control={form.control}
-										name="customerIdNumber"
+										name="identificationNumber"
 										render={({ field }) => (
 											<FormItem>
 												<FormLabel>ID Number</FormLabel>
@@ -274,24 +315,24 @@ export function RentalOrderDialog({
 											</FormItem>
 										)}
 									/>
-
-									<FormField
-										control={form.control}
-										name="roomIdentifier"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Room Number</FormLabel>
-												<FormControl>
-													<Input placeholder="Optional" {...field} />
-												</FormControl>
-												<FormDescription className="text-xs">
-													For hotel guests only
-												</FormDescription>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
 								</div>
+
+								<FormField
+									control={form.control}
+									name="bookingId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Booking ID</FormLabel>
+											<FormControl>
+												<Input
+													placeholder="Optional - for hotel guests only"
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 							</CardContent>
 						</Card>
 
@@ -304,7 +345,7 @@ export function RentalOrderDialog({
 								<div className="grid grid-cols-2 gap-4">
 									<FormField
 										control={form.control}
-										name="rentalStartDate"
+										name="rentalStartTime"
 										render={({ field }) => (
 											<FormItem className="flex flex-col">
 												<FormLabel>Start Date & Time *</FormLabel>
@@ -344,7 +385,7 @@ export function RentalOrderDialog({
 
 									<FormField
 										control={form.control}
-										name="rentalEndDate"
+										name="rentalEndTime"
 										render={({ field }) => (
 											<FormItem className="flex flex-col">
 												<FormLabel>End Date & Time *</FormLabel>
@@ -374,7 +415,7 @@ export function RentalOrderDialog({
 															onSelect={field.onChange}
 															disabled={(date) =>
 																date <
-																(form.watch("rentalStartDate") || new Date())
+																(form.watch("rentalStartTime") || new Date())
 															}
 															initialFocus
 														/>
@@ -408,7 +449,11 @@ export function RentalOrderDialog({
 										variant="outline"
 										size="sm"
 										onClick={() =>
-											append({ rentalItemId: "", quantity: 1, notes: "" })
+											append({
+												rentalItemId: "",
+												quantity: 1,
+												specialInstructions: "",
+											})
 										}
 									>
 										<PlusCircleIcon className="w-4 h-4 mr-1" />
@@ -417,108 +462,277 @@ export function RentalOrderDialog({
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								{fields.map((field, index) => (
-									<div key={field.id} className="flex gap-3 items-start">
-										<div className="flex-1 grid grid-cols-3 gap-3">
-											<FormField
-												control={form.control}
-												name={`orderItems.${index}.rentalItemId`}
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Item *</FormLabel>
-														<Select
-															onValueChange={field.onChange}
-															value={field.value}
-														>
+								{fields.map((field, index) => {
+									const selectedItemId = form.watch(
+										`items.${index}.rentalItemId`,
+									);
+									const selectedItem = availableItems?.find(
+										(item: any) => item.id === selectedItemId,
+									);
+									const maxQty = selectedItem?.availableQuantity ?? 999;
+
+									return (
+										<div
+											key={field.id}
+											className="flex gap-3 items-start border rounded-lg p-3"
+										>
+											<div className="flex-1 grid grid-cols-[2fr_1fr_1.5fr] gap-4">
+												<FormField
+													control={form.control}
+													name={`items.${index}.rentalItemId`}
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Item *</FormLabel>
+															<Select
+																onValueChange={(value) => {
+																	field.onChange(value);
+																	const item = availableItems?.find(
+																		(i: any) => i.id === value,
+																	);
+																	if (item) {
+																		const currentQty = form.getValues(
+																			`items.${index}.quantity`,
+																		);
+																		if (
+																			currentQty > item.availableQuantity
+																		) {
+																			form.setValue(
+																				`items.${index}.quantity`,
+																				item.availableQuantity,
+																			);
+																		}
+																	}
+																}}
+																value={field.value}
+															>
+																<FormControl>
+																	<SelectTrigger>
+																		<SelectValue placeholder="Select item" />
+																	</SelectTrigger>
+																</FormControl>
+																<SelectContent>
+																	{availableItems?.map((item: any) => (
+																		<SelectItem
+																			key={item.id}
+																			value={item.id}
+																			disabled={
+																				item.availableQuantity === 0
+																			}
+																		>
+																			{item.name} (
+																			{item.availableQuantity} avail.)
+																		</SelectItem>
+																	))}
+																</SelectContent>
+															</Select>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+
+												<FormField
+													control={form.control}
+													name={`items.${index}.quantity`}
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Qty *</FormLabel>
 															<FormControl>
-																<SelectTrigger>
-																	<SelectValue placeholder="Select item" />
-																</SelectTrigger>
+																<Input
+																	type="number"
+																	min={1}
+																	max={maxQty}
+																	{...field}
+																	onChange={(e) => {
+																		const val =
+																			parseInt(e.target.value) || 1;
+																		if (val > maxQty) {
+																			field.onChange(maxQty);
+																			toast.error(
+																				`Only ${maxQty} available for this item`,
+																			);
+																		} else {
+																			field.onChange(Math.max(1, val));
+																		}
+																	}}
+																/>
 															</FormControl>
-															<SelectContent>
-																{availableItems?.map((item: any) => (
-																	<SelectItem key={item.id} value={item.id}>
-																		{item.name} ({item.availableQuantity}{" "}
-																		available)
-																	</SelectItem>
-																))}
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+															{selectedItem && (
+																<FormDescription className="text-xs">
+																	Max: {maxQty}
+																</FormDescription>
+															)}
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
 
-											<FormField
-												control={form.control}
-												name={`orderItems.${index}.quantity`}
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Quantity *</FormLabel>
-														<FormControl>
-															<Input
-																type="number"
-																min="1"
-																{...field}
-																onChange={(e) =>
-																	field.onChange(parseInt(e.target.value))
-																}
-															/>
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+												<FormField
+													control={form.control}
+													name={`items.${index}.specialInstructions`}
+													render={({ field }) => (
+														<FormItem>
+															<FormLabel>Notes</FormLabel>
+															<FormControl>
+																<Input
+																	placeholder="Optional"
+																	{...field}
+																/>
+															</FormControl>
+															<FormMessage />
+														</FormItem>
+													)}
+												/>
+											</div>
 
-											<FormField
-												control={form.control}
-												name={`orderItems.${index}.notes`}
-												render={({ field }) => (
-													<FormItem>
-														<FormLabel>Notes</FormLabel>
-														<FormControl>
-															<Input placeholder="Optional notes" {...field} />
-														</FormControl>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
+											{fields.length > 1 && (
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="mt-8"
+													onClick={() => remove(index)}
+												>
+													<TrashIcon className="w-4 h-4 text-red-600" />
+												</Button>
+											)}
 										</div>
+									);
+								})}
+							</CardContent>
+						</Card>
 
-										{fields.length > 1 && (
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="mt-8"
-												onClick={() => remove(index)}
-											>
-												<TrashIcon className="w-4 h-4 text-red-600" />
-											</Button>
+						{/* Order Options */}
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-lg">Order Options</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="grid grid-cols-2 gap-4">
+									<FormField
+										control={form.control}
+										name="requireDeposit"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Require Deposit</FormLabel>
+													<FormDescription className="text-xs">
+														Collect security deposit before rental
+													</FormDescription>
+												</div>
+											</FormItem>
 										)}
-									</div>
-								))}
+									/>
+
+									<FormField
+										control={form.control}
+										name="requireAgreement"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Require Agreement</FormLabel>
+													<FormDescription className="text-xs">
+														Customer must sign rental agreement
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="chargeOverduePenalty"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Charge Late Penalty</FormLabel>
+													<FormDescription className="text-xs">
+														Apply penalty for late returns
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="sendReminders"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+												<div className="space-y-1 leading-none">
+													<FormLabel>Send Reminders</FormLabel>
+													<FormDescription className="text-xs">
+														Send return date reminders
+													</FormDescription>
+												</div>
+											</FormItem>
+										)}
+									/>
+								</div>
 							</CardContent>
 						</Card>
 
 						{/* Additional Notes */}
-						<FormField
-							control={form.control}
-							name="notes"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Order Notes</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder="Any special instructions or notes..."
-											className="min-h-[80px]"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="specialInstructions"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Special Instructions</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Internal staff instructions..."
+												className="min-h-[80px]"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="customerNotes"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Customer Notes</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Notes from customer..."
+												className="min-h-[80px]"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
 
 						<Separator />
 
