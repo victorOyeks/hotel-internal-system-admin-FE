@@ -27,10 +27,6 @@ import {
 } from "@/components/ui/table";
 import {
 	PackageIcon,
-	DollarSignIcon,
-	TrendingUpIcon,
-	TrendingDownIcon,
-	InfoIcon,
 	Loader2Icon,
 	WrenchIcon,
 	SendIcon,
@@ -68,15 +64,6 @@ const conditionLabels: Record<string, string> = {
 	POOR: "Poor",
 	DAMAGED: "Damaged",
 	OUT_OF_SERVICE: "Out of Service",
-};
-
-const conditionColors: Record<string, string> = {
-	EXCELLENT: "bg-green-100 text-green-800 border-green-200",
-	GOOD: "bg-blue-100 text-blue-800 border-blue-200",
-	FAIR: "bg-yellow-100 text-yellow-800 border-yellow-200",
-	POOR: "bg-orange-100 text-orange-800 border-orange-200",
-	DAMAGED: "bg-red-100 text-red-800 border-red-200",
-	OUT_OF_SERVICE: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 const pricingTypeLabels: Record<string, string> = {
@@ -161,10 +148,10 @@ export function RentalItemDetailsDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
-						<Loader2Icon className="w-8 h-8 animate-spin text-blue-600" />
+						<Loader2Icon className="w-8 h-8 animate-spin text-muted-foreground" />
 					</div>
 				) : !item ? (
 					<div className="text-center py-12 text-muted-foreground">
@@ -173,193 +160,127 @@ export function RentalItemDetailsDialog({
 				) : (
 					<>
 						<DialogHeader>
-							<DialogTitle className="text-2xl font-bold flex items-center gap-2">
-								<PackageIcon className="w-6 h-6 text-blue-600" />
-								{item.name}
-							</DialogTitle>
-							<DialogDescription>
-								Rental item details and availability
-							</DialogDescription>
+							<div className="flex items-center justify-between">
+								<div>
+									<DialogTitle className="text-xl font-semibold">
+										{item.name}
+									</DialogTitle>
+									<DialogDescription className="mt-0.5">
+										{categoryLabels[item.category] || item.category}
+										{item.pricingType && ` · ${pricingTypeLabels[item.pricingType] || item.pricingType} pricing`}
+									</DialogDescription>
+								</div>
+								<div className="flex items-center gap-2">
+									<Badge variant="outline" className="text-xs">
+										{conditionLabels[item.condition] || item.condition}
+									</Badge>
+									{item.active ? (
+										item.availableQuantity > 0 ? (
+											<Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+												Available
+											</Badge>
+										) : (
+											<Badge className="bg-red-50 text-red-700 border-red-200 text-xs">
+												Out of Stock
+											</Badge>
+										)
+									) : (
+										<Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs">
+											Inactive
+										</Badge>
+									)}
+								</div>
+							</div>
 						</DialogHeader>
 
-						<div className="space-y-6">
-							{/* Status Badges */}
-							<div className="flex flex-wrap gap-3">
-								<Badge
-									className={
-										item.availableQuantity > 0
-											? "bg-green-100 text-green-800 border-green-200"
-											: "bg-red-100 text-red-800 border-red-200"
-									}
-								>
-									{item.availableQuantity > 0
-										? "Available"
-										: "Out of Stock"}
-								</Badge>
-								<Badge
-									variant="outline"
-									className="bg-purple-100 text-purple-800 border-purple-200"
-								>
-									{categoryLabels[item.category] || item.category}
-								</Badge>
-								<Badge
-									className={
-										conditionColors[item.condition] ||
-										"bg-gray-100 text-gray-800"
-									}
-								>
-									{conditionLabels[item.condition] || item.condition}
-								</Badge>
-								{item.pricingType && (
-									<Badge variant="outline">
-										{pricingTypeLabels[item.pricingType] || item.pricingType}{" "}
-										Pricing
-									</Badge>
-								)}
-								{!item.active && (
-									<Badge className="bg-gray-100 text-gray-800 border-gray-200">
-										Inactive
-									</Badge>
-								)}
-							</div>
-
+						<div className="space-y-5 mt-1">
 							{/* Item Details */}
 							{(item.brand || item.model || item.serialNumber) && (
-								<>
-									<div className="grid grid-cols-3 gap-4">
-										{item.brand && (
-											<div>
-												<p className="text-sm text-muted-foreground">
-													Brand
-												</p>
-												<p className="font-medium">{item.brand}</p>
-											</div>
-										)}
-										{item.model && (
-											<div>
-												<p className="text-sm text-muted-foreground">
-													Model
-												</p>
-												<p className="font-medium">{item.model}</p>
-											</div>
-										)}
-										{item.serialNumber && (
-											<div>
-												<p className="text-sm text-muted-foreground">
-													Serial Number
-												</p>
-												<p className="font-medium">{item.serialNumber}</p>
-											</div>
-										)}
-									</div>
-									<Separator />
-								</>
+								<div className="grid grid-cols-3 gap-4 text-sm">
+									{item.brand && (
+										<div>
+											<p className="text-muted-foreground text-xs">Brand</p>
+											<p className="font-medium">{item.brand}</p>
+										</div>
+									)}
+									{item.model && (
+										<div>
+											<p className="text-muted-foreground text-xs">Model</p>
+											<p className="font-medium">{item.model}</p>
+										</div>
+									)}
+									{item.serialNumber && (
+										<div>
+											<p className="text-muted-foreground text-xs">Serial Number</p>
+											<p className="font-medium">{item.serialNumber}</p>
+										</div>
+									)}
+								</div>
 							)}
 
 							{/* Pricing Information */}
 							<div>
-								<div className="flex items-center gap-2 mb-3">
-									<DollarSignIcon className="w-5 h-5 text-green-600" />
-									<h3 className="text-lg font-semibold">Pricing</h3>
-								</div>
-								<div className="grid grid-cols-3 gap-4 bg-muted/50 p-4 rounded-lg">
+								<h3 className="text-sm font-semibold text-muted-foreground mb-2">Pricing</h3>
+								<div className="grid grid-cols-3 gap-3 bg-muted/40 p-3 rounded-lg">
 									{item.hourlyRate > 0 && (
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Hourly Rate
-											</p>
-											<p className="text-xl font-bold text-green-600">
+											<p className="text-xs text-muted-foreground">Hourly</p>
+											<p className="text-base font-semibold text-green-700">
 												{formatCurrency(item.hourlyRate)}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												per hour
 											</p>
 										</div>
 									)}
 									{item.dailyRate > 0 && (
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Daily Rate
-											</p>
-											<p className="text-xl font-bold text-green-600">
+											<p className="text-xs text-muted-foreground">Daily</p>
+											<p className="text-base font-semibold text-green-700">
 												{formatCurrency(item.dailyRate)}
 											</p>
-											<p className="text-xs text-muted-foreground">per day</p>
 										</div>
 									)}
 									{item.weeklyRate > 0 && (
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Weekly Rate
-											</p>
-											<p className="text-xl font-bold text-green-600">
+											<p className="text-xs text-muted-foreground">Weekly</p>
+											<p className="text-base font-semibold text-green-700">
 												{formatCurrency(item.weeklyRate)}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												per week
 											</p>
 										</div>
 									)}
 									{item.monthlyRate > 0 && (
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Monthly Rate
-											</p>
-											<p className="text-xl font-bold text-green-600">
+											<p className="text-xs text-muted-foreground">Monthly</p>
+											<p className="text-base font-semibold text-green-700">
 												{formatCurrency(item.monthlyRate)}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												per month
 											</p>
 										</div>
 									)}
 									{item.flatRate > 0 && (
 										<div>
-											<p className="text-sm text-muted-foreground">
-												Flat Rate
-											</p>
-											<p className="text-xl font-bold text-green-600">
+											<p className="text-xs text-muted-foreground">Flat Rate</p>
+											<p className="text-base font-semibold text-green-700">
 												{formatCurrency(item.flatRate)}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												per rental
 											</p>
 										</div>
 									)}
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Security Deposit
-										</p>
-										<p className="text-xl font-bold">
+										<p className="text-xs text-muted-foreground">Deposit</p>
+										<p className="text-base font-semibold">
 											{formatCurrency(item.depositAmount || 0)}
-										</p>
-										<p className="text-xs text-muted-foreground">
-											refundable
 										</p>
 									</div>
 								</div>
 								{(item.lateReturnPenaltyPerHour > 0 ||
 									item.lateReturnPenaltyPerDay > 0) && (
-									<div className="mt-3 grid grid-cols-2 gap-4 bg-red-50 p-3 rounded-lg">
+									<div className="mt-2 flex gap-4 text-sm">
 										{item.lateReturnPenaltyPerHour > 0 && (
-											<div>
-												<p className="text-xs text-red-700">
-													Late Penalty / Hour
-												</p>
-												<p className="font-semibold text-red-800">
-													{formatCurrency(item.lateReturnPenaltyPerHour)}
-												</p>
-											</div>
+											<p className="text-muted-foreground">
+												Late penalty: <span className="font-medium text-orange-600">{formatCurrency(item.lateReturnPenaltyPerHour)}/hr</span>
+											</p>
 										)}
 										{item.lateReturnPenaltyPerDay > 0 && (
-											<div>
-												<p className="text-xs text-red-700">
-													Late Penalty / Day
-												</p>
-												<p className="font-semibold text-red-800">
-													{formatCurrency(item.lateReturnPenaltyPerDay)}
-												</p>
-											</div>
+											<p className="text-muted-foreground">
+												Late penalty: <span className="font-medium text-orange-600">{formatCurrency(item.lateReturnPenaltyPerDay)}/day</span>
+											</p>
 										)}
 									</div>
 								)}
@@ -369,72 +290,35 @@ export function RentalItemDetailsDialog({
 
 							{/* Inventory & Availability */}
 							<div>
-								<div className="flex items-center gap-2 mb-3">
-									<PackageIcon className="w-5 h-5 text-blue-600" />
-									<h3 className="text-lg font-semibold">
-										Inventory & Availability
-									</h3>
-								</div>
-								<div className="grid grid-cols-4 gap-4">
-									<div className="bg-blue-50 p-4 rounded-lg">
-										<div className="flex items-center gap-2 mb-2">
-											<InfoIcon className="w-4 h-4 text-blue-600" />
-											<p className="text-sm font-medium text-blue-900">
-												Total
-											</p>
-										</div>
-										<p className="text-3xl font-bold text-blue-600">
-											{item.totalQuantity}
-										</p>
+								<h3 className="text-sm font-semibold text-muted-foreground mb-2">Inventory</h3>
+								<div className="grid grid-cols-4 gap-3">
+									<div className="border rounded-lg p-3">
+										<p className="text-xs text-muted-foreground">Total</p>
+										<p className="text-2xl font-bold">{item.totalQuantity}</p>
 									</div>
-									<div className="bg-green-50 p-4 rounded-lg">
-										<div className="flex items-center gap-2 mb-2">
-											<TrendingUpIcon className="w-4 h-4 text-green-600" />
-											<p className="text-sm font-medium text-green-900">
-												Available
-											</p>
-										</div>
-										<p className="text-3xl font-bold text-green-600">
-											{item.availableQuantity}
-										</p>
+									<div className="border rounded-lg p-3">
+										<p className="text-xs text-muted-foreground">Available</p>
+										<p className="text-2xl font-bold text-green-700">{item.availableQuantity}</p>
 									</div>
-									<div className="bg-orange-50 p-4 rounded-lg">
-										<div className="flex items-center gap-2 mb-2">
-											<TrendingDownIcon className="w-4 h-4 text-orange-600" />
-											<p className="text-sm font-medium text-orange-900">
-												Rented
-											</p>
-										</div>
-										<p className="text-3xl font-bold text-orange-600">
-											{item.rentedQuantity || 0}
-										</p>
+									<div className="border rounded-lg p-3">
+										<p className="text-xs text-muted-foreground">Rented</p>
+										<p className="text-2xl font-bold">{item.rentedQuantity || 0}</p>
 									</div>
-									<div className="bg-yellow-50 p-4 rounded-lg">
-										<div className="flex items-center gap-2 mb-2">
-											<WrenchIcon className="w-4 h-4 text-yellow-600" />
-											<p className="text-sm font-medium text-yellow-900">
-												Maintenance
-											</p>
-										</div>
-										<p className="text-3xl font-bold text-yellow-600">
-											{item.maintenanceQuantity || 0}
-										</p>
+									<div className="border rounded-lg p-3">
+										<p className="text-xs text-muted-foreground">Maintenance</p>
+										<p className="text-2xl font-bold">{item.maintenanceQuantity || 0}</p>
 									</div>
 								</div>
-								<div className="mt-4">
-									<div className="flex justify-between text-sm mb-2">
-										<span className="text-muted-foreground">
-											Utilization Rate
-										</span>
-										<span className="font-semibold">
-											{utilizationRate.toFixed(1)}%
-										</span>
+								<div className="mt-3">
+									<div className="flex justify-between text-xs mb-1.5">
+										<span className="text-muted-foreground">Utilization</span>
+										<span className="font-medium">{utilizationRate.toFixed(1)}%</span>
 									</div>
-									<div className="w-full bg-gray-200 rounded-full h-2.5">
+									<div className="w-full bg-muted rounded-full h-1.5">
 										<div
-											className="bg-blue-600 h-2.5 rounded-full transition-all"
+											className="bg-blue-500 h-1.5 rounded-full transition-all"
 											style={{ width: `${utilizationRate}%` }}
-										></div>
+										/>
 									</div>
 								</div>
 							</div>
@@ -444,20 +328,13 @@ export function RentalItemDetailsDialog({
 								<>
 									<Separator />
 									<div>
-										<div className="flex items-center justify-between mb-3">
-											<div className="flex items-center gap-2">
-												<WrenchIcon className="w-5 h-5 text-yellow-600" />
-												<h3 className="text-lg font-semibold">
-													Maintenance
-												</h3>
-											</div>
+										<div className="flex items-center justify-between mb-2">
+											<h3 className="text-sm font-semibold text-muted-foreground">Maintenance</h3>
 											{!showMaintenanceForm && (
 												<Button
 													variant="outline"
 													size="sm"
-													onClick={() =>
-														setShowMaintenanceForm(true)
-													}
+													onClick={() => setShowMaintenanceForm(true)}
 												>
 													<SendIcon className="w-3 h-3 mr-1" />
 													Send to Maintenance
@@ -465,12 +342,10 @@ export function RentalItemDetailsDialog({
 											)}
 										</div>
 										{showMaintenanceForm && (
-											<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+											<div className="bg-muted/40 border rounded-lg p-3 space-y-3">
 												<div className="grid grid-cols-2 gap-3">
 													<div className="space-y-1.5">
-														<Label className="text-sm">
-															Quantity
-														</Label>
+														<Label className="text-xs">Quantity</Label>
 														<Input
 															type="number"
 															min={1}
@@ -484,9 +359,7 @@ export function RentalItemDetailsDialog({
 														/>
 													</div>
 													<div className="space-y-1.5">
-														<Label className="text-sm">
-															Reason
-														</Label>
+														<Label className="text-xs">Reason</Label>
 														<Input
 															placeholder="e.g. Scheduled repair"
 															value={maintenanceReason}
@@ -497,12 +370,10 @@ export function RentalItemDetailsDialog({
 													</div>
 												</div>
 												<div className="space-y-1.5">
-													<Label className="text-sm">
-														Notes (optional)
-													</Label>
+													<Label className="text-xs">Notes (optional)</Label>
 													<Textarea
 														placeholder="Additional details..."
-														className="min-h-[50px]"
+														className="min-h-[50px] resize-none"
 														value={maintenanceNotes}
 														onChange={(e) =>
 															setMaintenanceNotes(e.target.value)
@@ -547,27 +418,19 @@ export function RentalItemDetailsDialog({
 								<>
 									<Separator />
 									<div>
-										<h3 className="text-lg font-semibold mb-3">
-											Requirements
-										</h3>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">Requirements</h3>
 										<div className="flex flex-wrap gap-2">
 											{item.requiresDeposit && (
-												<Badge variant="outline">Requires Deposit</Badge>
+												<Badge variant="outline" className="text-xs font-normal">Requires Deposit</Badge>
 											)}
 											{item.requiresIdentification && (
-												<Badge variant="outline">
-													Requires ID
-												</Badge>
+												<Badge variant="outline" className="text-xs font-normal">Requires ID</Badge>
 											)}
 											{item.requiresSignedAgreement && (
-												<Badge variant="outline">
-													Requires Agreement
-												</Badge>
+												<Badge variant="outline" className="text-xs font-normal">Requires Agreement</Badge>
 											)}
 											{item.minimumAge > 0 && (
-												<Badge variant="outline">
-													Min Age: {item.minimumAge}
-												</Badge>
+												<Badge variant="outline" className="text-xs font-normal">Min Age: {item.minimumAge}</Badge>
 											)}
 										</div>
 									</div>
@@ -579,12 +442,7 @@ export function RentalItemDetailsDialog({
 								<>
 									<Separator />
 									<div>
-										<div className="flex items-center gap-2 mb-3">
-											<WrenchIcon className="w-5 h-5 text-yellow-600" />
-											<h3 className="text-lg font-semibold">
-												Maintenance History
-											</h3>
-										</div>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">Maintenance History</h3>
 										<Table>
 											<TableHeader>
 												<TableRow>
@@ -597,17 +455,17 @@ export function RentalItemDetailsDialog({
 											<TableBody>
 												{maintenanceHistory.map((log: any) => (
 													<TableRow key={log.id}>
-														<TableCell>
+														<TableCell className="text-sm">
 															{new Date(
 																log.createdAt,
 															).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
-															<Badge variant="outline">
+															<Badge variant="outline" className="text-xs font-normal">
 																{log.action?.replace(/_/g, " ")}
 															</Badge>
 														</TableCell>
-														<TableCell>{log.quantity}</TableCell>
+														<TableCell className="text-sm">{log.quantity}</TableCell>
 														<TableCell className="text-sm">
 															{log.reason || "-"}
 														</TableCell>

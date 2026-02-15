@@ -3641,6 +3641,11 @@ export const schema = createSchema({
 			data: z.any(),
 		}),
 	},
+	"@get/api/hotels/rentals/customers/details": {
+		output: ApiResponseObject.extend({
+			data: z.any(),
+		}),
+	},
 	"@get/api/hotels/rentals/maintenance/pending": {
 		output: ApiResponseObject.extend({
 			data: z.any(),

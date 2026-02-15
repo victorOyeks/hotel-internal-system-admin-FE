@@ -2,14 +2,9 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getCustomerHistory, getCustomerOutstanding } from "@/lib/rental-actions";
+import { getCustomerRentalDetails } from "@/lib/rental-actions";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -106,58 +101,52 @@ export function RentalCustomersPage({
 
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
-			<div className="flex flex-col gap-6 p-6">
+			<div className="flex flex-col gap-4 p-4 md:p-6">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Customer History
-					</h1>
-					<p className="text-muted-foreground mt-1">
+					<h1 className="text-2xl font-bold">Customer History</h1>
+					<p className="text-sm text-muted-foreground">
 						View customer rental activity and outstanding balances
 					</p>
 				</div>
 
 				{/* Summary Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-					<Card>
-						<CardContent className="pt-6">
-							<p className="text-sm text-muted-foreground">
-								Total Customers
-							</p>
-							<p className="text-2xl font-bold mt-1">
-								{customers.length}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardContent className="pt-6">
-							<p className="text-sm text-muted-foreground">
-								Active Rentals
-							</p>
-							<p className="text-2xl font-bold text-blue-600 mt-1">
-								{totalActive}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardContent className="pt-6">
-							<p className="text-sm text-muted-foreground">
-								With Outstanding Balance
-							</p>
-							<p className="text-2xl font-bold text-orange-600 mt-1">
-								{customers.filter((c) => c.outstandingBalance > 0).length}
-							</p>
-						</CardContent>
-					</Card>
-					<Card>
-						<CardContent className="pt-6">
-							<p className="text-sm text-muted-foreground">
-								Total Outstanding
-							</p>
-							<p className="text-2xl font-bold text-red-600 mt-1">
-								{formatCurrency(totalOutstanding)}
-							</p>
-						</CardContent>
-					</Card>
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-blue-50 rounded-lg">
+							<UsersIcon className="w-4 h-4 text-blue-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Total Customers</p>
+							<p className="text-lg font-bold">{customers.length}</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-green-50 rounded-lg">
+							<ClipboardListIcon className="w-4 h-4 text-green-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Active Rentals</p>
+							<p className="text-lg font-bold">{totalActive}</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-amber-50 rounded-lg">
+							<UsersIcon className="w-4 h-4 text-amber-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">With Outstanding</p>
+							<p className="text-lg font-bold">{customers.filter((c) => c.outstandingBalance > 0).length}</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-red-50 rounded-lg">
+							<CalendarIcon className="w-4 h-4 text-red-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Total Outstanding</p>
+							<p className="text-lg font-bold text-red-600">{formatCurrency(totalOutstanding)}</p>
+						</div>
+					</div>
 				</div>
 
 				{/* Customer Table */}
@@ -330,45 +319,18 @@ function CustomerHistoryDialog({
 	open,
 	onOpenChange,
 }: CustomerHistoryDialogProps) {
-	const { data: orders, isLoading } = useQuery({
-		queryKey: [
-			"rentals",
-			"customers",
-			"history",
-			customer?.customerPhone,
-		],
+	const { data: details, isLoading } = useQuery({
+		queryKey: ["rentals", "customers", "details", customer?.customerPhone],
 		queryFn: async () => {
-			const response = await $fetch(
-				"@get/api/hotels/rentals/customers/history",
-				{
-					query: { phone: customer!.customerPhone },
-					throw: true,
-				},
-			);
-			return response.data;
+			const result = await getCustomerRentalDetails(customer!.customerPhone);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
 		enabled: !!customer?.customerPhone && open,
 	});
 
-	const { data: outstanding } = useQuery({
-		queryKey: [
-			"rentals",
-			"customers",
-			"outstanding",
-			customer?.customerPhone,
-		],
-		queryFn: async () => {
-			const response = await $fetch(
-				"@get/api/hotels/rentals/customers/outstanding",
-				{
-					query: { phone: customer!.customerPhone },
-					throw: true,
-				},
-			);
-			return response.data;
-		},
-		enabled: !!customer?.customerPhone && open,
-	});
+	const orders = details?.orders;
+	const outstanding = details?.outstanding;
 
 	if (!customer) return null;
 
@@ -449,11 +411,11 @@ function CustomerHistoryDialog({
 					<Separator />
 
 					{/* Outstanding Orders */}
-					{outstanding && outstanding.length > 0 && (
-						<div>
-							<h3 className="font-semibold mb-2 text-orange-700">
-								Outstanding Orders ({outstanding.length})
-							</h3>
+					<div>
+						<h3 className="font-semibold mb-2 text-orange-700">
+							Outstanding Orders ({outstanding?.length || 0})
+						</h3>
+						{outstanding && outstanding.length > 0 ? (
 							<Table>
 								<TableHeader>
 									<TableRow>
@@ -497,9 +459,13 @@ function CustomerHistoryDialog({
 									))}
 								</TableBody>
 							</Table>
-							<Separator className="my-4" />
-						</div>
-					)}
+						) : (
+							<p className="text-center text-muted-foreground py-4 text-sm">
+								No outstanding orders
+							</p>
+						)}
+						<Separator className="my-4" />
+					</div>
 
 					{/* Full History */}
 					<div>

@@ -214,6 +214,23 @@ export async function getCustomerOutstanding(phone: string) {
 	}
 }
 
+export async function getCustomerRentalDetails(phone: string) {
+	try {
+		const session = await verifySession();
+		const response = await $fetch(
+			"@get/api/hotels/rentals/customers/details",
+			{
+				query: { phone },
+				auth: { type: "Bearer", token: session.token },
+				throw: true,
+			},
+		);
+		return { success: true as const, data: response.data };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
+}
+
 export async function getRentalReports(startDate: string, endDate: string) {
 	try {
 		const session = await verifySession();
