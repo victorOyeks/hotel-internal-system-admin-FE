@@ -1,0 +1,352 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { LaundryItemDialog } from "./laundry-item-dialog";
+import { LaundryItemDetailsDialog } from "./laundry-item-details-dialog";
+
+type LaundryItem = {
+	id: string;
+	name: string;
+	description?: string;
+	category: string;
+	washOnlyPrice?: number;
+	washAndIronPrice?: number;
+	washAndFoldPrice?: number;
+	dryCleanPrice?: number;
+	ironOnlyPrice?: number;
+	steamPressPrice?: number;
+	stainRemovalPrice?: number;
+	handWashPrice?: number;
+	washIronAndPackPrice?: number;
+	expressMultiplier?: number;
+	sameDayMultiplier?: number;
+	urgentMultiplier?: number;
+	active: boolean;
+	specialInstructions?: string;
+	createdAt: string;
+};
+
+type LaundryItemsPageProps = {
+	items: LaundryItem[];
+	breadcrumbs: {
+		title: string;
+		breadcrumbs: Array<{ label: string; href: string }>;
+	};
+};
+
+const categoryLabels: Record<string, string> = {
+	CLOTHING: "Clothing",
+	BEDDING: "Bedding",
+	TOWELS: "Towels",
+	CURTAINS: "Curtains",
+	UNIFORMS: "Uniforms",
+	TABLE_LINEN: "Table Linen",
+	DELICATES: "Delicates",
+	ACCESSORIES: "Accessories",
+	OUTERWEAR: "Outerwear",
+	OTHERS: "Others",
+};
+
+function formatCurrency(amount: number) {
+	return new Intl.NumberFormat("en-NG", {
+		style: "currency",
+		currency: "NGN",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+	}).format(amount);
+}
+
+function getLowestPrice(item: LaundryItem): number | null {
+	const prices = [
+		item.washOnlyPrice,
+		item.washAndIronPrice,
+		item.washAndFoldPrice,
+		item.dryCleanPrice,
+		item.ironOnlyPrice,
+		item.steamPressPrice,
+		item.stainRemovalPrice,
+		item.handWashPrice,
+		item.washIronAndPackPrice,
+	].filter((p): p is number => p != null && p > 0);
+	return prices.length > 0 ? Math.min(...prices) : null;
+}
+
+function getServiceCount(item: LaundryItem): number {
+	return [
+		item.washOnlyPrice,
+		item.washAndIronPrice,
+		item.washAndFoldPrice,
+		item.dryCleanPrice,
+		item.ironOnlyPrice,
+		item.steamPressPrice,
+		item.stainRemovalPrice,
+		item.handWashPrice,
+		item.washIronAndPackPrice,
+	].filter((p) => p != null && p > 0).length;
+}
+
+export function LaundryItemsPage({
+	items,
+	breadcrumbs,
+}: LaundryItemsPageProps) {
+	const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+	const stats = useMemo(() => {
+		const totalItems = items.length;
+		const activeItems = items.filter((i) => i.active).length;
+		const inactiveItems = items.filter((i) => !i.active).length;
+		const categories = new Set(items.map((i) => i.category)).size;
+		return { totalItems, activeItems, inactiveItems, categories };
+	}, [items]);
+
+	const categories = useMemo(() => {
+		const cats = new Set(items.map((i) => i.category));
+		return Array.from(cats).sort();
+	}, [items]);
+
+	const filteredItems = items.filter((item) => {
+		const matchesSearch =
+			item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(categoryLabels[item.category] || item.category)
+				.toLowerCase()
+				.includes(searchQuery.toLowerCase());
+		const matchesCategory =
+			!selectedCategory || item.category === selectedCategory;
+		return matchesSearch && matchesCategory;
+	});
+
+	return (
+		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
+			<div className="flex flex-col gap-4 p-4 md:p-6">
+				{/* Header */}
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-2xl font-bold">Laundry Items</h1>
+						<p className="text-sm text-muted-foreground">
+							Manage laundry service items and pricing
+						</p>
+					</div>
+					<LaundryItemDialog />
+				</div>
+
+				{/* Summary Stats */}
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-blue-50 rounded-lg">
+							<ShirtIcon className="w-4 h-4 text-blue-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Total Items</p>
+							<p className="text-lg font-bold">{stats.totalItems}</p>
+							<p className="text-[11px] text-muted-foreground">
+								{stats.categories} categories
+							</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-green-50 rounded-lg">
+							<CheckCircle2Icon className="w-4 h-4 text-green-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Active</p>
+							<p className="text-lg font-bold">{stats.activeItems}</p>
+							<p className="text-[11px] text-muted-foreground">
+								Available services
+							</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-red-50 rounded-lg">
+							<XCircleIcon className="w-4 h-4 text-red-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Inactive</p>
+							<p className="text-lg font-bold">{stats.inactiveItems}</p>
+							<p className="text-[11px] text-muted-foreground">
+								Disabled items
+							</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-purple-50 rounded-lg">
+							<ShirtIcon className="w-4 h-4 text-purple-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Categories</p>
+							<p className="text-lg font-bold">{stats.categories}</p>
+							<p className="text-[11px] text-muted-foreground">Item groups</p>
+						</div>
+					</div>
+				</div>
+
+				{/* Table */}
+				<Card>
+					<CardHeader className="pb-3">
+						<div className="flex items-center justify-between">
+							<CardTitle className="text-lg">
+								Service Items ({filteredItems.length})
+							</CardTitle>
+							<div className="relative">
+								<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+								<Input
+									placeholder="Search items..."
+									className="pl-10 w-64"
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+								/>
+							</div>
+						</div>
+						{categories.length > 1 && (
+							<div className="flex flex-wrap gap-1.5 pt-2">
+								<button
+									onClick={() => setSelectedCategory(null)}
+									className={cn(
+										"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+										!selectedCategory
+											? "bg-primary text-primary-foreground"
+											: "bg-muted text-muted-foreground hover:bg-muted/80",
+									)}
+								>
+									All
+								</button>
+								{categories.map((cat) => (
+									<button
+										key={cat}
+										onClick={() =>
+											setSelectedCategory(
+												selectedCategory === cat ? null : cat,
+											)
+										}
+										className={cn(
+											"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+											selectedCategory === cat
+												? "bg-primary text-primary-foreground"
+												: "bg-muted text-muted-foreground hover:bg-muted/80",
+										)}
+									>
+										{categoryLabels[cat] || cat}
+									</button>
+								))}
+							</div>
+						)}
+					</CardHeader>
+					<CardContent>
+						{filteredItems.length === 0 ? (
+							<div className="text-center py-12 text-muted-foreground">
+								<ShirtIcon className="w-10 h-10 mx-auto mb-3 opacity-50" />
+								<p className="font-medium">No laundry items found</p>
+								<p className="text-sm mt-1">
+									{searchQuery || selectedCategory
+										? "Try adjusting your search or filter"
+										: "Add your first laundry item to get started"}
+								</p>
+							</div>
+						) : (
+							<div className="overflow-x-auto">
+								<Table>
+									<TableHeader>
+										<TableRow>
+											<TableHead>Item</TableHead>
+											<TableHead>Category</TableHead>
+											<TableHead className="text-right">From Price</TableHead>
+											<TableHead className="text-center">Services</TableHead>
+											<TableHead className="text-center">Status</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{filteredItems.map((item) => {
+											const lowestPrice = getLowestPrice(item);
+											const serviceCount = getServiceCount(item);
+
+											return (
+												<TableRow
+													key={item.id}
+													className="hover:bg-muted/50 cursor-pointer"
+													onClick={() => {
+														setSelectedItemId(item.id);
+														setIsDetailsOpen(true);
+													}}
+												>
+													<TableCell>
+														<div className="flex items-center gap-2.5">
+															<div className="p-1.5 bg-blue-50 rounded-md">
+																<ShirtIcon className="w-4 h-4 text-blue-600" />
+															</div>
+															<div>
+																<p className="font-medium text-sm">
+																	{item.name}
+																</p>
+																{item.description && (
+																	<p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+																		{item.description}
+																	</p>
+																)}
+															</div>
+														</div>
+													</TableCell>
+													<TableCell>
+														<Badge
+															variant="outline"
+															className="text-xs font-normal"
+														>
+															{categoryLabels[item.category] || item.category}
+														</Badge>
+													</TableCell>
+													<TableCell className="text-right font-semibold text-green-600">
+														{lowestPrice != null
+															? formatCurrency(lowestPrice)
+															: "—"}
+													</TableCell>
+													<TableCell className="text-center">
+														<Badge variant="outline" className="text-xs">
+															{serviceCount} service
+															{serviceCount !== 1 ? "s" : ""}
+														</Badge>
+													</TableCell>
+													<TableCell className="text-center">
+														{item.active ? (
+															<Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+																Active
+															</Badge>
+														) : (
+															<Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs">
+																Inactive
+															</Badge>
+														)}
+													</TableCell>
+												</TableRow>
+											);
+										})}
+									</TableBody>
+								</Table>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			</div>
+
+			<LaundryItemDetailsDialog
+				itemId={selectedItemId}
+				open={isDetailsOpen}
+				onOpenChange={setIsDetailsOpen}
+			/>
+		</BreadCrumbWrapper>
+	);
+}
