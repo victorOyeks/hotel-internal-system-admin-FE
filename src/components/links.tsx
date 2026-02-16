@@ -22,6 +22,8 @@ import {
 	ArrowLeftRightIcon,
 	UsersIcon,
 	WrenchIcon,
+	ShirtIcon,
+	CreditCardIcon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -169,5 +171,13 @@ export const rentalsLinks = [
 		url: "/dashboard/maintenance",
 	},
 	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
+];
+
+export const laundryLinks = [
+	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
+	{ title: "Laundry Items", icon: <ShirtIcon />, url: "/dashboard/items" },
+	{ title: "Orders", icon: <ClipboardListIcon />, url: "/dashboard/orders" },
+	{ title: "Payments", icon: <CreditCardIcon />, url: "/dashboard/payments" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
