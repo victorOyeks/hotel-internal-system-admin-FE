@@ -163,7 +163,10 @@ export function StockTakePage({ stockTakes, inventoryLocations
 	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
 		const { recordStockCount } = await import("@/lib/inventory-actions");
 		// Optimistic update could happen here or we rely on revalidatePath
-		return await recordStockCount(stockTakeId, itemId, { actualQuantity: quantity });
+		return await recordStockCount(stockTakeId, itemId, {
+			stockTakeItemId: itemId,
+			actualQuantity: quantity
+		});
 	};
 
 	return (

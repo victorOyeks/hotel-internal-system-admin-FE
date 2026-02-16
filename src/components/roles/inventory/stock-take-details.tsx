@@ -23,12 +23,12 @@ import {
 	ClipboardList,
 	Loader2,
 	MapPin,
+	// RefreshCw,
 } from "lucide-react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getStockTake } from "@/lib/inventory-actions";
 import { StockTakeItemsTable } from "./stock-take-items-table";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export interface StockTakeDetailsProps {
@@ -63,42 +63,125 @@ export function StockTakeDetails({
 			if (!res.success || !res.data) throw new Error(res.error);
 			return res.data;
 		},
+		enabled: !!initialStockTake?.id && open,
 	});
 
 	const stockTake = stockTakeResponse || initialStockTake;
 
-	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
-		const res = await onRecordCount(stockTakeId, itemId, quantity);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to record count");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", stockTakeId] });
-	};
+	const recordCountMutation = useMutation({
+		mutationFn: async ({
+			stockTakeId,
+			itemId,
+			quantity,
+		}: {
+			stockTakeId: string;
+			itemId: string;
+			quantity: number;
+		}) => {
+			const res = await onRecordCount(stockTakeId, itemId, quantity);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to record count");
+			}
+			return res;
+		},
+		onSuccess: (_, { stockTakeId }) => {
+			// toast.success("Count recorded"); // Optional, simpler if quiet
+			queryClient.invalidateQueries({ queryKey: ["stock-take", stockTakeId] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
-	const handleStart = async (id: string) => {
-		const res = await onStart(id);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to start stock take");
-		} else {
+	const startMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onStart(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to start stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
 			toast.success("Stock take started");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
-	};
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
-	const handleCancel = async (id: string) => {
-		const res = await onCancel(id);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to cancel stock take");
-		} else {
+	const cancelMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onCancel(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to cancel stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
 			toast.success("Stock take cancelled");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
-	};
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const completeMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onComplete(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to complete stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
+			toast.success("Stock take completed");
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+			// The parent might close the dialog, but let's allow refetch
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const postAdjustmentsMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onPostAdjustments(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to post adjustments");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
+			toast.success("Adjustments posted");
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
 	// Note: handling Complete and PostAdjustments might also require invalidation or closing dialog.
 	// The parent closes the dialog on complete/post.
 
 	if (!stockTake) return null;
+
+	const contentProps: Omit<StockTakeContentProps, "isMobile"> = {
+		stockTake,
+		onClose: () => onOpenChange(false),
+		isLoading: isPending,
+		isStarting: startMutation.isPending,
+		isCanceling: cancelMutation.isPending,
+		isCompleting: completeMutation.isPending,
+		isPosting: postAdjustmentsMutation.isPending,
+		startStockTake: (id) => startMutation.mutate(id),
+		cancelStockTake: (id) => cancelMutation.mutate(id),
+		completeStockTake: (id) => completeMutation.mutate(id),
+		postAdjustments: (id) => postAdjustmentsMutation.mutate(id),
+		recordCount: (stockTakeId, itemId, quantity) =>
+			recordCountMutation.mutate({ stockTakeId, itemId, quantity }),
+	};
 
 	if (isMobile) {
 		return (
@@ -110,17 +193,7 @@ export function StockTakeDetails({
 							<StatusBadge status={stockTake.status} />
 						</div>
 					</SheetHeader>
-					<StockTakeContent
-						stockTake={stockTake}
-						onClose={() => onOpenChange(false)}
-						onComplete={onComplete}
-						onPostAdjustments={onPostAdjustments}
-						onStart={handleStart}
-						onCancel={handleCancel}
-						onRecordCount={handleRecordCount}
-						isMobile={true}
-						isLoading={isPending}
-					/>
+					<StockTakeContent {...contentProps} isMobile={true} />
 				</SheetContent>
 			</Sheet>
 		);
@@ -135,17 +208,7 @@ export function StockTakeDetails({
 						<StatusBadge status={stockTake.status} />
 					</div>
 				</DialogHeader>
-				<StockTakeContent
-					stockTake={stockTake}
-					onClose={() => onOpenChange(false)}
-					onComplete={onComplete}
-					onPostAdjustments={onPostAdjustments}
-					onStart={handleStart}
-					onCancel={handleCancel}
-					onRecordCount={handleRecordCount}
-					isMobile={false}
-					isLoading={isPending}
-				/>
+				<StockTakeContent {...contentProps} isMobile={false} />
 			</DialogContent>
 		</Dialog>
 	);
@@ -170,32 +233,44 @@ function StatusBadge({ status }: { status: string }) {
 interface StockTakeContentProps {
 	stockTake: StockTake;
 	onClose: () => void;
-	onComplete: (id: string) => Promise<any>;
-	onPostAdjustments: (id: string) => Promise<any>;
-	onStart: (id: string) => Promise<any>;
-	onCancel: (id: string) => Promise<any>;
-	onRecordCount: (stockTakeId: string, itemId: string, quantity: number) => Promise<any>;
-	isMobile: boolean;
 	isLoading: boolean;
+	isMobile: boolean;
+
+	// Mutations state & handlers
+	isStarting: boolean;
+	isCanceling: boolean;
+	isCompleting: boolean;
+	isPosting: boolean;
+
+	startStockTake: (id: string) => void;
+	cancelStockTake: (id: string) => void;
+	completeStockTake: (id: string) => void;
+	postAdjustments: (id: string) => void;
+	recordCount: (stockTakeId: string, itemId: string, quantity: number) => void;
 }
 
 function StockTakeContent({
 	stockTake,
 	onClose,
-	onComplete,
-	onPostAdjustments,
-	onStart,
-	onCancel,
-	onRecordCount,
-	isMobile,
 	isLoading,
+	isMobile,
+
+	isStarting,
+	isCanceling,
+	isCompleting,
+	isPosting,
+
+	startStockTake,
+	cancelStockTake,
+	completeStockTake,
+	postAdjustments,
+	recordCount,
 }: StockTakeContentProps) {
 	const isEditing = stockTake.status === "IN_PROGRESS";
 
-	const [isStarting, setIsStarting] = useState(false);
-	const [isCanceling, setIsCanceling] = useState(false);
-	const [isCompleting, setIsCompleting] = useState(false);
-	const [isPosting, setIsPosting] = useState(false);
+	// Use local state for tracking *which* item is being updated if we want item-specific loaders
+	// For now, we rely on optimistic updates or fast revalidations.
+	// But `recordCount` mutation is global. If user updates rapid-fire, it's fine.
 
 	if (isLoading) {
 		return (
@@ -208,65 +283,11 @@ function StockTakeContent({
 		);
 	}
 
-	const handleStart = async () => {
-		setIsStarting(true);
-		try {
-			const res = await onStart(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to start stock take");
-			} else {
-				toast.success("Stock take started");
-			}
-		} finally {
-			setIsStarting(false);
-		}
-	};
-
-	const handleCancel = async () => {
-		setIsCanceling(true);
-		try {
-			const res = await onCancel(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to cancel stock take");
-			} else {
-				toast.success("Stock take cancelled");
-			}
-		} finally {
-			setIsCanceling(false);
-		}
-	};
-
-	const handleComplete = async () => {
-		setIsCompleting(true);
-		try {
-			const res = await onComplete(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to complete stock take");
-			} else {
-				toast.success("Stock take completed");
-			}
-		} finally {
-			setIsCompleting(false);
-		}
-	};
-
-	const handlePostAdjustments = async () => {
-		setIsPosting(true);
-		try {
-			const res = await onPostAdjustments(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to post adjustments");
-			} else {
-				toast.success("Adjustments posted");
-			}
-		} finally {
-			setIsPosting(false);
-		}
-	};
-
 	return (
 		<div className="space-y-6">
-			<div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}>
+			<div
+				className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}
+			>
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center gap-2 text-muted-foreground">
 						<MapPin className="w-4 h-4" />
@@ -319,13 +340,20 @@ function StockTakeContent({
 								: "text-green-600"
 							}`}
 					>
-						{(stockTake.totalValueVariance).toFixed(2)}
+						{stockTake.totalValueVariance.toFixed(2)}
 					</p>
 				</div>
 			</div>
 
 			<div className="space-y-4">
-				<h3 className="font-semibold text-lg">Items</h3>
+				<div className="flex items-center justify-between">
+					<h3 className="font-semibold text-lg">Items</h3>
+					{/* <Button variant="ghost" size="sm" onClick={() => {}}>
+						<RefreshCw className="mr-2 h-3.5 w-3.5" />
+						Refresh
+					</Button> */}
+				</div>
+
 				{isMobile ? (
 					<div className="space-y-4">
 						{(stockTake.items || []).map((item) => (
@@ -367,7 +395,7 @@ function StockTakeContent({
 													onBlur={(e) => {
 														const val = parseFloat(e.target.value);
 														if (!Number.isNaN(val)) {
-															onRecordCount(stockTake.id, item.id, val);
+															recordCount(stockTake.id, item.id, val);
 														}
 													}}
 												/>
@@ -417,30 +445,31 @@ function StockTakeContent({
 						data={stockTake.items || []}
 						isEditing={isEditing}
 						onRecordCount={(itemId, quantity) =>
-							onRecordCount(stockTake.id, itemId, quantity)
+							recordCount(stockTake.id, itemId, quantity)
 						}
 					/>
 				)}
 			</div>
 
 			<div className="flex justify-end gap-2 pt-4">
-				<Button variant="outline" onClick={onClose} disabled={isStarting || isCanceling || isCompleting || isPosting}>
+				<Button
+					variant="outline"
+					onClick={onClose}
+					disabled={isStarting || isCanceling || isCompleting || isPosting}
+				>
 					Close
 				</Button>
 				{stockTake.status === "SCHEDULED" && (
 					<>
 						<Button
 							variant="destructive"
-							onClick={handleCancel}
+							onClick={() => cancelStockTake(stockTake.id)}
 							disabled={isCanceling || isStarting}
 						>
 							{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							Cancel
 						</Button>
-						<Button
-							onClick={handleStart}
-							disabled={isStarting || isCanceling}
-						>
+						<Button onClick={() => startStockTake(stockTake.id)} disabled={isStarting || isCanceling}>
 							{isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							Start Stock Take
 						</Button>
@@ -449,7 +478,7 @@ function StockTakeContent({
 				{stockTake.status === "IN_PROGRESS" && (
 					<Button
 						variant="destructive"
-						onClick={handleCancel}
+						onClick={() => cancelStockTake(stockTake.id)}
 						disabled={isCanceling}
 					>
 						{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -458,7 +487,7 @@ function StockTakeContent({
 				)}
 				{stockTake.status === "PENDING_REVIEW" && (
 					<Button
-						onClick={handleComplete}
+						onClick={() => completeStockTake(stockTake.id)}
 						disabled={isCompleting}
 					>
 						{isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -467,7 +496,7 @@ function StockTakeContent({
 				)}
 				{stockTake.status === "COMPLETED" && (
 					<Button
-						onClick={handlePostAdjustments}
+						onClick={() => postAdjustments(stockTake.id)}
 						disabled={isPosting}
 					>
 						{isPosting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -475,6 +504,6 @@ function StockTakeContent({
 					</Button>
 				)}
 			</div>
-		</div >
+		</div>
 	);
 }

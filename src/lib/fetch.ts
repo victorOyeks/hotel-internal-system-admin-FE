@@ -3781,6 +3781,38 @@ export const schema = createSchema({
 			data: StockTakeSchema,
 		}),
 	},
+	"@post/api/inventories/stock-takes/:stockTakeId/start": {
+		params: z.object({ stockTakeId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: StockTakeSchema,
+		}),
+	},
+	"@post/api/inventories/stock-takes/:stockTakeId/cancel": {
+		params: z.object({ stockTakeId: z.string() }),
+		input: z.object({ reason: z.string() }),
+		output: ApiResponseObject.extend({
+			data: StockTakeSchema,
+		}),
+	},
+	"@post/api/inventories/stock-takes/:stockTakeId/complete": {
+		params: z.object({ stockTakeId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: StockTakeSchema,
+		}),
+	},
+	"@post/api/inventories/stock-takes/:stockTakeId/post-adjustments": {
+		params: z.object({ stockTakeId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: StockTakeSchema,
+		}),
+	},
+	"@post/api/inventories/stock-takes/:stockTakeId/items/:itemId/record-count": {
+		params: z.object({ stockTakeId: z.string(), itemId: z.string() }),
+		input: RecordStockCountRequest,
+		output: ApiResponseObject.extend({
+			data: StockTakeSchema,
+		}),
+	},
 	"@post/api/inventories/stock-takes/:stockTakeId/review": {
 		params: z.object({ stockTakeId: z.string() }),
 		input: z
