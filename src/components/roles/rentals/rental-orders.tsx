@@ -76,6 +76,8 @@ const statusColors: Record<string, string> = {
 	DAMAGED: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
+const TERMINAL_STATUSES = new Set(["COMPLETED", "CANCELLED", "LOST", "DAMAGED"]);
+
 const paymentStatusColors: Record<string, string> = {
 	UNPAID: "bg-red-100 text-red-800 border-red-200",
 	DEPOSIT_PARTIALLY_PAID: "bg-amber-100 text-amber-800 border-amber-200",
@@ -339,7 +341,7 @@ export function RentalOrdersPage({
 															<Tooltip>
 																<TooltipTrigger asChild>
 																	<div>
-																		{order.status === "ACTIVE" || order.status === "PICKED_UP" ? (
+																		{!TERMINAL_STATUSES.has(order.status) ? (
 																			<ExtensionDialog
 																				orderId={order.id}
 																				currentReturnDate={new Date(order.rentalEndTime)}
@@ -374,7 +376,7 @@ export function RentalOrdersPage({
 															<Tooltip>
 																<TooltipTrigger asChild>
 																	<div>
-																		{order.status === "ACTIVE" || order.status === "PICKED_UP" || order.status === "OVERDUE" ? (
+																		{!TERMINAL_STATUSES.has(order.status) ? (
 																			<ReturnDialog
 																				orderId={order.id}
 																				trigger={
