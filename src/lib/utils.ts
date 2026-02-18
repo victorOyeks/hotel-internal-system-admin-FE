@@ -5,6 +5,30 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+const OUTBOUND_MOVEMENT_TYPES = new Set([
+	"SALES_ISSUE",
+	"INTERNAL_CONSUMPTION",
+	"TRANSFER_OUT",
+	"ADJUSTMENT_OUT",
+	"DAMAGE_WRITEOFF",
+	"EXPIRY_WRITEOFF",
+	"THEFT_WRITEOFF",
+	"LOST_WRITEOFF",
+	"SAMPLE_ISSUE",
+]);
+
+export function isOutboundMovement(movementType: string) {
+	return OUTBOUND_MOVEMENT_TYPES.has(movementType);
+}
+
+export function formatMovementQty(qty: number, movementType: string) {
+	return isOutboundMovement(movementType) ? `-${qty}` : `+${qty}`;
+}
+
+export function movementQtyColor(movementType: string) {
+	return isOutboundMovement(movementType) ? "text-red-600" : "text-green-600";
+}
+
 export function formatCurrency(
 	value: number,
 	type: "short" | "float" | "default" = "default",

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import type { StockMovementResponse } from "@/lib/fetch";
 import { Separator } from "@/components/ui/separator";
+import { formatMovementQty, movementQtyColor } from "@/lib/utils";
 
 interface ProductHistorySheetProps {
     productId: string;
@@ -52,7 +53,7 @@ export function ProductHistorySheet({
         enabled: isOpen,
     });
 
-    const movements = data?.content || [];
+    const movements = data || [];
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -129,12 +130,8 @@ export function ProductHistorySheet({
                                 <h4 className="text-sm font-medium text-muted-foreground">
                                     Quantity
                                 </h4>
-                                <p
-                                    className={`font-medium ${movement.quantity < 0 ? "text-red-600" : "text-green-600"
-                                        }`}
-                                >
-                                    {movement.quantity > 0 ? "+" : ""}
-                                    {movement.quantity}
+                                <p className={`font-medium ${movementQtyColor(movement.movementType)}`}>
+                                    {formatMovementQty(movement.quantity, movement.movementType)}
                                 </p>
                             </div>
                             <div>
@@ -183,15 +180,8 @@ export function ProductHistorySheet({
                                                         {format(new Date(movement.movementDate), "PP p")}
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">
-                                                        <span
-                                                            className={
-                                                                movement.quantity < 0
-                                                                    ? "text-red-600"
-                                                                    : "text-green-600"
-                                                            }
-                                                        >
-                                                            {movement.quantity > 0 ? "+" : ""}
-                                                            {movement.quantity}
+                                                        <span className={movementQtyColor(movement.movementType)}>
+                                                            {formatMovementQty(movement.quantity, movement.movementType)}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground">

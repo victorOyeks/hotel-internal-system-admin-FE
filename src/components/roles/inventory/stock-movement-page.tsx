@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { Pagination, StockMovementResponse } from "@/lib/fetch";
+import { formatMovementQty, movementQtyColor } from "@/lib/utils";
 import { StockMovementTable } from "./stock-movement-table";
 import { StockMovementToolbar } from "./stock-movement-toolbar";
 import { CreateStockIssueForm } from "./create-stock-issue-form";
@@ -93,13 +94,10 @@ const columns = [
         header: "Quantity",
         cell: (info) => {
             const qty = info.getValue();
+            const movementType = info.row.original.movementType;
             return (
-                <span
-                    className={`font-medium ${qty < 0 ? "text-red-600" : "text-green-600"
-                        }`}
-                >
-                    {qty > 0 ? "+" : ""}
-                    {qty}
+                <span className={`font-medium ${movementQtyColor(movementType)}`}>
+                    {formatMovementQty(qty, movementType)}
                 </span>
             );
         },
