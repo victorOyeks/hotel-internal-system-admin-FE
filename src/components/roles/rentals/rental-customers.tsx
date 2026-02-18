@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCustomerRentalDetails } from "@/lib/rental-actions";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
@@ -33,6 +34,7 @@ import {
 	ClipboardListIcon,
 	Loader2Icon,
 } from "lucide-react";
+import type { Pagination } from "@/lib/fetch";
 type CustomerLog = {
 	customerName: string;
 	customerPhone: string;
@@ -49,6 +51,7 @@ type CustomerLog = {
 
 type RentalCustomersPageProps = {
 	customers: CustomerLog[];
+	paginationMeta: Pagination;
 	breadcrumbs: {
 		title: string;
 		breadcrumbs: Array<{ label: string; href: string }>;
@@ -79,12 +82,29 @@ function formatCurrency(amount: number) {
 
 export function RentalCustomersPage({
 	customers,
+	paginationMeta,
 	breadcrumbs,
 }: RentalCustomersPageProps) {
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const [search, setSearch] = useState("");
 	const [selectedCustomer, setSelectedCustomer] =
 		useState<CustomerLog | null>(null);
 	const [historyOpen, setHistoryOpen] = useState(false);
+	const currentPage = Math.max(
+		1,
+		Number(searchParams.get("page") || paginationMeta.pageNumber + 1 || 1),
+	);
+	const currentSize = Math.max(1, Number(searchParams.get("size") || 20));
+	const totalPages = Math.max(1, paginationMeta.totalPages || 1);
+
+	const goToPage = (page: number) => {
+		const params = new URLSearchParams(searchParams.toString());
+		params.set("page", String(page));
+		params.set("size", String(currentSize));
+		router.push(`${pathname}?${params.toString()}`);
+	};
 
 	const filtered = customers.filter(
 		(c) =>
@@ -98,7 +118,6 @@ export function RentalCustomersPage({
 		(sum, c) => sum + c.outstandingBalance,
 		0,
 	);
-
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
 			<div className="flex flex-col gap-4 p-4 md:p-6">
@@ -156,7 +175,7 @@ export function RentalCustomersPage({
 							<div className="flex items-center gap-2">
 								<UsersIcon className="w-5 h-5 text-blue-600" />
 								<CardTitle className="text-lg">
-									All Customers
+									All Customers ({paginationMeta.totalElements})
 								</CardTitle>
 							</div>
 							<div className="relative">
@@ -294,6 +313,33 @@ export function RentalCustomersPage({
 								</TableBody>
 							</Table>
 						</div>
+						{paginationMeta.totalElements > 20 && (
+							<div className="flex items-center justify-between border-t pt-4 mt-4">
+								<p className="text-xs text-muted-foreground">
+									Page {currentPage} of {totalPages}
+								</p>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => goToPage(Math.max(1, currentPage - 1))}
+										disabled={currentPage <= 1}
+									>
+										Previous
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											goToPage(Math.min(totalPages, currentPage + 1))
+										}
+										disabled={currentPage >= totalPages}
+									>
+										Next
+									</Button>
+								</div>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -331,13 +377,21 @@ function CustomerHistoryDialog({
 
 	const orders = details?.orders;
 	const outstanding = details?.outstanding;
-
+	const outstandingAmount =
+		(details?.outstandingTotal as number | undefined) ??
+		(details?.outstandingAmount as number | undefined) ??
+		(Array.isArray(outstanding)
+			? outstanding.reduce(
+					(sum: number, order: any) => sum + (order?.balanceDue || 0),
+					0,
+				)
+			: undefined);
 	if (!customer) return null;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-				<DialogHeader>
+			<DialogContent className="w-[84vw] !max-w-[900px] overflow-hidden p-0">
+				<DialogHeader className="px-5 pt-5 pb-2">
 					<DialogTitle className="text-xl font-bold">
 						{customer.customerName}
 					</DialogTitle>
@@ -346,9 +400,10 @@ function CustomerHistoryDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="space-y-5">
+				<div className="max-h-[76vh] overflow-y-auto px-5 pb-5">
+					<div className="space-y-4">
 					{/* Contact Info */}
-					<div className="flex gap-6 text-sm">
+					<div className="flex gap-4 text-sm">
 						{customer.customerPhone && (
 							<span className="flex items-center gap-1.5 text-muted-foreground">
 								<PhoneIcon className="w-4 h-4" />
@@ -373,34 +428,36 @@ function CustomerHistoryDialog({
 					</div>
 
 					{/* Stats */}
-					<div className="grid grid-cols-4 gap-3">
-						<div className="bg-muted/50 rounded-lg p-3 text-center">
-							<p className="text-2xl font-bold">
+					<div className="grid grid-cols-4 gap-2">
+						<div className="bg-muted/50 rounded-lg p-2.5 text-center">
+							<p className="text-xl font-bold">
 								{customer.totalRentals}
 							</p>
 							<p className="text-xs text-muted-foreground">
 								Total Rentals
 							</p>
 						</div>
-						<div className="bg-blue-50 rounded-lg p-3 text-center">
-							<p className="text-2xl font-bold text-blue-600">
+						<div className="bg-blue-50 rounded-lg p-2.5 text-center">
+							<p className="text-xl font-bold text-blue-600">
 								{customer.activeRentals}
 							</p>
 							<p className="text-xs text-muted-foreground">
 								Active
 							</p>
 						</div>
-						<div className="bg-green-50 rounded-lg p-3 text-center">
-							<p className="text-2xl font-bold text-green-600">
+						<div className="bg-green-50 rounded-lg p-2.5 text-center">
+							<p className="text-xl font-bold text-green-600">
 								{formatCurrency(customer.totalSpent)}
 							</p>
 							<p className="text-xs text-muted-foreground">
 								Total Spent
 							</p>
 						</div>
-						<div className="bg-orange-50 rounded-lg p-3 text-center">
-							<p className="text-2xl font-bold text-orange-600">
-								{formatCurrency(customer.outstandingBalance)}
+						<div className="bg-orange-50 rounded-lg p-2.5 text-center">
+							<p className="text-xl font-bold text-orange-600">
+								{isLoading
+									? "Loading..."
+									: formatCurrency(outstandingAmount ?? customer.outstandingBalance)}
 							</p>
 							<p className="text-xs text-muted-foreground">
 								Outstanding
@@ -413,52 +470,60 @@ function CustomerHistoryDialog({
 					{/* Outstanding Orders */}
 					<div>
 						<h3 className="font-semibold mb-2 text-orange-700">
-							Outstanding Orders ({outstanding?.length || 0})
+							Outstanding Orders {isLoading ? "(Loading...)" : `(${outstanding?.length || 0})`}
 						</h3>
-						{outstanding && outstanding.length > 0 ? (
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Order #</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead className="text-right">
-											Balance Due
-										</TableHead>
-										<TableHead>Rental Period</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{outstanding.map((order: any) => (
-										<TableRow key={order.id}>
-											<TableCell className="font-medium">
-												{order.orderNumber}
-											</TableCell>
-											<TableCell>
-												<Badge
-													className={
-														statusColors[order.status] ||
-														"bg-gray-100 text-gray-800"
-													}
-												>
-													{order.status?.replace(/_/g, " ")}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-right font-medium text-orange-600">
-												{formatCurrency(order.balanceDue || 0)}
-											</TableCell>
-											<TableCell className="text-sm">
-												{new Date(
-													order.rentalStartTime,
-												).toLocaleDateString()}{" "}
-												-{" "}
-												{new Date(
-													order.rentalEndTime,
-												).toLocaleDateString()}
-											</TableCell>
+						{isLoading ? (
+							<div className="flex justify-center py-6">
+								<Loader2Icon className="w-6 h-6 animate-spin text-blue-600" />
+							</div>
+						) : outstanding && outstanding.length > 0 ? (
+							<>
+								<div className="overflow-x-auto">
+									<Table className="w-full">
+									<TableHeader>
+										<TableRow>
+											<TableHead>Order #</TableHead>
+											<TableHead>Status</TableHead>
+											<TableHead className="text-right">
+												Balance Due
+											</TableHead>
+											<TableHead>Rental Period</TableHead>
 										</TableRow>
-									))}
-								</TableBody>
-							</Table>
+									</TableHeader>
+									<TableBody>
+										{outstanding.map((order: any) => (
+											<TableRow key={order.id}>
+												<TableCell className="font-medium whitespace-nowrap">
+													{order.orderNumber}
+												</TableCell>
+												<TableCell>
+													<Badge
+														className={
+															statusColors[order.status] ||
+															"bg-gray-100 text-gray-800"
+														}
+													>
+														{order.status?.replace(/_/g, " ")}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-right font-medium text-orange-600 whitespace-nowrap">
+													{formatCurrency(order.balanceDue || 0)}
+												</TableCell>
+												<TableCell className="text-sm">
+													{new Date(
+														order.rentalStartTime,
+													).toLocaleDateString()}{" "}
+													-{" "}
+													{new Date(
+														order.rentalEndTime,
+													).toLocaleDateString()}
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+									</Table>
+								</div>
+							</>
 						) : (
 							<p className="text-center text-muted-foreground py-4 text-sm">
 								No outstanding orders
@@ -485,62 +550,67 @@ function CustomerHistoryDialog({
 								No rental history found
 							</p>
 						) : (
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Order #</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>Payment</TableHead>
-										<TableHead className="text-center">
-											Items
-										</TableHead>
-										<TableHead className="text-right">
-											Total
-										</TableHead>
-										<TableHead>Period</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{orders.map((order: any) => (
-										<TableRow key={order.id}>
-											<TableCell className="font-medium">
-												{order.orderNumber}
-											</TableCell>
-											<TableCell>
-												<Badge
-													className={
-														statusColors[order.status] ||
-														"bg-gray-100 text-gray-800"
-													}
-												>
-													{order.status?.replace(/_/g, " ")}
-												</Badge>
-											</TableCell>
-											<TableCell>
-												<Badge variant="outline" className="text-xs">
-													{order.paymentStatus?.replace(
-														/_/g,
-														" ",
-													)}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-center">
-												{order.totalItemsCount}
-											</TableCell>
-											<TableCell className="text-right font-medium">
-												{formatCurrency(order.totalAmount || 0)}
-											</TableCell>
-											<TableCell className="text-sm text-muted-foreground">
-												{new Date(
-													order.rentalStartTime,
-												).toLocaleDateString()}
-											</TableCell>
+							<>
+								<div className="overflow-x-auto">
+									<Table className="w-full">
+									<TableHeader>
+										<TableRow>
+											<TableHead>Order #</TableHead>
+											<TableHead>Status</TableHead>
+											<TableHead>Payment</TableHead>
+											<TableHead className="text-center">
+												Items
+											</TableHead>
+											<TableHead className="text-right">
+												Total
+											</TableHead>
+											<TableHead>Period</TableHead>
 										</TableRow>
-									))}
-								</TableBody>
-							</Table>
+									</TableHeader>
+									<TableBody>
+										{orders.map((order: any) => (
+											<TableRow key={order.id}>
+												<TableCell className="font-medium whitespace-nowrap">
+													{order.orderNumber}
+												</TableCell>
+												<TableCell>
+													<Badge
+														className={
+															statusColors[order.status] ||
+															"bg-gray-100 text-gray-800"
+														}
+													>
+														{order.status?.replace(/_/g, " ")}
+													</Badge>
+												</TableCell>
+												<TableCell>
+													<Badge variant="outline" className="text-xs whitespace-nowrap">
+														{order.paymentStatus?.replace(
+															/_/g,
+															" ",
+														)}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-center whitespace-nowrap">
+													{order.totalItemsCount}
+												</TableCell>
+												<TableCell className="text-right font-medium whitespace-nowrap">
+													{formatCurrency(order.totalAmount || 0)}
+												</TableCell>
+												<TableCell className="text-sm text-muted-foreground">
+													{new Date(
+														order.rentalStartTime,
+													).toLocaleDateString()}
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+									</Table>
+								</div>
+							</>
 						)}
 					</div>
+				</div>
 				</div>
 			</DialogContent>
 		</Dialog>

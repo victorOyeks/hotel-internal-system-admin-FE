@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,10 @@ type RentalItem = {
 	availableQuantity: number;
 	rentedQuantity?: number;
 	maintenanceQuantity?: number;
+	faultyQuantity?: number;
+	writeOffQuantity?: number;
+	damagedQuantity?: number;
+	outOfServiceQuantity?: number;
 	condition?: string;
 	pricingType?: string;
 	active: boolean;
@@ -76,19 +80,52 @@ function formatCurrency(amount: number) {
 	}).format(amount);
 }
 
+function getNormalizedInventory(item: RentalItem) {
+	const total = Math.max(0, Number(item.totalQuantity ?? 0));
+	const faulty = Math.max(
+		0,
+		Number(
+			item.faultyQuantity ??
+				item.writeOffQuantity ??
+				item.damagedQuantity ??
+				item.outOfServiceQuantity ??
+				0,
+		),
+	);
+	const maintenance = Math.min(
+		Math.max(0, Number(item.maintenanceQuantity ?? 0)),
+		Math.max(0, total - faulty),
+	);
+	const rented = Math.min(
+		Math.max(
+			0,
+			Number(item.rentedQuantity ?? total - Number(item.availableQuantity ?? 0)),
+		),
+		Math.max(0, total - faulty - maintenance),
+	);
+	const available = Math.max(0, total - rented - maintenance - faulty);
+	return { total, available, rented, maintenance, faulty };
+}
+
 export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 	const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+	const [currentPage, setCurrentPage] = useState(1);
+	const pageSize = 20;
 
 	const stats = useMemo(() => {
 		const totalItems = items.length;
-		const totalStock = items.reduce((sum, i) => sum + i.totalQuantity, 0);
-		const totalAvailable = items.reduce((sum, i) => sum + i.availableQuantity, 0);
-		const totalRented = items.reduce((sum, i) => sum + (i.rentedQuantity ?? (i.totalQuantity - i.availableQuantity)), 0);
-		const totalMaintenance = items.reduce((sum, i) => sum + (i.maintenanceQuantity ?? 0), 0);
-		const outOfStock = items.filter((i) => i.availableQuantity === 0 && i.active).length;
+		const normalized = items.map(getNormalizedInventory);
+		const totalStock = normalized.reduce((sum, i) => sum + i.total, 0);
+		const totalAvailable = normalized.reduce((sum, i) => sum + i.available, 0);
+		const totalRented = normalized.reduce((sum, i) => sum + i.rented, 0);
+		const totalMaintenance = normalized.reduce((sum, i) => sum + i.maintenance, 0);
+		const outOfStock = items.filter((i) => {
+			const inv = getNormalizedInventory(i);
+			return inv.available === 0 && i.active;
+		}).length;
 		return { totalItems, totalStock, totalAvailable, totalRented, totalMaintenance, outOfStock };
 	}, [items]);
 
@@ -106,6 +143,16 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 		const matchesCategory = !selectedCategory || item.category === selectedCategory;
 		return matchesSearch && matchesCategory;
 	});
+	const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+	const safePage = Math.min(currentPage, totalPages);
+	const pagedItems = filteredItems.slice(
+		(safePage - 1) * pageSize,
+		safePage * pageSize,
+	);
+
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [searchQuery, selectedCategory]);
 
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
@@ -251,16 +298,18 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{filteredItems.map((item) => {
+										{pagedItems.map((item) => {
+											const { total: totalQuantity, available: availableQuantity, rented: rentedQuantity } =
+												getNormalizedInventory(item);
 											const utilizationRate =
-												item.totalQuantity > 0
+												totalQuantity > 0
 													? Math.round(
-															((item.totalQuantity - item.availableQuantity) /
-																item.totalQuantity) *
+															((totalQuantity - availableQuantity) /
+																totalQuantity) *
 																100,
 														)
 													: 0;
-											const isAvailable = item.availableQuantity > 0;
+											const isAvailable = availableQuantity > 0;
 
 											return (
 												<TableRow
@@ -300,12 +349,12 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 													<TableCell className="text-center">
 														<div className="flex flex-col items-center">
 															<span className="text-sm">
-																<span className="font-semibold">{item.availableQuantity}</span>
-																<span className="text-muted-foreground"> / {item.totalQuantity}</span>
+																<span className="font-semibold">{availableQuantity}</span>
+																<span className="text-muted-foreground"> / {totalQuantity}</span>
 															</span>
-															{(item.rentedQuantity ?? 0) > 0 && (
+															{rentedQuantity > 0 && (
 																<span className="text-[10px] text-purple-600">
-																	{item.rentedQuantity} rented
+																	{rentedQuantity} rented
 																</span>
 															)}
 														</div>
@@ -360,7 +409,34 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 											);
 										})}
 									</TableBody>
-								</Table>
+							</Table>
+							</div>
+						)}
+						{filteredItems.length > pageSize && (
+							<div className="flex items-center justify-between border-t pt-4 mt-4">
+								<p className="text-xs text-muted-foreground">
+									Page {safePage} of {totalPages}
+								</p>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+										disabled={safePage <= 1}
+									>
+										Previous
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+										}
+										disabled={safePage >= totalPages}
+									>
+										Next
+									</Button>
+								</div>
 							</div>
 						)}
 					</CardContent>

@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getRentalItemDetails, sendToMaintenance } from "@/lib/rental-actions";
-import { $fetch } from "@/lib/fetch";
+import {
+	getRentalItemDetails,
+	getRentalItemMaintenanceHistory,
+	sendToMaintenance,
+} from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -26,9 +30,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	PackageIcon,
 	Loader2Icon,
-	WrenchIcon,
 	SendIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -83,12 +85,34 @@ function formatCurrency(amount: number) {
 	}).format(amount);
 }
 
+function isFaultyMaintenanceEntry(entry: any) {
+	const values = [
+		entry?.type,
+		entry?.action,
+		entry?.status,
+		entry?.maintenanceResultStatus,
+		entry?.resultStatus,
+		entry?.condition,
+	]
+		.filter(Boolean)
+		.map((value) => String(value).toUpperCase());
+	return values.some(
+		(value) =>
+			value.includes("WRITE_OFF") ||
+			value.includes("FAULTY") ||
+			value.includes("BAD") ||
+			value.includes("DAMAGED") ||
+			value.includes("OUT_OF_SERVICE"),
+	);
+}
+
 export function RentalItemDetailsDialog({
 	itemId,
 	open,
 	onOpenChange,
 }: RentalItemDetailsDialogProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 	const [maintenanceQty, setMaintenanceQty] = useState(1);
 	const [maintenanceReason, setMaintenanceReason] = useState("");
@@ -108,7 +132,15 @@ export function RentalItemDetailsDialog({
 		onSuccess: () => {
 			toast.success("Item sent to maintenance");
 			queryClient.invalidateQueries({ queryKey: ["rentals", "items", itemId] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items"] });
 			queryClient.invalidateQueries({ queryKey: ["rentals", "maintenance"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "maintenance", "pending"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "dashboard-stats"],
+			});
+			router.refresh();
 			setShowMaintenanceForm(false);
 			setMaintenanceQty(1);
 			setMaintenanceReason("");
@@ -132,23 +164,74 @@ export function RentalItemDetailsDialog({
 	const { data: maintenanceHistory } = useQuery({
 		queryKey: ["rentals", "items", itemId, "maintenance"],
 		queryFn: async () => {
-			// TODO: Add server action for maintenance history
-			return [];
+			const result = await getRentalItemMaintenanceHistory(itemId!);
+			if (!result.success) return [];
+			return Array.isArray(result.data)
+				? result.data
+				: (result.data?.content ?? []);
 		},
 		enabled: !!itemId && open,
 	});
 
 	if (!itemId) return null;
 
+	const faultyQuantityFromItem = Math.max(
+		0,
+		Number(
+			item?.faultyQuantity ??
+				item?.writeOffQuantity ??
+				item?.damagedQuantity ??
+				item?.outOfServiceQuantity ??
+				0,
+		),
+	);
+	const hasFaultyFieldFromApi =
+		item?.faultyQuantity !== undefined ||
+		item?.writeOffQuantity !== undefined ||
+		item?.damagedQuantity !== undefined ||
+		item?.outOfServiceQuantity !== undefined;
+	const faultyFromHistory = Array.isArray(maintenanceHistory)
+		? maintenanceHistory
+				.filter((entry: any) => isFaultyMaintenanceEntry(entry))
+				.reduce(
+					(sum: number, entry: any) =>
+						sum + Math.max(0, Number(entry?.quantity || 0)),
+					0,
+				)
+		: 0;
+	const effectiveFaultyQuantity = Math.max(
+		faultyQuantityFromItem,
+		faultyFromHistory,
+	);
+	const faultyDisplayValue =
+		hasFaultyFieldFromApi || faultyFromHistory > 0
+			? String(effectiveFaultyQuantity)
+			: "0";
+	const totalQuantity = Math.max(0, Number(item?.totalQuantity ?? 0));
+	const rawMaintenanceQuantity = Math.max(0, Number(item?.maintenanceQuantity ?? 0));
+	const rawRentedQuantity = Math.max(0, Number(item?.rentedQuantity ?? 0));
+	const faultyQuantity = Math.max(0, Number(faultyDisplayValue || 0));
+	const maintenanceQuantity = Math.min(
+		rawMaintenanceQuantity,
+		Math.max(0, totalQuantity - faultyQuantity),
+	);
+	const rentedQuantity = Math.min(
+		rawRentedQuantity,
+		Math.max(0, totalQuantity - maintenanceQuantity - faultyQuantity),
+	);
+	// Available must follow: total - rented - maintenance - faulty
+	const availableQuantity = Math.max(
+		0,
+		totalQuantity - rentedQuantity - maintenanceQuantity - faultyQuantity,
+	);
 	const utilizationRate =
-		item?.totalQuantity > 0
-			? ((item.totalQuantity - item.availableQuantity) / item.totalQuantity) *
-				100
+		totalQuantity > 0
+			? ((totalQuantity - availableQuantity) / totalQuantity) * 100
 			: 0;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="w-[96vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
 						<Loader2Icon className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -175,7 +258,7 @@ export function RentalItemDetailsDialog({
 										{conditionLabels[item.condition] || item.condition}
 									</Badge>
 									{item.active ? (
-										item.availableQuantity > 0 ? (
+										availableQuantity > 0 ? (
 											<Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
 												Available
 											</Badge>
@@ -291,22 +374,28 @@ export function RentalItemDetailsDialog({
 							{/* Inventory & Availability */}
 							<div>
 								<h3 className="text-sm font-semibold text-muted-foreground mb-2">Inventory</h3>
-								<div className="grid grid-cols-4 gap-3">
-									<div className="border rounded-lg p-3">
+								<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Total</p>
-										<p className="text-2xl font-bold">{item.totalQuantity}</p>
+										<p className="text-xl sm:text-2xl font-bold">{item.totalQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Available</p>
-										<p className="text-2xl font-bold text-green-700">{item.availableQuantity}</p>
+										<p className="text-xl sm:text-2xl font-bold text-green-700">{availableQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Rented</p>
-										<p className="text-2xl font-bold">{item.rentedQuantity || 0}</p>
+										<p className="text-xl sm:text-2xl font-bold">{rentedQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Maintenance</p>
-										<p className="text-2xl font-bold">{item.maintenanceQuantity || 0}</p>
+										<p className="text-xl sm:text-2xl font-bold">{maintenanceQuantity}</p>
+									</div>
+									<div className="border rounded-lg p-3 min-w-0">
+										<p className="text-xs text-muted-foreground">Faulty</p>
+										<p className="text-xl sm:text-2xl font-bold text-red-700">
+											{faultyDisplayValue}
+										</p>
 									</div>
 								</div>
 								<div className="mt-3">
@@ -324,7 +413,7 @@ export function RentalItemDetailsDialog({
 							</div>
 
 							{/* Maintenance Action */}
-							{item.availableQuantity > 0 && (
+							{availableQuantity > 0 && (
 								<>
 									<Separator />
 									<div>
@@ -349,7 +438,7 @@ export function RentalItemDetailsDialog({
 														<Input
 															type="number"
 															min={1}
-															max={item.availableQuantity}
+															max={availableQuantity}
 															value={maintenanceQty}
 															onChange={(e) =>
 																setMaintenanceQty(
@@ -437,12 +526,14 @@ export function RentalItemDetailsDialog({
 								</>
 							)}
 
-							{/* Maintenance History */}
+							{/* Additional Info */}
 							{maintenanceHistory && maintenanceHistory.length > 0 && (
 								<>
 									<Separator />
 									<div>
-										<h3 className="text-sm font-semibold text-muted-foreground mb-2">Maintenance History</h3>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">
+											Maintenance History
+										</h3>
 										<Table>
 											<TableHeader>
 												<TableRow>
@@ -456,9 +547,7 @@ export function RentalItemDetailsDialog({
 												{maintenanceHistory.map((log: any) => (
 													<TableRow key={log.id}>
 														<TableCell className="text-sm">
-															{new Date(
-																log.createdAt,
-															).toLocaleDateString()}
+															{new Date(log.createdAt).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
 															<Badge variant="outline" className="text-xs font-normal">
@@ -466,9 +555,7 @@ export function RentalItemDetailsDialog({
 															</Badge>
 														</TableCell>
 														<TableCell className="text-sm">{log.quantity}</TableCell>
-														<TableCell className="text-sm">
-															{log.reason || "-"}
-														</TableCell>
+														<TableCell className="text-sm">{log.reason || "-"}</TableCell>
 													</TableRow>
 												))}
 											</TableBody>
@@ -477,7 +564,6 @@ export function RentalItemDetailsDialog({
 								</>
 							)}
 
-							{/* Additional Info */}
 							{(item.usageInstructions ||
 								item.safetyInstructions ||
 								item.specifications) && (

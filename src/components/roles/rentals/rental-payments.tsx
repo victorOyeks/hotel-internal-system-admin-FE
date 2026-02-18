@@ -1,6 +1,7 @@
 "use client";
 
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,6 @@ import {
 import { DollarSignIcon, SearchIcon, DownloadIcon, Loader2Icon } from "lucide-react";
 import type { Pagination } from "@/lib/fetch";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
 import { toast } from "sonner";
 
 type RentalPayment = {
@@ -40,6 +39,8 @@ type RentalPayment = {
 	totalPaid: number;
 	remainingBalance: number;
 };
+
+type ExportPaymentRow = Partial<RentalPayment>;
 
 type RentalPaymentsPageProps = {
 	payments: RentalPayment[];
@@ -102,19 +103,34 @@ export function RentalPaymentsPage({
 	paginationMeta,
 	breadcrumbs,
 }: RentalPaymentsPageProps) {
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const [search, setSearch] = useState("");
+	const [isExporting, setIsExporting] = useState(false);
+	const currentPage = Math.max(
+		1,
+		Number(searchParams.get("page") || paginationMeta.pageNumber + 1 || 1),
+	);
+	const currentSize = Math.max(1, Number(searchParams.get("size") || 20));
+	const totalPages = Math.max(1, paginationMeta.totalPages || 1);
 
-	const exportMutation = useMutation({
-		mutationFn: async () => {
-			const response = await $fetch(
-				"@get/api/hotels/rentals/payments/history/export",
-				{
-					throw: true,
-				},
-			);
-			return response.data;
-		},
-		onSuccess: (data: any[]) => {
+	const goToPage = (page: number) => {
+		const params = new URLSearchParams(searchParams.toString());
+		params.set("page", String(page));
+		params.set("size", String(currentSize));
+		router.push(`${pathname}?${params.toString()}`);
+	};
+
+	const handleExportCsv = () => {
+		try {
+			setIsExporting(true);
+			const rowsData = payments as ExportPaymentRow[];
+			if (!rowsData.length) {
+				toast.error("No payment records available to export");
+				return;
+			}
+
 			const headers = [
 				"Date",
 				"Order #",
@@ -128,23 +144,23 @@ export function RentalPaymentsPage({
 				"Total Paid",
 				"Remaining",
 			];
-			const rows = data.map((p: any) => [
-				new Date(p.paymentDate).toLocaleDateString(),
-				p.orderNumber,
-				p.customerName,
-				p.customerPhone,
-				p.type,
-				p.method,
-				p.status,
-				p.amount,
-				p.orderTotal,
-				p.totalPaid,
-				p.remainingBalance,
+			const rows = rowsData.map((p) => [
+				new Date(p.paymentDate || "").toLocaleDateString(),
+				p.orderNumber || "",
+				p.customerName || "",
+				p.customerPhone || "",
+				p.type || "",
+				p.method || "",
+				p.status || "",
+				p.amount || 0,
+				p.orderTotal || 0,
+				p.totalPaid || 0,
+				p.remainingBalance || 0,
 			]);
 			const csv = [headers, ...rows]
 				.map((row) =>
 					row
-						.map((cell: any) =>
+						.map((cell) =>
 							typeof cell === "string" && cell.includes(",")
 								? `"${cell}"`
 								: cell,
@@ -159,12 +175,15 @@ export function RentalPaymentsPage({
 			a.download = `rental-payments-${new Date().toISOString().split("T")[0]}.csv`;
 			a.click();
 			URL.revokeObjectURL(url);
-			toast.success("Payment history exported");
-		},
-		onError: (error: Error) => {
-			toast.error(error.message || "Failed to export payments");
-		},
-	});
+			toast.success("Payment history exported (current page)");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to export payments",
+			);
+		} finally {
+			setIsExporting(false);
+		}
+	};
 
 	const filtered = payments.filter(
 		(p) =>
@@ -184,10 +203,10 @@ export function RentalPaymentsPage({
 					</div>
 					<Button
 						variant="outline"
-						onClick={() => exportMutation.mutate()}
-						disabled={exportMutation.isPending}
+						onClick={handleExportCsv}
+						disabled={isExporting}
 					>
-						{exportMutation.isPending ? (
+						{isExporting ? (
 							<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
 						) : (
 							<DownloadIcon className="w-4 h-4 mr-2" />
@@ -325,6 +344,33 @@ export function RentalPaymentsPage({
 								</TableBody>
 							</Table>
 						</div>
+						{paginationMeta.totalElements > 20 && (
+							<div className="flex items-center justify-between border-t pt-4 mt-4">
+								<p className="text-xs text-muted-foreground">
+									Page {currentPage} of {totalPages}
+								</p>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => goToPage(Math.max(1, currentPage - 1))}
+										disabled={currentPage <= 1}
+									>
+										Previous
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											goToPage(Math.min(totalPages, currentPage + 1))
+										}
+										disabled={currentPage >= totalPages}
+									>
+										Next
+									</Button>
+								</div>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
