@@ -843,6 +843,23 @@ const StockLevelResponse = z.object({
 
 export type StockLevelResponse2 = z.infer<typeof StockLevelResponse>;
 
+const LocationProductResponse = z.object({
+	productId: z.string(),
+	sku: z.string(),
+	name: z.string(),
+	category: z.string().nullable().optional(),
+	quantityOnHand: z.number(),
+	quantityAvailable: z.number(),
+	averageCost: z.number(),
+	isOutOfStock: z.boolean(),
+});
+
+export type LocationProductResponse = z.infer<typeof LocationProductResponse>;
+
+const ApiResponseLocationProductList = ApiResponseObject.extend({
+	data: z.array(LocationProductResponse),
+});
+
 const ApiResponseListStockLevelResponse = ApiResponseObject.extend({
 	data: z.array(StockLevelResponse),
 });
@@ -2540,6 +2557,10 @@ export const schema = createSchema({
 		params: z.object({ stockLevelId: z.string() }),
 		output: ApiResponseStockLevelResponse,
 	},
+	"@get/api/inventories/products-by-location/:locationId": {
+		params: z.object({ locationId: z.string() }),
+		output: ApiResponseLocationProductList,
+	},
 	// Auth APIs
 	"@post/api/auth/sign-in": {
 		input: LoginRequest,
@@ -3789,7 +3810,7 @@ export const schema = createSchema({
 	},
 	"@post/api/inventories/stock-takes/:stockTakeId/cancel": {
 		params: z.object({ stockTakeId: z.string() }),
-		input: z.object({ reason: z.string() }),
+		query: z.object({ reason: z.string() }),
 		output: ApiResponseObject.extend({
 			data: StockTakeSchema,
 		}),
@@ -4312,6 +4333,16 @@ export const schema = createSchema({
 	"@get/api/inventories/purchase-orders/:poId": {
 		params: z.object({ poId: z.string() }),
 		output: ApiResponseObject,
+	},
+	"@patch/api/inventories/purchase-orders/:poId/status": {
+		params: z.object({ poId: z.string() }),
+		input: z.object({
+			status: z.string(),
+			notes: z.string().optional(),
+		}),
+		output: ApiResponseObject.extend({
+			data: PurchaseOrderResponse,
+		}),
 	},
 	"@get/api/inventories/purchase-orders/:poId/export": {
 		params: z.object({ poId: z.string() }),

@@ -166,7 +166,6 @@ export function StockMovementPage({
                         <CreateStockIssueForm
                             onClose={() => setIsCreateDialogOpen(false)}
                             locations={locations}
-                            products={products}
                         />
                     </DialogContent>
                 </Dialog>
