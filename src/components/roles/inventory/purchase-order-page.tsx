@@ -98,14 +98,29 @@ const columnDefs = [
 					variant = "secondary";
 					className = "bg-green-100 text-green-800 hover:bg-green-100";
 					break;
-				case "PARTIALLY_RECEIVED":
-				case "COMPLETED":
+				case "REJECTED":
+					variant = "secondary";
+					className = "bg-red-100 text-red-800 hover:bg-red-100";
+					break;
+				case "SENT_TO_SUPPLIER":
 					variant = "secondary";
 					className = "bg-blue-100 text-blue-800 hover:bg-blue-100";
 					break;
+				case "PARTIALLY_RECEIVED":
+					variant = "secondary";
+					className = "bg-orange-100 text-orange-800 hover:bg-orange-100";
+					break;
+				case "FULLY_RECEIVED":
+					variant = "secondary";
+					className = "bg-teal-100 text-teal-800 hover:bg-teal-100";
+					break;
 				case "CANCELLED":
-				case "REJECTED":
-					variant = "destructive";
+					variant = "secondary";
+					className = "bg-gray-200 text-gray-700 hover:bg-gray-200";
+					break;
+				case "CLOSED":
+					variant = "secondary";
+					className = "bg-slate-100 text-slate-800 hover:bg-slate-100";
 					break;
 				default:
 					variant = "outline";
@@ -163,6 +178,7 @@ interface PurchaseOrderPageProps {
 		"phone">[];
 	products: InventoryProductResponse[];
 }
+
 
 export function PurchaseOrderPage({ orders, stats, suppliers, products }: PurchaseOrderPageProps) {
 	const [isCreateOpen, setIsCreateOpen] = useState(false);

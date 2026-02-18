@@ -414,7 +414,7 @@ export async function cancelStockTake(stockTakeId: string, reason: string) {
 			"@post/api/inventories/stock-takes/:stockTakeId/cancel",
 			{
 				params: { stockTakeId },
-				body: { reason },
+				query: { reason },
 				auth: { type: "Bearer", token: sessionData.token },
 				throw: true,
 			},
@@ -533,6 +533,35 @@ export async function reviewStockTake(stockTakeId: string, payload?: any) {
 		);
 
 		revalidatePath(`/dashboard/inventory/stock-takes/${stockTakeId}`);
+		return {
+			success: true,
+			data: response.data,
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error: parseError(error),
+		};
+	}
+}
+
+export async function updatePurchaseOrderStatus(
+	poId: string,
+	payload: { status: string; notes?: string },
+) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@patch/api/inventories/purchase-orders/:poId/status",
+			{
+				params: { poId },
+				body: payload,
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
 		return {
 			success: true,
 			data: response.data,
@@ -1194,6 +1223,34 @@ export async function getStockLevels(filters: {
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Unable to fetch stock levels",
+		};
+	}
+}
+
+export async function getProductsByLocation(locationId: string) {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await $fetch(
+			"@get/api/inventories/products-by-location/:locationId",
+			{
+				params: { locationId },
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+
+		return {
+			success: true,
+			data: response.data, // LocationProductResponse[]
+		};
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "Unable to fetch products for this location",
 		};
 	}
 }
