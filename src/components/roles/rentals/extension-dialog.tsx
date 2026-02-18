@@ -61,6 +61,7 @@ export function ExtensionDialog({
 	onSuccess,
 }: ExtensionDialogProps) {
 	const [open, setOpen] = useState(false);
+	const [calendarOpen, setCalendarOpen] = useState(false);
 	const queryClient = useQueryClient();
 	const router = useRouter();
 
@@ -132,22 +133,22 @@ export function ExtensionDialog({
 			</DialogTrigger>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
-					<DialogTitle className="text-2xl">Extend Rental Period</DialogTitle>
+					<DialogTitle>Extend Rental Period</DialogTitle>
 					<DialogDescription>
 						Extend the rental period for this order
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
 						{currentReturnDate && (
 							<Card className="bg-gray-50">
-								<CardContent className="pt-4">
+								<CardContent className="py-3">
 									<div className="text-sm">
 										<p className="text-muted-foreground">
 											Current Return Date:
 										</p>
-										<p className="font-semibold text-lg mt-1">
+										<p className="font-semibold mt-0.5">
 											{format(currentReturnDate, "PPP")}
 										</p>
 									</div>
@@ -161,7 +162,7 @@ export function ExtensionDialog({
 							render={({ field }) => (
 								<FormItem className="flex flex-col">
 									<FormLabel>New End Date *</FormLabel>
-									<Popover>
+									<Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
 										<PopoverTrigger asChild>
 											<FormControl>
 												<Button
@@ -184,7 +185,10 @@ export function ExtensionDialog({
 											<Calendar
 												mode="single"
 												selected={field.value}
-												onSelect={field.onChange}
+												onSelect={(date) => {
+													field.onChange(date);
+													setCalendarOpen(false);
+												}}
 												disabled={(date) =>
 													date < (currentReturnDate || new Date())
 												}
@@ -202,8 +206,8 @@ export function ExtensionDialog({
 
 						{extension && (
 							<Card className="bg-blue-50 border-blue-200">
-								<CardContent className="pt-4">
-									<div className="space-y-1">
+								<CardContent className="py-3">
+									<div className="space-y-0.5">
 										<p className="text-sm font-semibold text-blue-900">
 											Extension Details:
 										</p>
@@ -239,7 +243,7 @@ export function ExtensionDialog({
 							)}
 						/>
 
-						<div className="flex justify-end gap-3 pt-4">
+						<div className="flex justify-end gap-3 pt-2">
 							<Button
 								type="button"
 								variant="outline"
