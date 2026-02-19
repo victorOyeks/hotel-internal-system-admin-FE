@@ -26,10 +26,16 @@ jobs:
 
       - name: Debug standalone output
         run: |
-          echo "=== .next/standalone contents ==="
-          ls -la .next/standalone/ || echo "Directory does not exist"
-          echo "=== server.js location ==="
-          find .next/ -name "server.js" || echo "server.js not found"
+          echo "=== Project root files ==="
+          ls -la
+          echo "=== next.config.ts contents ==="
+          cat next.config.ts
+          echo "=== .next directory contents ==="
+          ls -la .next/ || echo ".next does not exist"
+          echo "=== .next/standalone ==="
+          ls -la .next/standalone/ || echo ".next/standalone does not exist"
+          echo "=== server.js search ==="
+          find .next/ -name "server.js" 2>/dev/null || echo "server.js not found"
 
       - name: Prepare standalone bundle
         run: |
