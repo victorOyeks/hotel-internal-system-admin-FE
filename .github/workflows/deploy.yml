@@ -24,6 +24,13 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           DOMAIN_URL: ${{ secrets.DOMAIN_URL }}
 
+      - name: Debug standalone output
+        run: |
+          echo "=== .next/standalone contents ==="
+          ls -la .next/standalone/ || echo "Directory does not exist"
+          echo "=== server.js location ==="
+          find .next/ -name "server.js" || echo "server.js not found"
+
       - name: Prepare standalone bundle
         run: |
           mkdir -p .next/standalone/.next
