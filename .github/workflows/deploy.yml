@@ -12,30 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
+          bun-version: latest
 
-      - run: npm install --legacy-peer-deps
+      - run: bun install
 
       - name: Build
-        run: npm run build
+        run: bun run build
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           DOMAIN_URL: ${{ secrets.DOMAIN_URL }}
-
-      - name: Debug standalone output
-        run: |
-          echo "=== Project root files ==="
-          ls -la
-          echo "=== next.config.ts contents ==="
-          cat next.config.ts
-          echo "=== .next directory contents ==="
-          ls -la .next/ || echo ".next does not exist"
-          echo "=== .next/standalone ==="
-          ls -la .next/standalone/ || echo ".next/standalone does not exist"
-          echo "=== server.js search ==="
-          find .next/ -name "server.js" 2>/dev/null || echo "server.js not found"
 
       - name: Prepare standalone bundle
         run: |
