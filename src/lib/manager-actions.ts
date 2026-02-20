@@ -11,12 +11,14 @@ import type {
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 
+const isManager = (roles: string[]) => roles.includes("MANAGER");
+
 export async function switchManagerCurrentHotel(
 	hotelId: string,
 ): ServerActionResponse<{ message: string }> {
 	const sessionData = await verifySession();
 
-	if (sessionData.role !== "MANAGER") {
+	if (!isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
@@ -41,7 +43,7 @@ export async function addNewRoomToHotel(
 	payload: Omit<CreateRoomRequest, "hotelId">,
 ): ServerActionResponseFromEndpoint<"@post/api/managers/hotels/:hotelId/rooms"> {
 	const sessionData = await verifySession();
-	if (sessionData.role !== "MANAGER") {
+	if (isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
@@ -82,7 +84,7 @@ export async function onboardStaffToHotel(
 	payload: OnboardStaffRequest,
 ): ServerActionResponseFromEndpoint<"@post/api/managers/hotels/:hotelId/onboard-staff"> {
 	const sessionData = await verifySession();
-	if (sessionData.role !== "MANAGER") {
+	if (isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
@@ -121,7 +123,7 @@ export async function editStaffDetails(
 	payload: Partial<Omit<OnboardStaffRequest, "role">>,
 ): ServerActionResponseFromEndpoint<"@put/api/managers/:hotelId/:staffId"> {
 	const sessionData = await verifySession();
-	if (sessionData.role !== "MANAGER") {
+	if (isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
@@ -163,7 +165,7 @@ export async function resetPasswordForStaff(
 	},
 ): ServerActionResponseFromEndpoint<"@patch/api/managers/:hotelId/:staffId/reset-password"> {
 	const sessionData = await verifySession();
-	if (sessionData.role !== "MANAGER") {
+	if (isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
@@ -209,7 +211,7 @@ export async function suspendStaffAccount(
 	},
 ): ServerActionResponseFromEndpoint<"@patch/api/managers/:hotelId/:staffId/suspend"> {
 	const sessionData = await verifySession();
-	if (sessionData.role !== "MANAGER") {
+	if (isManager(sessionData.roles)) {
 		return {
 			success: false,
 			error: "Unauthorized",
