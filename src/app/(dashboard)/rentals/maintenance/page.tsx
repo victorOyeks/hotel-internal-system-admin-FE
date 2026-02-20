@@ -2,6 +2,7 @@ import { RentalMaintenancePage } from "@/components/roles/rentals/rental-mainten
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
+import { unstable_noStore as noStore } from "next/cache";
 import { use } from "react";
 
 const breadcrumbs = {
@@ -13,6 +14,7 @@ const breadcrumbs = {
 };
 
 export default function RentalMaintenancePageRoute() {
+	noStore();
 	const { token } = use(getCookieData())!;
 	const qc = getQueryClient();
 

@@ -41,13 +41,24 @@ export default function RentalItemsPageRoute() {
 					]
 						.filter(Boolean)
 						.map((value) => String(value).toUpperCase());
-					return values.some(
+					const byStatus = values.some(
 						(value) =>
 							value.includes("FAULTY") ||
 							value.includes("WRITE_OFF") ||
 							value.includes("BAD") ||
 							value.includes("DAMAGED") ||
 							value.includes("OUT_OF_SERVICE"),
+					);
+					if (byStatus) return true;
+					const text = `${String(log?.reason || "")} ${String(log?.notes || "")}`.toLowerCase();
+					return (
+						text.includes("cannot be fixed") ||
+						text.includes("can't be fixed") ||
+						text.includes("not fixable") ||
+						text.includes("irreparable") ||
+						text.includes("faulty") ||
+						text.includes("damaged") ||
+						text.includes("bad")
 					);
 				};
 

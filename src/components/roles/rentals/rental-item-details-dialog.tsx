@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	getRentalItemDetails,
 	getRentalItemMaintenanceHistory,
 	sendToMaintenance,
+	updateRentalItem,
 } from "@/lib/rental-actions";
 import {
 	Dialog,
@@ -39,6 +40,13 @@ type RentalItemDetailsDialogProps = {
 	itemId: string | null;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+};
+
+type RestockHistoryRecord = {
+	id: string;
+	quantity: number;
+	note?: string;
+	createdAt: string;
 };
 
 const categoryLabels: Record<string, string> = {
@@ -96,13 +104,24 @@ function isFaultyMaintenanceEntry(entry: any) {
 	]
 		.filter(Boolean)
 		.map((value) => String(value).toUpperCase());
-	return values.some(
+	const byStatus = values.some(
 		(value) =>
 			value.includes("WRITE_OFF") ||
 			value.includes("FAULTY") ||
 			value.includes("BAD") ||
 			value.includes("DAMAGED") ||
 			value.includes("OUT_OF_SERVICE"),
+	);
+	if (byStatus) return true;
+	const text = `${String(entry?.reason || "")} ${String(entry?.notes || "")}`.toLowerCase();
+	return (
+		text.includes("cannot be fixed") ||
+		text.includes("can't be fixed") ||
+		text.includes("not fixable") ||
+		text.includes("irreparable") ||
+		text.includes("faulty") ||
+		text.includes("damaged") ||
+		text.includes("bad")
 	);
 }
 
@@ -117,6 +136,12 @@ export function RentalItemDetailsDialog({
 	const [maintenanceQty, setMaintenanceQty] = useState(1);
 	const [maintenanceReason, setMaintenanceReason] = useState("");
 	const [maintenanceNotes, setMaintenanceNotes] = useState("");
+	const [showRestockForm, setShowRestockForm] = useState(false);
+	const [restockQty, setRestockQty] = useState(1);
+	const [restockNotes, setRestockNotes] = useState("");
+	const [localRestockHistory, setLocalRestockHistory] = useState<RestockHistoryRecord[]>(
+		[],
+	);
 
 	const maintenanceMutation = useMutation({
 		mutationFn: async () => {
@@ -151,6 +176,95 @@ export function RentalItemDetailsDialog({
 		},
 	});
 
+	const restockMutation = useMutation({
+		mutationFn: async () => {
+			if (!itemId || !item) {
+				throw new Error("Item not available for restock");
+			}
+			if (restockQty < 1) {
+				throw new Error("Restock quantity must be at least 1");
+			}
+			const payload = {
+				name: item.name,
+				description: item.description || "",
+				category: item.category,
+				condition: item.condition || "GOOD",
+				pricingType: item.pricingType || "DAILY",
+				brand: item.brand || "",
+				model: item.model || "",
+				serialNumber: item.serialNumber || "",
+				hourlyRate: item.hourlyRate ?? 0,
+				dailyRate: item.dailyRate ?? 0,
+				weeklyRate: item.weeklyRate ?? 0,
+				monthlyRate: item.monthlyRate ?? 0,
+				flatRate: item.flatRate ?? 0,
+				depositAmount: item.depositAmount ?? 0,
+				totalQuantity: Math.max(0, Number(item.totalQuantity ?? 0)) + restockQty,
+				replacementValue: item.replacementValue ?? 0,
+				lateReturnPenaltyPerHour: item.lateReturnPenaltyPerHour ?? 0,
+				lateReturnPenaltyPerDay: item.lateReturnPenaltyPerDay ?? 0,
+				size: item.size || "",
+				color: item.color || "",
+				specifications: item.specifications || "",
+				usageInstructions: item.usageInstructions || "",
+				safetyInstructions: item.safetyInstructions || "",
+				requiresDeposit: Boolean(item.requiresDeposit),
+				requiresIdentification: Boolean(item.requiresIdentification),
+				requiresSignedAgreement: Boolean(item.requiresSignedAgreement),
+				minimumAge: item.minimumAge ?? 0,
+				active: item.active !== false,
+			};
+
+			const result = await updateRentalItem(itemId, payload);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		onSuccess: () => {
+			const applyRestockUpdate = (entry: Record<string, unknown>) => ({
+				...entry,
+				totalQuantity: Math.max(0, Number(entry?.totalQuantity ?? 0)) + restockQty,
+				availableQuantity:
+					Math.max(0, Number(entry?.availableQuantity ?? 0)) + restockQty,
+			});
+
+			queryClient.setQueryData(["rentals", "items", itemId], (prev: unknown) => {
+				if (!prev || typeof prev !== "object") return prev;
+				return applyRestockUpdate(prev as Record<string, unknown>);
+			});
+
+			queryClient.setQueryData(["rentals", "items"], (prev: unknown) => {
+				if (!Array.isArray(prev)) return prev;
+				return prev.map((entry) =>
+					String((entry as Record<string, unknown>)?.id || "") === String(itemId)
+						? applyRestockUpdate(entry as Record<string, unknown>)
+						: entry,
+				);
+			});
+
+			toast.success("Item restocked successfully");
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items", itemId] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "dashboard-stats"],
+			});
+			setShowRestockForm(false);
+			setLocalRestockHistory((prev) => [
+				{
+					id: crypto.randomUUID(),
+					quantity: restockQty,
+					note: restockNotes || "Restock",
+					createdAt: new Date().toISOString(),
+				},
+				...prev,
+			].slice(0, 20));
+			setRestockQty(1);
+			setRestockNotes("");
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to restock item");
+		},
+	});
+
 	const { data: item, isLoading } = useQuery({
 		queryKey: ["rentals", "items", itemId],
 		queryFn: async () => {
@@ -173,7 +287,18 @@ export function RentalItemDetailsDialog({
 		enabled: !!itemId && open,
 	});
 
-	if (!itemId) return null;
+	const cachedItems = (queryClient.getQueryData(["rentals", "items"]) || []) as Array<any>;
+	const cachedItem = cachedItems.find((entry) => String(entry?.id || "") === String(itemId));
+	const faultyFromCachedList = Math.max(
+		0,
+		Number(
+			cachedItem?.faultyQuantity ??
+				cachedItem?.writeOffQuantity ??
+				cachedItem?.damagedQuantity ??
+				cachedItem?.outOfServiceQuantity ??
+				0,
+		),
+	);
 
 	const faultyQuantityFromItem = Math.max(
 		0,
@@ -201,6 +326,7 @@ export function RentalItemDetailsDialog({
 		: 0;
 	const effectiveFaultyQuantity = Math.max(
 		faultyQuantityFromItem,
+		faultyFromCachedList,
 		faultyFromHistory,
 	);
 	const faultyDisplayValue =
@@ -228,6 +354,33 @@ export function RentalItemDetailsDialog({
 		totalQuantity > 0
 			? ((totalQuantity - availableQuantity) / totalQuantity) * 100
 			: 0;
+	const restockHistoryRows = useMemo(() => {
+		const fromMaintenance = Array.isArray(maintenanceHistory)
+			? maintenanceHistory
+					.filter((entry: any) => {
+						const value = `${String(entry?.action || "")} ${String(entry?.type || "")} ${String(entry?.status || "")}`.toUpperCase();
+						return value.includes("RESTOCK") || value.includes("STOCK_IN");
+					})
+					.map((entry: any) => ({
+						id: String(entry?.id || crypto.randomUUID()),
+						quantity: Math.max(0, Number(entry?.quantity ?? 0)),
+						note: String(entry?.reason || entry?.notes || "Restock"),
+						createdAt: String(entry?.createdAt || entry?.updatedAt || new Date().toISOString()),
+					}))
+			: [];
+
+		const merged = [...localRestockHistory, ...fromMaintenance];
+		const byId = new Map<string, RestockHistoryRecord>();
+		for (const row of merged) byId.set(row.id, row);
+		return Array.from(byId.values())
+			.sort(
+				(a, b) =>
+					new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+			)
+			.slice(0, 20);
+	}, [localRestockHistory, maintenanceHistory]);
+
+	if (!itemId) return null;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -411,6 +564,105 @@ export function RentalItemDetailsDialog({
 									</div>
 								</div>
 							</div>
+
+							{/* Maintenance Action */}
+							<>
+								<Separator />
+								<div>
+									<div className="flex items-center justify-between mb-2">
+										<h3 className="text-sm font-semibold text-muted-foreground">
+											Restock
+										</h3>
+										{!showRestockForm && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => setShowRestockForm(true)}
+											>
+												Restock Item
+											</Button>
+										)}
+									</div>
+									{showRestockForm && (
+										<div className="bg-muted/40 border rounded-lg p-3 space-y-3">
+											<div className="grid grid-cols-2 gap-3">
+												<div className="space-y-1.5">
+													<Label className="text-xs">Quantity to Add</Label>
+													<Input
+														type="number"
+														min={1}
+														value={restockQty}
+														onChange={(e) =>
+															setRestockQty(parseInt(e.target.value) || 1)
+														}
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<Label className="text-xs">Note (optional)</Label>
+													<Input
+														placeholder="e.g. New shipment"
+														value={restockNotes}
+														onChange={(e) => setRestockNotes(e.target.value)}
+													/>
+												</div>
+											</div>
+											<div className="flex justify-end gap-2">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => setShowRestockForm(false)}
+													disabled={restockMutation.isPending}
+												>
+													Cancel
+												</Button>
+												<Button
+													size="sm"
+													onClick={() => restockMutation.mutate()}
+													disabled={restockMutation.isPending}
+												>
+													{restockMutation.isPending && (
+														<Loader2Icon className="w-3 h-3 mr-1 animate-spin" />
+													)}
+													Confirm Restock
+												</Button>
+											</div>
+										</div>
+									)}
+								</div>
+							</>
+							{restockHistoryRows.length > 0 && (
+								<>
+									<div>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">
+											Restock History
+										</h3>
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>Date</TableHead>
+													<TableHead className="text-center">Qty Added</TableHead>
+													<TableHead>Note</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{restockHistoryRows.map((row) => (
+													<TableRow key={row.id}>
+														<TableCell className="text-sm">
+															{new Date(row.createdAt).toLocaleString()}
+														</TableCell>
+														<TableCell className="text-center font-medium">
+															{row.quantity}
+														</TableCell>
+														<TableCell className="text-sm">
+															{row.note || "-"}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</div>
+								</>
+							)}
 
 							{/* Maintenance Action */}
 							{availableQuantity > 0 && (

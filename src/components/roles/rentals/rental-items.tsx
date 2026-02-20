@@ -122,11 +122,20 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 		const totalAvailable = normalized.reduce((sum, i) => sum + i.available, 0);
 		const totalRented = normalized.reduce((sum, i) => sum + i.rented, 0);
 		const totalMaintenance = normalized.reduce((sum, i) => sum + i.maintenance, 0);
+		const totalFaulty = normalized.reduce((sum, i) => sum + i.faulty, 0);
 		const outOfStock = items.filter((i) => {
 			const inv = getNormalizedInventory(i);
 			return inv.available === 0 && i.active;
 		}).length;
-		return { totalItems, totalStock, totalAvailable, totalRented, totalMaintenance, outOfStock };
+		return {
+			totalItems,
+			totalStock,
+			totalAvailable,
+			totalRented,
+			totalMaintenance,
+			totalFaulty,
+			outOfStock,
+		};
 	}, [items]);
 
 	const categories = useMemo(() => {
@@ -169,7 +178,7 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 				</div>
 
 				{/* Summary Stats */}
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+				<div className="grid grid-cols-2 md:grid-cols-5 gap-3">
 					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-blue-50 rounded-lg">
 							<BoxIcon className="w-4 h-4 text-blue-600" />
@@ -218,6 +227,16 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 							<p className="text-[11px] text-muted-foreground">
 								{stats.outOfStock > 0 ? "Need restocking" : "Being serviced"}
 							</p>
+						</div>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+						<div className="p-2 bg-red-50 rounded-lg">
+							<AlertTriangleIcon className="w-4 h-4 text-red-600" />
+						</div>
+						<div>
+							<p className="text-xs text-muted-foreground">Faulty</p>
+							<p className="text-lg font-bold text-red-600">{stats.totalFaulty}</p>
+							<p className="text-[11px] text-muted-foreground">Not rentable</p>
 						</div>
 					</div>
 				</div>

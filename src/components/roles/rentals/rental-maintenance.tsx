@@ -135,10 +135,20 @@ const normalizeReturnedStatus = (status: unknown): ReturnedMaintenanceRecord["st
 const getMaintenanceOutcome = (
 	statusSource: unknown,
 	resultSource?: unknown,
+	reasonSource?: unknown,
 ) => {
 	const normalized = String(statusSource || "").toUpperCase();
 	const resultNormalized = String(resultSource || "").toUpperCase();
 	const combined = [normalized, resultNormalized].join(" ");
+	const reasonNormalized = String(reasonSource || "").toLowerCase();
+	const reasonSuggestsFaulty =
+		reasonNormalized.includes("cannot be fixed") ||
+		reasonNormalized.includes("can't be fixed") ||
+		reasonNormalized.includes("not fixable") ||
+		reasonNormalized.includes("irreparable") ||
+		reasonNormalized.includes("faulty") ||
+		reasonNormalized.includes("damaged") ||
+		reasonNormalized.includes("bad");
 	if (
 		normalized.includes("SEND_TO_MAINTENANCE") ||
 		normalized.includes("SENT_TO_MAINTENANCE")
@@ -190,7 +200,8 @@ const getMaintenanceOutcome = (
 			resultNormalized.includes("WRITE_OFF") ||
 			resultNormalized.includes("BAD") ||
 			resultNormalized.includes("DAMAGED") ||
-			resultNormalized.includes("OUT_OF_SERVICE");
+			resultNormalized.includes("OUT_OF_SERVICE") ||
+			reasonSuggestsFaulty;
 		return {
 			key: isFaulty ? "SENT_TO_INVENTORY_FAULTY" : "SENT_TO_INVENTORY_FIXED",
 			label: isFaulty
@@ -531,27 +542,15 @@ export function RentalMaintenancePage({
 		inProgressLogs.map((log) => getLogItemId(log)).filter(Boolean),
 	).size;
 
-	const updateReturnedStatus = (
-		id: string,
-		status: MaintenanceResultStatus,
-	) => {
-		setPendingLogs((prev) =>
-			prev.map((record) =>
-				record.id === id
-					? {
-							...record,
-							maintenanceResultStatus: status,
-						}
-					: record,
-			),
-		);
-	};
-
 	const maintenanceHistoryRows = useMemo(() => {
 		const fromApi = maintenanceHistoryLogs.map((log: any) => {
 			const statusSource = log?.action || log?.status || log?.type;
 			const resultSource = log?.maintenanceResultStatus || log?.resultStatus;
-			const outcome = getMaintenanceOutcome(statusSource, resultSource);
+			const outcome = getMaintenanceOutcome(
+				statusSource,
+				resultSource,
+				`${String(log?.reason || "")} ${String(log?.notes || "")}`,
+			);
 			const itemName =
 				log?.rentalItem?.name || log?.itemName || log?.name || "Unknown item";
 			const category =
@@ -581,6 +580,7 @@ export function RentalMaintenancePage({
 			const outcome = getMaintenanceOutcome(
 				"RETURN_FROM_MAINTENANCE",
 				entry.status,
+				`${String(entry.reason || "")} ${String(entry.notes || "")}`,
 			);
 			return {
 				id: `local-${entry.id}`,
@@ -801,20 +801,9 @@ export function RentalMaintenancePage({
 													</Badge>
 												</TableCell>
 												<TableCell>
-													<select
-														className="h-8 min-w-[190px] rounded-md border px-2 text-xs"
-														value={log.maintenanceResultStatus || "IN_PROGRESS"}
-														onChange={(e) =>
-															updateReturnedStatus(
-																log.id,
-																e.target.value as MaintenanceResultStatus,
-															)
-														}
-													>
-														<option value="IN_PROGRESS">Maintenance In Progress</option>
-														<option value="FIXED">Fixed</option>
-														<option value="FAULTY">Faulty</option>
-													</select>
+													<Badge className="bg-slate-100 text-slate-800">
+														Maintenance In Progress
+													</Badge>
 												</TableCell>
 												<TableCell className="text-center font-medium">
 													{getTotalSentQuantity(log)}
@@ -1116,7 +1105,13 @@ export function RentalMaintenancePage({
 					);
 					setSelectedLog(null);
 				}}
-				onReturnedToInventory={(logId, returnedQty, returnReason, returnNotes) => {
+				onReturnedToInventory={(
+					logId,
+					returnedQty,
+					returnStatus,
+					returnReason,
+					returnNotes,
+				) => {
 					let newRecentEntry: ReturnedMaintenanceRecord | null = null;
 					setPendingLogs((prev) => {
 				const next = prev
@@ -1130,8 +1125,8 @@ export function RentalMaintenancePage({
 									itemId: getLogItemId(log),
 									itemName: getResolvedItemName(log),
 									category: getResolvedItemCategory(log) || "OTHERS",
-									quantity: cumulativeReturned,
-									status: normalizeReturnedStatus(log.maintenanceResultStatus),
+									quantity: returnedQty,
+									status: returnStatus,
 									reason:
 										(returnReason && returnReason.trim()) ||
 										(returnNotes && returnNotes.trim()) ||
@@ -1147,8 +1142,7 @@ export function RentalMaintenancePage({
 									quantity: nextQty,
 									type: "PARTIALLY_RETURNED",
 									returnedQuantity: cumulativeReturned,
-									maintenanceResultStatus:
-										log.maintenanceResultStatus || "IN_PROGRESS",
+									maintenanceResultStatus: returnStatus,
 								};
 							})
 							.filter((log): log is MaintenanceLog => Boolean(log));
@@ -1160,13 +1154,7 @@ export function RentalMaintenancePage({
 					}));
 					if (newRecentEntry) {
 						setRecentlyReturned((prev) => {
-							const deduped = prev.filter(
-								(entry) =>
-									(entry.maintenanceLogId || entry.id) !==
-									((newRecentEntry as ReturnedMaintenanceRecord).maintenanceLogId ||
-										(newRecentEntry as ReturnedMaintenanceRecord).id),
-							);
-							return [newRecentEntry as ReturnedMaintenanceRecord, ...deduped].slice(0, 20);
+							return [newRecentEntry as ReturnedMaintenanceRecord, ...prev].slice(0, 20);
 						});
 					}
 				}}
@@ -1190,6 +1178,7 @@ type ReturnFromMaintenanceDialogProps = {
 	onReturnedToInventory?: (
 		logId: string,
 		quantity: number,
+		returnStatus: ReturnedMaintenanceRecord["status"],
 		returnReason?: string,
 		returnNotes?: string,
 	) => void;
@@ -1208,6 +1197,8 @@ function ReturnFromMaintenanceDialog({
 }: ReturnFromMaintenanceDialogProps) {
 	const queryClient = useQueryClient();
 	const [quantity, setQuantity] = useState(1);
+	const [returnStatus, setReturnStatus] =
+		useState<ReturnedMaintenanceRecord["status"]>("FIXED");
 	const [reason, setReason] = useState("");
 	const [notes, setNotes] = useState("");
 	const itemId = log?.rentalItem?.id || log?.rentalItemId || log?.itemId;
@@ -1221,6 +1212,11 @@ function ReturnFromMaintenanceDialog({
 			Number(maxReturnableQuantity ?? computedInMaintenance),
 		),
 	);
+
+	useEffect(() => {
+		if (!open) return;
+		setReturnStatus(log?.maintenanceResultStatus === "FAULTY" ? "FAULTY" : "FIXED");
+	}, [open, log?.maintenanceResultStatus]);
 
 	const mutation = useMutation({
 		mutationFn: async () => {
@@ -1246,7 +1242,7 @@ function ReturnFromMaintenanceDialog({
 							itemName: itemName || log?.rentalItem?.name || "Unknown item",
 							category: log?.rentalItem?.category || "OTHERS",
 							quantity: totalSent,
-							status: normalizeReturnedStatus(log.maintenanceResultStatus),
+							status: returnStatus,
 							reason: log.reason || undefined,
 							notes: log.notes || undefined,
 							returnedAt: new Date().toISOString(),
@@ -1263,8 +1259,7 @@ function ReturnFromMaintenanceDialog({
 				);
 			}
 			const action = "RETURN_FROM_MAINTENANCE";
-			const selectedResultStatus =
-				log?.maintenanceResultStatus === "FAULTY" ? "FAULTY" : "FIXED";
+			const selectedResultStatus = returnStatus;
 			const result = await sendToMaintenance(itemId, {
 				action,
 				quantity,
@@ -1275,18 +1270,64 @@ function ReturnFromMaintenanceDialog({
 				maintenanceResultStatus: selectedResultStatus,
 			});
 			if (!result.success) throw new Error(result.error);
-			return result.data;
+			return {
+				data: result.data,
+				selectedResultStatus,
+			};
 		},
-		onSuccess: (data) => {
-			if ((data as { skippedNoQuantity?: boolean } | null)?.skippedNoQuantity) {
+		onSuccess: (payload) => {
+			if ((payload as { skippedNoQuantity?: boolean } | null)?.skippedNoQuantity) {
 				queryClient.invalidateQueries({
 					queryKey: ["rentals", "maintenance", "pending"],
 				});
 				return;
 			}
+			const selectedResultStatus =
+				(payload as { selectedResultStatus?: "FIXED" | "FAULTY" } | null)
+					?.selectedResultStatus || "FIXED";
+
+			if (itemId) {
+				const applyItemReturnUpdate = (item: Record<string, unknown>) => {
+					const maintenance = Math.max(
+						0,
+						Number(item?.maintenanceQuantity ?? 0) - quantity,
+					);
+					const available = Math.max(
+						0,
+						Number(item?.availableQuantity ?? 0) +
+							(selectedResultStatus === "FIXED" ? quantity : 0),
+					);
+					const faulty = Math.max(
+						0,
+						Number(item?.faultyQuantity ?? 0) +
+							(selectedResultStatus === "FAULTY" ? quantity : 0),
+					);
+					return {
+						...item,
+						maintenanceQuantity: maintenance,
+						availableQuantity: available,
+						faultyQuantity: faulty,
+					};
+				};
+
+				queryClient.setQueryData(["rentals", "items"], (prev: unknown) => {
+					if (!Array.isArray(prev)) return prev;
+					return prev.map((entry) =>
+						String((entry as Record<string, unknown>)?.id || "") === String(itemId)
+							? applyItemReturnUpdate(entry as Record<string, unknown>)
+							: entry,
+					);
+				});
+
+				queryClient.setQueryData(["rentals", "items", itemId], (prev: unknown) => {
+					if (!prev || typeof prev !== "object") return prev;
+					return applyItemReturnUpdate(prev as Record<string, unknown>);
+				});
+			}
+
 			toast.success("Item returned from maintenance");
 			if (log?.id) {
-				onReturnedToInventory?.(log.id, quantity, reason, notes);
+				onReturnedToInventory?.(log.id, quantity, returnStatus, reason, notes);
 			}
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "maintenance"],
@@ -1301,12 +1342,16 @@ function ReturnFromMaintenanceDialog({
 				queryClient.invalidateQueries({
 					queryKey: ["rentals", "items", itemId],
 				});
+				queryClient.invalidateQueries({
+					queryKey: ["rentals", "items", itemId, "maintenance"],
+				});
 			}
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
 			});
 			onOpenChange(false);
 			setQuantity(1);
+			setReturnStatus("FIXED");
 			setReason("");
 			setNotes("");
 		},
@@ -1330,7 +1375,7 @@ function ReturnFromMaintenanceDialog({
 							itemName: itemName || log?.rentalItem?.name || "Unknown item",
 							category: log?.rentalItem?.category || "OTHERS",
 							quantity: totalSent,
-							status: normalizeReturnedStatus(log.maintenanceResultStatus),
+							status: returnStatus,
 							reason: reason || undefined,
 							notes: notes || undefined,
 							returnedAt: new Date().toISOString(),
@@ -1397,6 +1442,20 @@ function ReturnFromMaintenanceDialog({
 								setQuantity(parseInt(e.target.value) || 1)
 							}
 						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label>Return Status</Label>
+						<select
+							className="h-10 w-full rounded-md border px-3 text-sm"
+							value={returnStatus}
+							onChange={(e) =>
+								setReturnStatus(e.target.value as ReturnedMaintenanceRecord["status"])
+							}
+						>
+							<option value="FIXED">Fixed</option>
+							<option value="FAULTY">Faulty</option>
+						</select>
 					</div>
 
 					<div className="space-y-2">
