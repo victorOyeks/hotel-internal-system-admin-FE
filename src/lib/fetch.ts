@@ -5233,9 +5233,7 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseObject.extend({
-			data: Pagination.extend({
-				content: StockMovementResponse.array(),
-			}),
+			data: z.array(StockMovementResponse),
 		}),
 	},
 });
