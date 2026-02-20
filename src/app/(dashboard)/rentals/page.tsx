@@ -35,5 +35,19 @@ export default function RentalsHomePage() {
 		}),
 	);
 
-	return <RentalsDashboard stats={stats} breadcrumbs={breadcrumbs} />;
+	const normalizedStats = {
+		...stats,
+		overdueRentals:
+			stats?.overdueRentals ??
+			stats?.overdueOrders ??
+			stats?.overdueCount ??
+			0,
+	};
+
+	return (
+		<RentalsDashboard
+			stats={normalizedStats}
+			breadcrumbs={breadcrumbs}
+		/>
+	);
 }

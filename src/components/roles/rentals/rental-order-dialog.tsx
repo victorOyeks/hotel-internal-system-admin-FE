@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createRentalOrder, getAvailableItems } from "@/lib/rental-actions";
+import {
+	createRentalOrder,
+	getAvailableItems,
+	getCheckedInBookingsForRentals,
+} from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -90,16 +95,25 @@ type RentalOrderDialogProps = {
 	onSuccess?: () => void;
 };
 
+type CheckedInBooking = {
+	bookingId: string;
+	guestName: string;
+	guestPhoneNumber?: string;
+	roomIdentifier?: string;
+};
+
 export function RentalOrderDialog({
 	trigger,
 	onSuccess,
 }: RentalOrderDialogProps) {
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const form = useForm<RentalOrderFormData>({
 		resolver: zodResolver(rentalOrderSchema),
 		defaultValues: {
+			bookingId: "",
 			customerName: "",
 			customerPhone: "",
 			customerEmail: "",
@@ -130,10 +144,22 @@ export function RentalOrderDialog({
 		enabled: open,
 	});
 
+	const { data: checkedInBookings, isLoading: isLoadingCheckedInBookings } =
+		useQuery({
+			queryKey: ["rentals", "checked-in-bookings"],
+			queryFn: async () => {
+				const result = await getCheckedInBookingsForRentals();
+				if (!result.success) throw new Error(result.error);
+				return result.data as CheckedInBooking[];
+			},
+			enabled: open,
+		});
+
 	const mutation = useMutation({
 		mutationFn: async (data: RentalOrderFormData) => {
 			const payload = {
 				...data,
+				bookingId: data.bookingId || undefined,
 				rentalStartTime: data.rentalStartTime.toISOString(),
 				rentalEndTime: data.rentalEndTime.toISOString(),
 				customerEmail: data.customerEmail || undefined,
@@ -150,6 +176,7 @@ export function RentalOrderDialog({
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
 			});
+			router.refresh();
 			setOpen(false);
 			form.reset();
 			onSuccess?.();
@@ -185,16 +212,30 @@ export function RentalOrderDialog({
 		const start = form.watch("rentalStartTime");
 		const end = form.watch("rentalEndTime");
 		if (start && end) {
-			const hours = Math.ceil(
-				(end.getTime() - start.getTime()) / (1000 * 60 * 60),
+			const days = Math.ceil(
+				(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
 			);
-			const days = Math.ceil(hours / 24);
-			return { hours, days };
+			return { days };
 		}
 		return null;
 	};
 
 	const duration = calculateDuration();
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+
+	const selectedBookingId = form.watch("bookingId");
+
+	useEffect(() => {
+		if (!selectedBookingId || !checkedInBookings?.length) return;
+		const selected = checkedInBookings.find(
+			(booking) => booking.bookingId === selectedBookingId,
+		);
+		if (!selected) return;
+
+		form.setValue("customerName", selected.guestName || "");
+		form.setValue("customerPhone", selected.guestPhoneNumber || "");
+	}, [selectedBookingId, checkedInBookings, form]);
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -323,12 +364,41 @@ export function RentalOrderDialog({
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Booking ID</FormLabel>
-											<FormControl>
-												<Input
-													placeholder="Optional - for hotel guests only"
-													{...field}
-												/>
-											</FormControl>
+											<Select
+												value={field.value || "__WALK_IN__"}
+												onValueChange={(value) => {
+													field.onChange(
+														value === "__WALK_IN__" ? "" : value,
+													);
+												}}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select checked-in customer" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="__WALK_IN__">
+														Walk-in customer (no booking)
+													</SelectItem>
+													{checkedInBookings?.map((booking) => (
+														<SelectItem
+															key={booking.bookingId}
+															value={booking.bookingId}
+														>
+															{booking.bookingId} - {booking.guestName}
+															{booking.roomIdentifier
+																? ` (Room ${booking.roomIdentifier})`
+																: ""}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormDescription>
+												{isLoadingCheckedInBookings
+													? "Loading checked-in customers..."
+													: "Select from currently checked-in customers"}
+											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -348,7 +418,7 @@ export function RentalOrderDialog({
 										name="rentalStartTime"
 										render={({ field }) => (
 											<FormItem className="flex flex-col">
-												<FormLabel>Start Date & Time *</FormLabel>
+												<FormLabel>Start Date *</FormLabel>
 												<Popover>
 													<PopoverTrigger asChild>
 														<FormControl>
@@ -373,7 +443,7 @@ export function RentalOrderDialog({
 															mode="single"
 															selected={field.value}
 															onSelect={field.onChange}
-															disabled={(date) => date < new Date()}
+															disabled={(date) => date < today}
 															initialFocus
 														/>
 													</PopoverContent>
@@ -388,7 +458,7 @@ export function RentalOrderDialog({
 										name="rentalEndTime"
 										render={({ field }) => (
 											<FormItem className="flex flex-col">
-												<FormLabel>End Date & Time *</FormLabel>
+												<FormLabel>End Date *</FormLabel>
 												<Popover>
 													<PopoverTrigger asChild>
 														<FormControl>
@@ -413,10 +483,13 @@ export function RentalOrderDialog({
 															mode="single"
 															selected={field.value}
 															onSelect={field.onChange}
-															disabled={(date) =>
-																date <
-																(form.watch("rentalStartTime") || new Date())
-															}
+															disabled={(date) => {
+																const minDate = new Date(
+																	form.watch("rentalStartTime") || today,
+																);
+																minDate.setHours(0, 0, 0, 0);
+																return date < minDate;
+															}}
 															initialFocus
 														/>
 													</PopoverContent>
@@ -432,7 +505,7 @@ export function RentalOrderDialog({
 										<p className="text-sm text-blue-800">
 											<span className="font-semibold">Duration:</span>{" "}
 											{duration.days} day
-											{duration.days !== 1 ? "s" : ""} ({duration.hours} hours)
+											{duration.days !== 1 ? "s" : ""}
 										</p>
 									</div>
 								)}
