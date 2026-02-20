@@ -53,7 +53,6 @@ function Page({ searchParams }: PageProps) {
                     Monitor your hotel's financial health, revenue, and expenses.
                 </p>
             </div>
-
             <FinancialsDashboard metrics={metrics} graphData={graphData} />
         </div>
     );

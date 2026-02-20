@@ -42,9 +42,9 @@ export async function restockRequest(params: {
 }): ServerActionResponse<string> {
 	const sessionData = await verifySession("RESTAURANT");
 	const response = await $fetch("@post/api/restaurants/bar-restock-request", {
-		body: {
+		query: {
 			barItemId: params.barItemId,
-			quantity: params.quantity,
+			quantity: params.quantity.toString(),
 		},
 		auth: { type: "Bearer", token: sessionData.token },
 	});
@@ -58,7 +58,7 @@ export async function restockRequest(params: {
 
 	return {
 		success: true,
-		data: response.data as string,
+		data: response.data as unknown as string,
 	};
 }
 
@@ -138,7 +138,7 @@ export async function addFoodItem({
 
 	return {
 		success: true,
-		data: (response.data as { data: string }).data,
+		data: (response.data as unknown as { data: string }).data,
 	};
 }
 

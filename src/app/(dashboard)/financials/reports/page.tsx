@@ -1,6 +1,4 @@
-import { ProfitLossStatement } from "@/components/roles/financials/profit-loss-statement";
-import { CashFlowStatement } from "@/components/roles/financials/cash-flow-statement";
-import { getProfitAndLoss, getCashFlow } from "@/lib/financials-actions";
+import { getCashFlow, getProfitAndLoss, getConsumptionReport, getComprehensiveSummary } from "@/lib/financials-actions";
 import { getCookieData } from "@/lib/server-fns";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
@@ -8,8 +6,10 @@ import { createLoader, type SearchParams } from "nuqs/server";
 import { financialSearchParams } from "@/lib/search-params.financials.server";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { ProfitLossStatement } from "@/components/roles/financials/profit-loss-statement";
+import { CashFlowStatement } from "@/components/roles/financials/cash-flow-statement";
+import { ConsumptionReport } from "@/components/roles/financials/consumption-report";
+import { ComprehensiveSummary } from "@/components/roles/financials/comprehensive-summary";
 
 const loadSearchParams = createLoader(financialSearchParams);
 
@@ -22,39 +22,53 @@ function ReportsPage({ searchParams }: PageProps) {
     const queryClient = getQueryClient();
     const query = use(loadSearchParams(searchParams));
 
-    // Default dates if not provided (e.g., current month)
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-
-    const startDate = query.startDate || firstDay;
-    const endDate = query.endDate || lastDay;
-
-    // Fetch Profit & Loss
+    // Fetch Profit & Loss Data
     const plData = use(
         queryClient.ensureQueryData({
-            queryKey: ["financials", "pnl", cookieData.userId, startDate, endDate],
+            queryKey: ["financials", "profit-loss", cookieData.userId, query],
             queryFn: () => getProfitAndLoss({
-                startDate,
-                endDate
+                startDate: query.startDate || "",
+                endDate: query.endDate || "",
+                period: query.period || "month"
             })
         })
     );
 
-    // Fetch Cash Flow - using mocked data structure for now as backend might not match perfectly
-    // or return null. Using ensureQueryData largely.
-    const cfData = use(
+    // Fetch Cash Flow Data
+    const cashFlowData = use(
         queryClient.ensureQueryData({
-            queryKey: ["financials", "cash-flow", cookieData.userId, startDate, endDate],
-            queryFn: async () => {
-                const res = await getCashFlow({ startDate, endDate });
-                // If response is null/empty, we might want to return null/empty structure
-                // But let's assume valid response for now or null
-                return res;
-            }
+            queryKey: ["financials", "cash-flow", cookieData.userId, query],
+            queryFn: () => getCashFlow({
+                startDate: query.startDate || "",
+                endDate: query.endDate || "",
+                period: query.period || "month"
+            })
         })
     );
 
+    // Fetch Consumption Data
+    const consumptionData = use(
+        queryClient.ensureQueryData({
+            queryKey: ["financials", "consumption", cookieData.userId, query],
+            queryFn: () => getConsumptionReport({
+                startDate: query.startDate || "",
+                endDate: query.endDate || "",
+                page: "0",
+                size: "20"
+            })
+        })
+    );
+
+    // Fetch Comprehensive Summary
+    const summaryData = use(
+        queryClient.ensureQueryData({
+            queryKey: ["financials", "comprehensive", cookieData.userId, query],
+            queryFn: () => getComprehensiveSummary({
+                startDate: query.startDate || "",
+                endDate: query.endDate || ""
+            })
+        })
+    );
 
     return (
         <BreadCrumbWrapper
@@ -62,39 +76,39 @@ function ReportsPage({ searchParams }: PageProps) {
                 title: "Financial Reports",
                 breadcrumbs: [
                     { label: "Dashboard", href: "/dashboard" },
-                    { label: "Financials", href: "/dashboard/financials" },
-                    { label: "Reports", href: "/dashboard/financials/reports" },
+                    { label: "Reports", href: "/dashboard/reports" },
                 ],
             }}
         >
-            <div className="p-4 md:p-6 space-y-6">
+            <div className="p-4 space-y-6">
                 <div className="flex flex-col space-y-2">
                     <h1 className="text-2xl font-bold tracking-tight">Financial Reports</h1>
                     <p className="text-muted-foreground">
-                        Comprehensive financial statements for performance analysis.
+                        Detailed statements and analysis of your financial performance.
                     </p>
                 </div>
 
-                <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-                    <InfoIcon className="h-4 w-4 text-blue-800" />
-                    <AlertTitle>Reporting Period</AlertTitle>
-                    <AlertDescription>
-                        Showing reports for <strong>{startDate}</strong> to <strong>{endDate}</strong>.
-                        Use the filters to change the period.
-                    </AlertDescription>
-                </Alert>
+                <Tabs defaultValue="pl" className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <TabsList>
+                            <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
+                            <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
+                            <TabsTrigger value="consumption">Consumption</TabsTrigger>
+                            <TabsTrigger value="summary">Summary</TabsTrigger>
+                        </TabsList>
+                    </div>
 
-                <Tabs defaultValue="pnl" className="space-y-4">
-                    <TabsList>
-                        <TabsTrigger value="pnl">Profit & Loss</TabsTrigger>
-                        <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="pnl">
+                    <TabsContent value="pl" className="space-y-4">
                         <ProfitLossStatement data={plData} />
                     </TabsContent>
-                    <TabsContent value="cash-flow">
-                        {/* Pass cfData. If types mismatch, we'll need to adapt or mock in fetcher */}
-                        <CashFlowStatement data={cfData} />
+                    <TabsContent value="cash-flow" className="space-y-4">
+                        <CashFlowStatement data={cashFlowData} />
+                    </TabsContent>
+                    <TabsContent value="consumption" className="space-y-4">
+                        <ConsumptionReport data={consumptionData} />
+                    </TabsContent>
+                    <TabsContent value="summary" className="space-y-4">
+                        <ComprehensiveSummary data={summaryData} />
                     </TabsContent>
                 </Tabs>
             </div>

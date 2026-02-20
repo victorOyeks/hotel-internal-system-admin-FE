@@ -1,11 +1,13 @@
 import { ExpenditureTable } from "@/components/roles/financials/expenditure-table";
-import { getExpenditures } from "@/lib/financials-actions";
+import { getExpenditures, getOverdueExpenditures } from "@/lib/financials-actions";
 import { getCookieData } from "@/lib/server-fns";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
 import { createLoader, type SearchParams } from "nuqs/server";
 import { financialSearchParams } from "@/lib/search-params.financials.server";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { OverdueAlerts } from "@/components/roles/financials/overdue-alerts";
+import type { Expenditure } from "@/lib/api-routes/financials";
 
 const loadSearchParams = createLoader(financialSearchParams);
 
@@ -26,14 +28,22 @@ function ExpendituresPage({ searchParams }: PageProps) {
                 search: query.search || undefined,
                 startDate: query.startDate || undefined,
                 endDate: query.endDate || undefined,
-                // category: query.category || undefined, // Not in getExpenditures signature currently but might be needed
                 page: query.page,
                 size: query.size
             })
         })
     );
 
-    const data = expenditureData?.content || [];
+    // Fetch Overdue Expenditures
+    const overdueData = use(
+        queryClient.ensureQueryData({
+            queryKey: ["financials", "expenditures", "overdue", cookieData.userId],
+            queryFn: () => getOverdueExpenditures()
+        })
+    );
+
+    const data = (expenditureData?.content || []) as Expenditure[];
+    const overdueItems = (overdueData || []) as Expenditure[];
 
     return (
         <BreadCrumbWrapper
@@ -41,18 +51,12 @@ function ExpendituresPage({ searchParams }: PageProps) {
                 title: "Expenditures",
                 breadcrumbs: [
                     { label: "Dashboard", href: "/dashboard" },
-                    { label: "Financials", href: "/dashboard/financials" },
-                    { label: "Expenditures", href: "/dashboard/financials/expenditures" },
+                    { label: "Expenditures", href: "/dashboard/expenditures" },
                 ],
             }}
         >
-            <div className="p-4 md:p-6 space-y-6">
-                <div className="flex flex-col space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight">Expenditures</h1>
-                    <p className="text-muted-foreground">
-                        Track and manage hotel expenses and outgoing payments.
-                    </p>
-                </div>
+            <div className="p-4 space-y-4">
+                <OverdueAlerts overdueItems={overdueItems} />
 
                 <ExpenditureTable data={data} />
             </div>

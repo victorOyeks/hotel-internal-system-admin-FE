@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
-import type { ProfitAndLossStatement } from "@/lib/financials-actions";
+import type { ProfitAndLossStatement } from "@/lib/api-routes/financials";
 
 export function ProfitLossStatement({ data }: { data: ProfitAndLossStatement | null }) {
     if (!data) {
@@ -18,9 +18,11 @@ export function ProfitLossStatement({ data }: { data: ProfitAndLossStatement | n
     }
 
     return (
-        <Card className="shadow-none border-border">
+        <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0">
             <CardHeader className="pb-4">
-                <CardTitle>Profit & Loss Statement</CardTitle>
+                <CardTitle>
+                    <h2 className="text-primary text-xl">Profit & Loss Statement</h2>
+                </CardTitle>
                 <CardDescription>
                     Summary of revenues, costs, and expenses during the specified period.
                 </CardDescription>

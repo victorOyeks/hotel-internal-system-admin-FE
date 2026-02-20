@@ -2,6 +2,7 @@
 import { env } from "@/env";
 import { createFetch, createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
+import { financialsRoutes } from "./api-routes/financials";
 
 export const Role = z.enum([
 	"HOTEL_OWNER",
@@ -25,7 +26,7 @@ const ApiExceptionResponseObject = z.object({
 	data: z.object({}), // Generic object
 });
 
-const ApiResponseObject = z.object({
+export const ApiResponseObject = z.object({
 	requestTime: z.coerce.date(),
 	requestType: z.string(),
 	referenceId: z.string(),
@@ -1583,12 +1584,6 @@ export const UpdateSupplierRequest = AddSupplierRequest.partial().extend({
 
 export type UpdateSupplierRequest = z.infer<typeof UpdateSupplierRequest>;
 
-const ApiResponseCustomPageSupplierResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(SupplierResponse),
-	}),
-});
-
 const ProductResponse = z.object({
 	id: z.string(),
 	customId: z.string(),
@@ -1706,20 +1701,6 @@ const UpdateProductRequest = CreateProductRequest.partial();
 
 export type UpdateProductRequest = z.infer<typeof UpdateProductRequest>;
 
-const ApiResponseCustomPageProductResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(ProductResponse),
-	}),
-});
-
-const ApiResponseProductResponse = ApiResponseObject.extend({
-	data: ProductResponse,
-});
-
-const ApiResponseSupplierResponse = ApiResponseObject.extend({
-	data: SupplierResponse,
-});
-
 // --- Storage Location Schemas ---
 
 const StorageLocationResponse = z.object({
@@ -1795,16 +1776,6 @@ const CreateStorageLocationRequest = z.object({
 export type CreateStorageLocationRequest = z.infer<
 	typeof CreateStorageLocationRequest
 >;
-
-const ApiResponseCustomPageStorageLocationResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(StorageLocationResponse),
-	}),
-});
-
-const ApiResponseStorageLocationResponse = ApiResponseObject.extend({
-	data: StorageLocationResponse,
-});
 
 // --- GRN Schemas ---
 
@@ -1937,16 +1908,6 @@ const GoodsReceiptNoteResponse = z.object({
 });
 
 export type GoodsReceiptNoteResponse = z.infer<typeof GoodsReceiptNoteResponse>;
-
-const ApiResponseCustomPageGoodsReceiptNoteResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(GoodsReceiptNoteResponse),
-	}),
-});
-
-const ApiResponseGoodsReceiptNoteResponse = ApiResponseObject.extend({
-	data: GoodsReceiptNoteResponse,
-});
 
 export const UpdateGRNRequest = z.object({
 	supplierInvoiceNumber: z.string().max(100).optional(),
@@ -2132,10 +2093,6 @@ const ApiResponseCustomPageStockAdjustmentResponse = ApiResponseObject.extend({
 	}),
 });
 
-const ApiResponseStockAdjustmentResponse = ApiResponseObject.extend({
-	data: StockAdjustmentResponse,
-});
-
 // --- Stock Issue Schemas ---
 
 const StockIssueItemRequest = z.object({
@@ -2228,16 +2185,6 @@ const StockRequisitionResponse = z.object({
 });
 
 export type StockRequisitionResponse = z.infer<typeof StockRequisitionResponse>;
-
-const ApiResponseCustomPageStockRequisitionResponse = ApiResponseObject.extend({
-	data: Pagination.extend({
-		content: z.array(StockRequisitionResponse),
-	}),
-});
-
-const ApiResponseStockRequisitionResponse = ApiResponseObject.extend({
-	data: StockRequisitionResponse,
-});
 
 // --- Purchase Order Schemas ---
 
@@ -2462,151 +2409,6 @@ const StockMovementResponse = z.object({
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 
-// --- Financial Schemas ---
-
-export const FinancialDashboardMetrics = z.object({
-	totalRevenue: z.number(),
-	totalExpenses: z.number(),
-	netProfit: z.number(),
-	grossProfitMargin: z.number(),
-	revenueGrowth: z.number(),
-	expenseGrowth: z.number(),
-	occupancyRate: z.number(),
-	revPAR: z.number(),
-	adr: z.number(),
-});
-
-export const FinancialDashboardGraphData = z.object({
-	period: z.string(),
-	revenue: z.number(),
-	expenses: z.number(),
-	profit: z.number(),
-});
-
-export type FinancialDashboardMetrics = z.infer<
-	typeof FinancialDashboardMetrics
->;
-export type FinancialDashboardGraphData = z.infer<
-	typeof FinancialDashboardGraphData
->;
-
-export const FinancialDashboardResponse = z.object({
-	metrics: FinancialDashboardMetrics,
-	graphData: z.array(FinancialDashboardGraphData),
-});
-
-export type FinancialDashboardResponse = z.infer<
-	typeof FinancialDashboardResponse
->;
-
-export const OtherIncome = z.object({
-	id: z.string(),
-	description: z.string(),
-	amount: z.number(),
-	date: z.string(),
-	category: z.string(),
-	reference: z.string(),
-	status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
-	recordedBy: z.string(),
-});
-
-export type OtherIncome = z.infer<typeof OtherIncome>;
-
-export const Pageable = z.object({
-	pageNumber: z.number(),
-	pageSize: z.number(),
-	sort: z.object({
-		empty: z.boolean(),
-		sorted: z.boolean(),
-		unsorted: z.boolean(),
-	}),
-	offset: z.number(),
-	paged: z.boolean(),
-	unpaged: z.boolean(),
-});
-
-// Reusing ApiResponseObject pattern for lists if possible, but explicitly defining here since standard pagination might slightly differ
-// Actually, standard Pagination in fetch.ts (line 76) is simpler. I should use that or extend it.
-// The existing `ApiStockMovementListResponse` uses `Pagination.extend(...)`.
-// I will just define the paginated response structure for now.
-
-export const PaginatedOtherIncomeResponse = z.object({
-	content: z.array(OtherIncome),
-	pageable: z.any(), // Keeping loose for now or matching Pageable
-	last: z.boolean(),
-	totalPages: z.number(),
-	totalElements: z.number(),
-	size: z.number(),
-	number: z.number(),
-	sort: z.any(),
-	first: z.boolean(),
-	numberOfElements: z.number(),
-	empty: z.boolean(),
-});
-
-export const Expenditure = z.object({
-	id: z.string(),
-	description: z.string(),
-	amount: z.number(),
-	date: z.string(),
-	category: z.string(),
-	vendor: z.string(),
-	invoiceNumber: z.string(),
-	status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED"]),
-	approvedBy: z.string().optional().nullable(),
-});
-
-export type Expenditure = z.infer<typeof Expenditure>;
-
-export const PaginatedExpenditureResponse = z.object({
-	content: z.array(Expenditure),
-	pageable: z.any(),
-	last: z.boolean(),
-	totalPages: z.number(),
-	totalElements: z.number(),
-	size: z.number(),
-	number: z.number(),
-	sort: z.any(),
-	first: z.boolean(),
-	numberOfElements: z.number(),
-	empty: z.boolean(),
-});
-
-export const ProfitAndLossStatement = z.object({
-	revenue: z.array(z.object({ category: z.string(), amount: z.number() })),
-	totalRevenue: z.number(),
-	expenses: z.array(z.object({ category: z.string(), amount: z.number() })),
-	totalExpenses: z.number(),
-	netProfit: z.number(),
-});
-
-export type ProfitAndLossStatement = z.infer<typeof ProfitAndLossStatement>;
-
-export const CashFlowActivity = z.object({
-	category: z.string(),
-	amount: z.number(),
-});
-
-export const CashFlowStatement = z.object({
-	operatingActivities: z.array(CashFlowActivity),
-	investingActivities: z.array(CashFlowActivity),
-	financingActivities: z.array(CashFlowActivity),
-	netCashFlow: z.number(),
-	beginningCashBalance: z.number(),
-	endingCashBalance: z.number(),
-});
-
-export type CashFlowStatement = z.infer<typeof CashFlowStatement>;
-
-export type CashFlowStatement = z.infer<typeof CashFlowStatement>;
-export type ProfitAndLossStatement = z.infer<typeof ProfitAndLossStatement>;
-export type FinancialDashboardResponse = z.infer<
-	typeof FinancialDashboardResponse
->;
-export type OtherIncome = z.infer<typeof OtherIncome>;
-export type Expenditure = z.infer<typeof Expenditure>;
-
-// Schemas for export responses
 export const ExportStockMovementsResponse = z.any(); // Byte stream
 export const ExportStockLevelsResponse = z.any(); // Byte stream
 export const ExportStockTakesResponse = z.any(); // Byte stream
@@ -2664,6 +2466,7 @@ export const ApiResponseListBookingPaymentResponse = ApiResponseObject.extend({
 
 // --- Main Fetch Schema ---
 export const schema = createSchema({
+	...financialsRoutes,
 	"@get/api/inventories/stock-levels": {
 		query: z
 			.object({
@@ -4015,226 +3818,7 @@ export const schema = createSchema({
 		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},
-	"@get/api/financials/compare": {
-		query: z
-			.object({
-				period1Start: z.string().optional().nullable(),
-				period1End: z.string().optional().nullable(),
-				period2Start: z.string().optional().nullable(),
-				period2End: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/dashboard": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject.extend({
-			data: FinancialDashboardResponse,
-		}),
-	},
-	"@get/api/financials/expenditures": {
-		query: z
-			.object({
-				category: z.string().optional().nullable(),
-				status: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				page: z.union([z.string(), z.number()]).optional().nullable(),
-				size: z.union([z.string(), z.number()]).optional().nullable(),
-				pageable: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject.extend({
-			data: PaginatedExpenditureResponse,
-		}),
-	},
-	"@get/api/financials/expenditures/:id": {
-		params: z.object({ id: z.string() }),
-		output: ApiResponseObject.extend({
-			data: Expenditure,
-		}),
-	},
-	"@get/api/financials/expenditures/overdue": {
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/expenses": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/items/consumption-report": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				itemType: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/monthly-summary": {
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/other-income": {
-		query: z
-			.object({
-				category: z.string().optional().nullable(),
-				status: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				page: z.union([z.string(), z.number()]).optional().nullable(),
-				size: z.union([z.string(), z.number()]).optional().nullable(),
-				pageable: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject.extend({
-			data: PaginatedOtherIncomeResponse,
-		}),
-	},
-	"@get/api/financials/other-income/booking/:bookingId": {
-		params: z.object({ bookingId: z.string() }),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/other-income/:id": {
-		params: z.object({ id: z.string() }),
-		output: ApiResponseObject.extend({
-			data: OtherIncome,
-		}),
-	},
-	"@get/api/financials/profit-and-loss": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject.extend({
-			data: ProfitAndLossStatement,
-		}),
-	},
-	"@get/api/financials/cash-flow": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject.extend({
-			data: CashFlowStatement,
-		}),
-	},
-	"@get/api/financials/quarterly-summary": {
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/restaurant/daily-summary": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				destination: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/restaurant/daily-summary/paginated": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				destination: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/restaurant/detailed-report": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/restaurant/item-sales-detail": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/restaurant/room-food-sales": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/revenue": {
-		query: z
-			.object({
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-				period: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/summary/comprehensive": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				startDate: z.string().optional().nullable(),
-				endDate: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/this-week": {
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/today": {
-		output: ApiResponseObject,
-	},
-	"@get/api/financials/yearly-summary": {
-		output: ApiResponseObject,
-	},
+
 	"@get/api/front-desks/bookings/export": {
 		query: z
 			.object({
@@ -4886,22 +4470,6 @@ export const schema = createSchema({
 	"@get/api/webhooks/paystack/health": {
 		output: ApiResponseObject,
 	},
-	"@patch/api/financials/expenditures/:id/status": {
-		params: z.object({ id: z.string() }),
-		input: z.object({
-			status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED"]),
-		}),
-		output: ApiResponseObject.extend({
-			data: Expenditure,
-		}),
-	},
-	"@patch/api/financials/other-income/:id/status": {
-		params: z.object({ id: z.string() }),
-		input: z.object({ status: z.enum(["PENDING", "APPROVED", "REJECTED"]) }),
-		output: ApiResponseObject.extend({
-			data: OtherIncome,
-		}),
-	},
 	"@patch/api/hotel-bank-accounts/:id/set-default": {
 		params: z.object({ id: z.string() }),
 		output: ApiResponseObject,
@@ -5001,18 +4569,6 @@ export const schema = createSchema({
 		input: z.any(),
 		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
-	},
-	"@post/api/financials/expenditures": {
-		input: Expenditure.omit({ id: true, status: true, approvedBy: true }), // Assuming basic input
-		output: ApiResponseObject.extend({
-			data: Expenditure,
-		}),
-	},
-	"@post/api/financials/other-income": {
-		input: OtherIncome.omit({ id: true, status: true, recordedBy: true }),
-		output: ApiResponseObject.extend({
-			data: OtherIncome,
-		}),
 	},
 	"@post/api/front-desks/:roomIdentifier/cancel-reservation": {
 		params: z.object({ roomIdentifier: z.string() }),

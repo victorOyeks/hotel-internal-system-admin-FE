@@ -4,6 +4,7 @@ import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
+import { notFound } from "next/navigation";
 import { use } from "react";
 
 function HomePage() {
@@ -16,14 +17,18 @@ function HomePage() {
 
 	const cookieData = use(getCookieData())!;
 	const queryClient = getQueryClient();
-	const { id } = use(getManagerCurrentHotel())!;
+	const currentHotel = use(getManagerCurrentHotel());
+
+	if (!currentHotel) {
+		return notFound();
+	}
 
 	const dashboardData = use(
 		queryClient.ensureQueryData({
 			queryKey: ["manager", "dashboardData", cookieData.userId],
 			queryFn: async () => {
 				const res = await $fetch("@get/api/managers/dashboard/:hotelId", {
-					params: { hotelId: id },
+					params: { hotelId: currentHotel?.id },
 					auth: {
 						type: "Bearer",
 						token: cookieData.token,
@@ -44,7 +49,7 @@ function HomePage() {
 				const res = await $fetch(
 					"@get/api/managers/dashboard/:hotelId/earnings-graph",
 					{
-						params: { hotelId: id },
+						params: { hotelId: currentHotel?.id },
 						auth: {
 							type: "Bearer",
 							token: cookieData.token,
@@ -83,7 +88,7 @@ function HomePage() {
 					"@get/api/managers/hotels/:hotelId/bookings",
 					{
 						params: {
-							hotelId: id,
+							hotelId: currentHotel.id,
 						},
 						query: {},
 						auth: {

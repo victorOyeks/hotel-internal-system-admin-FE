@@ -6,6 +6,7 @@ import { use } from "react";
 import { createLoader, type SearchParams } from "nuqs/server";
 import { financialSearchParams } from "@/lib/search-params.financials.server";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import type { OtherIncome } from "@/lib/api-routes/financials";
 
 const loadSearchParams = createLoader(financialSearchParams);
 
@@ -33,7 +34,7 @@ function OtherIncomePage({ searchParams }: PageProps) {
         })
     );
 
-    const data = otherIncomeData?.content || [];
+    const data = (otherIncomeData?.content || []) as OtherIncome[];
 
     return (
         <BreadCrumbWrapper
@@ -41,19 +42,11 @@ function OtherIncomePage({ searchParams }: PageProps) {
                 title: "Other Income",
                 breadcrumbs: [
                     { label: "Dashboard", href: "/dashboard" },
-                    { label: "Financials", href: "/dashboard/financials" },
-                    { label: "Other Income", href: "/dashboard/financials/other-income" },
+                    { label: "Other Income", href: "/dashboard/other-income" },
                 ],
             }}
         >
-            <div className="p-4 md:p-6 space-y-6">
-                <div className="flex flex-col space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight">Other Income</h1>
-                    <p className="text-muted-foreground">
-                        Manage miscellaneous income sources for the hotel.
-                    </p>
-                </div>
-
+            <div className="p-4">
                 <OtherIncomeTable data={data} />
             </div>
         </BreadCrumbWrapper>

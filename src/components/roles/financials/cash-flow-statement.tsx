@@ -3,23 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
+import type { CashFlowStatement as CashFlowStatementType } from "@/lib/api-routes/financials";
 
-// Assuming a type structure since it wasn't explicitly exported in standard file yet, 
-// using generic structure or one compatible with likely API response.
-// Ref: financials-actions.ts `getCashFlow` returns generic `any` or implied structure. 
-// I'll define a likely interface here or update actions if needed.
-// For now, let's assume a simple structure similar to P&L but for cash flow categories.
-
-export interface CashFlowStatement {
-    operatingActivities: { category: string; amount: number }[];
-    investingActivities: { category: string; amount: number }[];
-    financingActivities: { category: string; amount: number }[];
-    netCashFlow: number;
-    beginningCashBalance: number;
-    endingCashBalance: number;
-}
-
-export function CashFlowStatement({ data }: { data: CashFlowStatement | null }) {
+export function CashFlowStatement({ data }: { data: CashFlowStatementType | null }) {
     if (!data) {
         return (
             <Card className="shadow-none border-border">
@@ -55,9 +41,11 @@ export function CashFlowStatement({ data }: { data: CashFlowStatement | null }) 
     };
 
     return (
-        <Card className="shadow-none border-border">
+        <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0">
             <CardHeader className="pb-4">
-                <CardTitle>Cash Flow Statement</CardTitle>
+                <CardTitle>
+                    <h2 className="text-primary text-xl">Cash Flow Statement</h2>
+                </CardTitle>
                 <CardDescription>
                     Inflows and outflows of cash and cash equivalents.
                 </CardDescription>
