@@ -91,7 +91,7 @@ export function SidebarSwitchers({
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-medium">{primaryText}</span>
                                 {secondaryText && (
-                                    <span className="truncate text-xs text-muted-foreground">
+                                    <span className="truncate text-xs">
                                         {secondaryText}
                                     </span>
                                 )}

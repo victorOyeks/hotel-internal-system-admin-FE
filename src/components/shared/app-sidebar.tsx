@@ -20,6 +20,7 @@ import {
 	restaurantLinks,
 	rentalsLinks,
 	laundryLinks,
+	financialsLinks,
 } from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
@@ -55,7 +56,7 @@ export function AppSidebar({
 		MANAGER: managerOwnerLinks,
 		SUPER_ADMIN: [],
 		LAUNDRY: laundryLinks,
-		FINANCIALS: [],
+		FINANCIALS: financialsLinks,
 	};
 
 	return (
