@@ -11,7 +11,7 @@ export function formatCurrency(
 ) {
 	// cross-check at runtime if value is a number
 	if (typeof value !== "number" || Number.isNaN(value)) {
-		return value;
+		return value.toString();
 	}
 
 	// Define the options based on the type

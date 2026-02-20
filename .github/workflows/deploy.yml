@@ -1,0 +1,78 @@
+name: Build & Deploy HIS Frontend
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+
+      - name: Build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          DOMAIN_URL: ${{ secrets.DOMAIN_URL }}
+
+      - name: Prepare standalone bundle
+        run: |
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          tar -czf standalone.tar.gz -C .next/standalone .
+
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: standalone.tar.gz
+          target: /home/oyeks/apps/his-fe/
+
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/oyeks/apps/his-fe
+
+            # Backup current deployment
+            if [ -d current ]; then
+              rm -rf previous
+              mv current previous
+            fi
+
+            # Extract new deployment
+            mkdir -p current
+            tar -xzf standalone.tar.gz -C current
+            rm -f standalone.tar.gz
+
+            # Restart service
+            sudo systemctl restart his-fe.service
+            sleep 5
+
+            # Check if service started successfully
+            if ! systemctl is-active --quiet his-fe.service; then
+              echo "Service failed to start - rolling back"
+              if [ -d previous ]; then
+                rm -rf current
+                mv previous current
+                sudo systemctl restart his-fe.service
+              fi
+              exit 1
+            fi
+
+            echo "Deployment successful!"
+            rm -rf previous

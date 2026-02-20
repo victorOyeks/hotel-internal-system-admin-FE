@@ -181,3 +181,10 @@ export const laundryLinks = [
 	{ title: "Payments", icon: <CreditCardIcon />, url: "/dashboard/payments" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
+
+export const financialsLinks = [
+	{ title: "Overview", icon: <ChartNoAxesCombined />, url: "/dashboard" },
+	{ title: "Other Income", icon: <DollarSignIcon />, url: "/dashboard/other-income" },
+	{ title: "Expenditures", icon: <CreditCardIcon />, url: "/dashboard/expenditures" },
+	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },
+];
