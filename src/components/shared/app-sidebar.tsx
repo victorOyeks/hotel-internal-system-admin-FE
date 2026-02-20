@@ -19,6 +19,7 @@ import {
 	managerOwnerLinks,
 	restaurantLinks,
 	rentalsLinks,
+	laundryLinks,
 } from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
@@ -53,7 +54,7 @@ export function AppSidebar({
 		RENTALS: rentalsLinks,
 		MANAGER: managerOwnerLinks,
 		SUPER_ADMIN: [],
-		LAUNDRY: [],
+		LAUNDRY: laundryLinks,
 		FINANCIALS: [],
 	};
 

@@ -23,7 +23,7 @@ import { StockTakeToolbar } from "./stock-take-filters";
 // import { StockTakeStats } from "./stock-take-stats";
 import { StockTakeDetails } from "./stock-take-details";
 import { CreateStockTakeForm } from "./stock-take-form";
-import { postStockTakeAdjustments, startStockTake, cancelStockTake, completeStockTake } from "@/lib/inventory-actions";
+import { postStockTakeAdjustments, startStockTake, cancelStockTake, completeStockTake, reviewStockTake } from "@/lib/inventory-actions";
 
 interface StockTakePageProps {
 	stockTakes: StockTake[];
@@ -74,15 +74,18 @@ export function StockTakePage({ stockTakes, inventoryLocations
 			header: "Status",
 			cell: (info) => {
 				const status = info.getValue();
+				const statusStyles: Record<string, string> = {
+					SCHEDULED: "bg-blue-50 text-blue-700 border-blue-200",
+					IN_PROGRESS: "bg-yellow-50 text-yellow-700 border-yellow-200",
+					PENDING_REVIEW: "bg-orange-50 text-orange-700 border-orange-200",
+					REVIEWED: "bg-purple-50 text-purple-700 border-purple-200",
+					COMPLETED: "bg-green-50 text-green-700 border-green-200",
+					CANCELLED: "bg-gray-100 text-gray-600 border-gray-200",
+				};
 				return (
 					<Badge
-						variant={
-							status === "COMPLETED"
-								? "green"
-								: status === "IN_PROGRESS"
-									? "secondary"
-									: "outline"
-						}
+						variant="outline"
+						className={statusStyles[status] ?? ""}
 					>
 						{status.replace(/_/g, " ")}
 					</Badge>
@@ -140,6 +143,14 @@ export function StockTakePage({ stockTakes, inventoryLocations
 		return res;
 	};
 
+	const handleReviewStockTake = async (id: string) => {
+		const res = await reviewStockTake(id);
+		if (res.success) {
+			setIsDetailsDialogOpen(false);
+		}
+		return res;
+	};
+
 	const handlePostAdjustments = async (id: string) => {
 		const res = await postStockTakeAdjustments(id);
 		if (res.success) {
@@ -152,8 +163,8 @@ export function StockTakePage({ stockTakes, inventoryLocations
 		return await startStockTake(id);
 	};
 
-	const handleCancelStockTake = async (id: string) => {
-		const res = await cancelStockTake(id, "Cancelled by user");
+	const handleCancelStockTake = async (id: string, reason: string) => {
+		const res = await cancelStockTake(id, reason);
 		if (res.success) {
 			setIsDetailsDialogOpen(false);
 		}
@@ -163,7 +174,10 @@ export function StockTakePage({ stockTakes, inventoryLocations
 	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
 		const { recordStockCount } = await import("@/lib/inventory-actions");
 		// Optimistic update could happen here or we rely on revalidatePath
-		return await recordStockCount(stockTakeId, itemId, { actualQuantity: quantity });
+		return await recordStockCount(stockTakeId, itemId, {
+			stockTakeItemId: itemId,
+			actualQuantity: quantity
+		});
 	};
 
 	return (
@@ -217,6 +231,7 @@ export function StockTakePage({ stockTakes, inventoryLocations
 				open={isDetailsDialogOpen}
 				onOpenChange={setIsDetailsDialogOpen}
 				onComplete={handleCompleteStockTake}
+				onReview={handleReviewStockTake}
 				onPostAdjustments={handlePostAdjustments}
 				onStart={handleStartStockTake}
 				onCancel={handleCancelStockTake}

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 import { formatCurrency } from "@/lib/utils";
 import type { StockTake } from "@/lib/fetch";
@@ -23,12 +24,13 @@ import {
 	ClipboardList,
 	Loader2,
 	MapPin,
+	// RefreshCw,
 } from "lucide-react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getStockTake } from "@/lib/inventory-actions";
 import { StockTakeItemsTable } from "./stock-take-items-table";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export interface StockTakeDetailsProps {
@@ -36,9 +38,10 @@ export interface StockTakeDetailsProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onComplete: (id: string) => Promise<any>;
+	onReview: (id: string) => Promise<any>;
 	onPostAdjustments: (id: string) => Promise<any>;
 	onStart: (id: string) => Promise<any>;
-	onCancel: (id: string) => Promise<any>;
+	onCancel: (id: string, reason: string) => Promise<any>;
 	onRecordCount: (stockTakeId: string, itemId: string, quantity: number) => Promise<any>;
 }
 
@@ -47,6 +50,7 @@ export function StockTakeDetails({
 	open,
 	onOpenChange,
 	onComplete,
+	onReview,
 	onPostAdjustments,
 	onStart,
 	onCancel,
@@ -63,42 +67,140 @@ export function StockTakeDetails({
 			if (!res.success || !res.data) throw new Error(res.error);
 			return res.data;
 		},
+		enabled: !!initialStockTake?.id && open,
 	});
 
 	const stockTake = stockTakeResponse || initialStockTake;
 
-	const handleRecordCount = async (stockTakeId: string, itemId: string, quantity: number) => {
-		const res = await onRecordCount(stockTakeId, itemId, quantity);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to record count");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", stockTakeId] });
-	};
+	const recordCountMutation = useMutation({
+		mutationFn: async ({
+			stockTakeId,
+			itemId,
+			quantity,
+		}: {
+			stockTakeId: string;
+			itemId: string;
+			quantity: number;
+		}) => {
+			const res = await onRecordCount(stockTakeId, itemId, quantity);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to record count");
+			}
+			return res;
+		},
+		onSuccess: (_, { stockTakeId }) => {
+			// toast.success("Count recorded"); // Optional, simpler if quiet
+			queryClient.invalidateQueries({ queryKey: ["stock-take", stockTakeId] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
-	const handleStart = async (id: string) => {
-		const res = await onStart(id);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to start stock take");
-		} else {
+	const startMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onStart(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to start stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
 			toast.success("Stock take started");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
-	};
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
-	const handleCancel = async (id: string) => {
-		const res = await onCancel(id);
-		if (res && !res.success) {
-			toast.error(res.error || "Failed to cancel stock take");
-		} else {
+	const cancelMutation = useMutation({
+		mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+			const res = await onCancel(id, reason);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to cancel stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, { id }) => {
 			toast.success("Stock take cancelled");
-		}
-		await queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
-	};
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
-	// Note: handling Complete and PostAdjustments might also require invalidation or closing dialog.
-	// The parent closes the dialog on complete/post.
+	const completeMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onComplete(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to complete stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
+			toast.success("Stock take completed");
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const postAdjustmentsMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onPostAdjustments(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to post adjustments");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
+			toast.success("Adjustments posted successfully");
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const reviewMutation = useMutation({
+		mutationFn: async (id: string) => {
+			const res = await onReview(id);
+			if (res && !res.success) {
+				throw new Error(res.error || "Failed to review stock take");
+			}
+			return res;
+		},
+		onSuccess: (_, id) => {
+			toast.success("Stock take reviewed and approved");
+			queryClient.invalidateQueries({ queryKey: ["stock-take", id] });
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
 	if (!stockTake) return null;
+
+	const contentProps: Omit<StockTakeContentProps, "isMobile"> = {
+		stockTake,
+		onClose: () => onOpenChange(false),
+		isLoading: isPending,
+		isStarting: startMutation.isPending,
+		isCanceling: cancelMutation.isPending,
+		isCompleting: completeMutation.isPending,
+		isReviewing: reviewMutation.isPending,
+		isPosting: postAdjustmentsMutation.isPending,
+		startStockTake: (id) => startMutation.mutate(id),
+		cancelStockTake: (id, reason) => cancelMutation.mutate({ id, reason }),
+		completeStockTake: (id) => completeMutation.mutate(id),
+		reviewStockTake: (id) => reviewMutation.mutate(id),
+		postAdjustments: (id) => postAdjustmentsMutation.mutate(id),
+		recordCount: (stockTakeId, itemId, quantity) =>
+			recordCountMutation.mutate({ stockTakeId, itemId, quantity }),
+	};
 
 	if (isMobile) {
 		return (
@@ -110,17 +212,7 @@ export function StockTakeDetails({
 							<StatusBadge status={stockTake.status} />
 						</div>
 					</SheetHeader>
-					<StockTakeContent
-						stockTake={stockTake}
-						onClose={() => onOpenChange(false)}
-						onComplete={onComplete}
-						onPostAdjustments={onPostAdjustments}
-						onStart={handleStart}
-						onCancel={handleCancel}
-						onRecordCount={handleRecordCount}
-						isMobile={true}
-						isLoading={isPending}
-					/>
+					<StockTakeContent {...contentProps} isMobile={true} />
 				</SheetContent>
 			</Sheet>
 		);
@@ -135,33 +227,23 @@ export function StockTakeDetails({
 						<StatusBadge status={stockTake.status} />
 					</div>
 				</DialogHeader>
-				<StockTakeContent
-					stockTake={stockTake}
-					onClose={() => onOpenChange(false)}
-					onComplete={onComplete}
-					onPostAdjustments={onPostAdjustments}
-					onStart={handleStart}
-					onCancel={handleCancel}
-					onRecordCount={handleRecordCount}
-					isMobile={false}
-					isLoading={isPending}
-				/>
+				<StockTakeContent {...contentProps} isMobile={false} />
 			</DialogContent>
 		</Dialog>
 	);
 }
 
 function StatusBadge({ status }: { status: string }) {
+	const statusStyles: Record<string, string> = {
+		SCHEDULED: "bg-blue-50 text-blue-700 border-blue-200",
+		IN_PROGRESS: "bg-yellow-50 text-yellow-700 border-yellow-200",
+		PENDING_REVIEW: "bg-orange-50 text-orange-700 border-orange-200",
+		REVIEWED: "bg-purple-50 text-purple-700 border-purple-200",
+		COMPLETED: "bg-green-50 text-green-700 border-green-200",
+		CANCELLED: "bg-gray-100 text-gray-600 border-gray-200",
+	};
 	return (
-		<Badge
-			variant={
-				status === "COMPLETED"
-					? "green"
-					: status === "IN_PROGRESS"
-						? "secondary"
-						: "outline"
-			}
-		>
+		<Badge variant="outline" className={statusStyles[status] ?? ""}>
 			{status.replace(/_/g, " ")}
 		</Badge>
 	);
@@ -170,32 +252,46 @@ function StatusBadge({ status }: { status: string }) {
 interface StockTakeContentProps {
 	stockTake: StockTake;
 	onClose: () => void;
-	onComplete: (id: string) => Promise<any>;
-	onPostAdjustments: (id: string) => Promise<any>;
-	onStart: (id: string) => Promise<any>;
-	onCancel: (id: string) => Promise<any>;
-	onRecordCount: (stockTakeId: string, itemId: string, quantity: number) => Promise<any>;
-	isMobile: boolean;
 	isLoading: boolean;
+	isMobile: boolean;
+
+	// Mutations state & handlers
+	isStarting: boolean;
+	isCanceling: boolean;
+	isCompleting: boolean;
+	isReviewing: boolean;
+	isPosting: boolean;
+
+	startStockTake: (id: string) => void;
+	cancelStockTake: (id: string, reason: string) => void;
+	completeStockTake: (id: string) => void;
+	reviewStockTake: (id: string) => void;
+	postAdjustments: (id: string) => void;
+	recordCount: (stockTakeId: string, itemId: string, quantity: number) => void;
 }
 
 function StockTakeContent({
 	stockTake,
 	onClose,
-	onComplete,
-	onPostAdjustments,
-	onStart,
-	onCancel,
-	onRecordCount,
-	isMobile,
 	isLoading,
+	isMobile,
+
+	isStarting,
+	isCanceling,
+	isCompleting,
+	isReviewing,
+	isPosting,
+
+	startStockTake,
+	cancelStockTake,
+	completeStockTake,
+	reviewStockTake,
+	postAdjustments,
+	recordCount,
 }: StockTakeContentProps) {
 	const isEditing = stockTake.status === "IN_PROGRESS";
-
-	const [isStarting, setIsStarting] = useState(false);
-	const [isCanceling, setIsCanceling] = useState(false);
-	const [isCompleting, setIsCompleting] = useState(false);
-	const [isPosting, setIsPosting] = useState(false);
+	const [showCancelPanel, setShowCancelPanel] = useState(false);
+	const [cancelReason, setCancelReason] = useState("");
 
 	if (isLoading) {
 		return (
@@ -208,65 +304,11 @@ function StockTakeContent({
 		);
 	}
 
-	const handleStart = async () => {
-		setIsStarting(true);
-		try {
-			const res = await onStart(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to start stock take");
-			} else {
-				toast.success("Stock take started");
-			}
-		} finally {
-			setIsStarting(false);
-		}
-	};
-
-	const handleCancel = async () => {
-		setIsCanceling(true);
-		try {
-			const res = await onCancel(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to cancel stock take");
-			} else {
-				toast.success("Stock take cancelled");
-			}
-		} finally {
-			setIsCanceling(false);
-		}
-	};
-
-	const handleComplete = async () => {
-		setIsCompleting(true);
-		try {
-			const res = await onComplete(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to complete stock take");
-			} else {
-				toast.success("Stock take completed");
-			}
-		} finally {
-			setIsCompleting(false);
-		}
-	};
-
-	const handlePostAdjustments = async () => {
-		setIsPosting(true);
-		try {
-			const res = await onPostAdjustments(stockTake.id);
-			if (res && !res.success) {
-				toast.error(res.error || "Failed to post adjustments");
-			} else {
-				toast.success("Adjustments posted");
-			}
-		} finally {
-			setIsPosting(false);
-		}
-	};
-
 	return (
 		<div className="space-y-6">
-			<div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}>
+			<div
+				className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-8"} py-6`}
+			>
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center gap-2 text-muted-foreground">
 						<MapPin className="w-4 h-4" />
@@ -319,13 +361,16 @@ function StockTakeContent({
 								: "text-green-600"
 							}`}
 					>
-						{(stockTake.totalValueVariance).toFixed(2)}
+						{stockTake.totalValueVariance.toFixed(2)}
 					</p>
 				</div>
 			</div>
 
 			<div className="space-y-4">
-				<h3 className="font-semibold text-lg">Items</h3>
+				<div className="flex items-center justify-between">
+					<h3 className="font-semibold text-lg">Items</h3>
+				</div>
+
 				{isMobile ? (
 					<div className="space-y-4">
 						{(stockTake.items || []).map((item) => (
@@ -358,7 +403,6 @@ function StockTakeContent({
 										</div>
 										<div>
 											<p className="text-muted-foreground">Actual Qty</p>
-											{/* <p>{item.actualQuantity ?? "-"}</p> */}
 											{isEditing ? (
 												<input
 													type="number"
@@ -367,7 +411,7 @@ function StockTakeContent({
 													onBlur={(e) => {
 														const val = parseFloat(e.target.value);
 														if (!Number.isNaN(val)) {
-															onRecordCount(stockTake.id, item.id, val);
+															recordCount(stockTake.id, item.id, val);
 														}
 													}}
 												/>
@@ -417,64 +461,119 @@ function StockTakeContent({
 						data={stockTake.items || []}
 						isEditing={isEditing}
 						onRecordCount={(itemId, quantity) =>
-							onRecordCount(stockTake.id, itemId, quantity)
+							recordCount(stockTake.id, itemId, quantity)
 						}
 					/>
 				)}
 			</div>
 
-			<div className="flex justify-end gap-2 pt-4">
-				<Button variant="outline" onClick={onClose} disabled={isStarting || isCanceling || isCompleting || isPosting}>
-					Close
-				</Button>
-				{stockTake.status === "SCHEDULED" && (
-					<>
+			{/* Cancel reason panel */}
+			{showCancelPanel && (
+				<div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+					<p className="text-sm font-medium text-red-800">Reason for Cancellation</p>
+					<Textarea
+						placeholder="Enter a reason for cancelling this stock take..."
+						value={cancelReason}
+						onChange={(e) => setCancelReason(e.target.value)}
+						rows={3}
+						className="bg-white"
+					/>
+					<div className="flex gap-2 justify-end">
 						<Button
-							variant="destructive"
-							onClick={handleCancel}
-							disabled={isCanceling || isStarting}
+							variant="ghost"
+							size="sm"
+							onClick={() => {
+								setShowCancelPanel(false);
+								setCancelReason("");
+							}}
+							disabled={isCanceling}
 						>
-							{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-							Cancel
+							Back
 						</Button>
 						<Button
-							onClick={handleStart}
-							disabled={isStarting || isCanceling}
+							variant="destructive"
+							size="sm"
+							disabled={!cancelReason.trim() || isCanceling}
+							onClick={() => {
+								cancelStockTake(stockTake.id, cancelReason.trim());
+								setShowCancelPanel(false);
+								setCancelReason("");
+							}}
 						>
+							{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Confirm Cancel
+						</Button>
+					</div>
+				</div>
+			)}
+
+			<div className="flex justify-end gap-2 pt-4">
+				<Button
+					variant="outline"
+					onClick={onClose}
+					disabled={isStarting || isCanceling || isCompleting || isReviewing || isPosting}
+				>
+					Close
+				</Button>
+				{/* SCHEDULED → start or cancel */}
+				{stockTake.status === "SCHEDULED" && !showCancelPanel && (
+					<>
+						<Button
+							variant="outline"
+							className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+							onClick={() => setShowCancelPanel(true)}
+							disabled={isStarting}
+						>
+							Cancel
+						</Button>
+						<Button onClick={() => startStockTake(stockTake.id)} disabled={isStarting || isCanceling}>
 							{isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							Start Stock Take
 						</Button>
 					</>
 				)}
-				{stockTake.status === "IN_PROGRESS" && (
-					<Button
-						variant="destructive"
-						onClick={handleCancel}
-						disabled={isCanceling}
-					>
-						{isCanceling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-						Cancel (Stop)
-					</Button>
+				{/* IN_PROGRESS → mark complete (moves to PENDING_REVIEW) or cancel */}
+				{stockTake.status === "IN_PROGRESS" && !showCancelPanel && (
+					<>
+						<Button
+							variant="outline"
+							className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+							onClick={() => setShowCancelPanel(true)}
+							disabled={isCompleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={() => completeStockTake(stockTake.id)}
+							disabled={isCompleting || isCanceling}
+						>
+							{isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+							Mark as Complete
+						</Button>
+					</>
 				)}
+				{/* PENDING_REVIEW → review (moves to REVIEWED) */}
 				{stockTake.status === "PENDING_REVIEW" && (
 					<Button
-						onClick={handleComplete}
-						disabled={isCompleting}
+						onClick={() => reviewStockTake(stockTake.id)}
+						disabled={isReviewing}
 					>
-						{isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-						Complete & Approve
+						{isReviewing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Review & Approve
 					</Button>
 				)}
-				{stockTake.status === "COMPLETED" && (
+				{/* REVIEWED → post adjustments (moves to COMPLETED) */}
+				{stockTake.status === "REVIEWED" && (
 					<Button
-						onClick={handlePostAdjustments}
+						onClick={() => postAdjustments(stockTake.id)}
 						disabled={isPosting}
 					>
 						{isPosting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 						Post Adjustments
 					</Button>
 				)}
+				{/* COMPLETED / CANCELLED: no further actions */}
 			</div>
-		</div >
+		</div>
 	);
 }

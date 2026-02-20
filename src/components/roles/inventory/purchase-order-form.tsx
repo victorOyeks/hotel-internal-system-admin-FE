@@ -471,16 +471,16 @@ export function CreatePOForm({
 					</div>
 
 					<div className="border rounded-md overflow-x-auto">
-						<Table>
+						<Table className="min-w-[900px]">
 							<TableHeader>
 								<TableRow className="h-8">
-									<TableHead className="h-8 text-xs w-[180px]">Product</TableHead>
-									<TableHead className="h-8 text-xs w-[80px]">Qty</TableHead>
-									<TableHead className="h-8 text-xs w-[80px]">Unit</TableHead>
-									<TableHead className="h-8 text-xs w-[100px]">Price</TableHead>
-									<TableHead className="h-8 text-xs w-[80px]">Disc %</TableHead>
-									<TableHead className="h-8 text-xs w-[80px]">Tax %</TableHead>
-									<TableHead className="h-8 text-xs min-w-[150px]">Specs/Notes</TableHead>
+									<TableHead className="h-8 text-xs w-[220px] min-w-[220px]">Product</TableHead>
+									<TableHead className="h-8 text-xs w-[70px] min-w-[70px]">Qty</TableHead>
+									<TableHead className="h-8 text-xs w-[80px] min-w-[80px]">Unit</TableHead>
+									<TableHead className="h-8 text-xs w-[110px] min-w-[110px]">Price</TableHead>
+									<TableHead className="h-8 text-xs w-[75px] min-w-[75px]">Disc %</TableHead>
+									<TableHead className="h-8 text-xs w-[75px] min-w-[75px]">Tax %</TableHead>
+									<TableHead className="h-8 text-xs min-w-[180px]">Specs/Notes</TableHead>
 									<TableHead className="h-8 text-xs w-[50px]"></TableHead>
 								</TableRow>
 							</TableHeader>
@@ -517,7 +517,7 @@ export function CreatePOForm({
 														{...form.register(`items.${index}.quantityOrdered`, {
 															valueAsNumber: true,
 														})}
-														className="h-7 text-xs"
+														className="h-7 text-xs min-w-[60px]"
 													/>
 												)}
 											/>
@@ -529,7 +529,7 @@ export function CreatePOForm({
 												render={() => (
 													<Input
 														{...form.register(`items.${index}.unit`)}
-														className="h-7 text-xs"
+														className="h-7 text-xs min-w-[70px]"
 													/>
 												)}
 											/>
@@ -546,7 +546,7 @@ export function CreatePOForm({
 														{...form.register(`items.${index}.unitPrice`, {
 															valueAsNumber: true,
 														})}
-														className="h-7 text-xs"
+														className="h-7 text-xs min-w-[90px]"
 													/>
 												)}
 											/>
@@ -563,7 +563,7 @@ export function CreatePOForm({
 														{...form.register(`items.${index}.discountPercent`, {
 															valueAsNumber: true,
 														})}
-														className="h-7 text-xs"
+														className="h-7 text-xs min-w-[65px]"
 													/>
 												)}
 											/>
@@ -580,7 +580,7 @@ export function CreatePOForm({
 														{...form.register(`items.${index}.taxRate`, {
 															valueAsNumber: true,
 														})}
-														className="h-7 text-xs"
+														className="h-7 text-xs min-w-[65px]"
 													/>
 												)}
 											/>
@@ -594,7 +594,7 @@ export function CreatePOForm({
 														<Input
 															placeholder="Specs"
 															{...form.register(`items.${index}.specifications`)}
-															className="h-7 text-xs"
+															className="h-7 text-xs min-w-[90px]"
 														/>
 													)}
 												/>
@@ -605,7 +605,7 @@ export function CreatePOForm({
 														<Input
 															placeholder="Notes"
 															{...form.register(`items.${index}.notes`)}
-															className="h-7 text-xs"
+															className="h-7 text-xs min-w-[80px]"
 														/>
 													)}
 												/>

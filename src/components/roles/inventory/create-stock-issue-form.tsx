@@ -29,11 +29,12 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
-import { $fetch } from "@/lib/fetch";
+import { CalendarIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import type { LocationProductResponse } from "@/lib/fetch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { getProductsByLocation, issueStockItem } from "@/lib/inventory-actions";
 
 const stockIssueItemSchema = z.object({
     productId: z.string().min(1, "Product is required"),
@@ -64,19 +65,24 @@ type StockIssueFormValues = z.infer<typeof stockIssueSchema>;
 interface CreateStockIssueFormProps {
     onClose: () => void;
     locations: { id: string; name: string }[];
-    products: { id: string; name: string; sku: string }[];
 }
 
 export function CreateStockIssueForm({
     onClose,
     locations,
-    products,
 }: CreateStockIssueFormProps) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [locationProducts, setLocationProducts] = useState<LocationProductResponse[]>([]);
+    const [isLoadingStock, setIsLoadingStock] = useState(false);
+    const [locationFetched, setLocationFetched] = useState(false);
+    // Ref so validate functions always read the latest products without stale closure issues
+    const locationProductsRef = useRef<LocationProductResponse[]>([]);
 
     const form = useForm({
         resolver: zodResolver(stockIssueSchema),
+        mode: "onSubmit",
+        reValidateMode: "onSubmit",
         defaultValues: {
             issueDate: new Date(),
             issueType: "INTERNAL_CONSUMPTION",
@@ -84,22 +90,63 @@ export function CreateStockIssueForm({
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, replace } = useFieldArray({
         control: form.control,
         name: "items",
     });
 
     const issueType = form.watch("issueType");
+    const watchedItems = form.watch("items");
+
+    const handleLocationChange = async (locationId: string, fieldOnChange: (v: string) => void) => {
+        fieldOnChange(locationId);
+        setIsLoadingStock(true);
+        setLocationFetched(false);
+        setLocationProducts([]);
+        locationProductsRef.current = [];
+        // Reset items when location changes so stale product selections are cleared
+        replace([{ productId: "", quantity: 0 }]);
+
+        const result = await getProductsByLocation(locationId);
+        if (result.success && result.data) {
+            setLocationProducts(result.data);
+            locationProductsRef.current = result.data;
+        } else {
+            toast.error("Failed to load products for this location");
+        }
+        setLocationFetched(true);
+        setIsLoadingStock(false);
+    };
+
+    const getLocationProduct = (productId: string): LocationProductResponse | undefined =>
+        locationProductsRef.current.find((p) => p.productId === productId);
 
     async function onSubmit(data: StockIssueFormValues) {
+        // Guard: validate quantities against available stock before submitting
+        let hasQtyError = false;
+        for (let i = 0; i < data.items.length; i++) {
+            const item = data.items[i];
+            const lp = getLocationProduct(item.productId);
+            if (lp && item.quantity > lp.quantityAvailable) {
+                form.setError(`items.${i}.quantity`, {
+                    type: "manual",
+                    message: `Exceeds available stock (${lp.quantityAvailable} available)`,
+                });
+                hasQtyError = true;
+            }
+        }
+        if (hasQtyError) return;
+
         setIsSubmitting(true);
         try {
-            await $fetch("@post/api/inventories/stock/issue", {
-                body: {
-                    ...data,
-                    issueDate: data.issueDate.toISOString(),
-                },
+            const result = await issueStockItem({
+                ...data,
+                issueDate: format(data.issueDate, "yyyy-MM-dd'T'HH:mm:ss"),
             });
+            if (!result.success) {
+                toast.error(result.error ?? "Failed to create stock issue");
+                return;
+            }
             toast.success("Stock issue created successfully");
             router.refresh();
             onClose();
@@ -110,6 +157,17 @@ export function CreateStockIssueForm({
             setIsSubmitting(false);
         }
     }
+
+    const locationId = form.watch("locationId");
+    const hasLocation = !!locationId;
+    const hasProducts = locationProducts.length > 0;
+
+    const productOptions = locationProducts.map((lp) => ({
+        id: lp.productId,
+        label: `${lp.name} (${lp.sku})`,
+        available: lp.quantityAvailable,
+        outOfStock: lp.isOutOfStock,
+    }));
 
     return (
         <Form {...form}>
@@ -122,7 +180,7 @@ export function CreateStockIssueForm({
                             <FormItem>
                                 <FormLabel>From Location</FormLabel>
                                 <Select
-                                    onValueChange={field.onChange}
+                                    onValueChange={(value) => handleLocationChange(value, field.onChange)}
                                     defaultValue={field.value}
                                 >
                                     <FormControl>
@@ -252,6 +310,7 @@ export function CreateStockIssueForm({
                             type="button"
                             variant="outline"
                             size="sm"
+                            disabled={!hasLocation || isLoadingStock || !hasProducts}
                             onClick={() => append({ productId: "", quantity: 0 })}
                         >
                             <Plus className="mr-2 h-4 w-4" />
@@ -259,62 +318,103 @@ export function CreateStockIssueForm({
                         </Button>
                     </div>
 
-                    {fields.map((field, index) => (
-                        <div key={field.id} className="flex gap-4 items-start">
-                            <FormField
-                                control={form.control}
-                                name={`items.${index}.productId`}
-                                render={({ field }) => (
-                                    <FormItem className="flex-1">
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select product" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {products.map((product) => (
-                                                    <SelectItem key={product.id} value={product.id}>
-                                                        {product.name} ({product.sku})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                    {!hasLocation && (
+                        <p className="text-sm text-muted-foreground text-center py-6">
+                            Select a location above to view available items.
+                        </p>
+                    )}
 
-                            <FormField
-                                control={form.control}
-                                name={`items.${index}.quantity`}
-                                render={() => (
-                                    <FormItem className="w-32">
-                                        <FormControl>
-                                            <Input type="number" step="0.01"
-                                                {...form.register(`items.${index}.quantity`, {
-                                                    valueAsNumber: true,
-                                                })}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                            >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                    {hasLocation && isLoadingStock && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading available products for this location…
                         </div>
-                    ))}
+                    )}
+
+                    {hasLocation && !isLoadingStock && locationFetched && !hasProducts && (
+                        <p className="text-sm text-muted-foreground text-center py-6">
+                            No items are stocked at the selected location.
+                        </p>
+                    )}
+
+                    {hasLocation && !isLoadingStock && hasProducts && fields.map((field, index) => {
+                        const selectedProductId = watchedItems[index]?.productId;
+                        const lp = selectedProductId ? getLocationProduct(selectedProductId) : undefined;
+                        const availableQty = lp?.quantityAvailable;
+
+                        return (
+                            <div key={field.id} className="flex gap-4 items-start">
+                                <FormField
+                                    control={form.control}
+                                    name={`items.${index}.productId`}
+                                    render={({ field: f }) => (
+                                        <FormItem className="flex-1">
+                                            <Select
+                                                onValueChange={f.onChange}
+                                                value={f.value}
+                                                disabled={isLoadingStock}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select product" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {productOptions.map((opt) => (
+                                                        <SelectItem
+                                                            key={opt.id}
+                                                            value={opt.id}
+                                                            disabled={opt.outOfStock}
+                                                        >
+                                                            <span>{opt.label}</span>
+                                                            {opt.available !== null && (
+                                                                <span className={cn("ml-2 text-xs", opt.outOfStock ? "text-destructive" : "text-muted-foreground")}>
+                                                                    — {opt.outOfStock ? "out of stock" : `${opt.available} avail.`}
+                                                                </span>
+                                                            )}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name={`items.${index}.quantity`}
+                                    render={({ field }) => (
+                                        <FormItem className="w-32">
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    {...(availableQty !== undefined ? { max: availableQty } : {})}
+                                                    value={field.value as number}
+                                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                                    onBlur={field.onBlur}
+                                                    name={field.name}
+                                                    ref={field.ref}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => remove(index)}
+                                >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <div className="space-y-4">
