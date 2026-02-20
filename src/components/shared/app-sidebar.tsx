@@ -49,7 +49,7 @@ export function AppSidebar({
 	> = {
 		HOTEL_OWNER: hotelOwnerLinks,
 		FRONT_DESK: frontDeskLinks,
-		MAINTENANCE: [],
+		MARKETER: [],
 		INVENTORY: inventoryOfficerLinks,
 		RESTAURANT: restaurantLinks,
 		RENTALS: rentalsLinks,

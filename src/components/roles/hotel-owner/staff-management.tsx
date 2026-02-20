@@ -668,10 +668,12 @@ function UpdateHotelStaffForm({
 									<SelectContent>
 										<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
 										<SelectItem value="MANAGER">Manager</SelectItem>
-										<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
 										<SelectItem value="INVENTORY">Inventory</SelectItem>
-										<SelectItem value="BAR">Bar</SelectItem>
-										<SelectItem value="KITCHEN">Kitchen</SelectItem>
+										<SelectItem value="RESTAURANT">Restaurant</SelectItem>
+										<SelectItem value="MARKETER">Marketer</SelectItem>
+										<SelectItem value="RENTALS">Rentals</SelectItem>
+										<SelectItem value="LAUNDRY">Laundry</SelectItem>
+										<SelectItem value="FINANCIALS">Financials</SelectItem>
 									</SelectContent>
 								</Select>
 								<FormMessage />
@@ -910,10 +912,11 @@ const columns = [
 			</div>
 		),
 	}),
-	columnHelper.accessor("role", {
+	columnHelper.accessor("roles", {
 		header: "Role",
 		cell: (info) => {
-			const role = info.getValue();
+			const roles = info.getValue();
+			const role = roles?.[0] ?? "N/A";
 			const refinedRole = role
 				.replaceAll("_", " ")
 				.toLowerCase()
@@ -931,12 +934,12 @@ const columns = [
 	// }),
 	columnHelper.accessor("phoneNumber", {
 		header: "Phone Number",
-		cell: (info) => <span>{info.getValue()}</span>,
+		cell: (info) => <span>{info.getValue() ?? "-"}</span>,
 	}),
 	columnHelper.accessor("lastLogin", {
 		header: "Last Login",
 		cell: (info) => {
-			const value = info.getValue();
+			const value = info.getValue?.() ?? null;
 			if (!value || value === "N/A") return <span>N/A</span>;
 			const date = new Date(value);
 
@@ -974,8 +977,8 @@ const columns = [
 								initialValues={{
 									fullName: rowData.fullName,
 									email: rowData.email,
-									role: rowData.role,
-									phoneNumber: rowData.phoneNumber,
+									role: (rowData.roles?.[0] ?? "FRONT_DESK") as z.infer<typeof Role>,
+									phoneNumber: rowData.phoneNumber ?? "",
 								}}
 								staffId={rowData.id}
 								setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}

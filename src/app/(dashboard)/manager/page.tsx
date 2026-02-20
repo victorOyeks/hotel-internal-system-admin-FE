@@ -23,20 +23,17 @@ function HomePage() {
 		return notFound();
 	}
 
-	const dashboardData = use(
+	const id = currentHotel.id;
+
+	const overviewData = use(
 		queryClient.ensureQueryData({
-			queryKey: ["manager", "dashboardData", cookieData.userId],
+			queryKey: ["manager", "overview", id],
 			queryFn: async () => {
-				const res = await $fetch("@get/api/managers/dashboard/:hotelId", {
-					params: { hotelId: currentHotel?.id },
-					auth: {
-						type: "Bearer",
-						token: cookieData.token,
-					},
-					query: {},
+				const res = await $fetch("@get/api/managers/:hotelId/overview", {
+					params: { hotelId: id },
+					auth: { type: "Bearer", token: cookieData.token },
 					throw: true,
 				});
-
 				return res.data;
 			},
 		}),
@@ -44,20 +41,16 @@ function HomePage() {
 
 	const graphData = use(
 		queryClient.ensureQueryData({
-			queryKey: ["manager", "dashboardGraphData", cookieData.userId],
+			queryKey: ["manager", "dashboardGraphData", id],
 			queryFn: async () => {
 				const res = await $fetch(
 					"@get/api/managers/dashboard/:hotelId/earnings-graph",
 					{
-						params: { hotelId: currentHotel?.id },
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
+						params: { hotelId: id },
+						auth: { type: "Bearer", token: cookieData.token },
 						throw: true,
 					},
 				);
-
 				return res.data;
 			},
 		}),
@@ -68,13 +61,9 @@ function HomePage() {
 			queryKey: ["manager", "dashboardPerformanceData", cookieData.userId],
 			queryFn: async () => {
 				const res = await $fetch("@get/api/managers/dashboard-performance", {
-					auth: {
-						type: "Bearer",
-						token: cookieData.token,
-					},
+					auth: { type: "Bearer", token: cookieData.token },
 					throw: true,
 				});
-
 				return res.data;
 			},
 		}),
@@ -82,23 +71,17 @@ function HomePage() {
 
 	const { content } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["hotel-owner-bookings"],
+			queryKey: ["manager", "bookings", id],
 			queryFn: async () => {
 				const response = await $fetch(
 					"@get/api/managers/hotels/:hotelId/bookings",
 					{
-						params: {
-							hotelId: currentHotel.id,
-						},
-						query: {},
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
+						params: { hotelId: id },
+						query: { size: 7 },
+						auth: { type: "Bearer", token: cookieData.token },
 						throw: true,
 					},
 				);
-
 				return response.data;
 			},
 		}),
@@ -107,8 +90,8 @@ function HomePage() {
 	return (
 		<ManagerDashboard
 			breadcrumbs={breadcrumbs}
+			overviewData={overviewData}
 			graphData={graphData}
-			dashboardData={dashboardData}
 			dashboardPerformanceData={dashboardPerformanceData}
 			bookingData={content}
 		/>

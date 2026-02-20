@@ -8,9 +8,9 @@ export const Role = z.enum([
 	"HOTEL_OWNER",
 	"MANAGER",
 	"FRONT_DESK",
-	"MAINTENANCE",
 	"INVENTORY",
 	"RESTAURANT",
+	"MARKETER",
 	"RENTALS",
 	"SUPER_ADMIN",
 	"LAUNDRY",
@@ -345,12 +345,12 @@ const StaffDetails = z.object({
 	customId: z.string(),
 	fullName: z.string(),
 	email: z.email(),
-	phoneNumber: z.string(),
-	staffId: z.string(),
+	phoneNumber: z.string().optional().nullable(),
+	staffId: z.string().optional().nullable(),
 	userStatus: z.string(),
-	role: Role,
-	verified: z.boolean(),
-	lastLogin: z.string(),
+	roles: z.array(z.string()),
+	verified: z.boolean().optional().nullable(),
+	lastLogin: z.string().optional().nullable(),
 });
 
 export type StaffDetails = z.infer<typeof StaffDetails>;
@@ -607,7 +607,7 @@ const OnboardStaffRequest = z.object({
 	email: z.string(),
 	phoneNumber: z.string(),
 	staffId: z.string(),
-	role: Role,
+	roles: z.array(Role),
 	password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -2409,6 +2409,7 @@ const StockMovementResponse = z.object({
 
 export type StockMovementResponse = z.infer<typeof StockMovementResponse>;
 
+// Schemas for export responses
 export const ExportStockMovementsResponse = z.any(); // Byte stream
 export const ExportStockLevelsResponse = z.any(); // Byte stream
 export const ExportStockTakesResponse = z.any(); // Byte stream
@@ -2737,7 +2738,13 @@ export const schema = createSchema({
 	},
 	"@put/api/managers/:hotelId/:staffId": {
 		params: z.object({ hotelId: z.string(), staffId: z.string() }),
-		input: OnboardStaffRequest.partial().omit({ role: true }),
+		input: z.object({
+			fullName: z.string().optional(),
+			email: z.string().optional(),
+			phoneNumber: z.string().optional(),
+			staffId: z.string().optional(),
+			roles: z.array(Role).optional(),
+		}),
 		output: ApiResponseOnboardStaffResponse,
 	},
 	"@patch/api/managers/:hotelId/:staffId/reset-password": {
@@ -4216,19 +4223,6 @@ export const schema = createSchema({
 				.array(),
 		}),
 	},
-	"@get/api/managers/guest-logs": {
-		query: z
-			.object({
-				hotelId: z.string().optional().nullable(),
-				search: z.string().optional().nullable(),
-				status: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
-			})
-			.partial(),
-		output: ApiResponseObject,
-	},
-
 	"@get/api/managers/hotels/:hotelId/room-types": {
 		params: z.object({ hotelId: z.string() }),
 		output: ApiResponseObject,
@@ -4973,6 +4967,591 @@ export const schema = createSchema({
 		output: ApiResponseObject.extend({
 			data: Pagination.extend({
 				content: StockMovementResponse.array(),
+			}),
+		}),
+	},
+
+	// ==================== MANAGER OVERVIEW APIs ====================
+
+	"@get/api/managers/:hotelId/overview": {
+		params: z.object({ hotelId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				occupancyRate: z.number(),
+				totalCheckIns: z.number(),
+				totalCheckOuts: z.number(),
+				totalRooms: z.number(),
+				availableRooms: z.number(),
+				pendingApprovals: z.number(),
+				todayRevenue: z.number(),
+				staffCount: z.number(),
+				restaurantTodaySales: z.number(),
+				restaurantActiveOrders: z.number(),
+				laundryPendingOrders: z.number(),
+				laundryTodayRevenue: z.number(),
+				activeRentals: z.number(),
+				overdueRentals: z.number(),
+				lowStockCount: z.number(),
+				pendingRestockRequests: z.number(),
+				accommodationRevenue: z.number(),
+				restaurantRevenue: z.number(),
+				laundryRevenue: z.number(),
+				rentalRevenue: z.number(),
+				otherIncomeRevenue: z.number(),
+				selectedMonth: z.string(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/dashboard": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			period: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				totalExpenses: z.number(),
+				netProfit: z.number(),
+				netProfitMargin: z.number(),
+				cashBalance: z.number().optional().nullable(),
+				revenueGrowth: z.number().optional().nullable(),
+				expenseGrowth: z.number().optional().nullable(),
+				profitGrowth: z.number().optional().nullable(),
+				topRevenueStreams: z.array(z.object({
+					source: z.string(),
+					amount: z.number(),
+					percentage: z.number(),
+					transactionCount: z.number().optional().nullable(),
+					paidAmount: z.number().optional().nullable(),
+					pendingAmount: z.number().optional().nullable(),
+				})).optional().nullable(),
+				topExpenseCategories: z.array(z.object({
+					category: z.string(),
+					categoryDisplay: z.string().optional().nullable(),
+					amount: z.number(),
+					percentage: z.number(),
+					transactionCount: z.number().optional().nullable(),
+				})).optional().nullable(),
+				totalOutstandingReceivables: z.number().optional().nullable(),
+				totalOverduePayables: z.number().optional().nullable(),
+				occupancyRate: z.number().optional().nullable(),
+				averageDailyRate: z.number().optional().nullable(),
+				revenuePerAvailableRoom: z.number().optional().nullable(),
+				financialAlerts: z.array(z.string()).optional().nullable(),
+				trendData: z.array(z.object({
+					periodStart: z.string().optional().nullable(),
+					periodEnd: z.string().optional().nullable(),
+					periodLabel: z.string().optional().nullable(),
+					revenue: z.number(),
+					expenses: z.number(),
+					profit: z.number(),
+				})).optional().nullable(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/revenue": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			period: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				totalReceivedRevenue: z.number().optional().nullable(),
+				totalPendingRevenue: z.number().optional().nullable(),
+				roomBookingsRevenue: z.number(),
+				restaurantRevenue: z.number(),
+				laundryRevenue: z.number(),
+				rentalsRevenue: z.number(),
+				otherIncomeRevenue: z.number(),
+				revenueGrowthPercentage: z.number().optional().nullable(),
+				averageDailyRevenue: z.number().optional().nullable(),
+				revenueBySource: z.array(z.object({
+					source: z.string(),
+					amount: z.number(),
+					paidAmount: z.number().optional().nullable(),
+					pendingAmount: z.number().optional().nullable(),
+					transactionCount: z.number(),
+					percentage: z.number(),
+				})).optional().nullable(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/expenses": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			period: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalExpenses: z.number(),
+				expenseGrowthPercentage: z.number().optional().nullable(),
+				expensesByCategory: z.array(z.object({
+					category: z.string(),
+					categoryDisplay: z.string().optional().nullable(),
+					amount: z.number(),
+					percentage: z.number(),
+					transactionCount: z.number().optional().nullable(),
+				})).optional().nullable(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/profit-and-loss": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			period: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				grossRevenue: z.number(),
+				netRevenue: z.number().optional().nullable(),
+				roomRevenue: z.number().optional().nullable(),
+				foodAndBeverageRevenue: z.number().optional().nullable(),
+				laundryRevenue: z.number().optional().nullable(),
+				rentalRevenue: z.number().optional().nullable(),
+				otherRevenue: z.number().optional().nullable(),
+				totalOperatingExpenses: z.number(),
+				staffExpenses: z.number().optional().nullable(),
+				utilitiesExpenses: z.number().optional().nullable(),
+				maintenanceExpenses: z.number().optional().nullable(),
+				marketingExpenses: z.number().optional().nullable(),
+				administrativeExpenses: z.number().optional().nullable(),
+				otherOperatingExpenses: z.number().optional().nullable(),
+				operatingProfit: z.number().optional().nullable(),
+				netProfit: z.number(),
+				netProfitMargin: z.number(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/comprehensive": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalBookingRevenue: z.number(),
+				totalBookings: z.number().optional().nullable(),
+				checkIns: z.number().optional().nullable(),
+				checkOuts: z.number().optional().nullable(),
+				averageBookingValue: z.number().optional().nullable(),
+				totalRestaurantRevenue: z.number().optional().nullable(),
+				totalKitchenRevenue: z.number().optional().nullable(),
+				totalBarRevenue: z.number().optional().nullable(),
+				totalLaundryRevenue: z.number().optional().nullable(),
+				laundryOrdersCount: z.number().optional().nullable(),
+				totalRentalRevenue: z.number().optional().nullable(),
+				rentalOrdersCount: z.number().optional().nullable(),
+				totalOtherIncome: z.number().optional().nullable(),
+				revenueGrowthPercentage: z.number().optional().nullable(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/expenditures": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			category: z.string().optional(),
+			status: z.string().optional(),
+			search: z.string().optional(),
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z.array(z.object({
+					id: z.string(),
+					referenceNumber: z.string().optional().nullable(),
+					title: z.string(),
+					description: z.string().optional().nullable(),
+					category: z.string(),
+					amount: z.number(),
+					status: z.string(),
+					vendorName: z.string().optional().nullable(),
+					dueDate: z.string().optional().nullable(),
+					paidDate: z.string().optional().nullable(),
+					createdAt: z.string(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/financials/other-income": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			category: z.string().optional(),
+			status: z.string().optional(),
+			search: z.string().optional(),
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z.array(z.object({
+					id: z.string(),
+					referenceNumber: z.string().optional().nullable(),
+					title: z.string(),
+					description: z.string().optional().nullable(),
+					category: z.string(),
+					amount: z.number(),
+					status: z.string(),
+					customerName: z.string().optional().nullable(),
+					incomeDate: z.string().optional().nullable(),
+					createdAt: z.string(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/restaurant/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				periodTotals: z.object({
+					totalRevenue: z.number(),
+					averageDailyRevenue: z.number().optional().nullable(),
+					highestDayRevenue: z.number().optional().nullable(),
+					lowestDayRevenue: z.number().optional().nullable(),
+					totalOrders: z.number().optional().nullable(),
+					totalItemsSold: z.number().optional().nullable(),
+				}).optional().nullable(),
+				dailySummaries: z.array(z.object({
+					date: z.string(),
+					dayTotal: z.number(),
+				})).optional().nullable(),
+				statistics: z.object({
+					peakRevenueDate: z.string().optional().nullable(),
+					lowestRevenueDate: z.string().optional().nullable(),
+					mostPopularDestination: z.string().optional().nullable(),
+				}).optional().nullable(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/restaurant/detailed-report": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject,
+	},
+
+	"@get/api/managers/:hotelId/laundry/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalOrders: z.number(),
+				pendingOrders: z.number(),
+				inProgressOrders: z.number(),
+				completedOrders: z.number(),
+				cancelledOrders: z.number(),
+				totalRevenue: z.number(),
+				outstandingAmount: z.number(),
+				averageOrderValue: z.number(),
+				recentOrders: z.array(z.object({
+					orderId: z.string(),
+					customId: z.string().optional().nullable(),
+					guestName: z.string().optional().nullable(),
+					roomIdentifier: z.string().optional().nullable(),
+					status: z.string(),
+					totalAmount: z.number(),
+					amountPaid: z.number(),
+					createdAt: z.string().optional().nullable(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/rentals/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalOrders: z.number(),
+				activeRentals: z.number(),
+				overdueRentals: z.number(),
+				completedRentals: z.number(),
+				cancelledRentals: z.number(),
+				totalRevenue: z.number(),
+				outstandingAmount: z.number(),
+				averageOrderValue: z.number(),
+				recentOrders: z.array(z.object({
+					orderId: z.string(),
+					customId: z.string().optional().nullable(),
+					customerName: z.string().optional().nullable(),
+					itemName: z.string().optional().nullable(),
+					status: z.string(),
+					totalAmount: z.number(),
+					amountPaid: z.number(),
+					createdAt: z.string().optional().nullable(),
+					expectedReturnDate: z.string().optional().nullable(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/bar/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				totalItems: z.number(),
+				availableItems: z.number(),
+				lowStockItems: z.number(),
+				outOfStockItems: z.number(),
+				averageOrderValue: z.number(),
+				recentSales: z.array(z.object({
+					saleId: z.string(),
+					destination: z.string().optional().nullable(),
+					totalAmount: z.number(),
+					note: z.string().optional().nullable(),
+					soldAt: z.string().optional().nullable(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/accommodation/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				totalRooms: z.number(),
+				availableRooms: z.number(),
+				occupiedRooms: z.number(),
+				occupancyRate: z.number(),
+				totalCheckIns: z.number(),
+				totalCheckOuts: z.number(),
+				totalBookings: z.number(),
+				averageRoomRate: z.number(),
+				recentBookings: z.array(z.object({
+					bookingId: z.string(),
+					guestName: z.string().optional().nullable(),
+					roomIdentifier: z.string().optional().nullable(),
+					roomType: z.string().optional().nullable(),
+					status: z.string(),
+					amountPaid: z.number().nullable(),
+					checkInDate: z.string().optional().nullable(),
+					checkOutDate: z.string().optional().nullable(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/inventory/summary": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalItems: z.number(),
+				available: z.number(),
+				lowInStock: z.number(),
+				outOfStock: z.number(),
+			}),
+		}),
+	},
+
+	"@get/api/managers/:hotelId/notifications": {
+		params: z.object({ hotelId: z.string() }),
+		query: z.object({
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				notifications: z.array(z.object({
+					id: z.string(),
+					title: z.string(),
+					message: z.string(),
+					type: z.string().optional().nullable(),
+					category: z.string().optional().nullable(),
+					actionLink: z.string().optional().nullable(),
+					referenceId: z.string().optional().nullable(),
+					icon: z.string().optional().nullable(),
+					color: z.string().optional().nullable(),
+					isRead: z.boolean(),
+					readAt: z.string().optional().nullable(),
+					createdAt: z.string(),
+				})),
+				totalElements: z.number(),
+				totalPages: z.number(),
+				currentPage: z.number(),
+				unreadCount: z.number(),
+			}),
+		}),
+	},
+
+	// ==================== MANAGER APPROVAL APIs ====================
+
+	"@get/api/manager/approvals/pending": {
+		query: z.object({
+			hotelId: z.string().optional(),
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z.array(z.object({
+					id: z.string(),
+					hotelId: z.string(),
+					entityType: z.string(),
+					entityId: z.string(),
+					entityReference: z.string().optional().nullable(),
+					actionType: z.string(),
+					status: z.string(),
+					requestPayload: z.string().optional().nullable(),
+					previousState: z.string().optional().nullable(),
+					reason: z.string().optional().nullable(),
+					requestedBy: z.string(),
+					requestedByName: z.string().optional().nullable(),
+					reviewedBy: z.string().optional().nullable(),
+					reviewedByName: z.string().optional().nullable(),
+					reviewComments: z.string().optional().nullable(),
+					reviewedAt: z.string().optional().nullable(),
+					executionStatus: z.string().optional().nullable(),
+					executionError: z.string().optional().nullable(),
+					createdAt: z.string(),
+					updatedAt: z.string().optional().nullable(),
+				})),
+			}),
+		}),
+	},
+
+	"@get/api/manager/approvals/pending/summary": {
+		query: z.object({
+			hotelId: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				pendingPurchaseOrders: z.number(),
+				pendingGRNs: z.number(),
+				pendingStockTakes: z.number(),
+				totalPending: z.number(),
+			}),
+		}),
+	},
+
+	"@get/api/manager/approvals/history": {
+		query: z.object({
+			hotelId: z.string().optional(),
+			status: z.string().optional(),
+			entityType: z.string().optional(),
+			actionType: z.string().optional(),
+			requestedBy: z.string().optional(),
+			startDate: z.string().optional(),
+			endDate: z.string().optional(),
+			search: z.string().optional(),
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z.array(z.object({
+					id: z.string(),
+					hotelId: z.string(),
+					entityType: z.string(),
+					entityId: z.string(),
+					entityReference: z.string().optional().nullable(),
+					actionType: z.string(),
+					status: z.string(),
+					requestPayload: z.string().optional().nullable(),
+					previousState: z.string().optional().nullable(),
+					reason: z.string().optional().nullable(),
+					requestedBy: z.string(),
+					requestedByName: z.string().optional().nullable(),
+					reviewedBy: z.string().optional().nullable(),
+					reviewedByName: z.string().optional().nullable(),
+					reviewComments: z.string().optional().nullable(),
+					reviewedAt: z.string().optional().nullable(),
+					executionStatus: z.string().optional().nullable(),
+					createdAt: z.string(),
+				})),
+			}),
+		}),
+	},
+
+	"@post/api/manager/approvals/:id/approve": {
+		params: z.object({ id: z.string() }),
+		input: z.object({
+			comments: z.string().optional(),
+		}).optional(),
+		query: z.object({
+			hotelId: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject,
+	},
+
+	"@post/api/manager/approvals/:id/reject": {
+		params: z.object({ id: z.string() }),
+		input: z.object({
+			comments: z.string(),
+		}),
+		query: z.object({
+			hotelId: z.string().optional(),
+		}).partial(),
+		output: ApiResponseObject,
+	},
+
+	// ==================== MANAGER GUEST LOGS ====================
+
+	"@get/api/managers/guest-logs": {
+		query: z.object({
+			hotelId: z.string().optional(),
+			search: z.string().optional(),
+			status: z.string().optional(),
+			page: z.coerce.number().optional(),
+			size: z.coerce.number().optional(),
+		}).partial(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z.array(z.object({
+					customId: z.string(),
+					guestName: z.string(),
+					phoneNumber: z.string().optional().nullable(),
+					roomIdentifier: z.string().optional().nullable(),
+					bookingStatus: z.string(),
+					checkInDate: z.string().optional().nullable(),
+					checkOutDate: z.string().optional().nullable(),
+				})),
 			}),
 		}),
 	},

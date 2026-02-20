@@ -20,10 +20,13 @@ const hotelRoles = [
 	"HOTEL_OWNER",
 	"MANAGER",
 	"FRONT_DESK",
-	"MAINTENANCE",
 	"INVENTORY",
 	"RESTAURANT",
+	"MARKETER",
+	"RENTALS",
 	"SUPER_ADMIN",
+	"LAUNDRY",
+	"FINANCIALS",
 ] as const;
 
 const loadSearchParams = createLoader({

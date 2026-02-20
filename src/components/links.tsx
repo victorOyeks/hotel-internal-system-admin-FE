@@ -2,6 +2,8 @@ import {
 	BookOpenIcon,
 	BookTextIcon,
 	BarChart3Icon,
+	BellIcon,
+	Building2Icon,
 	ChartNoAxesCombined,
 	FolderClosedIcon,
 	HomeIcon,
@@ -9,6 +11,7 @@ import {
 	IdCardIcon,
 	MessagesSquare,
 	PlusIcon,
+	ShieldCheckIcon,
 	ToolCaseIcon,
 	TruckIcon,
 	PackageIcon,
@@ -50,27 +53,44 @@ export const hotelOwnerLinks = [
 
 export const managerOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
+	{
+		title: "Approvals",
+		icon: <ShieldCheckIcon />,
+		url: "/dashboard/approvals",
+	},
 	{ title: "Room Management", icon: <HotelIcon />, url: "/dashboard/rooms" },
 	{
-		title: "Manage bookings",
+		title: "Manage Bookings",
 		icon: <BookTextIcon />,
 		url: "/dashboard/bookings",
 	},
+	{ title: "Guests", icon: <UsersIcon />, url: "/dashboard/guests" },
 	{
 		title: "Staff Management",
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
 	{
+		title: "Operations",
+		icon: <Building2Icon />,
+		url: "/dashboard/operations",
+	},
+	{
 		title: "Financials",
 		icon: <ChartNoAxesCombined />,
 		url: "/dashboard/financials",
 	},
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
-	{ title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
-	// { title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/dashboard/settings/permissions" },
-	// { title: "Task Management", icon: <MonitorCheckIcon />, url: "/dashboard/tasks" },
+	{
+		title: "Notifications",
+		icon: <BellIcon />,
+		url: "/dashboard/notifications",
+	},
+	{
+		title: "Activity Log",
+		icon: <BookOpenIcon />,
+		url: "/dashboard/activity",
+	},
 ];
 
 export const inventoryOfficerLinks = [

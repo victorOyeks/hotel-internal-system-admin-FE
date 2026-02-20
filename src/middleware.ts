@@ -10,7 +10,7 @@ const roleToPath: Record<HotelRole, string> = {
 	HOTEL_OWNER: "/hotel-owner",
 	MANAGER: "/manager",
 	INVENTORY: "/inventory",
-	MAINTENANCE: "/maintenance",
+	MARKETER: "/marketer",
 	RENTALS: "/rentals",
 	SUPER_ADMIN: "/admin",
 	LAUNDRY: "/laundry",

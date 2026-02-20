@@ -1,20 +1,26 @@
 "use client";
+
 import {
 	ArrowLeftToLineIcon,
 	ArrowRightToLineIcon,
 	BedDoubleIcon,
 	BedIcon,
-	BedSingleIcon,
 	CalendarIcon,
-	DollarSign,
+	ClipboardCheckIcon,
+	DollarSignIcon,
+	PackageIcon,
+	ShirtIcon,
 	TrendingUpIcon,
+	UsersIcon,
+	UtensilsIcon,
+	WrenchIcon,
 } from "lucide-react";
 import {
+	Area,
+	AreaChart,
 	Bar,
 	BarChart,
 	type DotProps,
-	Line,
-	LineChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -27,81 +33,73 @@ import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
 import { useLayoutEffect, useMemo } from "react";
 import { BookingsData } from "./dashboard-table";
+import { StatCard, QuickStatCard } from "./stat-card";
+import { DonutChart } from "./donut-chart";
 import type { APIOutput } from "@/lib/action-utils";
 import type { ManagerBookingViewResponse } from "@/lib/fetch";
 import Link from "next/link";
 
-function EarningsSideA({
-	dashboardData,
-}: {
-	dashboardData: ManagerDashboardData;
-}) {
-	const earnings = [
-		{
-			title: "Earnings",
-			icon: DollarSign,
-			value: formatCurrency(dashboardData.totalEarnings, "short"),
-		},
-		{
-			title: "Occupancy Rate",
-			icon: BedIcon,
-			value: `${dashboardData.occupancyRate.toFixed(0)}%`,
-		},
-		{
-			title: "Check In",
-			icon: ArrowRightToLineIcon,
-			value: dashboardData.totalCheckIns,
-		},
-		{
-			title: "Check Out",
-			icon: ArrowLeftToLineIcon,
-			value: dashboardData.totalCheckOuts,
-		},
-		{
-			title: "Total Rooms",
-			icon: BedSingleIcon,
-			value: dashboardData.totalRooms,
-		},
-		{
-			title: "Available Rooms",
-			icon: BedDoubleIcon,
-			value: dashboardData.totalAvailableRooms,
-		},
-	];
+type OverviewData = APIOutput<"@get/api/managers/:hotelId/overview">["data"];
+type EarningsGraphData =
+	APIOutput<"@get/api/managers/dashboard/:hotelId/earnings-graph">["data"];
+type PerformanceData =
+	APIOutput<"@get/api/managers/dashboard-performance">["data"];
+
+// ==================== KPI Row ====================
+function KPIRow({ data }: { data: OverviewData }) {
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-			{earnings.map((earning) => (
-				<div
-					key={earning.title}
-					className="bg-white p-2 md:pl-4 rounded-2xl flex items-center space-x-2"
-				>
-					<div className="size-10 md:size-12 aspect-square bg-primary-5/40 rounded-full flex items-center justify-center">
-						<earning.icon className="text-primary-1 size-5" />
-					</div>
-					<div className="flex-1">
-						<p className="text-xs md:text-sm text-gray-400">{earning.title}</p>
-						<p className="text-xl md:text-2xl text-primary font-semibold font-inter tracking-[0.01em] ">
-							{earning.value}
-						</p>
-					</div>
-				</div>
-			))}
+		<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
+			<StatCard
+				title="Total Revenue"
+				value={data.totalRevenue}
+				icon={DollarSignIcon}
+				isCurrency
+				subtitle="this month"
+			/>
+			<StatCard
+				title="Occupancy Rate"
+				value={`${data.occupancyRate.toFixed(0)}%`}
+				icon={BedIcon}
+				subtitle={`${data.availableRooms} of ${data.totalRooms} available`}
+			/>
+			<StatCard
+				title="Check-ins"
+				value={data.totalCheckIns}
+				icon={ArrowRightToLineIcon}
+				subtitle="this month"
+			/>
+			<StatCard
+				title="Check-outs"
+				value={data.totalCheckOuts}
+				icon={ArrowLeftToLineIcon}
+				subtitle="this month"
+			/>
+			<StatCard
+				title="Pending Approvals"
+				value={data.pendingApprovals}
+				icon={ClipboardCheckIcon}
+				href="/dashboard/approvals"
+				iconBgClass="bg-amber-50"
+				iconColorClass="text-amber-600"
+			/>
+			<StatCard
+				title="Active Staff"
+				value={data.staffCount}
+				icon={UsersIcon}
+				href="/dashboard/staff-management"
+			/>
 		</div>
 	);
 }
 
+// ==================== Revenue Trend Chart ====================
 const CustomDot = (
 	props: DotProps & { payload: { month: string; totalEarnings: number } },
 ) => {
 	const { cx, cy, payload } = props;
-	// Guard against undefined coordinates
-	if (cx === undefined || cy === undefined) {
-		return null;
-	}
-	// Only show dot for NOV (the
+	if (cx === undefined || cy === undefined) return null;
 	return (
 		<g>
-			{/* White circle background */}
 			<circle
 				cx={cx}
 				cy={cy}
@@ -110,7 +108,6 @@ const CustomDot = (
 				stroke="#22c55e"
 				strokeWidth={3}
 			/>
-			{/* Green label above the dot */}
 			<foreignObject
 				x={cx - 25}
 				y={cy - 40}
@@ -119,10 +116,7 @@ const CustomDot = (
 			>
 				<div className="flex justify-center">
 					<span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-						{payload.totalEarnings.toLocaleString("en-NG", {
-							style: "currency",
-							currency: "NGN",
-						})}
+						{formatCurrency(payload.totalEarnings, "short")}
 					</span>
 				</div>
 			</foreignObject>
@@ -130,41 +124,7 @@ const CustomDot = (
 	);
 };
 
-function CurvedLineChart({ graphData }: { graphData: EarningsGraphData }) {
-	return (
-		<ResponsiveContainer width="100%" height="100%">
-			<LineChart
-				data={graphData}
-				margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
-			>
-				<XAxis
-					dataKey="month"
-					axisLine={false}
-					tickLine={false}
-					tick={{ fontSize: 12, fill: "#9ca3af" }}
-					className="text-gray-400"
-				/>
-				<YAxis hide />
-				<Tooltip<number, string>
-					cursor={false}
-					formatter={(value) => {
-						return [formatCurrency(value), "Total Earnings"];
-					}}
-				/>
-				<Line
-					type="monotone"
-					dataKey="totalEarnings"
-					stroke="#22c55e"
-					strokeWidth={3}
-					dot={false}
-					activeDot={CustomDot as ActiveShape<DotProps>}
-				/>
-			</LineChart>
-		</ResponsiveContainer>
-	);
-}
-
-export function EarningsSideB({ graphData }: { graphData: EarningsGraphData }) {
+function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 	const currentMonthEarnings = useMemo(
 		() =>
 			graphData.reduce(
@@ -178,198 +138,304 @@ export function EarningsSideB({ graphData }: { graphData: EarningsGraphData }) {
 		[graphData],
 	);
 
-	const totalEarningsStr = useMemo(
-		() => formatCurrency(currentMonthEarnings),
-		[currentMonthEarnings],
-	);
 	return (
-		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
-			<Button
-				variant={"outline"}
-				size={"sm"}
-				className="shadow-none text-gray-500"
-			>
-				<CalendarIcon />
-				<span>This month</span>
-			</Button>
-
-			<div>
-				<h1 className="text-3xl font-semibold text-primary">
-					{totalEarningsStr}
-				</h1>
-				<p className="text-gray-500 text-sm flex items-center space-x-1">
-					<span>Total profit</span>
-					<span className="text-green-500 font-semibold flex items-center space-x-1">
-						<TrendingUpIcon className="inline size-4" />
-						<span>+20%</span>
-					</span>
-				</p>
+		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-2xl">
+			<div className="flex items-center justify-between mb-4">
+				<div>
+					<h3 className="text-sm font-medium text-gray-600">Revenue Trend</h3>
+					<p className="text-2xl font-semibold text-primary">
+						{formatCurrency(currentMonthEarnings)}
+					</p>
+					<p className="text-xs text-gray-400">This month</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="shadow-none text-gray-500"
+				>
+					<CalendarIcon className="size-4" />
+					<span>Monthly</span>
+				</Button>
 			</div>
-
-			<div className="h-64 md:h-38 w-full">
-				<CurvedLineChart graphData={graphData} />
+			<div className="h-56 w-full">
+				<ResponsiveContainer width="100%" height="100%">
+					<AreaChart
+						data={graphData}
+						margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
+					>
+						<defs>
+							<linearGradient
+								id="revenueGradient"
+								x1="0"
+								y1="0"
+								x2="0"
+								y2="1"
+							>
+								<stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+								<stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+							</linearGradient>
+						</defs>
+						<XAxis
+							dataKey="month"
+							axisLine={false}
+							tickLine={false}
+							tick={{ fontSize: 11, fill: "#9ca3af" }}
+						/>
+						<YAxis
+							axisLine={false}
+							tickLine={false}
+							tick={{ fontSize: 11, fill: "#9ca3af" }}
+							tickFormatter={(v) => formatCurrency(v, "short")}
+						/>
+						<Tooltip
+							cursor={false}
+							formatter={(value: number) => [
+								formatCurrency(value),
+								"Revenue",
+							]}
+							contentStyle={{
+								backgroundColor: "#fff",
+								borderRadius: "8px",
+								border: "none",
+								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+								fontSize: "12px",
+							}}
+						/>
+						<Area
+							type="monotone"
+							dataKey="totalEarnings"
+							stroke="#22c55e"
+							strokeWidth={2.5}
+							fill="url(#revenueGradient)"
+							dot={false}
+							activeDot={CustomDot as ActiveShape<DotProps>}
+						/>
+					</AreaChart>
+				</ResponsiveContainer>
 			</div>
 		</div>
 	);
 }
 
-function DashboardHero({
-	dashboardData,
-	graphData,
-}: {
-	graphData: EarningsGraphData;
-	dashboardData: ManagerDashboardData;
-}) {
+// ==================== Revenue By Department Donut ====================
+function RevenueDepartmentChart({ data }: { data: OverviewData }) {
+	const chartData = useMemo(
+		() =>
+			[
+				{
+					name: "Accommodation",
+					value: data.accommodationRevenue,
+					color: "#6366f1",
+				},
+				{
+					name: "Restaurant",
+					value: data.restaurantRevenue,
+					color: "#f59e0b",
+				},
+				{ name: "Laundry", value: data.laundryRevenue, color: "#06b6d4" },
+				{ name: "Rentals", value: data.rentalRevenue, color: "#8b5cf6" },
+				{
+					name: "Other Income",
+					value: data.otherIncomeRevenue,
+					color: "#ec4899",
+				},
+			].filter((item) => item.value > 0),
+		[data],
+	);
+
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-			<EarningsSideA dashboardData={dashboardData} />
-			<EarningsSideB graphData={graphData} />
+		<DonutChart
+			data={chartData}
+			title="Revenue by Department"
+			centerValue={formatCurrency(data.totalRevenue, "short")}
+			centerLabel="Total Revenue"
+		/>
+	);
+}
+
+// ==================== Operations Quick Stats ====================
+function OperationsQuickStats({ data }: { data: OverviewData }) {
+	return (
+		<div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+			<QuickStatCard
+				title="Restaurant"
+				primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
+				primaryLabel="today's sales"
+				secondaryValue={data.restaurantActiveOrders}
+				secondaryLabel="active orders"
+				icon={UtensilsIcon}
+				accentColor="bg-orange-50 text-orange-600"
+				href="/dashboard/operations"
+			/>
+			<QuickStatCard
+				title="Laundry"
+				primaryValue={data.laundryPendingOrders}
+				primaryLabel="pending orders"
+				secondaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
+				secondaryLabel="today's revenue"
+				icon={ShirtIcon}
+				accentColor="bg-cyan-50 text-cyan-600"
+				href="/dashboard/operations"
+			/>
+			<QuickStatCard
+				title="Rentals"
+				primaryValue={data.activeRentals}
+				primaryLabel="active rentals"
+				secondaryValue={data.overdueRentals}
+				secondaryLabel="overdue"
+				icon={PackageIcon}
+				accentColor="bg-violet-50 text-violet-600"
+				href="/dashboard/operations"
+			/>
+			<QuickStatCard
+				title="Inventory"
+				primaryValue={data.lowStockCount}
+				primaryLabel="low stock alerts"
+				secondaryValue={data.pendingRestockRequests}
+				secondaryLabel="pending restocks"
+				icon={WrenchIcon}
+				accentColor="bg-rose-50 text-rose-600"
+				href="/dashboard/inventory"
+			/>
 		</div>
 	);
 }
 
+// ==================== Branch Performance ====================
 function BranchPerformance({
-	dashboardPerformanceData,
-}: {
-	dashboardPerformanceData: PerformanceData;
-}) {
-	return (
-		<div className="bg-white p-4 md:p-6 rounded-3xl space-y-4">
-			<h2 className="text-xl font-semibold text-primary">Branch Performance</h2>
-			{/* Placeholder for branch performance chart */}
-			<div className="h-64 md:h-48 w-full">
-				<BranchPerformanceChart
-					dashboardPerformanceData={dashboardPerformanceData}
-				/>
-			</div>
-		</div>
-	);
-}
-
-function BranchPerformanceChart({
 	dashboardPerformanceData,
 }: {
 	dashboardPerformanceData: PerformanceData;
 }) {
 	const data = useMemo(
 		() =>
-			dashboardPerformanceData.map((item) => ({
-				name: item.hotelName,
-				value: item.performancePercentage,
-				/// ${totalEarnings}K
-				yLabel: item.performancePercentage,
-			})),
+			dashboardPerformanceData
+				.sort((a, b) => b.performancePercentage - a.performancePercentage)
+				.slice(0, 5)
+				.map((item) => ({
+					name: item.hotelName,
+					shortName:
+						item.hotelName.length > 12
+							? `${item.hotelName.slice(0, 12)}…`
+							: item.hotelName,
+					value: item.performancePercentage,
+				})),
 		[dashboardPerformanceData],
 	);
-	return (
-		<ResponsiveContainer width="100%" height={240}>
-			<BarChart
-				data={data}
-				margin={{ top: 20, right: 10, left: -30, bottom: 5 }}
-				barCategoryGap="20%"
-			>
-				<YAxis
-					dataKey="value"
-					axisLine={false}
-					tickLine={false}
-					tick={{ fontSize: 11, fill: "var(--color-primary-1)" }}
-					tickFormatter={(_, i) => `${data[i].yLabel}%`}
-				/>
-				<XAxis
-					dataKey="name"
-					axisLine={false}
-					tickLine={false}
-					tick={{ fontSize: 11, fill: "var(--color-primary-1)" }}
-				/>
-				<Bar
-					dataKey="value"
-					fill="var(--primary-5)"
-					radius={[6, 6, 6, 6]}
-					maxBarSize={20}
-				/>
-				<Tooltip
-					contentStyle={{
-						backgroundColor: "#fff",
-						borderRadius: "8px",
-						border: "none",
-						boxShadow:
-							"0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-					}}
-					itemStyle={{ color: "#000" }}
-					cursor={false}
-					formatter={(value: number) => [`${value}%`, "Profit"]}
-				/>
-			</BarChart>
-		</ResponsiveContainer>
-	);
-}
-
-function _HotelSuits() {
-	const suits = [
-		{
-			name: "Executive Suite",
-			pricePerNight: 150000,
-		},
-		{
-			name: "Deluxe Suite",
-			pricePerNight: 120000,
-		},
-		{
-			name: "Standard Suite",
-			pricePerNight: 80000,
-		},
-		{
-			name: "Budget Suite",
-			pricePerNight: 50000,
-		},
-	];
 
 	return (
-		<div
-			className="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-3 md:gap-4"
-			style={{
-				scrollbarWidth: "none",
-				scrollbarColor: "var(--primary-5) transparent",
-			}}
-		>
-			{suits.map((suit) => (
-				<div
-					key={suit.name}
-					className="bg-white p-2 rounded-3xl flex-shrink-0 border border-primary-5/50 flex flex-col md:flex-row md:items-center gap-y-2 md:space-x-2"
-				>
-					<div className="md:size-12 w-full aspect-square rounded-xl bg-primary-5/10" />
-
-					<div className="pl-1 md:pl-0">
-						<p className="text-xs md:text-sm text-gray-500">{suit.name}</p>
-						<p>
-							<span className="md:text-lg font-semibold text-primary">
-								{formatCurrency(suit.pricePerNight)}
-							</span>
-							<span className="text-xs text-gray-500">/night</span>
-						</p>
-					</div>
-				</div>
-			))}
+		<div className="bg-white p-4 md:p-6 rounded-2xl">
+			<div className="flex items-center justify-between mb-3">
+				<h3 className="text-sm font-medium text-gray-600">
+					Branch Performance
+				</h3>
+				{dashboardPerformanceData.length > 5 && (
+					<span className="text-xs text-gray-400">Top 5</span>
+				)}
+			</div>
+			<div className="w-full" style={{ height: Math.max(140, data.length * 32 + 30) }}>
+				<ResponsiveContainer width="100%" height="100%">
+					<BarChart
+						data={data}
+						layout="vertical"
+						margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+						barCategoryGap="25%"
+					>
+						<XAxis type="number" hide domain={[0, 100]} />
+						<YAxis
+							type="category"
+							dataKey="shortName"
+							axisLine={false}
+							tickLine={false}
+							tick={{ fontSize: 11, fill: "#6b7280" }}
+							width={100}
+						/>
+						<Bar
+							dataKey="value"
+							fill="var(--primary-5)"
+							radius={[0, 6, 6, 0]}
+							maxBarSize={16}
+							label={{
+								position: "right",
+								fontSize: 11,
+								fill: "#374151",
+								formatter: (v: number) => `${v}%`,
+							}}
+						/>
+						<Tooltip
+							contentStyle={{
+								backgroundColor: "#fff",
+								borderRadius: "8px",
+								border: "none",
+								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+								fontSize: "12px",
+							}}
+							cursor={{ fill: "rgba(0,0,0,0.04)" }}
+							formatter={(value: number, _name: string, props: { payload: { name: string } }) => [
+								`${value}%`,
+								props.payload.name,
+							]}
+						/>
+					</BarChart>
+				</ResponsiveContainer>
+			</div>
 		</div>
 	);
 }
 
-type ManagerDashboardData =
-	APIOutput<"@get/api/managers/dashboard/:hotelId">["data"];
-type EarningsGraphData =
-	APIOutput<"@get/api/managers/dashboard/:hotelId/earnings-graph">["data"];
-type PerformanceData =
-	APIOutput<"@get/api/managers/dashboard-performance">["data"];
+// ==================== Today's Snapshot ====================
+function TodaySnapshot({ data }: { data: OverviewData }) {
+	return (
+		<div className="bg-white p-4 rounded-2xl">
+			<h3 className="text-sm font-medium text-gray-600 mb-3">
+				Today&apos;s Snapshot
+			</h3>
+			<div className="space-y-3">
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500">Revenue</span>
+					<span className="text-sm font-semibold text-primary">
+						{formatCurrency(data.todayRevenue, "short")}
+					</span>
+				</div>
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500">Available Rooms</span>
+					<span className="text-sm font-semibold text-primary">
+						{data.availableRooms}/{data.totalRooms}
+					</span>
+				</div>
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500">Pending Approvals</span>
+					<span className="text-sm font-semibold text-amber-600">
+						{data.pendingApprovals}
+					</span>
+				</div>
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500">Laundry Pending</span>
+					<span className="text-sm font-semibold text-cyan-600">
+						{data.laundryPendingOrders}
+					</span>
+				</div>
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500">Overdue Rentals</span>
+					<span className="text-sm font-semibold text-red-500">
+						{data.overdueRentals}
+					</span>
+				</div>
+			</div>
+		</div>
+	);
+}
 
+// ==================== Main Dashboard ====================
 export function ManagerDashboard({
 	breadcrumbs = [],
-	dashboardData,
+	overviewData,
 	graphData,
 	dashboardPerformanceData,
 	bookingData,
 }: {
 	breadcrumbs: Breadcrumb[];
-	dashboardData: ManagerDashboardData;
+	overviewData: OverviewData;
 	graphData: EarningsGraphData;
 	dashboardPerformanceData: PerformanceData;
 	bookingData: ManagerBookingViewResponse[];
@@ -384,20 +450,46 @@ export function ManagerDashboard({
 	}, [breadcrumbs, setBreadCrumb]);
 
 	return (
-		<div className="p-4 md:p-6 space-y-2 md:space-y-4">
-			<DashboardHero graphData={graphData} dashboardData={dashboardData} />
-			<BranchPerformance dashboardPerformanceData={dashboardPerformanceData} />
-			{/* <HotelSuits /> */}
-			<section className="bg-card p-2 rounded-2xl md:rounded-4xl">
-				<div className="flex items-center justify-between">
-					<h2 className="text-xl p-2">Bookings</h2>
+		<div className="p-4 md:p-6 space-y-3 md:space-y-4 pb-4">
+			{/* KPI Row */}
+			<KPIRow data={overviewData} />
 
-					<Button variant={"link"} asChild>
-						<Link href={"/dashboard/bookings"}>View all</Link>
-					</Button>
+			{/* Charts Row: Revenue Trend + Revenue by Department */}
+			<div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+				<div className="lg:col-span-3">
+					<RevenueTrendChart graphData={graphData} />
 				</div>
-				<BookingsData bookings={bookingData} />
-			</section>
+				<div className="lg:col-span-2">
+					<RevenueDepartmentChart data={overviewData} />
+				</div>
+			</div>
+
+			{/* Operations Quick Stats */}
+			<OperationsQuickStats data={overviewData} />
+
+			{/* Two-Column: Bookings + Today's Snapshot & Branch Performance */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+				<section className="lg:col-span-2 bg-white p-3 rounded-2xl">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-medium text-gray-600">
+							Recent Bookings
+						</h3>
+						<Button variant="link" size="sm" asChild>
+							<Link href="/dashboard/bookings">View all</Link>
+						</Button>
+					</div>
+					<BookingsData bookings={bookingData} />
+				</section>
+
+				<div className="flex flex-col gap-3">
+					<TodaySnapshot data={overviewData} />
+					{dashboardPerformanceData.length > 0 && (
+						<BranchPerformance
+							dashboardPerformanceData={dashboardPerformanceData}
+						/>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 }

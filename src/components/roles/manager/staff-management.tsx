@@ -14,7 +14,6 @@ import {
 import {
 	DoorOpenIcon,
 	Loader2Icon,
-	MoreVerticalIcon,
 	PlusCircleIcon,
 	SearchIcon,
 	AlertTriangleIcon,
@@ -25,22 +24,6 @@ import {
 	CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableFooter,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
@@ -51,8 +34,15 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
-import { DialogTrigger } from "@radix-ui/react-dialog";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@/components/ui/sheet";
 import {
 	Form,
 	FormControl,
@@ -103,6 +93,13 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
+import {
+	MultiSelect,
+	MultiSelectContent,
+	MultiSelectItem,
+	MultiSelectTrigger,
+	MultiSelectValue,
+} from "@/components/ui/multi-select";
 import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
@@ -123,10 +120,12 @@ function StaffFilter({
 			| "HOTEL_OWNER"
 			| "MANAGER"
 			| "FRONT_DESK"
-			| "MAINTENANCE"
 			| "INVENTORY"
-			| "BAR"
-			| "KITCHEN"
+			| "RESTAURANT"
+			| "MARKETER"
+			| "RENTALS"
+			| "LAUNDRY"
+			| "FINANCIALS"
 			| "SUPER_ADMIN"
 			| null;
 	};
@@ -196,13 +195,14 @@ function StaffFilter({
 	];
 
 	const roleOptions = [
-		{ value: "HOTEL_OWNER", label: "Hotel Owner" },
 		{ value: "MANAGER", label: "Manager" },
 		{ value: "FRONT_DESK", label: "Front Desk" },
-		{ value: "MAINTENANCE", label: "Maintenance" },
 		{ value: "INVENTORY", label: "Inventory" },
-		{ value: "BAR", label: "Bar" },
-		{ value: "KITCHEN", label: "Kitchen" },
+		{ value: "RESTAURANT", label: "Restaurant" },
+		{ value: "MARKETER", label: "Marketer" },
+		{ value: "RENTALS", label: "Rentals" },
+		{ value: "LAUNDRY", label: "Laundry" },
+		{ value: "FINANCIALS", label: "Financials" },
 	];
 
 	return (
@@ -331,10 +331,12 @@ function HotelListToolbar({
 			"HOTEL_OWNER",
 			"MANAGER",
 			"FRONT_DESK",
-			"MAINTENANCE",
 			"INVENTORY",
-			"BAR",
-			"KITCHEN",
+			"RESTAURANT",
+			"MARKETER",
+			"RENTALS",
+			"LAUNDRY",
+			"FINANCIALS",
 			"SUPER_ADMIN",
 		]),
 	});
@@ -357,9 +359,9 @@ function HotelListToolbar({
 	const [open, setOpen] = useState(false);
 
 	return (
-		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
 			<div>
-				<p>All staff({table.getRowCount()})</p>
+				<p className="text-primary md:pl-2">All staff ({table.getRowCount()})</p>
 			</div>
 
 			<div className="flex items-center gap-x-2 ">
@@ -467,7 +469,7 @@ const newStaffFormSchema = z.object({
 	fullName: z.string().nonempty("Staff name is required"),
 	email: z.email("Invalid email address"),
 	phoneNumber: z.string().nonempty("Phone number is required"),
-	role: Role,
+	roles: z.array(Role).min(1, "At least one role is required"),
 	staffId: z.string().optional(),
 	password: z.string().min(8, "Password must be at least 8 characters"),
 });
@@ -475,6 +477,8 @@ const newStaffFormSchema = z.object({
 function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	const [showPassword, setShowPassword] = useState(false);
 
+	const queryClient = useQueryClient();
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const { mutate, isPending } = useMutation({
 		mutationFn: async (...params: Parameters<typeof onboardStaffToHotel>) => {
 			const res = await onboardStaffToHotel(...params);
@@ -490,7 +494,8 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 				show: true,
 				message: "Staff added successfully",
 			});
-			await revalidateRoute("/manager/staff-management");
+			await queryClient.invalidateQueries({ queryKey: ["staffs"] });
+			revalidateRoute("/manager/staff-management");
 		},
 		onError: (e) => {
 			toast.error("Something went wrong", {
@@ -498,13 +503,12 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 			});
 		},
 	});
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const form = useForm({
 		resolver: zodResolver(newStaffFormSchema),
 		defaultValues: {
 			fullName: "",
 			email: "",
-			role: "FRONT_DESK",
+			roles: [] as z.infer<typeof Role>[],
 			phoneNumber: "",
 			staffId: "",
 			password: "",
@@ -544,7 +548,8 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 							<FormControl>
 								<Input
 									placeholder="e.g john.doe@example.com"
-									autoComplete="off"
+									autoComplete="new-email"
+									data-form-type="other"
 									{...field}
 								/>
 							</FormControl>
@@ -573,25 +578,51 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 				<FormField
 					control={form.control}
-					name="role"
+					name="roles"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Assign role</FormLabel>
-							<Select onValueChange={field.onChange} defaultValue={field.value}>
-								<FormControl>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select a role" />
-									</SelectTrigger>
-								</FormControl>
-								<SelectContent>
-									<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-									<SelectItem value="MANAGER">Manager</SelectItem>
-									<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-									<SelectItem value="INVENTORY">Inventory</SelectItem>
-									<SelectItem value="BAR">Bar</SelectItem>
-									<SelectItem value="KITCHEN">Kitchen</SelectItem>
-								</SelectContent>
-							</Select>
+							<FormLabel>Assign roles</FormLabel>
+							<FormControl>
+								<MultiSelect
+									values={field.value}
+									onValuesChange={field.onChange}
+								>
+									<MultiSelectTrigger className="w-full">
+										<MultiSelectValue placeholder="Select roles" />
+									</MultiSelectTrigger>
+									<MultiSelectContent search={{ placeholder: "Search roles..." }}>
+										<MultiSelectItem value="FRONT_DESK">Front Desk</MultiSelectItem>
+										<MultiSelectItem value="INVENTORY">Inventory</MultiSelectItem>
+										<MultiSelectItem value="RESTAURANT">Restaurant</MultiSelectItem>
+										<MultiSelectItem value="MARKETER">Marketer</MultiSelectItem>
+										<MultiSelectItem value="RENTALS">Rentals</MultiSelectItem>
+										<MultiSelectItem value="LAUNDRY">Laundry</MultiSelectItem>
+										<MultiSelectItem value="FINANCIALS">Financials</MultiSelectItem>
+									</MultiSelectContent>
+								</MultiSelect>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<FormField
+					control={form.control}
+					name="staffId"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>
+								Staff ID{" "}
+								<span className="text-muted-foreground font-normal">
+									(Optional)
+								</span>
+							</FormLabel>
+							<FormControl>
+								<Input
+									placeholder="e.g STF-001"
+									{...field}
+								/>
+							</FormControl>
 							<FormMessage />
 						</FormItem>
 					)}
@@ -608,7 +639,8 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 									<Input
 										type={showPassword ? "text" : "password"}
 										placeholder="Enter a password"
-										autoComplete="off"
+										autoComplete="new-password"
+										data-form-type="other"
 										{...field}
 									/>
 								</FormControl>
@@ -650,8 +682,12 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	);
 }
 
-const hotelOwnerStaffEditSchema = newStaffFormSchema.omit({
-	password: true,
+const editStaffFormSchema = z.object({
+	fullName: z.string().nonempty("Staff name is required"),
+	email: z.email("Invalid email address"),
+	phoneNumber: z.string().nonempty("Phone number is required"),
+	staffId: z.string().optional(),
+	roles: z.array(Role).min(1, "At least one role is required"),
 });
 
 function UpdateHotelStaffForm({
@@ -659,13 +695,15 @@ function UpdateHotelStaffForm({
 	staffId,
 	setOpen,
 }: {
-	initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+	initialValues: z.infer<typeof editStaffFormSchema>;
 	staffId: string;
 	setOpen: (open: boolean) => void;
 }) {
+	const queryClient = useQueryClient();
+	const setSelectedStaff = useSetAtom(selectedStaffAtom);
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const form = useForm({
-		resolver: zodResolver(hotelOwnerStaffEditSchema),
+		resolver: zodResolver(editStaffFormSchema),
 		defaultValues: initialValues,
 		progressive: true,
 		mode: "onBlur",
@@ -673,40 +711,41 @@ function UpdateHotelStaffForm({
 	});
 
 	const { mutateAsync, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
-			const changes: Partial<z.infer<typeof hotelOwnerStaffEditSchema>> = {};
-			type DataKey = keyof z.infer<typeof hotelOwnerStaffEditSchema>;
-
-			for (const key in data) {
-				const typedKey = key as DataKey;
-				if (data[typedKey] === initialValues[typedKey]) continue;
-				if (typedKey === "role") {
-					changes.role = data.role;
-				} else {
-					changes[typedKey] = data[typedKey];
-				}
-			}
-			const res = await editStaffDetails(staffId, changes);
+		mutationFn: async (data: z.infer<typeof editStaffFormSchema>) => {
+			const res = await editStaffDetails(staffId, data);
 			if (!res.success) {
 				throw new Error(res.error || "Failed to update staff details");
 			}
 			return res.data;
 		},
-		onSuccess: async () => {
+		onSuccess: async (responseData) => {
 			setOpen(false);
+			const staffData = responseData?.data;
+			if (staffData) {
+				setSelectedStaff((prev) =>
+					prev ? { ...prev, ...staffData } : prev,
+				);
+			}
 			setShowSuccessDialog({
 				show: true,
 				message: "Staff details updated successfully",
 			});
+			await queryClient.invalidateQueries({ queryKey: ["staffs"] });
 			revalidateRoute("/manager/staff-management");
 		},
+		onError: (e) => {
+			toast.error("Something went wrong", {
+				description: e.message || "Failed to update staff details",
+			});
+		},
 	});
+
 	const handleSubmit = useCallback(
-		(data: z.infer<typeof hotelOwnerStaffEditSchema>) => {
+		(data: z.infer<typeof editStaffFormSchema>) => {
 			toast.promise(mutateAsync(data), {
 				loading: "Updating staff details...",
 				success: "Staff details updated successfully",
-				error: "Failed to update staff details",
+				error: (e) => e.message || "Failed to update staff details",
 			});
 		},
 		[mutateAsync],
@@ -767,33 +806,69 @@ function UpdateHotelStaffForm({
 
 					<FormField
 						control={form.control}
-						name="role"
+						name="staffId"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Assign role</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-									disabled
-								>
-									<FormControl>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select a role" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-										<SelectItem value="MANAGER">Manager</SelectItem>
-										<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-										<SelectItem value="INVENTORY">Inventory</SelectItem>
-										<SelectItem value="BAR">Bar</SelectItem>
-										<SelectItem value="KITCHEN">Kitchen</SelectItem>
-									</SelectContent>
-								</Select>
+								<FormLabel>
+									Staff ID{" "}
+									<span className="text-muted-foreground font-normal">
+										(Optional)
+									</span>
+								</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g STF-001" {...field} />
+								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
 					/>
+
+					<FormField
+						control={form.control}
+						name="roles"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Roles</FormLabel>
+								<FormControl>
+									<MultiSelect
+										values={field.value}
+										onValuesChange={field.onChange}
+									>
+										<MultiSelectTrigger className="w-full">
+											<MultiSelectValue placeholder="Select roles" />
+										</MultiSelectTrigger>
+										<MultiSelectContent
+											search={{ placeholder: "Search roles..." }}
+										>
+											<MultiSelectItem value="FRONT_DESK">
+												Front Desk
+											</MultiSelectItem>
+											<MultiSelectItem value="INVENTORY">
+												Inventory
+											</MultiSelectItem>
+											<MultiSelectItem value="RESTAURANT">
+												Restaurant
+											</MultiSelectItem>
+											<MultiSelectItem value="MARKETER">
+												Marketer
+											</MultiSelectItem>
+											<MultiSelectItem value="RENTALS">
+												Rentals
+											</MultiSelectItem>
+											<MultiSelectItem value="LAUNDRY">
+												Laundry
+											</MultiSelectItem>
+											<MultiSelectItem value="FINANCIALS">
+												Financials
+											</MultiSelectItem>
+										</MultiSelectContent>
+									</MultiSelect>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
 					<Button
 						type="submit"
 						className="mt-4 w-full font-semibold"
@@ -1187,6 +1262,41 @@ function SuspendStaffDialog({
 	);
 }
 
+const statusVariantMap = {
+	ACTIVE: "green",
+	INACTIVE: "yellow",
+	SUSPENDED: "destructive",
+	PENDING: "blue",
+} as const;
+
+function formatRole(role: string) {
+	return role
+		.replaceAll("_", " ")
+		.toLowerCase()
+		.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatStatus(status: string) {
+	return status
+		.replaceAll("_", " ")
+		.toLowerCase()
+		.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDate(value: string | null | undefined) {
+	if (!value || value === "N/A") return "N/A";
+	return new Date(value).toLocaleString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "numeric",
+		hour12: true,
+	});
+}
+
+const selectedStaffAtom = atom<CustomPageStaffResponse | null>(null);
+
 const columns = [
 	columnHelper.display({
 		header: "S/N",
@@ -1197,250 +1307,256 @@ const columns = [
 	columnHelper.accessor("fullName", {
 		header: "Staff Name",
 		cell: (info) => (
-			<div className="flex items-center gap-x-2">
-				{/* <Image
-          src={info.row.original.profilePicture}
-          alt={info.row.original.fullName}
-          className="w-10 h-10 rounded-full"
-          width={40}
-          height={40}
-        /> */}
-				<span className="font-semibold">{info.getValue()}</span>
-			</div>
+			<span className="font-semibold">{info.getValue()}</span>
 		),
 	}),
-	columnHelper.accessor("role", {
-		header: "Role",
-		cell: (info) => {
-			const role = info.getValue();
-			const refinedRole = role
-				.replaceAll("_", " ")
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase());
-			return <Badge variant={"outline"}>{refinedRole}</Badge>;
-		},
-	}),
-	columnHelper.accessor("email", {
-		header: "Email",
-		cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
+	columnHelper.accessor("staffId", {
+		header: "Staff ID",
+		cell: (info) => <span>{info.getValue() || info.row.original.customId}</span>,
 	}),
 	columnHelper.accessor("userStatus", {
 		header: "Status",
 		cell: (info) => {
-			const status = info.getValue() as
-				| "ACTIVE"
-				| "INACTIVE"
-				| "SUSPENDED"
-				| "PENDING";
-
-			const refinedStatus = status
-				.replaceAll("_", " ")
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase());
-
-			const variantMap = {
-				ACTIVE: "green",
-				INACTIVE: "yellow",
-				SUSPENDED: "destructive",
-				PENDING: "blue",
-			} as const;
-
+			const status = (info.getValue() ?? "INACTIVE") as keyof typeof statusVariantMap;
 			return (
-				<Badge variant={variantMap[status] ?? "outline"}>{refinedStatus}</Badge>
+				<Badge variant={statusVariantMap[status] ?? "outline"}>
+					{formatStatus(status)}
+				</Badge>
 			);
 		},
 	}),
-	columnHelper.accessor("phoneNumber", {
-		header: "Phone Number",
+	columnHelper.accessor("email", {
+		header: "Email",
 		cell: (info) => <span>{info.getValue()}</span>,
+	}),
+	columnHelper.accessor("phoneNumber", {
+		header: "Phone",
+		cell: (info) => <span>{info.getValue() ?? "-"}</span>,
 	}),
 	columnHelper.accessor("lastLogin", {
 		header: "Last Login",
-		cell: (info) => {
-			const value = info.getValue();
-			if (!value || value === "N/A") return <span>N/A</span>;
-			const date = new Date(value);
-
-			// e.g. Jun 15, 2023, 10:30 AM
-			const formattedDate = date.toLocaleString("en-US", {
-				month: "short",
-				day: "numeric",
-				year: "numeric",
-				hour: "numeric",
-				minute: "numeric",
-				hour12: true,
-			});
-			return <span>{formattedDate}</span>;
-		},
-	}),
-	columnHelper.display({
-		id: "actions",
-		cell: (info) => {
-			const [open, setOpen] = useState<
-				"reset-password" | "suspend-staff" | "edit-staff" | false
-			>(false);
-
-			const dialog = useMemo(() => {
-				switch (open) {
-					case "reset-password":
-						return (
-							<ResetPasswordForm
-								staffId={info.row.original.id}
-								setOpen={(isOpen) => setOpen(isOpen ? "reset-password" : false)}
-							/>
-						);
-					case "edit-staff": {
-						const rowData = info.row.original;
-						return (
-							<UpdateHotelStaffForm
-								staffId={rowData.id}
-								initialValues={{
-									fullName: rowData.fullName,
-									email: rowData.email,
-									role: rowData.role,
-									phoneNumber: rowData.phoneNumber,
-									staffId: rowData.staffId,
-								}}
-								setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
-							/>
-						);
-					}
-					case "suspend-staff":
-						return (
-							<SuspendStaffDialog
-								setOpen={(isOpen) => setOpen(isOpen ? "suspend-staff" : false)}
-								id={info.row.original.id}
-							/>
-						);
-					default:
-						return null;
-				}
-			}, [open, info.row.original]);
-
-			return (
-				<Dialog
-					open={typeof open === "string"}
-					onOpenChange={(isOpen) => isOpen || setOpen(false)}
-				>
-					<DropdownMenu modal={false}>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" className="h-8 w-8 p-0">
-								<span className="sr-only">Open menu</span>
-								<MoreVerticalIcon />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent className="bg-white" align="end">
-							{/* <DropdownMenuItem asChild>
-                <Link href={`/dashboard/hotels/${info.row.original.id}`}>
-                  <HotelIcon />
-                  View Branch Hotel
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator /> */}
-							<DialogTrigger
-								className="w-full"
-								onClick={() => setOpen("edit-staff")}
-								asChild
-							>
-								<DropdownMenuItem>
-									<DoorOpenIcon />
-									Edit Staff
-								</DropdownMenuItem>
-							</DialogTrigger>
-							<DropdownMenuSeparator />
-							<DialogTrigger
-								className="w-full"
-								onClick={() => setOpen("reset-password")}
-								asChild
-							>
-								<DropdownMenuItem>
-									<ReplaceIcon />
-									Reset password
-								</DropdownMenuItem>
-							</DialogTrigger>
-							<DropdownMenuSeparator />
-							<DialogTrigger
-								className="w-full"
-								onClick={() => setOpen("suspend-staff")}
-								disabled={info.row.original.userStatus === "SUSPENDED"}
-								asChild
-							>
-								<DropdownMenuItem className="hover:bg-red-500/10 text-red-500 focus:text-red-500">
-									<UserXIcon className="text-red-500" />
-									Suspend Staff
-								</DropdownMenuItem>
-							</DialogTrigger>
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					{dialog}
-				</Dialog>
-			);
-		},
+		cell: (info) => (
+			<span className="text-gray-500">{formatDate(info.getValue())}</span>
+		),
 	}),
 ];
 
-function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
+function StaffDetailSheet() {
+	const [staff, setStaff] = useAtom(selectedStaffAtom);
+	const [dialogOpen, setDialogOpen] = useState<
+		"edit-staff" | "reset-password" | "suspend-staff" | false
+	>(false);
+
+	const dialogContent = useMemo(() => {
+		if (!staff) return null;
+		switch (dialogOpen) {
+			case "edit-staff":
+				return (
+					<UpdateHotelStaffForm
+						staffId={staff.id}
+						initialValues={{
+							fullName: staff.fullName,
+							email: staff.email,
+							phoneNumber: staff.phoneNumber ?? "",
+							staffId: staff.staffId ?? "",
+							roles: (staff.roles ?? []) as z.infer<typeof Role>[],
+						}}
+						setOpen={(isOpen) => setDialogOpen(isOpen ? "edit-staff" : false)}
+					/>
+				);
+			case "reset-password":
+				return (
+					<ResetPasswordForm
+						staffId={staff.id}
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "reset-password" : false)
+						}
+					/>
+				);
+			case "suspend-staff":
+				return (
+					<SuspendStaffDialog
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "suspend-staff" : false)
+						}
+						id={staff.id}
+					/>
+				);
+			default:
+				return null;
+		}
+	}, [dialogOpen, staff]);
+
+	if (!staff) return null;
+
+	const status = (staff.userStatus ?? "INACTIVE") as keyof typeof statusVariantMap;
+	const roles = staff.roles ?? [];
+
+	const details = [
+		{ label: "Staff ID", value: staff.staffId || staff.customId },
+		{ label: "Full Name", value: staff.fullName },
+		{ label: "Email", value: staff.email },
+		{ label: "Phone Number", value: staff.phoneNumber ?? "-" },
+		{ label: "Verified", value: staff.verified ? "Yes" : "No" },
+		{ label: "Last Login", value: formatDate(staff.lastLogin) },
+	];
+
 	return (
-		<div className="overflow-hidden rounded-md border">
-			<Table>
-				<TableHeader className="bg-gray-100">
-					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
-							{headerGroup.headers.map((header) => {
-								return (
-									<TableHead key={header.id} className="text-gray-500">
+		<>
+			<Sheet open={!!staff} onOpenChange={(open) => !open && setStaff(null)}>
+				<SheetContent className="overflow-y-auto">
+					<SheetHeader>
+						<SheetTitle className="text-lg">Staff Details</SheetTitle>
+						<SheetDescription className="sr-only">
+							View staff member details
+						</SheetDescription>
+					</SheetHeader>
+
+					<div className="space-y-6 p-4">
+						{/* Header */}
+						<div className="flex items-center justify-between">
+							<div>
+								<h3 className="text-xl font-semibold">{staff.fullName}</h3>
+								<p className="text-sm text-muted-foreground">{staff.email}</p>
+							</div>
+							<Badge variant={statusVariantMap[status] ?? "outline"}>
+								{formatStatus(status)}
+							</Badge>
+						</div>
+
+						{/* Details Grid */}
+						<div className="grid grid-cols-1 gap-4">
+							{details.map((item) => (
+								<div
+									key={item.label}
+									className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+								>
+									<span className="text-sm text-muted-foreground">
+										{item.label}
+									</span>
+									<span className="text-sm font-medium text-right">
+										{item.value}
+									</span>
+								</div>
+							))}
+						</div>
+
+						{/* Roles */}
+						<div className="space-y-2">
+							<span className="text-sm text-muted-foreground">Roles</span>
+							<div className="flex flex-wrap gap-2">
+								{roles.length > 0 ? roles.map((r) => (
+									<Badge key={r} variant="outline">{formatRole(r)}</Badge>
+								)) : (
+									<span className="text-sm text-muted-foreground">No roles assigned</span>
+								)}
+							</div>
+						</div>
+
+						{/* Actions */}
+						<div className="space-y-2 pt-2">
+							<Button
+								className="w-full"
+								variant="outline"
+								onClick={() => setDialogOpen("edit-staff")}
+							>
+								<DoorOpenIcon className="mr-2 h-4 w-4" />
+								Edit Staff Details
+							</Button>
+							<Button
+								className="w-full"
+								variant="outline"
+								onClick={() => setDialogOpen("reset-password")}
+							>
+								<ReplaceIcon className="mr-2 h-4 w-4" />
+								Reset Password
+							</Button>
+							{staff.userStatus !== "SUSPENDED" && (
+								<Button
+									className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+									variant="outline"
+									onClick={() => setDialogOpen("suspend-staff")}
+								>
+									<UserXIcon className="mr-2 h-4 w-4" />
+									Suspend Staff
+								</Button>
+							)}
+						</div>
+					</div>
+				</SheetContent>
+			</Sheet>
+
+			<Dialog
+				open={typeof dialogOpen === "string"}
+				onOpenChange={(isOpen) => isOpen || setDialogOpen(false)}
+			>
+				{dialogContent}
+			</Dialog>
+		</>
+	);
+}
+
+function StaffTable({ table }: { table: TableType<CustomPageStaffResponse> }) {
+	const setSelectedStaff = useSetAtom(selectedStaffAtom);
+
+	if (!table.getRowModel().rows?.length) {
+		return (
+			<div className="overflow-hidden rounded-md border bg-card p-8 text-center">
+				<p className="text-gray-500">No staff records found</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="overflow-hidden rounded-md border bg-card">
+			<div className="overflow-x-auto">
+				<table className="w-full text-sm">
+					<thead>
+						<tr className="border-b bg-gray-100 text-left text-gray-500">
+							{table.getHeaderGroups().map((headerGroup) =>
+								headerGroup.headers.map((header) => (
+									<th key={header.id} className="px-4 py-3 font-medium">
 										{header.isPlaceholder
 											? null
 											: flexRender(
 													header.column.columnDef.header,
 													header.getContext(),
 												)}
-									</TableHead>
-								);
-							})}
-						</TableRow>
-					))}
-				</TableHeader>
-
-				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
+									</th>
+								)),
+							)}
+						</tr>
+					</thead>
+					<tbody>
+						{table.getRowModel().rows.map((row) => (
+							<tr
 								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
+								className="border-b last:border-0 cursor-pointer hover:bg-gray-50"
+								onClick={() => setSelectedStaff(row.original)}
 							>
 								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id} className="text-gray-600">
+									<td key={cell.id} className="px-4 py-3 text-gray-600">
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
+									</td>
 								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
+}
 
-				<TableFooter>
-					<TableRow>
-						<TableCell colSpan={columns.length}>
-							<div className="w-full flex items-center justify-between">
-								<p>
-									{table.getFilteredSelectedRowModel().rows.length} of{" "}
-									{table.getFilteredRowModel().rows.length} row(s) selected.
-								</p>
+function StaffPagination({ table }: { table: TableType<CustomPageStaffResponse> }) {
+	if (table.getPageCount() <= 1) return null;
 
-								<DataTablePagination table={table} />
-							</div>
-						</TableCell>
-					</TableRow>
-				</TableFooter>
-			</Table>
+	return (
+		<div className="flex items-center justify-between">
+			<p className="text-sm text-gray-500">
+				Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+			</p>
+			<DataTablePagination table={table} />
 		</div>
 	);
 }
@@ -1481,9 +1597,11 @@ export function HotelManagerStaffsList({
 	}, [setBreadcrumb, breadcrumb]);
 
 	return (
-		<div className="p-4 space-y-2 md:space-y-4">
+		<div className="h-full w-full p-4 space-y-2 md:space-y-4">
 			<HotelListToolbar table={table} />
-			<HotelList table={table} />
+			<StaffTable table={table} />
+			{table.getPageCount() > 1 && <StaffPagination table={table} />}
+			<StaffDetailSheet />
 			<SuccessDialog
 				open={successDialogOpen.show}
 				setOpenAction={(show) =>

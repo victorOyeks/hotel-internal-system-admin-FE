@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useLayoutEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import {
 	type ColumnFiltersState,
 	createColumnHelper,
@@ -20,9 +21,9 @@ import {
 	getPaginationRowModel,
 	getSortedRowModel,
 	type Table as TableType,
-} from "@tanstack/table-core";
-import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { flexRender, useReactTable } from "@tanstack/react-table";
+	flexRender,
+	useReactTable,
+} from "@tanstack/react-table";
 import {
 	Table,
 	TableBody,
