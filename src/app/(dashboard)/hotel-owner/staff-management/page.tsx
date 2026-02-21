@@ -1,5 +1,5 @@
 import { HotelOwnerStaff } from "@/components/roles/hotel-owner/staff-management";
-import { verifySession } from "@/lib/dal";
+import { getOwnerCurrentHotel, verifySession } from "@/lib/dal";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
@@ -20,10 +20,13 @@ const hotelRoles = [
 	"HOTEL_OWNER",
 	"MANAGER",
 	"FRONT_DESK",
-	"MAINTENANCE",
 	"INVENTORY",
 	"RESTAURANT",
+	"MARKETER",
+	"RENTALS",
 	"SUPER_ADMIN",
+	"LAUNDRY",
+	"FINANCIALS",
 ] as const;
 
 const loadSearchParams = createLoader({
@@ -35,6 +38,7 @@ const loadSearchParams = createLoader({
 
 function StaffManagementPage({ searchParams }: PageProps) {
 	const session = use(verifySession());
+	const currentHotel = use(getOwnerCurrentHotel());
 	const query = use(loadSearchParams(searchParams));
 	const queryClient = getQueryClient();
 	const breadcrumb = {
@@ -45,21 +49,39 @@ function StaffManagementPage({ searchParams }: PageProps) {
 		],
 	};
 
+	if (!currentHotel) {
+		return (
+			<div className="p-6">
+				<div className="bg-white p-8 rounded-2xl text-center">
+					<p className="text-gray-500">
+						Please select a hotel from the sidebar to view staff.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	const { id } = currentHotel;
+
 	const { content, ...paginationMeta } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["staffs", query],
+			queryKey: ["staffs", id, query],
 			queryFn: async () => {
-				const response = await $fetch("@get/api/hotel-owners/staff", {
-					query: {
-						...query,
-						page: query.page ? query.page - 1 : 0,
+				const response = await $fetch(
+					"@get/api/hotel-owners/:hotelId/staff",
+					{
+						params: { hotelId: id },
+						query: {
+							...query,
+							page: query.page ? query.page - 1 : 0,
+						},
+						auth: {
+							type: "Bearer",
+							token: session.token,
+						},
+						throw: true,
 					},
-					auth: {
-						type: "Bearer",
-						token: session.token,
-					},
-					throw: true,
-				});
+				);
 				return response.data;
 			},
 		}),

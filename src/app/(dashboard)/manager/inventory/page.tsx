@@ -57,51 +57,29 @@ function Page({ searchParams }: PageProps) {
 	const cookieData = use(getCookieData())!;
 	const queryClient = getQueryClient();
 
-	const statData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["inventory-summary", id],
-			queryFn: async () => {
+	const auth = { type: "Bearer" as const, token: cookieData.token };
+
+	// Create all promises first (parallel pattern)
+	const statPromise = queryClient.ensureQueryData({
+		queryKey: ["inventory-summary", id],
+		queryFn: async () => {
+			const response = await $fetch(
+				"@get/api/managers/:hotelId/inventories/summary",
+				{ params: { hotelId: id }, auth, throw: true },
+			);
+			return response.data;
+		},
+	});
+
+	const listPromise = queryClient.ensureQueryData({
+		queryKey: [query.section ?? "inventory", id, query],
+		queryFn: async ({ signal }) => {
+			if (query.section === "restock") {
 				const response = await $fetch(
-					"@get/api/managers/:hotelId/inventories/summary",
+					"@get/api/managers/:hotelId/inventories/restock-requests",
 					{
 						params: { hotelId: id },
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-
-				return response.data;
-			},
-		}),
-	);
-
-	const { content, ...paginationMeta } = use(
-		queryClient.ensureQueryData({
-			queryKey: [query.section ?? "inventory", id, query],
-			queryFn: async ({ signal }) => {
-				if (query.section === "restock") {
-					const response = await $fetch(
-						"@get/api/managers/:hotelId/inventories/restock-requests",
-						{
-							params: { hotelId: id },
-							auth: { type: "Bearer", token: cookieData.token },
-							query: {
-								...query,
-								page: query.page ? query.page - 1 : 0,
-							},
-							throw: true,
-							signal,
-						},
-					);
-
-					return response.data;
-				}
-
-				const response = await $fetch(
-					"@get/api/managers/:hotelId/inventories",
-					{
-						params: { hotelId: id },
-						auth: { type: "Bearer", token: cookieData.token },
+						auth,
 						query: {
 							...query,
 							page: query.page ? query.page - 1 : 0,
@@ -110,11 +88,29 @@ function Page({ searchParams }: PageProps) {
 						signal,
 					},
 				);
-
 				return response.data;
-			},
-		}),
-	);
+			}
+
+			const response = await $fetch(
+				"@get/api/managers/:hotelId/inventories",
+				{
+					params: { hotelId: id },
+					auth,
+					query: {
+						...query,
+						page: query.page ? query.page - 1 : 0,
+					},
+					throw: true,
+					signal,
+				},
+			);
+			return response.data;
+		},
+	});
+
+	// Await all in parallel
+	const statData = use(statPromise);
+	const { content, ...paginationMeta } = use(listPromise);
 
 	return (
 		<ManagerInventoryPage

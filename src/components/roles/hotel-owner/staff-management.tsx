@@ -23,6 +23,13 @@ import {
 	AlertTriangleIcon,
 	RotateCcwIcon,
 	XIcon,
+	KeyIcon,
+	BanIcon,
+	MailIcon,
+	PhoneIcon,
+	CalendarIcon,
+	ShieldIcon,
+	ClockIcon,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 // import Link from "next/link";
@@ -92,6 +99,17 @@ import {
 	revalidateRoute,
 	updateStaffDetailsByOwner,
 } from "@/lib/actions";
+import {
+	resetPasswordForStaffOwner,
+	suspendStaffAccountOwner,
+} from "@/lib/hotel-owner-actions";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetDescription,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { parseAsString, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -668,10 +686,12 @@ function UpdateHotelStaffForm({
 									<SelectContent>
 										<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
 										<SelectItem value="MANAGER">Manager</SelectItem>
-										<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
 										<SelectItem value="INVENTORY">Inventory</SelectItem>
-										<SelectItem value="BAR">Bar</SelectItem>
-										<SelectItem value="KITCHEN">Kitchen</SelectItem>
+										<SelectItem value="RESTAURANT">Restaurant</SelectItem>
+										<SelectItem value="MARKETER">Marketer</SelectItem>
+										<SelectItem value="RENTALS">Rentals</SelectItem>
+										<SelectItem value="LAUNDRY">Laundry</SelectItem>
+										<SelectItem value="FINANCIALS">Financials</SelectItem>
 									</SelectContent>
 								</Select>
 								<FormMessage />
@@ -888,6 +908,338 @@ function DeleteStaffDialog({
 	);
 }
 
+const resetPasswordSchema = z.object({
+	newPassword: z.string().min(8, "Password must be at least 8 characters"),
+	confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+	message: "Passwords do not match",
+	path: ["confirmPassword"],
+});
+
+function ResetPasswordDialog({
+	setOpen,
+	staffId,
+	staffName,
+}: {
+	setOpen: (open: boolean) => void;
+	staffId: string;
+	staffName: string;
+}) {
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const form = useForm({
+		resolver: zodResolver(resetPasswordSchema),
+		defaultValues: {
+			newPassword: "",
+			confirmPassword: "",
+		},
+	});
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof resetPasswordSchema>) => {
+			const response = await resetPasswordForStaffOwner(staffId, data);
+			if (!response.success) {
+				throw new Error(response.error);
+			}
+			return response.data;
+		},
+		onSuccess: () => {
+			setOpen(false);
+			form.reset();
+			setShowSuccessDialog({
+				show: true,
+				message: "Password reset successfully",
+			});
+		},
+		onError: (e) => {
+			toast.error("Failed to reset password", {
+				description: e.message,
+			});
+		},
+	});
+
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle>Reset Password</DialogTitle>
+			<DialogDescription>
+				Set a new password for <strong>{staffName}</strong>
+			</DialogDescription>
+			<Form {...form}>
+				<form
+					className="space-y-4"
+					onSubmit={form.handleSubmit((data) => mutate(data))}
+				>
+					<FormField
+						control={form.control}
+						name="newPassword"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>New Password</FormLabel>
+								<FormControl>
+									<Input
+										type="password"
+										placeholder="Enter new password"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="confirmPassword"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Confirm Password</FormLabel>
+								<FormControl>
+									<Input
+										type="password"
+										placeholder="Confirm new password"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Resetting...</span>
+							</>
+						) : (
+							"Reset Password"
+						)}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
+}
+
+const suspendStaffSchema = z.object({
+	reason: z.string().min(1, "Reason is required"),
+	fromDate: z.string().min(1, "Start date is required"),
+	toDate: z.string().min(1, "End date is required"),
+});
+
+function SuspendStaffDialog({
+	setOpen,
+	staffId,
+	staffName,
+}: {
+	setOpen: (open: boolean) => void;
+	staffId: string;
+	staffName: string;
+}) {
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const form = useForm({
+		resolver: zodResolver(suspendStaffSchema),
+		defaultValues: {
+			reason: "",
+			fromDate: "",
+			toDate: "",
+		},
+	});
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof suspendStaffSchema>) => {
+			const response = await suspendStaffAccountOwner(staffId, data);
+			if (!response.success) {
+				throw new Error(response.error);
+			}
+			return response.data;
+		},
+		onSuccess: () => {
+			setOpen(false);
+			form.reset();
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff account suspended",
+			});
+			revalidateRoute("/hotel-owner/staff-management");
+		},
+		onError: (e) => {
+			toast.error("Failed to suspend staff", {
+				description: e.message,
+			});
+		},
+	});
+
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle>Suspend Staff</DialogTitle>
+			<DialogDescription>
+				Suspend <strong>{staffName}</strong>'s account for a period of time.
+			</DialogDescription>
+			<Form {...form}>
+				<form
+					className="space-y-4"
+					onSubmit={form.handleSubmit((data) => mutate(data))}
+				>
+					<FormField
+						control={form.control}
+						name="reason"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Reason</FormLabel>
+								<FormControl>
+									<Textarea
+										className="resize-none"
+										placeholder="Reason for suspension..."
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<div className="grid grid-cols-2 gap-3">
+						<FormField
+							control={form.control}
+							name="fromDate"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>From</FormLabel>
+									<FormControl>
+										<Input type="date" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="toDate"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>To</FormLabel>
+									<FormControl>
+										<Input type="date" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						variant="destructive"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Suspending...</span>
+							</>
+						) : (
+							"Suspend Account"
+						)}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
+}
+
+function StaffDetailSheet({
+	staff,
+	open,
+	onOpenChange,
+}: {
+	staff: CustomPageStaffResponse | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	if (!staff) return null;
+
+	const role = staff.roles?.[0] ?? "N/A";
+	const refinedRole = role
+		.replaceAll("_", " ")
+		.toLowerCase()
+		.replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent className="overflow-y-auto">
+				<SheetHeader>
+					<SheetTitle>{staff.fullName}</SheetTitle>
+					<SheetDescription>Staff details</SheetDescription>
+				</SheetHeader>
+				<div className="px-4 space-y-5">
+					<div className="flex items-center justify-center">
+						<div className="size-20 bg-primary-5/30 rounded-full flex items-center justify-center text-primary text-2xl font-bold">
+							{staff.fullName
+								.split(" ")
+								.map((n) => n[0])
+								.join("")
+								.toUpperCase()
+								.slice(0, 2)}
+						</div>
+					</div>
+
+					<div className="space-y-3">
+						<div className="flex items-center gap-3 text-sm">
+							<MailIcon className="size-4 text-gray-400 flex-shrink-0" />
+							<span className="text-gray-600">{staff.email}</span>
+						</div>
+						<div className="flex items-center gap-3 text-sm">
+							<PhoneIcon className="size-4 text-gray-400 flex-shrink-0" />
+							<span className="text-gray-600">
+								{staff.phoneNumber || "Not provided"}
+							</span>
+						</div>
+						<div className="flex items-center gap-3 text-sm">
+							<ShieldIcon className="size-4 text-gray-400 flex-shrink-0" />
+							<Badge variant="outline">{refinedRole}</Badge>
+						</div>
+						<div className="flex items-center gap-3 text-sm">
+							<ClockIcon className="size-4 text-gray-400 flex-shrink-0" />
+							<span className="text-gray-600">
+								Last login:{" "}
+								{staff.lastLogin && staff.lastLogin !== "N/A"
+									? new Date(staff.lastLogin).toLocaleString("en-US", {
+											month: "short",
+											day: "numeric",
+											year: "numeric",
+											hour: "numeric",
+											minute: "numeric",
+											hour12: true,
+										})
+									: "Never"}
+							</span>
+						</div>
+					</div>
+
+					{staff.hotels && staff.hotels.length > 0 && (
+						<div className="space-y-2">
+							<h4 className="text-sm font-medium text-gray-500">
+								Assigned Hotels
+							</h4>
+							<div className="space-y-1">
+								{staff.hotels.map((hotel: any) => (
+									<div
+										key={hotel.id || hotel}
+										className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg"
+									>
+										{hotel.name || hotel}
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+				</div>
+			</SheetContent>
+		</Sheet>
+	);
+}
+
 const columns = [
 	columnHelper.display({
 		header: "S/N",
@@ -910,10 +1262,11 @@ const columns = [
 			</div>
 		),
 	}),
-	columnHelper.accessor("role", {
+	columnHelper.accessor("roles", {
 		header: "Role",
 		cell: (info) => {
-			const role = info.getValue();
+			const roles = info.getValue();
+			const role = roles?.[0] ?? "N/A";
 			const refinedRole = role
 				.replaceAll("_", " ")
 				.toLowerCase()
@@ -931,12 +1284,12 @@ const columns = [
 	// }),
 	columnHelper.accessor("phoneNumber", {
 		header: "Phone Number",
-		cell: (info) => <span>{info.getValue()}</span>,
+		cell: (info) => <span>{info.getValue() ?? "-"}</span>,
 	}),
 	columnHelper.accessor("lastLogin", {
 		header: "Last Login",
 		cell: (info) => {
-			const value = info.getValue();
+			const value = info.getValue?.() ?? null;
 			if (!value || value === "N/A") return <span>N/A</span>;
 			const date = new Date(value);
 
@@ -956,8 +1309,15 @@ const columns = [
 		id: "actions",
 		cell: (info) => {
 			const [open, setOpen] = useState<
-				"contact-staff" | "delete-staff" | "edit-staff" | false
+				| "contact-staff"
+				| "delete-staff"
+				| "edit-staff"
+				| "reset-password"
+				| "suspend-staff"
+				| false
 			>(false);
+
+			const rowData = info.row.original;
 
 			const dialog = useMemo(() => {
 				switch (open) {
@@ -967,32 +1327,50 @@ const columns = [
 								setOpen={(isOpen) => setOpen(isOpen ? "contact-staff" : false)}
 							/>
 						);
-					case "edit-staff": {
-						const rowData = info.row.original;
+					case "edit-staff":
 						return (
 							<UpdateHotelStaffForm
 								initialValues={{
 									fullName: rowData.fullName,
 									email: rowData.email,
-									role: rowData.role,
-									phoneNumber: rowData.phoneNumber,
+									role: (rowData.roles?.[0] ?? "FRONT_DESK") as z.infer<typeof Role>,
+									phoneNumber: rowData.phoneNumber ?? "",
 								}}
 								staffId={rowData.id}
 								setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
 							/>
 						);
-					}
 					case "delete-staff":
 						return (
 							<DeleteStaffDialog
 								setOpen={(isOpen) => setOpen(isOpen ? "delete-staff" : false)}
-								id={info.row.original.id}
+								id={rowData.id}
+							/>
+						);
+					case "reset-password":
+						return (
+							<ResetPasswordDialog
+								setOpen={(isOpen) =>
+									setOpen(isOpen ? "reset-password" : false)
+								}
+								staffId={rowData.id}
+								staffName={rowData.fullName}
+							/>
+						);
+					case "suspend-staff":
+						return (
+							<SuspendStaffDialog
+								setOpen={(isOpen) =>
+									setOpen(isOpen ? "suspend-staff" : false)
+								}
+								staffId={rowData.id}
+								staffName={rowData.fullName}
 							/>
 						);
 					default:
 						return null;
 				}
-			}, [open, info.row.original]);
+			}, [open, rowData]);
 
 			return (
 				<Dialog
@@ -1009,13 +1387,6 @@ const columns = [
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent className="bg-white" align="end">
-							{/* <DropdownMenuItem asChild>
-                <Link href={`/dashboard/hotels/${info.row.original.id}`}>
-                  <HotelIcon />
-                  View Branch Hotel
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator /> */}
 							<DropdownMenuItem asChild>
 								<DialogTrigger
 									className="w-full"
@@ -1033,6 +1404,29 @@ const columns = [
 								>
 									<MessageCircleMoreIcon />
 									Contact Staff
+								</DialogTrigger>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem asChild>
+								<DialogTrigger
+									className="w-full"
+									onClick={() => setOpen("reset-password")}
+								>
+									<KeyIcon />
+									Reset Password
+								</DialogTrigger>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								className="hover:bg-yellow-500/10 text-yellow-600 focus:text-yellow-600"
+								asChild
+							>
+								<DialogTrigger
+									className="w-full"
+									onClick={() => setOpen("suspend-staff")}
+								>
+									<BanIcon className="text-yellow-600" />
+									Suspend Staff
 								</DialogTrigger>
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
@@ -1058,7 +1452,13 @@ const columns = [
 	}),
 ];
 
-function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
+function HotelList({
+	table,
+	onRowClick,
+}: {
+	table: TableType<CustomPageStaffResponse>;
+	onRowClick?: (staff: CustomPageStaffResponse) => void;
+}) {
 	return (
 		<div className="overflow-hidden rounded-md border">
 			<Table>
@@ -1087,6 +1487,12 @@ function HotelList({ table }: { table: TableType<CustomPageStaffResponse> }) {
 							<TableRow
 								key={row.id}
 								data-state={row.getIsSelected() && "selected"}
+								className="cursor-pointer hover:bg-gray-50/80"
+								onClick={(e) => {
+									const target = e.target as HTMLElement;
+									if (target.closest("button, [role='menuitem'], [data-slot]")) return;
+									onRowClick?.(row.original);
+								}}
 							>
 								{row.getVisibleCells().map((cell) => (
 									<TableCell key={cell.id} className="text-gray-600">
@@ -1145,6 +1551,8 @@ export function HotelOwnerStaff({
 	paginationMeta: Pagination;
 }) {
 	const [pagination, setPagination] = usePaginationSearchParams();
+	const [selectedStaff, setSelectedStaff] =
+		useState<CustomPageStaffResponse | null>(null);
 	const table = useReactTable({
 		data: staffs,
 		columns: columns,
@@ -1170,13 +1578,20 @@ export function HotelOwnerStaff({
 	return (
 		<div className="p-4 space-y-2 md:space-y-4">
 			<HotelListToolbar table={table} />
-			<HotelList table={table} />
+			<HotelList table={table} onRowClick={setSelectedStaff} />
 			<SuccessDialog
 				open={successDialogOpen.show}
 				setOpenAction={(show) =>
 					setSuccessDialogOpen({ ...successDialogOpen, show })
 				}
 				message={successDialogOpen.message}
+			/>
+			<StaffDetailSheet
+				staff={selectedStaff}
+				open={!!selectedStaff}
+				onOpenChange={(open) => {
+					if (!open) setSelectedStaff(null);
+				}}
 			/>
 		</div>
 	);

@@ -54,7 +54,7 @@ import {
 } from "@/components/shared/shared-dialogs";
 import type {
 	BookingStatus,
-	BookingViewResponse,
+	ManagerBookingViewResponse,
 	Pagination,
 } from "@/lib/fetch";
 import {
@@ -165,7 +165,7 @@ function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	);
 }
 
-const columnHelper = createColumnHelper<BookingViewResponse>();
+const columnHelper = createColumnHelper<ManagerBookingViewResponse>();
 
 const columns = [
 	columnHelper.display({
@@ -263,7 +263,7 @@ const columns = [
 						<DropdownMenuContent className="bg-white" align="end">
 							<DropdownMenuItem asChild>
 								<Link
-									href={`/reports/branch-id/${info.row.original.bookingId}`}
+									href={`/reports/branch-id/${info.row.original.id}`}
 								>
 									<EyeIcon />
 									View branch report
@@ -289,7 +289,7 @@ const columns = [
 	}),
 ];
 
-function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
+function BookingList({ table }: { table: TableType<ManagerBookingViewResponse> }) {
 	return (
 		<div className="overflow-hidden rounded-md border">
 			<Table>
@@ -357,7 +357,7 @@ function BookingList({ table }: { table: TableType<BookingViewResponse> }) {
 function BookingsListToolbar({
 	table,
 }: {
-	table: TableType<BookingViewResponse>;
+	table: TableType<ManagerBookingViewResponse>;
 }) {
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [bookingState, setBookingState] = useQueryState(
@@ -709,7 +709,7 @@ export function BookingsPage({
 	paginationMeta,
 	bookings,
 }: {
-	bookings: BookingViewResponse[];
+	bookings: ManagerBookingViewResponse[];
 	paginationMeta: Pagination;
 	breadcrumb: {
 		title: string;

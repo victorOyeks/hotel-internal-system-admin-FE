@@ -9,14 +9,15 @@ import { Button } from "@/components/ui/button";
 import {
 	type ColumnFiltersState,
 	createColumnHelper,
+	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
 	type Table as TableType,
-} from "@tanstack/table-core";
+	useReactTable,
+} from "@tanstack/react-table";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { flexRender, useReactTable } from "@tanstack/react-table";
 import {
 	Table,
 	TableBody,

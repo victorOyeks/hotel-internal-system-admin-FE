@@ -20,6 +20,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { selectRole } from "@/app/select-role/actions";
 import { switchManagerCurrentHotel } from "@/lib/manager-actions";
+import { switchOwnerCurrentHotel } from "@/lib/hotel-owner-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SidebarSwitchersProps {
@@ -35,9 +36,11 @@ export function SidebarSwitchers({
     hotels,
     activeHotel,
 }: SidebarSwitchersProps) {
+    const switchHotelFn = role === "HOTEL_OWNER" ? switchOwnerCurrentHotel : switchManagerCurrentHotel;
+
     const { mutateAsync: switchHotel } = useMutation({
         mutationKey: ["set-active-hotel"],
-        mutationFn: switchManagerCurrentHotel,
+        mutationFn: switchHotelFn,
         onError: (error) => {
             toast.error("Failed to switch hotel.", {
                 description:
@@ -66,7 +69,7 @@ export function SidebarSwitchers({
         },
     });
 
-    const showHotelSection = role === "MANAGER" && hotels && hotels.length > 0;
+    const showHotelSection = (role === "MANAGER" || role === "HOTEL_OWNER") && hotels && hotels.length > 0;
     const showRoleSection = availableRoles.length > 1;
 
     // If nothing to show, return null
