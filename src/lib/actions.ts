@@ -15,7 +15,6 @@ import {
 	type ServerActionResponseFromEndpoint,
 	parseError,
 } from "./action-utils";
-import { cookies } from "next/headers";
 
 export async function revalidateRoute(path: string) {
 	revalidatePath(path);
@@ -28,7 +27,6 @@ export async function login(payload: {
 	password: string;
 }): ServerActionResponse<{
 	message: string;
-	role: string;
 	referenceId?: string;
 }> {
 	try {
@@ -50,7 +48,7 @@ export async function login(payload: {
 
 		await createSession(data.accessToken);
 
-		return { success: true, data: { message, referenceId, role: data.role } };
+		return { success: true, data: { message, referenceId } };
 	} catch (error) {
 		console.error(error);
 		return { success: false, error: parseError(error) };

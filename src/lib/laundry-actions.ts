@@ -9,13 +9,10 @@ import { parseError } from "./action-utils";
 export async function getLaundryDashboardStats() {
 	try {
 		const session = await verifySession();
-		const response = await $fetch(
-			"@get/api/hotels/laundry/dashboard/stats",
-			{
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
+		const response = await $fetch("@get/api/hotels/laundry/dashboard/stats", {
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };
@@ -24,11 +21,12 @@ export async function getLaundryDashboardStats() {
 
 // ─── Laundry Items ───────────────────────────────────────────
 
-export async function getLaundryItems(activeOnly?: boolean) {
+export async function getLaundryItems(activeOnly?: boolean | string) {
 	try {
 		const session = await verifySession();
 		const response = await $fetch("@get/api/hotels/laundry/items", {
-			query: activeOnly != null ? { activeOnly } : undefined,
+			query:
+				activeOnly != null ? { activeOnly: String(activeOnly) } : undefined,
 			auth: { type: "Bearer", token: session.token },
 			throw: true,
 		});
@@ -58,14 +56,11 @@ export async function getLaundryItemsByCategory(category: string) {
 export async function getLaundryItemDetails(itemId: string) {
 	try {
 		const session = await verifySession();
-		const response = await $fetch(
-			"@get/api/hotels/laundry/items/:itemId",
-			{
-				params: { itemId },
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
+		const response = await $fetch("@get/api/hotels/laundry/items/:itemId", {
+			params: { itemId },
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };
@@ -89,15 +84,12 @@ export async function createLaundryItem(payload: any) {
 export async function updateLaundryItem(itemId: string, payload: any) {
 	try {
 		const session = await verifySession();
-		const response = await $fetch(
-			"@put/api/hotels/laundry/items/:itemId",
-			{
-				params: { itemId },
-				body: payload,
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
+		const response = await $fetch("@put/api/hotels/laundry/items/:itemId", {
+			params: { itemId },
+			body: payload,
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };
@@ -107,14 +99,11 @@ export async function updateLaundryItem(itemId: string, payload: any) {
 export async function deactivateLaundryItem(itemId: string) {
 	try {
 		const session = await verifySession();
-		const response = await $fetch(
-			"@delete/api/hotels/laundry/items/:itemId",
-			{
-				params: { itemId },
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
+		const response = await $fetch("@delete/api/hotels/laundry/items/:itemId", {
+			params: { itemId },
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };
@@ -140,14 +129,11 @@ export async function createLaundryOrder(payload: any) {
 export async function getLaundryOrderDetails(orderId: string) {
 	try {
 		const session = await verifySession();
-		const response = await $fetch(
-			"@get/api/hotels/laundry/orders/:orderId",
-			{
-				params: { orderId },
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
+		const response = await $fetch("@get/api/hotels/laundry/orders/:orderId", {
+			params: { orderId },
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };

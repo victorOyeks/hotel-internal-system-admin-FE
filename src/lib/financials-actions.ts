@@ -39,6 +39,7 @@ export const getOtherIncome = cache(
 		search?: string;
 		startDate?: string;
 		endDate?: string;
+		category?: string;
 	}) => {
 		const cookieData = await getCookieData();
 		const hotelId = await getHotelId();
@@ -159,7 +160,7 @@ export const updateExpenditureStatus = async (
 };
 
 export const getProfitAndLoss = cache(
-	async (params: { startDate: string; endDate: string }) => {
+	async (params: { startDate: string; endDate: string; period?: string }) => {
 		const cookieData = await getCookieData();
 		const hotelId = await getHotelId();
 		if (!cookieData || !hotelId) return null;
@@ -178,7 +179,7 @@ export const getProfitAndLoss = cache(
 );
 
 export const getCashFlow = cache(
-	async (params: { startDate: string; endDate: string }) => {
+	async (params: { startDate: string; endDate: string; period?: string }) => {
 		const cookieData = await getCookieData();
 		const hotelId = await getHotelId();
 		if (!cookieData || !hotelId) return null;

@@ -1968,12 +1968,13 @@ export type RecordStockCountRequest = z.infer<typeof RecordStockCountRequest>;
 
 const CreateStockTakeRequest = z.object({
 	locationId: z.string(),
-	description: z.string(),
+	stockTakeType: z.enum(["FULL", "PARTIAL"]),
 	scheduledDate: z.string(), // date-time
-	blindCount: z.boolean().optional(),
-	includeInactiveProducts: z.boolean().optional(),
-	productCategories: z.array(z.string()).optional(),
-	assignedUserIds: z.array(z.string()).optional(),
+	supervisorName: z.string().optional(),
+	countedBy: z.string().optional(),
+	acceptableVariancePercent: z.number().optional(),
+	stockFrozen: z.boolean().optional(),
+	productIds: z.array(z.string()).optional(),
 	notes: z.string().optional(),
 });
 
@@ -3937,15 +3938,15 @@ export const schema = createSchema({
 	},
 	"@get/api/hotels/laundry/orders/:orderId": {
 		params: z.object({ orderId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@get/api/hotels/laundry/orders/:orderId/payments": {
 		params: z.object({ orderId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@get/api/hotels/laundry/orders/:orderId/payment-summary": {
 		params: z.object({ orderId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@get/api/hotels/laundry/orders/room/:roomIdentifier": {
 		params: z.object({ roomIdentifier: z.string() }),
@@ -3957,6 +3958,15 @@ export const schema = createSchema({
 	},
 	"@get/api/hotels/rentals/orders/booking/:bookingId": {
 		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject.extend({ data: z.any() }),
+	},
+	"@post/api/hotels/rentals/orders/:orderId/return": {
+		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject.extend({ data: z.any() }),
+	},
+	"@get/api/hotels/rentals/orders/:orderId/return-details": {
+		params: z.object({ orderId: z.string() }),
 		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@get/api/hotels/rentals/orders/:orderId": {
@@ -4482,12 +4492,12 @@ export const schema = createSchema({
 	"@patch/api/hotels/laundry/orders/:orderId/status": {
 		input: z.any(),
 		params: z.object({ orderId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@patch/api/hotels/rentals/orders/:orderId/status": {
 		input: z.any(),
 		params: z.object({ orderId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@patch/api/managers/:hotelId/:userId/reset-password": {
 		input: z.any(),
@@ -4892,7 +4902,11 @@ export const schema = createSchema({
 	"@put/api/hotels/laundry/items/:itemId": {
 		input: z.any(),
 		params: z.object({ itemId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({ data: z.any() }),
+	},
+	"@delete/api/hotels/laundry/items/:itemId": {
+		params: z.object({ itemId: z.string() }),
+		output: ApiResponseObject.extend({ data: z.any() }),
 	},
 	"@put/api/inventories/grn/:grnId": {
 		input: z.any(),
@@ -4971,9 +4985,7 @@ export const schema = createSchema({
 			})
 			.partial(),
 		output: ApiResponseObject.extend({
-			data: Pagination.extend({
-				content: StockMovementResponse.array(),
-			}),
+			data: z.array(StockMovementResponse),
 		}),
 	},
 });

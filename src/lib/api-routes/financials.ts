@@ -128,6 +128,55 @@ export const CashFlowStatement = z.object({
 
 export type CashFlowStatement = z.infer<typeof CashFlowStatement>;
 
+export const ComprehensiveSummaryData = z.object({
+	totalRevenue: z.number(),
+	totalExpenses: z.number(),
+	grossProfit: z.number(),
+	netProfit: z.number(),
+	operatingCashFlow: z.number(),
+	endingCashBalance: z.number(),
+	occupancyRate: z.number(),
+	revPAR: z.number(),
+	adr: z.number(),
+});
+
+export type ComprehensiveSummaryData = z.infer<typeof ComprehensiveSummaryData>;
+
+export const ConsumptionReport = z.object({
+	period: z.string(),
+	foodCost: z.number(),
+	beverageCost: z.number(),
+	otherCost: z.number(),
+	totalConsumptionCost: z.number(),
+	foodSales: z.number(),
+	beverageSales: z.number(),
+	otherSales: z.number(),
+	totalRestaurantRevenue: z.number(),
+	foodCostPercentage: z.number(),
+	beverageCostPercentage: z.number(),
+	overallCostPercentage: z.number(),
+});
+
+export type ConsumptionReport = z.infer<typeof ConsumptionReport>;
+
+export const BookingFinancialDetails = z.object({
+	charges: z
+		.array(z.object({ description: z.string(), amount: z.number() }))
+		.optional()
+		.nullable(),
+	totalCharges: z.number().optional().nullable(),
+	payments: z
+		.array(
+			z.object({ method: z.string(), date: z.string(), amount: z.number() }),
+		)
+		.optional()
+		.nullable(),
+	totalPaid: z.number().optional().nullable(),
+	balance: z.number().optional().nullable(),
+});
+
+export type BookingFinancialDetails = z.infer<typeof BookingFinancialDetails>;
+
 // --- Routes ---
 
 export const financialsRoutes = {
@@ -276,7 +325,9 @@ export const financialsRoutes = {
 				size: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: z.array(ConsumptionReport),
+		}),
 	},
 	"@get/api/financials/monthly-summary": {
 		output: ApiResponseObject,
@@ -298,7 +349,9 @@ export const financialsRoutes = {
 	},
 	"@get/api/financials/bookings/:bookingId/detailed": {
 		params: z.object({ bookingId: z.string() }),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: BookingFinancialDetails,
+		}),
 	},
 	"@get/api/financials/restaurant/daily-summary/paginated": {
 		query: z
@@ -368,7 +421,9 @@ export const financialsRoutes = {
 				endDate: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: ComprehensiveSummaryData,
+		}),
 	},
 	"@get/api/financials/this-week": {
 		output: ApiResponseObject,

@@ -3,9 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { TrendingUp, DollarSign, Activity } from "lucide-react";
+import type { ComprehensiveSummaryData } from "@/lib/api-routes/financials";
 
 interface ComprehensiveSummaryProps {
-    data: Record<string, unknown>;
+    data: ComprehensiveSummaryData | null;
 }
 
 export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
@@ -13,7 +14,7 @@ export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
 
     // Using placeholder logic since we don't know the exact shape yet, 
     // assuming it has standard summary fields
-    const { totalProft, totalRevenue, totalExpenses, occupancyRate } = data;
+    const { netProfit, totalRevenue, totalExpenses, occupancyRate } = data;
 
     return (
         <div className="space-y-6">
@@ -32,7 +33,7 @@ export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
                 />
                 <SummaryCard
                     title="Net Profit"
-                    value={formatCurrency(totalProft || 0)}
+                    value={formatCurrency(netProfit || 0)}
                     icon={TrendingUp}
                     className="text-green-600 bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900"
                 />
@@ -55,7 +56,7 @@ export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
                         <p>
                             During this period, the property generated <strong>{formatCurrency(totalRevenue || 0)}</strong> in revenue
                             against <strong>{formatCurrency(totalExpenses || 0)}</strong> in expenses, resulting in a net profit of
-                            <strong>{formatCurrency(totalProft || 0)}</strong>. The occupancy rate stands at <strong>{occupancyRate || 0}%</strong>.
+                            <strong>{formatCurrency(netProfit || 0)}</strong>. The occupancy rate stands at <strong>{occupancyRate || 0}%</strong>.
                         </p>
                     </div>
                 </CardContent>

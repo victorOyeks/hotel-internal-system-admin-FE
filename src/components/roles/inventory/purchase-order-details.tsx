@@ -292,27 +292,51 @@ export function PurchaseOrderDetails({
 					<Separator />
 
 					{/* Totals */}
-					<div className="space-y-2">
+					<div className="space-y-1.5 text-sm">
 						<div className="flex justify-between">
 							<span className="text-muted-foreground">Subtotal:</span>
-							<span className="font-semibold">
+							<span className="font-medium">
 								{formatCurrency(currentOrder.subtotal)}
 							</span>
 						</div>
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">Shipping:</span>
-							<span className="font-semibold">
-								{formatCurrency(currentOrder.shippingCost)}
-							</span>
-						</div>
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">Tax:</span>
-							<span className="font-semibold">
-								{formatCurrency(currentOrder.taxAmount)}
-							</span>
-						</div>
+						{currentOrder.discountAmount != null && currentOrder.discountAmount > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									Discount{currentOrder.discountPercent != null ? ` (${currentOrder.discountPercent}%)` : ""}:
+								</span>
+								<span className="font-medium text-red-600">
+									-{formatCurrency(currentOrder.discountAmount)}
+								</span>
+							</div>
+						)}
+						{currentOrder.shippingCost != null && currentOrder.shippingCost > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Shipping:</span>
+								<span className="font-medium">
+									{formatCurrency(currentOrder.shippingCost)}
+								</span>
+							</div>
+						)}
+						{currentOrder.otherCharges != null && currentOrder.otherCharges > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Other Charges:</span>
+								<span className="font-medium">
+									{formatCurrency(currentOrder.otherCharges)}
+								</span>
+							</div>
+						)}
+						{currentOrder.taxAmount != null && currentOrder.taxAmount > 0 && (
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">
+									Tax{currentOrder.taxRate != null ? ` (${currentOrder.taxRate}%)` : ""}:
+								</span>
+								<span className="font-medium">
+									{formatCurrency(currentOrder.taxAmount)}
+								</span>
+							</div>
+						)}
 						<Separator />
-						<div className="flex justify-between text-lg">
+						<div className="flex justify-between text-base">
 							<span className="font-bold">Total:</span>
 							<span className="font-bold">
 								{formatCurrency(currentOrder.totalAmount)}

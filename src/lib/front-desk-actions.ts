@@ -106,7 +106,7 @@ export async function checkInGuest({
 
 	return {
 		success: true,
-		data: response.data,
+		data: response.data as any,
 	};
 }
 
@@ -338,7 +338,7 @@ export async function exportRooms(filters: {
 
 		return {
 			success: true,
-			data: response.data as string,
+			data: response.data as unknown as string,
 		};
 	} catch (error) {
 		return {

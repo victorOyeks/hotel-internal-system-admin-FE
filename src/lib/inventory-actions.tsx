@@ -298,7 +298,10 @@ export async function addStockTake(payload: {
 
 	try {
 		const response = await $fetch("@post/api/inventories/stock-takes", {
-			body: payload,
+			body: {
+				...payload,
+				stockTakeType: payload.stockTakeType as "FULL" | "PARTIAL",
+			},
 			auth: { type: "Bearer", token: sessionData.token },
 			throw: true,
 		});
