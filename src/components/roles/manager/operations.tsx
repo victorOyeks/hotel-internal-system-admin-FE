@@ -32,7 +32,7 @@ import {
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
-import { StatCard } from "./stat-card";
+import { StatCard } from "@/components/shared/stat-card";
 import type { APIOutput } from "@/lib/action-utils";
 
 type RestaurantData =

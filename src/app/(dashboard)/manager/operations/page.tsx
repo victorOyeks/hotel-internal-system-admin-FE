@@ -16,113 +16,82 @@ function OperationsPage() {
 	const queryClient = getQueryClient();
 	const { id } = use(getManagerCurrentHotel())!;
 
-	const restaurantData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "restaurant", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/restaurant/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const auth = { type: "Bearer" as const, token: cookieData.token };
 
-	const laundryData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "laundry", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/laundry/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	// Create all promises first (parallel pattern)
+	const restaurantPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "restaurant", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/restaurant/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
 
-	const rentalsData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "rentals", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/rentals/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const laundryPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "laundry", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/laundry/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
 
-	const barData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "bar", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/bar/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const rentalsPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "rentals", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/rentals/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
 
-	const accommodationData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "accommodation", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/accommodation/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const barPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "bar", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/bar/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
 
-	const inventoryData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "operations", "inventory", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/managers/:hotelId/inventories/summary",
-					{
-						params: { hotelId: id },
-						query: {},
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const accommodationPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "accommodation", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/accommodation/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
+
+	const inventoryPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "operations", "inventory", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/managers/:hotelId/inventories/summary",
+				{ params: { hotelId: id }, query: {}, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
+
+	// Await all in parallel
+	const restaurantData = use(restaurantPromise);
+	const laundryData = use(laundryPromise);
+	const rentalsData = use(rentalsPromise);
+	const barData = use(barPromise);
+	const accommodationData = use(accommodationPromise);
+	const inventoryData = use(inventoryPromise);
 
 	return (
 		<Operations

@@ -32,23 +32,40 @@ import {
 export const hotelOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
 	{ title: "Hotels", icon: <HotelIcon />, url: "/dashboard/hotels" },
-	{ title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
+	{
+		title: "Approvals",
+		icon: <ShieldCheckIcon />,
+		url: "/dashboard/approvals",
+	},
+	{ title: "Room Management", icon: <Building2Icon />, url: "/dashboard/rooms" },
+	{
+		title: "Manage Bookings",
+		icon: <BookTextIcon />,
+		url: "/dashboard/bookings",
+	},
+	{ title: "Guests", icon: <UsersIcon />, url: "/dashboard/guests" },
 	{
 		title: "Staff Management",
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
 	{
+		title: "Operations",
+		icon: <BarChart3Icon />,
+		url: "/dashboard/operations",
+	},
+	{
 		title: "Financials",
 		icon: <ChartNoAxesCombined />,
 		url: "/dashboard/financials",
 	},
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
+	{
+		title: "Notifications",
+		icon: <BellIcon />,
+		url: "/dashboard/notifications",
+	},
 	{ title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
-	// { title: "Reports", icon: <FolderIcon />, url: "/dashboard/reports" },
-	// { title: "Roles & Permissions", icon: <IdCardLanyardIcon />, url: "/dashboard/roles" },
-	// { title: "Audit Log", icon: <MonitorDot />, url: "/dashboard/audit" },
 ];
 
 export const managerOwnerLinks = [

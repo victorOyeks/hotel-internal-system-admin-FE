@@ -34,59 +34,52 @@ function HotelsPage({ searchParams }: PageProps) {
 	const queryClient = getQueryClient();
 	const query = use(loadSearchParams(searchParams));
 
-	const { content, ...paginationMeta } = use(
-		queryClient.ensureQueryData({
-			queryKey: ["hotels", query],
-			queryFn: async () => {
-				const response = await fromPromise(
-					$fetch("@get/api/hotel-owners/hotels", {
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
-						query: {
-							...query,
-							page: query.page ? query.page - 1 : 0,
-						},
-						throw: true,
-					}),
-					(error) => new Error("Failed to fetch hotels", { cause: error }),
-				);
-				if (response.isErr()) {
-					throw response.error;
-				}
-				return response.value.data;
-			},
-		}),
-	);
+	const auth = { type: "Bearer" as const, token: cookieData.token };
 
-	const managers = use(
-		queryClient.ensureQueryData({
-			queryKey: ["hotel-staffs"],
-			queryFn: async () => {
-				const response = await fromPromise(
-					$fetch("@get/api/hotel-owners/staff", {
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
-						query: {
-							role: "MANAGER",
-						},
-						throw: true,
-					}),
-					(error) =>
-						new Error("Failed to fetch hotel managers", { cause: error }),
-				);
-				if (response.isErr()) {
-					return {
-						content: [],
-					};
-				}
-				return response.value.data;
-			},
-		}),
-	);
+	// Create all promises first (parallel pattern)
+	const hotelsPromise = queryClient.ensureQueryData({
+		queryKey: ["hotels", query],
+		queryFn: async () => {
+			const response = await fromPromise(
+				$fetch("@get/api/hotel-owners/hotels", {
+					auth,
+					query: {
+						...query,
+						page: query.page ? query.page - 1 : 0,
+					},
+					throw: true,
+				}),
+				(error) => new Error("Failed to fetch hotels", { cause: error }),
+			);
+			if (response.isErr()) {
+				throw response.error;
+			}
+			return response.value.data;
+		},
+	});
+
+	const managersPromise = queryClient.ensureQueryData({
+		queryKey: ["hotel-staffs"],
+		queryFn: async () => {
+			const response = await fromPromise(
+				$fetch("@get/api/hotel-owners/staff", {
+					auth,
+					query: { role: "MANAGER" },
+					throw: true,
+				}),
+				(error) =>
+					new Error("Failed to fetch hotel managers", { cause: error }),
+			);
+			if (response.isErr()) {
+				return { content: [] };
+			}
+			return response.value.data;
+		},
+	});
+
+	// Await all in parallel
+	const { content, ...paginationMeta } = use(hotelsPromise);
+	const managers = use(managersPromise);
 
 	const breadcrumb = {
 		title: "Hotels",

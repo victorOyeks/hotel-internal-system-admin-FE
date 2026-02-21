@@ -2,7 +2,7 @@
 
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
-import type { InventoryResponse, Pagination } from "@/lib/fetch";
+import type { InventoryProductResponse, Pagination } from "@/lib/fetch";
 import { SearchIcon, ArrowLeftIcon, RotateCcwIcon } from "lucide-react";
 import {
 	createColumnHelper,
@@ -49,51 +49,33 @@ const HotelOwnerInventoryFilter = ({
 }: {
 	setOpen: (open: boolean) => void;
 	queryState: {
-		searchName: string | null;
-		customId: string | null;
-		category:
-			| "BAR"
-			| "KITCHEN"
-			| "HOUSEKEEPING"
-			| "FRONT_DESK"
-			| "MAINTENANCE"
-			| "MANAGEMENT"
-			| "INVENTORY"
-			| "OTHER"
-			| null;
-		unit: string | null;
-		availability: string | null;
+		search: string | null;
+		category: string | null;
+		status: string | null;
 	};
 	setQueryState: (state: Partial<typeof queryState>) => void;
 }) => {
 	const [tempFilters, setTempFilters] = useState({
-		searchName: queryState.searchName || null,
-		customId: queryState.customId || null,
+		search: queryState.search || null,
 		category: queryState.category || null,
-		unit: queryState.unit || null,
-		availability: queryState.availability || null,
+		status: queryState.status || null,
 	});
 
-	// Memoized callback functions to prevent unnecessary re-renders
 	const applyFilters = useCallback(() => {
 		setQueryState({
 			...queryState,
-			searchName: tempFilters.searchName,
-			customId: tempFilters.customId,
+			search: tempFilters.search,
 			category: tempFilters.category,
-			unit: tempFilters.unit,
-			availability: tempFilters.availability,
+			status: tempFilters.status,
 		});
 		setOpen(false);
 	}, [queryState, tempFilters, setQueryState, setOpen]);
 
 	const clearFilters = useCallback(() => {
 		const clearedFilters = {
-			searchName: null,
-			customId: null,
+			search: null,
 			category: null,
-			unit: null,
-			availability: null,
+			status: null,
 		};
 		setTempFilters(clearedFilters);
 		setQueryState({
@@ -102,49 +84,43 @@ const HotelOwnerInventoryFilter = ({
 		});
 	}, [queryState, setQueryState]);
 
-	// Memoize filter state computations
 	const filterStates = useMemo(() => {
 		const hasActiveFilters = !!(
-			tempFilters.searchName ||
-			tempFilters.customId ||
+			tempFilters.search ||
 			tempFilters.category ||
-			tempFilters.unit ||
-			tempFilters.availability
+			tempFilters.status
 		);
 
-		const hasAppliedFilters = !!(
-			queryState.searchName ||
-			queryState.customId ||
-			queryState.category ||
-			queryState.unit ||
-			queryState.availability
-		);
-
-		const appliedFiltersCount = [
-			queryState.searchName,
-			queryState.customId,
-			queryState.category,
-			queryState.unit,
-			queryState.availability,
-		].filter(Boolean).length;
-
-		return {
-			hasActiveFilters,
-			hasAppliedFilters,
-			appliedFiltersCount,
-		};
-	}, [tempFilters, queryState]);
+		return { hasActiveFilters };
+	}, [tempFilters]);
 
 	const categoryOptions = useMemo(
 		() => [
-			{ value: "BAR", label: "Bar" },
-			{ value: "KITCHEN", label: "Kitchen" },
-			{ value: "HOUSEKEEPING", label: "Housekeeping" },
-			{ value: "FRONT_DESK", label: "Front Desk" },
-			{ value: "MAINTENANCE", label: "Maintenance" },
-			{ value: "MANAGEMENT", label: "Management" },
-			{ value: "INVENTORY", label: "Inventory" },
+			{ value: "FOOD_FRESH", label: "Food (Fresh)" },
+			{ value: "FOOD_FROZEN", label: "Food (Frozen)" },
+			{ value: "FOOD_DRY_GOODS", label: "Food (Dry Goods)" },
+			{ value: "BEVERAGES_ALCOHOLIC", label: "Alcoholic Beverages" },
+			{ value: "BEVERAGES_NON_ALCOHOLIC", label: "Non-Alcoholic Beverages" },
+			{ value: "CLEANING_SUPPLIES", label: "Cleaning Supplies" },
+			{ value: "LAUNDRY_SUPPLIES", label: "Laundry Supplies" },
+			{ value: "GUEST_AMENITIES", label: "Guest Amenities" },
+			{ value: "LINENS_TOWELS", label: "Linens & Towels" },
+			{ value: "MAINTENANCE_SUPPLIES", label: "Maintenance" },
+			{ value: "KITCHEN_EQUIPMENT", label: "Kitchen Equipment" },
+			{ value: "TABLEWARE", label: "Tableware" },
+			{ value: "MINIBAR_ITEMS", label: "Minibar Items" },
+			{ value: "OFFICE_EQUIPMENT", label: "Office Equipment" },
+			{ value: "GENERAL_SUPPLIES", label: "General Supplies" },
 			{ value: "OTHER", label: "Other" },
+		],
+		[],
+	);
+
+	const statusOptions = useMemo(
+		() => [
+			{ value: "ACTIVE", label: "Active" },
+			{ value: "INACTIVE", label: "Inactive" },
+			{ value: "DISCONTINUED", label: "Discontinued" },
 		],
 		[],
 	);
@@ -164,50 +140,30 @@ const HotelOwnerInventoryFilter = ({
 				</Button>
 			</div>
 
-			{/* Filter Grid - 2 columns */}
-			<div className="grid grid-cols-2 gap-4">
-				{/* Search Name Filter */}
+			{/* Filter Grid */}
+			<div className="space-y-4">
 				<div className="space-y-2">
-					<Label className="text-sm font-medium">Search Name</Label>
+					<Label className="text-sm font-medium">Search</Label>
 					<Input
-						placeholder="Enter search term"
-						value={tempFilters.searchName || ""}
+						placeholder="Search by name, SKU..."
+						value={tempFilters.search || ""}
 						onChange={(e) =>
 							setTempFilters({
 								...tempFilters,
-								searchName: e.target.value || null,
+								search: e.target.value || null,
 							})
 						}
 					/>
 				</div>
 
-				{/* Custom ID Filter */}
 				<div className="space-y-2">
-					<Label className="text-sm font-medium">Custom ID</Label>
-					<Input
-						placeholder="Enter custom ID"
-						value={tempFilters.customId || ""}
-						onChange={(e) =>
-							setTempFilters({
-								...tempFilters,
-								customId: e.target.value || null,
-							})
-						}
-					/>
-				</div>
-
-				{/* Category Filter - spans full width */}
-				<div className="space-y-2 col-span-2">
 					<Label className="text-sm font-medium">Category</Label>
 					<Select
 						value={tempFilters.category || "all"}
 						onValueChange={(value) =>
 							setTempFilters({
 								...tempFilters,
-								category:
-									value === "all"
-										? null
-										: (value as typeof tempFilters.category),
+								category: value === "all" ? null : value,
 							})
 						}
 					>
@@ -225,69 +181,50 @@ const HotelOwnerInventoryFilter = ({
 					</Select>
 				</div>
 
-				{/* Unit Filter */}
 				<div className="space-y-2">
-					<Label className="text-sm font-medium">Unit</Label>
-					<Input
-						placeholder="Enter unit (e.g., pieces, kg)"
-						value={tempFilters.unit || ""}
-						onChange={(e) =>
+					<Label className="text-sm font-medium">Status</Label>
+					<Select
+						value={tempFilters.status || "all"}
+						onValueChange={(value) =>
 							setTempFilters({
 								...tempFilters,
-								unit: e.target.value || null,
+								status: value === "all" ? null : value,
 							})
 						}
-					/>
-				</div>
-
-				{/* Availability Filter */}
-				<div className="space-y-2">
-					<Label className="text-sm font-medium">Availability</Label>
-					<Input
-						placeholder="Enter availability status"
-						value={tempFilters.availability || ""}
-						onChange={(e) =>
-							setTempFilters({
-								...tempFilters,
-								availability: e.target.value || null,
-							})
-						}
-					/>
+					>
+						<SelectTrigger className="w-full">
+							<SelectValue placeholder="All Statuses" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Statuses</SelectItem>
+							{statusOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 			</div>
 
-			{/* Filter Summary */}
 			{filterStates.hasActiveFilters && (
 				<div className="pt-2 border-t">
 					<p className="text-xs text-muted-foreground mb-2">Active filters:</p>
 					<div className="flex flex-wrap gap-1">
-						{tempFilters.searchName && (
+						{tempFilters.search && (
 							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-								Search: {tempFilters.searchName}
-							</span>
-						)}
-						{tempFilters.customId && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-								ID: {tempFilters.customId}
+								Search: {tempFilters.search}
 							</span>
 						)}
 						{tempFilters.category && (
 							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
 								Category:{" "}
-								{
-									categoryOptions.find((c) => c.value === tempFilters.category)
-										?.label
-								}
+								{categoryOptions.find((c) => c.value === tempFilters.category)?.label}
 							</span>
 						)}
-						{tempFilters.unit && (
+						{tempFilters.status && (
 							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-								Unit: {tempFilters.unit}
-							</span>
-						)}
-						{tempFilters.availability && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
-								Availability: {tempFilters.availability}
+								Status: {tempFilters.status}
 							</span>
 						)}
 					</div>
@@ -329,32 +266,17 @@ function ListToolbar() {
 		);
 	};
 
-	// Filter query states
 	const [filterStates, setFilterStates] = useQueryStates({
-		searchName: parseAsString,
-		customId: parseAsString,
-		category: parseAsStringLiteral([
-			"BAR",
-			"KITCHEN",
-			"HOUSEKEEPING",
-			"FRONT_DESK",
-			"MAINTENANCE",
-			"MANAGEMENT",
-			"INVENTORY",
-			"OTHER",
-		]),
-		unit: parseAsString,
-		availability: parseAsString,
+		search: parseAsString,
+		category: parseAsString,
+		status: parseAsString,
 	});
 
-	// Memoized filter state and handlers
 	const filterQueryState = useMemo(
 		() => ({
-			searchName: filterStates.searchName,
-			customId: filterStates.customId,
+			search: filterStates.search,
 			category: filterStates.category,
-			unit: filterStates.unit,
-			availability: filterStates.availability,
+			status: filterStates.status,
 		}),
 		[filterStates],
 	);
@@ -369,57 +291,30 @@ function ListToolbar() {
 		[setFilterStates],
 	);
 
-	// Memoized applied filters for chips
 	const appliedFilters = useMemo(() => {
 		const filters: Array<{ key: string; label: string; value: string }> = [];
 
-		if (filterStates.searchName) {
+		if (filterStates.search) {
 			filters.push({
-				key: "searchName",
+				key: "search",
 				label: "Search",
-				value: filterStates.searchName,
-			});
-		}
-
-		if (filterStates.customId) {
-			filters.push({
-				key: "customId",
-				label: "ID",
-				value: filterStates.customId,
+				value: filterStates.search,
 			});
 		}
 
 		if (filterStates.category) {
-			const categoryLabels = {
-				BAR: "Bar",
-				KITCHEN: "Kitchen",
-				HOUSEKEEPING: "Housekeeping",
-				FRONT_DESK: "Front Desk",
-				MAINTENANCE: "Maintenance",
-				MANAGEMENT: "Management",
-				INVENTORY: "Inventory",
-				OTHER: "Other",
-			};
 			filters.push({
 				key: "category",
 				label: "Category",
-				value: categoryLabels[filterStates.category],
+				value: filterStates.category.replace(/_/g, " "),
 			});
 		}
 
-		if (filterStates.unit) {
+		if (filterStates.status) {
 			filters.push({
-				key: "unit",
-				label: "Unit",
-				value: filterStates.unit,
-			});
-		}
-
-		if (filterStates.availability) {
-			filters.push({
-				key: "availability",
-				label: "Availability",
-				value: filterStates.availability,
+				key: "status",
+				label: "Status",
+				value: filterStates.status,
 			});
 		}
 
@@ -514,50 +409,55 @@ function ListToolbar() {
 	);
 }
 
-const allSupplyColumnHelper = createColumnHelper<InventoryResponse>();
+const allSupplyColumnHelper = createColumnHelper<InventoryProductResponse>();
 
 const allSupplyColumns = [
 	allSupplyColumnHelper.display({
-		header: "Item Code",
-		cell: (info) => <span>{info.row.original.customId}</span>,
+		header: "SKU",
+		cell: (info) => <span className="font-mono text-xs">{info.row.original.sku}</span>,
 	}),
 	allSupplyColumnHelper.accessor("name", {
-		header: "Item",
+		header: "Product",
 		cell: (info) => <span className="text-foreground">{info.getValue()}</span>,
 	}),
 	allSupplyColumnHelper.accessor("category", {
 		header: "Category",
 		cell: (info) => (
-			<span className="font-semibold text-foreground">{info.getValue()}</span>
+			<span className="font-semibold text-foreground capitalize">
+				{info.getValue()?.replace(/_/g, " ").toLowerCase()}
+			</span>
 		),
 	}),
-	allSupplyColumnHelper.accessor("unit", {
-		header: "Item unit",
+	allSupplyColumnHelper.accessor("baseUnit", {
+		header: "Unit",
 		cell: (info) => <span>{info.getValue()}</span>,
 	}),
-	allSupplyColumnHelper.accessor("availability", {
-		header: "Availability",
+	allSupplyColumnHelper.accessor("status", {
+		header: "Status",
 		cell: (info) => {
-			const availability = info.getValue();
-
+			const status = info.getValue();
 			const variant: Record<string, BadgeVariant> = {
-				AVAILABLE: "green",
+				ACTIVE: "green",
+				INACTIVE: "outline",
+				DISCONTINUED: "destructive",
+				DRAFT: "yellow",
+				ARCHIVED: "blue",
 			};
 
 			return (
-				<Badge className="capitalize" variant={variant[availability]}>
-					{availability.toLowerCase()}
+				<Badge className="capitalize" variant={variant[status]}>
+					{status.toLowerCase()}
 				</Badge>
 			);
 		},
 	}),
-	allSupplyColumnHelper.accessor("quantity", {
-		header: "Quantity in stock",
-		cell: (info) => <span>{info.getValue()}</span>,
+	allSupplyColumnHelper.accessor("currentStockOnHand", {
+		header: "Stock on Hand",
+		cell: (info) => <span>{info.getValue() ?? 0}</span>,
 	}),
 ];
 
-function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
+function InventoryTable({ table }: { table: TableType<InventoryProductResponse> }) {
 	return (
 		<div className="overflow-hidden rounded-md border bg-card">
 			<Table>
@@ -625,7 +525,7 @@ function AllSupplySection({
 	data,
 	paginationMeta,
 }: {
-	data: InventoryResponse[];
+	data: InventoryProductResponse[];
 	paginationMeta: Pagination;
 }) {
 	const [pagination, onPaginationChange] = usePaginationSearchParams();
@@ -650,7 +550,7 @@ function AllSupplySection({
 	return <InventoryTable table={table} />;
 }
 
-type InventoryHistoryResponse = InventoryResponse & {
+type InventoryHistoryResponse = InventoryProductResponse & {
 	supplyDate: string;
 	supplier: string;
 	supplyQuantity: number;
@@ -661,23 +561,22 @@ const inventoryHistoryColumnHelper =
 
 const inventoryHistoryColumns = [
 	inventoryHistoryColumnHelper.display({
-		header: "Item Code",
-		cell: (info) => <span>{info.row.original.customId}</span>,
+		header: "SKU",
+		cell: (info) => <span className="font-mono text-xs">{info.row.original.sku}</span>,
 	}),
 	inventoryHistoryColumnHelper.accessor("name", {
-		header: "Item",
+		header: "Product",
 		cell: (info) => <span className="text-foreground">{info.getValue()}</span>,
 	}),
 	inventoryHistoryColumnHelper.accessor("supplier", {
 		header: "Supplier",
 		cell: (info) => <span>{info.getValue()}</span>,
 	}),
-
-	inventoryHistoryColumnHelper.accessor("unit", {
-		header: "Item unit",
+	inventoryHistoryColumnHelper.accessor("baseUnit", {
+		header: "Unit",
 		cell: (info) => <span>{info.getValue()}</span>,
 	}),
-	inventoryHistoryColumnHelper.accessor("quantity", {
+	inventoryHistoryColumnHelper.accessor("supplyQuantity", {
 		header: "Supply Quantity",
 		cell: (info) => <span>{info.getValue()}</span>,
 	}),
@@ -790,7 +689,7 @@ export function SingleInventoryPage({
 	data,
 	paginationMeta,
 }: {
-	data: InventoryResponse[];
+	data: InventoryProductResponse[];
 	paginationMeta: Pagination;
 }) {
 	const searchParams = useSearchParams();

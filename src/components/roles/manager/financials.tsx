@@ -27,8 +27,8 @@ import {
 } from "@/components/ui/tabs";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
-import { StatCard } from "./stat-card";
-import { DonutChart } from "./donut-chart";
+import { StatCard } from "@/components/shared/stat-card";
+import { DonutChart } from "@/components/shared/donut-chart";
 import type { APIOutput } from "@/lib/action-utils";
 
 type FinancialDashboard =

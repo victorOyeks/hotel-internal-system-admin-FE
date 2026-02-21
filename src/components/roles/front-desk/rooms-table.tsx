@@ -4,13 +4,14 @@ import { useState } from "react";
 import {
 	type ColumnFiltersState,
 	createColumnHelper,
+	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
-} from "@tanstack/table-core";
+	useReactTable,
+} from "@tanstack/react-table";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { flexRender, useReactTable } from "@tanstack/react-table";
 import {
 	Table,
 	TableBody,

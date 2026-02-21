@@ -5,7 +5,6 @@ import {
 	ArrowRightToLineIcon,
 	BedDoubleIcon,
 	BedIcon,
-	CalendarIcon,
 	ClipboardCheckIcon,
 	DollarSignIcon,
 	PackageIcon,
@@ -32,9 +31,11 @@ import { formatCurrency } from "@/lib/utils";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
 import { useLayoutEffect, useMemo } from "react";
+import { useQueryState, parseAsString } from "nuqs";
+import { MonthYearPicker } from "@/components/shared/month-year-picker";
 import { BookingsData } from "./dashboard-table";
-import { StatCard, QuickStatCard } from "./stat-card";
-import { DonutChart } from "./donut-chart";
+import { StatCard, QuickStatCard } from "@/components/shared/stat-card";
+import { DonutChart } from "@/components/shared/donut-chart";
 import type { APIOutput } from "@/lib/action-utils";
 import type { ManagerBookingViewResponse } from "@/lib/fetch";
 import Link from "next/link";
@@ -47,6 +48,13 @@ type PerformanceData =
 
 // ==================== KPI Row ====================
 function KPIRow({ data }: { data: OverviewData }) {
+	const monthLabel = data.selectedMonth
+		? new Date(
+				Number(data.selectedMonth.split("-")[0]),
+				Number(data.selectedMonth.split("-")[1]) - 1,
+			).toLocaleString("en-US", { month: "short", year: "numeric" })
+		: "this month";
+
 	return (
 		<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
 			<StatCard
@@ -54,7 +62,7 @@ function KPIRow({ data }: { data: OverviewData }) {
 				value={data.totalRevenue}
 				icon={DollarSignIcon}
 				isCurrency
-				subtitle="this month"
+				subtitle={monthLabel}
 			/>
 			<StatCard
 				title="Occupancy Rate"
@@ -66,13 +74,13 @@ function KPIRow({ data }: { data: OverviewData }) {
 				title="Check-ins"
 				value={data.totalCheckIns}
 				icon={ArrowRightToLineIcon}
-				subtitle="this month"
+				subtitle={monthLabel}
 			/>
 			<StatCard
 				title="Check-outs"
 				value={data.totalCheckOuts}
 				icon={ArrowLeftToLineIcon}
-				subtitle="this month"
+				subtitle={monthLabel}
 			/>
 			<StatCard
 				title="Pending Approvals"
@@ -124,18 +132,62 @@ const CustomDot = (
 	);
 };
 
+function getCurrentYearMonth() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
-	const currentMonthEarnings = useMemo(
+	const [selectedMonth] = useQueryState(
+		"selectedMonth",
+		parseAsString.withDefault(getCurrentYearMonth()),
+	);
+
+	const { selectedMonthEarnings, selectedMonthName, selectedMonthLabel } =
+		useMemo(() => {
+			const [y, m] = selectedMonth.split("-").map(Number);
+			const monthDate = new Date(y, m - 1);
+			const name = monthDate
+				.toLocaleString("en-US", { month: "long" })
+				.toUpperCase();
+			const label = monthDate.toLocaleString("en-US", {
+				month: "long",
+				year: "numeric",
+			});
+			const earnings =
+				graphData.find((d) => d.month.toUpperCase() === name)
+					?.totalEarnings ?? 0;
+			return {
+				selectedMonthEarnings: earnings,
+				selectedMonthName: name,
+				selectedMonthLabel: label,
+			};
+		}, [graphData, selectedMonth]);
+
+	const SelectedDot = useMemo(
 		() =>
-			graphData.reduce(
-				(acc, curr) =>
-					acc +
-					(curr.month === new Date().toLocaleString("en-US", { month: "long" })
-						? curr.totalEarnings
-						: 0),
-				0,
-			),
-		[graphData],
+			function Dot(
+				props: DotProps & {
+					payload: { month: string; totalEarnings: number };
+				},
+			) {
+				const { cx, cy, payload } = props;
+				if (cx === undefined || cy === undefined) return null;
+				if (payload.month.toUpperCase() !== selectedMonthName) return null;
+				return (
+					<g>
+						<circle
+							cx={cx}
+							cy={cy}
+							r={5}
+							fill="#22c55e"
+							stroke="white"
+							strokeWidth={2}
+						/>
+					</g>
+				);
+			},
+		[selectedMonthName],
 	);
 
 	return (
@@ -144,18 +196,11 @@ function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 				<div>
 					<h3 className="text-sm font-medium text-gray-600">Revenue Trend</h3>
 					<p className="text-2xl font-semibold text-primary">
-						{formatCurrency(currentMonthEarnings)}
+						{formatCurrency(selectedMonthEarnings)}
 					</p>
-					<p className="text-xs text-gray-400">This month</p>
+					<p className="text-xs text-gray-400">{selectedMonthLabel}</p>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					className="shadow-none text-gray-500"
-				>
-					<CalendarIcon className="size-4" />
-					<span>Monthly</span>
-				</Button>
+				<MonthYearPicker />
 			</div>
 			<div className="h-56 w-full">
 				<ResponsiveContainer width="100%" height="100%">
@@ -179,7 +224,23 @@ function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 							dataKey="month"
 							axisLine={false}
 							tickLine={false}
-							tick={{ fontSize: 11, fill: "#9ca3af" }}
+							tick={(props: { x: number; y: number; payload: { value: string } }) => {
+								const { x, y, payload } = props;
+								const isSelected =
+									payload.value.toUpperCase() === selectedMonthName;
+								return (
+									<text
+										x={x}
+										y={y + 12}
+										textAnchor="middle"
+										fontSize={11}
+										fontWeight={isSelected ? 700 : 400}
+										fill={isSelected ? "#16a34a" : "#9ca3af"}
+									>
+										{payload.value.slice(0, 3)}
+									</text>
+								);
+							}}
 						/>
 						<YAxis
 							axisLine={false}
@@ -207,7 +268,7 @@ function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 							stroke="#22c55e"
 							strokeWidth={2.5}
 							fill="url(#revenueGradient)"
-							dot={false}
+							dot={SelectedDot as ActiveShape<DotProps>}
 							activeDot={CustomDot as ActiveShape<DotProps>}
 						/>
 					</AreaChart>

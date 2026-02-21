@@ -16,36 +16,35 @@ function ApprovalsPage() {
 	const queryClient = getQueryClient();
 	const { id } = use(getManagerCurrentHotel())!;
 
-	const summaryData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "approvals", "summary", id],
-			queryFn: async () => {
-				const res = await $fetch(
-					"@get/api/manager/approvals/pending/summary",
-					{
-						query: { hotelId: id },
-						auth: { type: "Bearer", token: cookieData.token },
-						throw: true,
-					},
-				);
-				return res.data;
-			},
-		}),
-	);
+	const auth = { type: "Bearer" as const, token: cookieData.token };
 
-	const pendingData = use(
-		queryClient.ensureQueryData({
-			queryKey: ["manager", "approvals", "pending", id],
-			queryFn: async () => {
-				const res = await $fetch("@get/api/manager/approvals/pending", {
-					query: { hotelId: id },
-					auth: { type: "Bearer", token: cookieData.token },
-					throw: true,
-				});
-				return res.data;
-			},
-		}),
-	);
+	// Create all promises first (parallel pattern)
+	const summaryPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "approvals", "summary", id],
+		queryFn: async () => {
+			const res = await $fetch(
+				"@get/api/manager/approvals/pending/summary",
+				{ query: { hotelId: id }, auth, throw: true },
+			);
+			return res.data;
+		},
+	});
+
+	const pendingPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "approvals", "pending", id],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/manager/approvals/pending", {
+				query: { hotelId: id },
+				auth,
+				throw: true,
+			});
+			return res.data;
+		},
+	});
+
+	// Await all in parallel
+	const summaryData = use(summaryPromise);
+	const pendingData = use(pendingPromise);
 
 	return (
 		<Approvals
