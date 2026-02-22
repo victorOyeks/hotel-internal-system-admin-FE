@@ -79,7 +79,7 @@ export function GuestDetailsContent({
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Booking ID</span>
-                                    <span className="font-mono bg-background px-1 rounded border">{guestDetails.bookingId.slice(0, 8)}</span>
+                                    <span className="font-mono bg-background px-1 rounded border">{guestDetails.customId}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Status</span>

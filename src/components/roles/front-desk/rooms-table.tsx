@@ -68,11 +68,19 @@ const columns = [
 			};
 
 			const status = info.getValue();
+			const isActive = info.row.original.active !== false;
 			const statusToLabel = status.replace(/_/g, " ").toLowerCase();
 			return (
-				<Badge className="capitalize" variant={statusToVariant[status]}>
-					{statusToLabel}
-				</Badge>
+				<div className="flex items-center gap-1.5">
+					<Badge className="capitalize" variant={statusToVariant[status]}>
+						{statusToLabel}
+					</Badge>
+					{!isActive && (
+						<Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-red-50 text-red-600 border-red-200">
+							Inactive
+						</Badge>
+					)}
+				</div>
 			);
 		},
 	}),

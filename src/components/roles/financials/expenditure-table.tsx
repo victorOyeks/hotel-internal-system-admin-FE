@@ -39,36 +39,31 @@ import { CreateExpenditureModal } from "./create-expenditure-modal";
 const columnHelper = createColumnHelper<Expenditure>();
 
 export const columns = [
-    columnHelper.accessor("date", {
+    columnHelper.accessor("expenseDate", {
         header: "Date",
         cell: (info) => {
-            const date = new Date(info.getValue());
+            const val = info.getValue();
+            if (!val) return "-";
+            const date = new Date(val);
             const formattedDate = date.toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
                 day: "2-digit",
             });
-            const formattedTime = date
-                .toLocaleTimeString("en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                })
-                .toLowerCase();
-            return <span>{`${formattedDate} | ${formattedTime}`}</span>;
+            return <span>{formattedDate}</span>;
         },
     }),
-    columnHelper.accessor("description", {
-        header: "Description",
-        cell: (info) => <div className="font-medium">{info.getValue()}</div>,
+    columnHelper.accessor("title", {
+        header: "Title",
+        cell: (info) => <div className="font-medium">{info.getValue() ?? "-"}</div>,
     }),
     columnHelper.accessor("category", {
         header: "Category",
         cell: (info) => info.getValue(),
     }),
-    columnHelper.accessor("vendor", {
+    columnHelper.accessor("vendorName", {
         header: "Vendor",
-        cell: (info) => info.getValue(),
+        cell: (info) => info.getValue() ?? "-",
     }),
     columnHelper.accessor("amount", {
         header: "Amount",

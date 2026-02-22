@@ -1,11 +1,25 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useState,
+	useTransition,
+} from "react";
 import { useSetAtom } from "jotai";
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
+	CheckCircleIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	ClockIcon,
+	AlertTriangleIcon,
 	DollarSignIcon,
+	LoaderIcon,
+	MoreHorizontalIcon,
 	TrendingDownIcon,
 	TrendingUpIcon,
 } from "lucide-react";
@@ -25,11 +39,22 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
 import { DonutChart } from "@/components/shared/donut-chart";
 import type { APIOutput } from "@/lib/action-utils";
+import {
+	getExpenditures,
+	updateExpenditureStatus,
+} from "@/lib/financials-actions";
 
 type FinancialDashboard =
 	APIOutput<"@get/api/managers/:hotelId/financials/dashboard">["data"];
@@ -442,11 +467,14 @@ function ExpensesTab({ data }: { data: ExpensesData }) {
 
 	return (
 		<div className="space-y-4">
-			{/* Expense Summary */}
-			<div className="grid grid-cols-2 gap-3">
+			{/* Status Summary Cards */}
+			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 				<div className="bg-white p-4 rounded-2xl">
-					<p className="text-sm text-gray-500">Total Expenses</p>
-					<p className="text-2xl font-bold text-primary mt-1">
+					<div className="flex items-center gap-2 mb-1">
+						<DollarSignIcon className="size-4 text-primary" />
+						<p className="text-sm text-gray-500">Total Expenses</p>
+					</div>
+					<p className="text-xl font-bold text-primary">
 						{formatCurrency(data.totalExpenses ?? 0)}
 					</p>
 					{data.expenseGrowthPercentage != null && (
@@ -462,16 +490,37 @@ function ExpensesTab({ data }: { data: ExpensesData }) {
 							) : (
 								<ArrowUpIcon className="size-3" />
 							)}
-							{Math.abs(data.expenseGrowthPercentage).toFixed(1)}% vs last period
+							{Math.abs(data.expenseGrowthPercentage).toFixed(1)}% vs last
+							period
 						</p>
 					)}
 				</div>
 				<div className="bg-white p-4 rounded-2xl">
-					<p className="text-sm text-gray-500">Categories</p>
-					<p className="text-2xl font-bold text-primary mt-1">
-						{categories.length}
+					<div className="flex items-center gap-2 mb-1">
+						<CheckCircleIcon className="size-4 text-green-600" />
+						<p className="text-sm text-gray-500">Paid</p>
+					</div>
+					<p className="text-xl font-bold text-green-600">
+						{formatCurrency(data.totalPaidExpenses ?? 0)}
 					</p>
-					<p className="text-xs text-gray-400 mt-1">expense categories</p>
+				</div>
+				<div className="bg-white p-4 rounded-2xl">
+					<div className="flex items-center gap-2 mb-1">
+						<ClockIcon className="size-4 text-amber-600" />
+						<p className="text-sm text-gray-500">Pending</p>
+					</div>
+					<p className="text-xl font-bold text-amber-600">
+						{formatCurrency(data.totalPendingExpenses ?? 0)}
+					</p>
+				</div>
+				<div className="bg-white p-4 rounded-2xl">
+					<div className="flex items-center gap-2 mb-1">
+						<AlertTriangleIcon className="size-4 text-red-600" />
+						<p className="text-sm text-gray-500">Overdue</p>
+					</div>
+					<p className="text-xl font-bold text-red-600">
+						{formatCurrency(data.totalOverdueExpenses ?? 0)}
+					</p>
 				</div>
 			</div>
 
@@ -520,6 +569,289 @@ function ExpensesTab({ data }: { data: ExpensesData }) {
 					</div>
 				</div>
 			</div>
+
+			{/* Expenditures List */}
+			<ExpensesList />
+		</div>
+	);
+}
+
+const STATUS_TABS = [
+	{ label: "All", value: undefined },
+	{ label: "Pending", value: "PENDING" },
+	{ label: "Approved", value: "APPROVED" },
+	{ label: "Paid", value: "PAID" },
+	{ label: "Overdue", value: "OVERDUE" },
+] as const;
+
+const STATUS_BADGE_MAP: Record<
+	string,
+	{ variant: "green" | "yellow" | "blue" | "red" | "gray"; label: string }
+> = {
+	PAID: { variant: "green", label: "Paid" },
+	PENDING: { variant: "yellow", label: "Pending" },
+	APPROVED: { variant: "blue", label: "Approved" },
+	OVERDUE: { variant: "red", label: "Overdue" },
+	REJECTED: { variant: "red", label: "Rejected" },
+	CANCELLED: { variant: "gray", label: "Cancelled" },
+};
+
+type ExpenditureItem = {
+	id: string;
+	referenceNumber?: string | null;
+	title?: string | null;
+	category: string;
+	amount: number;
+	status: string;
+	vendorName?: string | null;
+	expenseDate?: string | null;
+	createdAt?: string | null;
+};
+
+type ExpenditurePageData = {
+	content: ExpenditureItem[];
+	totalPages: number;
+	totalElements: number;
+	last: boolean;
+	first: boolean;
+	number: number;
+} | null;
+
+function ExpensesList() {
+	const [statusFilter, setStatusFilter] = useState<string | undefined>();
+	const [page, setPage] = useState(0);
+	const [data, setData] = useState<ExpenditurePageData>(null);
+	const [isPending, startTransition] = useTransition();
+	const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+	const fetchData = useCallback(() => {
+		startTransition(async () => {
+			try {
+				const result = await getExpenditures({
+					status: statusFilter,
+					page,
+					size: 10,
+				});
+				setData(result as ExpenditurePageData);
+			} catch {
+				setData(null);
+			}
+		});
+	}, [statusFilter, page]);
+
+	useEffect(() => {
+		fetchData();
+	}, [fetchData]);
+
+	const handleStatusUpdate = useCallback(
+		async (
+			id: string,
+			newStatus: "PENDING" | "APPROVED" | "PAID" | "REJECTED",
+		) => {
+			setUpdatingId(id);
+			try {
+				await updateExpenditureStatus(id, newStatus);
+				fetchData();
+			} catch (e) {
+				console.error("Failed to update status:", e);
+			} finally {
+				setUpdatingId(null);
+			}
+		},
+		[fetchData],
+	);
+
+	const formatDate = (dateStr?: string | null) => {
+		if (!dateStr) return "-";
+		try {
+			return new Date(dateStr).toLocaleDateString("en-GB", {
+				day: "2-digit",
+				month: "short",
+				year: "numeric",
+			});
+		} catch {
+			return dateStr;
+		}
+	};
+
+	const formatCategory = (cat: string) =>
+		cat
+			.replace(/_/g, " ")
+			.toLowerCase()
+			.replace(/\b\w/g, (c) => c.toUpperCase());
+
+	return (
+		<div className="bg-white p-4 rounded-2xl space-y-4">
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+				<h3 className="text-sm font-medium text-gray-600">Expenditures</h3>
+				<div className="flex flex-wrap gap-1">
+					{STATUS_TABS.map((tab) => (
+						<button
+							key={tab.label}
+							type="button"
+							onClick={() => {
+								setStatusFilter(tab.value);
+								setPage(0);
+							}}
+							className={cn(
+								"px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+								statusFilter === tab.value
+									? "bg-primary text-white"
+									: "bg-gray-100 text-gray-600 hover:bg-gray-200",
+							)}
+						>
+							{tab.label}
+						</button>
+					))}
+				</div>
+			</div>
+
+			{isPending && !data ? (
+				<div className="flex justify-center py-12">
+					<LoaderIcon className="size-5 animate-spin text-gray-400" />
+				</div>
+			) : !data?.content?.length ? (
+				<div className="text-center py-12">
+					<p className="text-sm text-gray-400">No expenditures found.</p>
+				</div>
+			) : (
+				<>
+					<div className="overflow-x-auto">
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="border-b text-left text-gray-500">
+									<th className="pb-2 font-medium">Reference</th>
+									<th className="pb-2 font-medium">Title</th>
+									<th className="pb-2 font-medium">Category</th>
+									<th className="pb-2 pr-4 font-medium text-right">Amount</th>
+									<th className="pb-2 pl-4 font-medium">Vendor</th>
+									<th className="pb-2 font-medium">Status</th>
+									<th className="pb-2 font-medium">Date</th>
+									<th className="pb-2 font-medium w-10" />
+								</tr>
+							</thead>
+							<tbody>
+								{data.content.map((item) => {
+									const badge = STATUS_BADGE_MAP[item.status] ?? {
+										variant: "gray" as const,
+										label: item.status,
+									};
+									return (
+										<tr
+											key={item.id}
+											className={cn(
+												"border-b last:border-0",
+												updatingId === item.id && "opacity-50",
+											)}
+										>
+											<td className="py-2.5 text-gray-500 text-xs font-mono">
+												{item.referenceNumber ?? "-"}
+											</td>
+											<td className="py-2.5 text-gray-700 font-medium max-w-[200px] truncate">
+												{item.title ?? "-"}
+											</td>
+											<td className="py-2.5 text-gray-600">
+												{formatCategory(item.category)}
+											</td>
+											<td className="py-2.5 pr-4 text-right font-medium text-primary">
+												{formatCurrency(item.amount)}
+											</td>
+											<td className="py-2.5 pl-4 text-gray-600">
+												{item.vendorName ?? "-"}
+											</td>
+											<td className="py-2.5">
+												<Badge variant={badge.variant}>{badge.label}</Badge>
+											</td>
+											<td className="py-2.5 text-gray-500 text-xs">
+												{formatDate(item.expenseDate ?? item.createdAt)}
+											</td>
+											<td className="py-2.5">
+												{item.status !== "PAID" &&
+													item.status !== "CANCELLED" && (
+														<DropdownMenu>
+															<DropdownMenuTrigger asChild>
+																<button
+																	type="button"
+																	className="p-1 rounded hover:bg-gray-100"
+																	disabled={updatingId === item.id}
+																>
+																	<MoreHorizontalIcon className="size-4 text-gray-400" />
+																</button>
+															</DropdownMenuTrigger>
+															<DropdownMenuContent align="end">
+																{item.status === "PENDING" && (
+																	<DropdownMenuItem
+																		onClick={() =>
+																			handleStatusUpdate(item.id, "APPROVED")
+																		}
+																	>
+																		<CheckCircleIcon className="size-4 mr-2 text-blue-500" />
+																		Approve
+																	</DropdownMenuItem>
+																)}
+																{(item.status === "PENDING" ||
+																	item.status === "APPROVED") && (
+																	<DropdownMenuItem
+																		onClick={() =>
+																			handleStatusUpdate(item.id, "PAID")
+																		}
+																	>
+																		<CheckCircleIcon className="size-4 mr-2 text-green-500" />
+																		Mark as Paid
+																	</DropdownMenuItem>
+																)}
+																{item.status !== "REJECTED" && (
+																	<DropdownMenuItem
+																		onClick={() =>
+																			handleStatusUpdate(item.id, "REJECTED")
+																		}
+																		className="text-red-600"
+																	>
+																		<AlertTriangleIcon className="size-4 mr-2" />
+																		Reject
+																	</DropdownMenuItem>
+																)}
+															</DropdownMenuContent>
+														</DropdownMenu>
+													)}
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+
+					{/* Pagination */}
+					<div className="flex items-center justify-between pt-2">
+						<p className="text-xs text-gray-500">
+							{data.totalElements} total expenditure
+							{data.totalElements !== 1 ? "s" : ""}
+						</p>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setPage((p) => Math.max(0, p - 1))}
+								disabled={data.first || isPending}
+								className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+							>
+								<ChevronLeftIcon className="size-4" />
+							</button>
+							<span className="text-xs text-gray-600">
+								{page + 1} / {data.totalPages || 1}
+							</span>
+							<button
+								type="button"
+								onClick={() => setPage((p) => p + 1)}
+								disabled={data.last || isPending}
+								className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+							>
+								<ChevronRightIcon className="size-4" />
+							</button>
+						</div>
+					</div>
+				</>
+			)}
 		</div>
 	);
 }

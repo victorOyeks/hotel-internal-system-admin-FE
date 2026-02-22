@@ -3,7 +3,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
+import { createLoader, parseAsBoolean, parseAsString, type SearchParams } from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
@@ -15,6 +15,7 @@ const loadSearchParams = createLoader({
 	roomStatus: parseAsString,
 	search: parseAsString,
 	roomType: parseAsString,
+	active: parseAsBoolean,
 });
 
 function Page({ searchParams }: PageProps) {
@@ -23,13 +24,17 @@ function Page({ searchParams }: PageProps) {
 
 	const queryClient = getQueryClient();
 
+	const isDeactivatedView = query.active === false;
+	const activeParam = query.active === false ? false : true;
+
 	const { content: rooms, ...pagination } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["front-desks", "rooms"],
+			queryKey: ["front-desks", "rooms", query],
 			queryFn: async ({ signal }) => {
 				const response = await $fetch("@get/api/front-desks/rooms", {
 					query: {
 						...query,
+						active: activeParam,
 						page: query.page ? query.page - 1 : 0,
 					},
 					signal,
@@ -53,6 +58,7 @@ function Page({ searchParams }: PageProps) {
 			}}
 			paginationMeta={pagination}
 			rooms={rooms}
+			isDeactivatedView={isDeactivatedView}
 		/>
 	);
 }

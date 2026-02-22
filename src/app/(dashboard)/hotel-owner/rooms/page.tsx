@@ -5,6 +5,7 @@ import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import {
 	createLoader,
+	parseAsBoolean,
 	parseAsString,
 	parseAsStringLiteral,
 	type SearchParams,
@@ -19,7 +20,7 @@ const loadSearchParams = createLoader({
 	...paginationSearchParams,
 	search: parseAsString.withDefault(""),
 	roomType: parseAsString,
-	status: parseAsStringLiteral([
+	roomStatus: parseAsStringLiteral([
 		"AVAILABLE",
 		"RESERVED",
 		"BOOKED",
@@ -28,6 +29,7 @@ const loadSearchParams = createLoader({
 		"BLOCKED",
 		"DIRTY",
 	]),
+	active: parseAsBoolean,
 });
 
 function RoomsPage({ searchParams }: PageProps) {
@@ -50,6 +52,8 @@ function RoomsPage({ searchParams }: PageProps) {
 
 	const auth = { type: "Bearer" as const, token: session.token };
 	const { id } = currentHotel;
+	const isDeactivatedView = query.active === false;
+	const activeParam = query.active === false ? false : true;
 
 	// Create all promises first (parallel pattern)
 	const roomsPromise = queryClient.ensureQueryData({
@@ -62,7 +66,8 @@ function RoomsPage({ searchParams }: PageProps) {
 					query: {
 						search: query.search || undefined,
 						roomType: query.roomType || undefined,
-						status: query.status || undefined,
+						status: query.roomStatus || undefined,
+						active: activeParam,
 						page: query.page ? query.page - 1 : 0,
 						size: 20,
 					},
@@ -99,6 +104,7 @@ function RoomsPage({ searchParams }: PageProps) {
 			paginationMeta={paginationMeta}
 			roomTypes={roomTypes}
 			hotelId={id}
+			isDeactivatedView={isDeactivatedView}
 		/>
 	);
 }

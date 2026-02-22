@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import {
 	useReactTable,
@@ -16,9 +15,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
 	EyeIcon,
-	MessageCircleMoreIcon,
-	MoreVerticalIcon,
 	SearchIcon,
+	User,
+	Calendar,
+	CreditCard,
+	Building,
+	Bed,
+	Phone,
+	Hash,
 } from "lucide-react";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
@@ -35,17 +39,9 @@ import { DataTablePagination } from "@/components/shared/pagination";
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
+	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import {
 	type ExportData,
@@ -64,20 +60,8 @@ import {
 	useQueryStates,
 } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import z from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	Form,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormControl,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -237,75 +221,212 @@ const ManagerBookingsFilter = ({
 	);
 };
 
-const contactManagerFormSchema = z.object({
-	title: z.string().nonempty("Title is required"),
-	message: z.string().nonempty("Message is required"),
-});
-
-function ContactManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	const form = useForm({
-		resolver: zodResolver(contactManagerFormSchema),
-		defaultValues: {
-			title: "",
-			message: "",
-		},
-	});
-
-	const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
-		console.log("Message sent:", data.message);
-		setOpen(false);
-		setShowSuccessDialog({
-			show: true,
-			message: "Message delivered",
-		});
-		form.reset();
+function BookingDetailsContent({ booking }: { booking: ManagerBookingViewResponse }) {
+	const statusToVariant: Record<BookingStatus, BadgeVariant> = {
+		CHECKED_IN: "green",
+		CHECKED_OUT: "blue",
+		RESERVED: "yellow",
+		CANCELLED: "destructive",
 	};
 
-	return (
-		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle>Contact Branch Manager</DialogTitle>
-			<DialogDescription className="sr-only">
-				Fill in the details below to send a message to the branch manager.
-			</DialogDescription>
-			<Form {...form}>
-				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-					<FormField
-						control={form.control}
-						name="title"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Title</FormLabel>
-								<FormControl>
-									<Input placeholder="Message Title" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+	const numberOfNights = booking.numberOfNights ??
+		Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24));
 
-					<FormField
-						control={form.control}
-						name="message"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Message</FormLabel>
-								<FormControl>
-									<Textarea
-										className="resize-none"
-										placeholder="Type your message here..."
-										{...field}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
+	return (
+		<DialogContent className="sm:max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto">
+			<DialogHeader>
+				<DialogTitle className="flex items-center gap-2">
+					Booking Details
+					<span className="font-mono text-xs bg-muted px-2 py-0.5 rounded border">
+						{booking.customId}
+					</span>
+					<Badge className="capitalize ml-1" variant={statusToVariant[booking.bookingStatus]}>
+						{booking.bookingStatus.replace(/_/g, " ").toLowerCase()}
+					</Badge>
+				</DialogTitle>
+			</DialogHeader>
+
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
+				{/* Guest Info - Column 1 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Guest Information</h4>
+					<div className="flex flex-col gap-4 p-4 rounded-lg border bg-card h-full">
+						<div className="flex items-center gap-4">
+							<div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+								<User className="h-6 w-6" />
+							</div>
+							<div>
+								<h3 className="font-semibold text-lg">
+									{booking.title ? `${booking.title} ` : ""}{booking.guestName}
+								</h3>
+								{booking.guestPhoneNumber && (
+									<div className="text-sm text-muted-foreground flex items-center gap-1">
+										<Phone className="h-3 w-3" />
+										{booking.guestPhoneNumber}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{booking.organizationName && (
+							<div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted p-2 rounded">
+								<Building className="h-4 w-4" />
+								<span className="font-medium">Org:</span> {booking.organizationName}
+							</div>
 						)}
-					/>
-					<Button type="submit" className="w-full font-semibold">
-						Send Message
-					</Button>
-				</form>
-			</Form>
+
+						<div className="space-y-3 mt-auto">
+							<div className="flex items-center gap-2 text-sm">
+								<Bed className="h-4 w-4 text-muted-foreground" />
+								<span className="text-muted-foreground">Room Type:</span>
+								<span className="font-medium">{booking.roomType}</span>
+							</div>
+							{booking.roomIdentifier && (
+								<div className="flex items-center gap-2 text-sm">
+									<Hash className="h-4 w-4 text-muted-foreground" />
+									<span className="text-muted-foreground">Room:</span>
+									<span className="font-medium">{booking.roomIdentifier}</span>
+								</div>
+							)}
+							<div className="flex items-center gap-2 text-sm">
+								<Building className="h-4 w-4 text-muted-foreground" />
+								<span className="text-muted-foreground">Branch:</span>
+								<span className="font-medium">{booking.branchName}</span>
+							</div>
+						</div>
+
+						{(booking.noOfAdults != null || booking.noOfChildren != null) && (
+							<div className="grid grid-cols-2 gap-2 pt-4 border-t">
+								<div className="bg-muted/50 p-2 rounded text-center">
+									<div className="text-xs text-muted-foreground">Adults</div>
+									<div className="font-semibold">{booking.noOfAdults || 0}</div>
+								</div>
+								<div className="bg-muted/50 p-2 rounded text-center">
+									<div className="text-xs text-muted-foreground">Children</div>
+									<div className="font-semibold">{booking.noOfChildren || 0}</div>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* Stay Info - Column 2 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Stay Details</h4>
+					<div className="flex flex-col gap-4 h-full">
+						<div className="p-4 rounded-lg border bg-muted/30 space-y-3 flex-1">
+							<div className="text-sm font-medium flex items-center gap-2 mb-2">
+								<Calendar className="h-4 w-4 text-primary" />
+								Check-in / Check-out
+							</div>
+							<div className="space-y-2 text-sm">
+								<div className="flex justify-between border-b pb-2">
+									<div>
+										<div className="text-xs text-muted-foreground">Check In</div>
+										<div className="font-medium">
+											{new Date(booking.checkInDate).toLocaleDateString("en-US", {
+												month: "short", day: "2-digit", year: "numeric",
+											})}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											{new Date(booking.checkInDate).toLocaleTimeString("en-US", {
+												hour: "2-digit", minute: "2-digit", hour12: true,
+											})}
+										</div>
+									</div>
+									<div className="text-right">
+										<div className="text-xs text-muted-foreground">Check Out</div>
+										<div className="font-medium">
+											{new Date(booking.checkOutDate).toLocaleDateString("en-US", {
+												month: "short", day: "2-digit", year: "numeric",
+											})}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											{new Date(booking.checkOutDate).toLocaleTimeString("en-US", {
+												hour: "2-digit", minute: "2-digit", hour12: true,
+											})}
+										</div>
+									</div>
+								</div>
+								<div className="flex justify-between items-center pt-1">
+									<span className="text-muted-foreground">Duration</span>
+									<span className="font-medium">{numberOfNights} Night{numberOfNights !== 1 ? "s" : ""}</span>
+								</div>
+							</div>
+						</div>
+
+						{booking.nightlyRate != null && (
+							<div className="p-4 rounded-lg border bg-muted/30 space-y-3 flex-1">
+								<div className="text-sm font-medium flex items-center gap-2 mb-2">
+									<Bed className="h-4 w-4 text-primary" />
+									Accommodation
+								</div>
+								<div className="space-y-2 text-sm">
+									<div className="flex justify-between">
+										<span className="text-muted-foreground">Nightly Rate</span>
+										<span className="font-medium">{formatCurrency(booking.nightlyRate)}</span>
+									</div>
+									{booking.accommodationCost != null && (
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">Accommodation Total</span>
+											<span className="font-medium">{formatCurrency(booking.accommodationCost)}</span>
+										</div>
+									)}
+									{booking.restaurantOrdersTotal != null && booking.restaurantOrdersTotal > 0 && (
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">Restaurant Orders</span>
+											<span className="font-medium">{formatCurrency(booking.restaurantOrdersTotal)}</span>
+										</div>
+									)}
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* Financial - Column 3 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Financials</h4>
+					<div className="p-5 rounded-lg border bg-card h-full flex flex-col">
+						<div className="flex items-center gap-2 font-medium mb-4 text-primary">
+							<CreditCard className="h-5 w-5" />
+							Payment Summary
+						</div>
+
+						<div className="space-y-4 flex-1">
+							{booking.totalAmountDue != null && (
+								<div className="flex justify-between items-center pb-3 border-b border-dashed">
+									<span className="text-muted-foreground">Total Amount Due</span>
+									<span className="font-semibold">{formatCurrency(booking.totalAmountDue)}</span>
+								</div>
+							)}
+
+							<div className="space-y-3">
+								<div className="flex justify-between items-center">
+									<span className="text-muted-foreground">Amount Paid</span>
+									<span className="font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+										{formatCurrency(booking.amountPaid)}
+									</span>
+								</div>
+							</div>
+
+							{booking.amountRemaining != null && (
+								<div className="mt-auto pt-4 border-t">
+									<div className="flex flex-col gap-1">
+										<span className="text-sm text-muted-foreground">Outstanding Balance</span>
+										<span className={`text-2xl font-bold ${booking.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
+											{formatCurrency(booking.amountRemaining)}
+										</span>
+										{booking.amountRemaining > 0 && (
+											<span className="text-xs text-red-500 font-medium">Payment Required</span>
+										)}
+									</div>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			</div>
 		</DialogContent>
 	);
 }
@@ -381,56 +502,20 @@ const columns = [
 	columnHelper.display({
 		id: "actions",
 		cell: (info) => {
-			const [open, setOpen] = useState<"contact-manager" | false>(false);
-
-			const dialog = useMemo(() => {
-				switch (open) {
-					case "contact-manager":
-						return (
-							<ContactManagerForm
-								setOpen={(open) => setOpen(open ? "contact-manager" : false)}
-							/>
-						);
-					default:
-						return null;
-				}
-			}, [open]);
+			const [open, setOpen] = useState(false);
 
 			return (
-				<Dialog
-					open={typeof open === "string"}
-					onOpenChange={(isOpen) => {
-						if (!isOpen) setOpen(false);
-					}}
-				>
-					<DropdownMenu modal={false}>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" className="h-8 w-8 p-0">
-								<span className="sr-only">Open menu</span>
-								<MoreVerticalIcon />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent className="bg-white" align="end">
-							<DropdownMenuItem asChild>
-								<Link href={`/reports/branch-id/${info.row.original.id}`}>
-									<EyeIcon />
-									View branch report
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("contact-manager")}
-								>
-									<MessageCircleMoreIcon />
-									Contact Branch Manager
-								</DialogTrigger>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					{dialog}
+				<Dialog open={open} onOpenChange={setOpen}>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="gap-1.5"
+						onClick={() => setOpen(true)}
+					>
+						<EyeIcon className="h-4 w-4" />
+						View Details
+					</Button>
+					{open && <BookingDetailsContent booking={info.row.original} />}
 				</Dialog>
 			);
 		},

@@ -13,7 +13,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { parseAsStringLiteral, parseAsString, useQueryStates } from "nuqs";
+import { parseAsStringLiteral, parseAsString, parseAsBoolean, useQueryStates } from "nuqs";
 
 import {
 	createColumnHelper,
@@ -282,14 +282,17 @@ function Export({ roomQuery }: { roomQuery: { roomStatus: "AVAILABLE" | null; se
 function RoomListToolbar({
 	table,
 	rooms,
+	isDeactivatedView,
 }: {
 	table: TableType<RoomDetails>;
 	rooms: RoomDetails[];
+	isDeactivatedView: boolean;
 }) {
 	const [queryState, setQueryState] = useQueryStates({
 		roomStatus: parseAsStringLiteral(["AVAILABLE"]),
 		search: parseAsString,
 		roomType: parseAsString,
+		active: parseAsBoolean,
 	});
 
 	return (
@@ -298,31 +301,25 @@ function RoomListToolbar({
 				<Button
 					size="sm"
 					variant="outline"
-					data-active={queryState.roomStatus === null}
-					onClick={() => setQueryState({ roomStatus: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === null
+					onClick={() => setQueryState({ active: null, roomStatus: null })}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${!isDeactivatedView
 						? "bg-primary text-primary-foreground border-primary"
 						: ""
 						}`}
 				>
-					All Rooms{" "}
-					{queryState.roomStatus === null &&
-						`(${table.getRowCount() * table.getPageCount()})`}
+					Active Rooms
 				</Button>
 
 				<Button
 					size="sm"
 					variant="outline"
-					data-active={queryState.roomStatus === "AVAILABLE"}
-					onClick={() => setQueryState({ roomStatus: "AVAILABLE" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.roomStatus === "AVAILABLE"
+					onClick={() => setQueryState({ active: false, roomStatus: null })}
+					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${isDeactivatedView
 						? "bg-primary text-primary-foreground border-primary"
 						: ""
 						}`}
 				>
-					Available Rooms{" "}
-					{queryState.roomStatus === "AVAILABLE" &&
-						`(${table.getFilteredRowModel().rows.length})`}
+					Deactivated Rooms
 				</Button>
 			</div>
 
@@ -480,6 +477,14 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("deactivationReason", {
+		header: "Deactivation Reason",
+		cell: (info) => {
+			const reason = info.getValue();
+			if (!reason) return <span className="text-gray-400">-</span>;
+			return <span className="text-sm text-gray-700">{reason}</span>;
+		},
+	}),
 	columnHelper.display({
 		id: "actions",
 		cell: ({ row }) => <RoomsTableActions row={row.original} />,
@@ -551,6 +556,7 @@ export function RoomPage({
 	breadcrumb,
 	paginationMeta,
 	rooms,
+	isDeactivatedView = false,
 }: {
 	rooms: RoomDetails[];
 	paginationMeta: Pagination;
@@ -558,8 +564,16 @@ export function RoomPage({
 		title: string;
 		breadcrumbs: Breadcrumb[];
 	};
+	isDeactivatedView?: boolean;
 }) {
 	const [pagination, onPaginationChange] = usePaginationSearchParams();
+
+	const columnVisibility = useMemo(() => ({
+		deactivationReason: isDeactivatedView,
+		"guestDetails.guestName": !isDeactivatedView,
+		checkInStatus: !isDeactivatedView,
+	}), [isDeactivatedView]);
+
 	const table = useReactTable({
 		data: rooms,
 		columns: columns,
@@ -572,6 +586,7 @@ export function RoomPage({
 		pageCount: paginationMeta.totalPages,
 		state: {
 			pagination,
+			columnVisibility,
 		},
 	});
 	const setBreadcrumb = useSetAtom(breadcrumbAtom);
@@ -583,7 +598,7 @@ export function RoomPage({
 
 	return (
 		<div className="space-y-6 px-2">
-			<RoomListToolbar table={table} rooms={rooms} />
+			<RoomListToolbar table={table} rooms={rooms} isDeactivatedView={isDeactivatedView} />
 			<RoomListTable table={table} />
 		</div>
 	);

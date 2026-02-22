@@ -7,6 +7,7 @@ import { getCookieData } from "@/lib/server-fns";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import {
 	createLoader,
+	parseAsBoolean,
 	parseAsStringEnum,
 	parseAsString,
 	type SearchParams,
@@ -28,8 +29,9 @@ enum RoomStatus {
 const loadSearchParams = createLoader({
 	...paginationSearchParams,
 	roomType: parseAsString,
-	status: parseAsStringEnum(Object.values(RoomStatus)),
+	roomStatus: parseAsStringEnum(Object.values(RoomStatus)),
 	search: parseAsString,
+	active: parseAsBoolean,
 });
 
 export default function Page({ searchParams }: PageProps) {
@@ -37,6 +39,9 @@ export default function Page({ searchParams }: PageProps) {
 	const query = use(loadSearchParams(searchParams));
 	const cookieData = use(getCookieData())!;
 	const queryClient = getQueryClient();
+
+	const isDeactivatedView = query.active === false;
+	const activeParam = query.active === false ? false : true;
 
 	const { content, ...paginationMeta } = use(
 		queryClient.ensureQueryData({
@@ -53,9 +58,12 @@ export default function Page({ searchParams }: PageProps) {
 							token: cookieData.token,
 						},
 						query: {
-							...query,
-							status: query.status as ListRoomsQuery["status"],
+							search: query.search,
+							roomType: query.roomType,
+							status: query.roomStatus as ListRoomsQuery["status"],
+							active: activeParam,
 							page: query.page ? query.page - 1 : 0,
+							size: query.size,
 						},
 						throw: true,
 					},
@@ -90,6 +98,7 @@ export default function Page({ searchParams }: PageProps) {
 				breadcrumbs={breadcrumbs}
 				rooms={content}
 				paginationMeta={paginationMeta}
+				isDeactivatedView={isDeactivatedView}
 			/>
 		</HydrationBoundary>
 	);

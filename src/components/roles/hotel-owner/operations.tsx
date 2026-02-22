@@ -615,6 +615,12 @@ function InventoryTab({ data }: { data: InventoryData }) {
 		{ label: "Out of Stock", value: data.outOfStock, color: "#ef4444" },
 	];
 
+	const healthPercent = data.totalItems > 0
+		? Math.round((data.available / data.totalItems) * 100)
+		: 0;
+
+	const categoryColors = ["#6366f1", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6", "#14b8a6"];
+
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -627,6 +633,7 @@ function InventoryTab({ data }: { data: InventoryData }) {
 					title="Available"
 					value={data.available}
 					icon={CheckCircleIcon}
+					subtitle={`${healthPercent}% stock health`}
 					iconBgClass="bg-green-50"
 					iconColorClass="text-green-600"
 				/>
@@ -646,30 +653,96 @@ function InventoryTab({ data }: { data: InventoryData }) {
 				/>
 			</div>
 
-			<div className="bg-white p-4 rounded-2xl">
-				<h3 className="text-sm font-medium text-gray-600 mb-4">
-					Stock Distribution
-				</h3>
-				<div className="space-y-4">
-					{items.map((item) => (
-						<div key={item.label}>
-							<div className="flex items-center justify-between text-sm mb-1">
-								<span className="text-gray-600">{item.label}</span>
-								<span className="font-semibold text-primary">
-									{item.value} ({total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%)
-								</span>
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+				<div className="bg-white p-4 rounded-2xl">
+					<h3 className="text-sm font-medium text-gray-600 mb-4">
+						Stock Distribution
+					</h3>
+					<div className="space-y-4">
+						{items.map((item) => (
+							<div key={item.label}>
+								<div className="flex items-center justify-between text-sm mb-1">
+									<span className="text-gray-600">{item.label}</span>
+									<span className="font-semibold text-primary">
+										{item.value} ({total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%)
+									</span>
+								</div>
+								<div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+									<div
+										className="h-full rounded-full transition-all"
+										style={{
+											width: `${total > 0 ? (item.value / total) * 100 : 0}%`,
+											backgroundColor: item.color,
+										}}
+									/>
+								</div>
 							</div>
-							<div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-								<div
-									className="h-full rounded-full transition-all"
-									style={{
-										width: `${total > 0 ? (item.value / total) * 100 : 0}%`,
-										backgroundColor: item.color,
-									}}
-								/>
-							</div>
+						))}
+					</div>
+					{data.categoryBreakdown && data.categoryBreakdown.length > 0 && (
+						<div className="mt-4 pt-4 border-t space-y-2">
+							<h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+								By Category
+							</h4>
+							{data.categoryBreakdown.map((cat, idx) => (
+								<div key={cat.category} className="flex items-center gap-3">
+									<div
+										className="size-2.5 rounded-full flex-shrink-0"
+										style={{ backgroundColor: categoryColors[idx % categoryColors.length] }}
+									/>
+									<div className="flex-1 flex items-center justify-between text-sm">
+										<span className="text-gray-600 capitalize">
+											{cat.category.toLowerCase().replace(/_/g, " ")}
+										</span>
+										<span className="font-semibold text-primary">{cat.count}</span>
+									</div>
+								</div>
+							))}
 						</div>
-					))}
+					)}
+				</div>
+
+				<div className="bg-white p-4 rounded-2xl">
+					<h3 className="text-sm font-medium text-gray-600 mb-3">
+						Stock Alerts
+					</h3>
+					<div className="space-y-2">
+						{data.stockAlerts && data.stockAlerts.length > 0 ? (
+							data.stockAlerts.map((item, idx) => (
+								<div
+									key={idx}
+									className="flex items-center justify-between py-2 border-b last:border-0 text-sm"
+								>
+									<div>
+										<p className="font-medium text-gray-700">{item.name}</p>
+										<p className="text-xs text-gray-400">
+											{item.category ? item.category.toLowerCase().replace(/_/g, " ") : ""}
+											{item.unit && ` · ${item.unit}`}
+										</p>
+									</div>
+									<div className="text-right">
+										<p className="font-medium text-primary">
+											Qty: {item.quantity}
+										</p>
+										<Badge
+											variant={item.status === "OUT_OF_STOCK" ? "destructive" : "yellow"}
+											className="capitalize text-[10px]"
+										>
+											{item.status.replace(/_/g, " ").toLowerCase()}
+										</Badge>
+									</div>
+								</div>
+							))
+						) : (
+							<div className="flex flex-col items-center justify-center py-8 text-center">
+								<CheckCircleIcon className="size-8 text-green-400 mb-2" />
+								<p className="text-sm font-medium text-gray-600">All items in stock</p>
+								<p className="text-xs text-gray-400 mt-1">
+									No stock alerts at this time
+								</p>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

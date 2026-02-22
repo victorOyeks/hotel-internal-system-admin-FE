@@ -9,6 +9,7 @@ import {
 	HomeIcon,
 	HotelIcon,
 	IdCardIcon,
+	LandmarkIcon,
 	MessagesSquare,
 	PlusIcon,
 	ShieldCheckIcon,
@@ -44,6 +45,11 @@ export const hotelOwnerLinks = [
 		url: "/dashboard/bookings",
 	},
 	{ title: "Guests", icon: <UsersIcon />, url: "/dashboard/guests" },
+	{
+		title: "Organizations",
+		icon: <LandmarkIcon />,
+		url: "/dashboard/organizations",
+	},
 	{
 		title: "Staff Management",
 		icon: <IdCardIcon />,
@@ -82,6 +88,11 @@ export const managerOwnerLinks = [
 		url: "/dashboard/bookings",
 	},
 	{ title: "Guests", icon: <UsersIcon />, url: "/dashboard/guests" },
+	{
+		title: "Organizations",
+		icon: <LandmarkIcon />,
+		url: "/dashboard/organizations",
+	},
 	{
 		title: "Staff Management",
 		icon: <IdCardIcon />,
@@ -174,6 +185,11 @@ export const frontDeskLinks = [
 		url: "/dashboard/lost-and-found",
 	},
 	{ title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
+	{
+		title: "Organizations",
+		icon: <LandmarkIcon />,
+		url: "/dashboard/organizations",
+	},
 ];
 
 export const restaurantLinks = [
