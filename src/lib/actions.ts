@@ -317,6 +317,7 @@ export async function uploadImage(payload: { file: File }) {
 
 	const response = await $fetch("@post/api/upload", {
 		body: formData,
+		query: {},
 		auth: {
 			type: "Bearer",
 			token,
@@ -332,7 +333,7 @@ export async function uploadImage(payload: { file: File }) {
 
 	return {
 		success: true,
-		data: (response.data as { data: { url: string } }).data,
+		data: (response.data as unknown as { data: { url: string } }).data,
 	};
 }
 

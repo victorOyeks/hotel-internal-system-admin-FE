@@ -81,7 +81,14 @@ export const Expenditure = z.object({
 	description: z.string().optional().nullable(),
 	amount: z.number(),
 	category: z.string(),
-	status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED", "OVERDUE", "CANCELLED"]),
+	status: z.enum([
+		"PENDING",
+		"APPROVED",
+		"PAID",
+		"REJECTED",
+		"OVERDUE",
+		"CANCELLED",
+	]),
 	vendorName: z.string().optional().nullable(),
 	invoiceNumber: z.string().optional().nullable(),
 	expenseDate: z.string().optional().nullable(),
@@ -317,7 +324,9 @@ export const financialsRoutes = {
 		output: ApiResponseObject,
 	},
 	"@get/api/financials/expenditures/overdue": {
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: PaginatedExpenditureResponse,
+		}),
 	},
 	"@get/api/financials/items/consumption-report": {
 		query: z
@@ -416,7 +425,33 @@ export const financialsRoutes = {
 				period: z.string().optional().nullable(),
 			})
 			.partial(),
-		output: ApiResponseObject,
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalRevenue: z.number(),
+				totalReceivedRevenue: z.number().optional().nullable(),
+				totalPendingRevenue: z.number().optional().nullable(),
+				roomBookingsRevenue: z.number(),
+				restaurantRevenue: z.number(),
+				laundryRevenue: z.number(),
+				rentalsRevenue: z.number(),
+				otherIncomeRevenue: z.number(),
+				revenueGrowthPercentage: z.number().optional().nullable(),
+				averageDailyRevenue: z.number().optional().nullable(),
+				revenueBySource: z
+					.array(
+						z.object({
+							source: z.string(),
+							amount: z.number(),
+							paidAmount: z.number().optional().nullable(),
+							pendingAmount: z.number().optional().nullable(),
+							transactionCount: z.number(),
+							percentage: z.number(),
+						}),
+					)
+					.optional()
+					.nullable(),
+			}),
+		}),
 	},
 	"@get/api/financials/summary/comprehensive": {
 		query: z

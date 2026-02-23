@@ -48,5 +48,5 @@ export async function deleteSession() {
 	} as const;
 
 	cookieStore.set(tokenKey, "", options);
-	cookieStore.set(activeRoleKey, "", options);
+	// cookieStore.set(activeRoleKey, "", options);
 }

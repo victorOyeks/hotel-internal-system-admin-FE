@@ -88,16 +88,19 @@ export async function checkInGuest({
 >): ServerActionResponseFromEndpoint<"@post/api/front-desks/:roomIdentifier/check-in"> {
 	const { token } = await verifySession("FRONT_DESK");
 
-	const response = await $fetch("@post/api/front-desks/:roomId/check-in", {
-		params: { roomId },
-		body: {
-			...payload,
+	const response = await $fetch(
+		"@post/api/front-desks/:roomIdentifier/check-in",
+		{
+			params: { roomIdentifier: roomId },
+			body: {
+				...payload,
+			},
+			auth: {
+				type: "Bearer",
+				token,
+			},
 		},
-		auth: {
-			type: "Bearer",
-			token,
-		},
-	});
+	);
 
 	if (response.error) {
 		return {
@@ -108,7 +111,7 @@ export async function checkInGuest({
 
 	return {
 		success: true,
-		data: response.data as any,
+		data: response.data,
 	};
 }
 
@@ -390,7 +393,10 @@ export async function toggleRoomActive(
 
 		const data = await response.json();
 		if (!response.ok) {
-			return { success: false, error: data.message || "Failed to toggle room status" };
+			return {
+				success: false,
+				error: data.message || "Failed to toggle room status",
+			};
 		}
 
 		return { success: true, data: { message: data.message } };

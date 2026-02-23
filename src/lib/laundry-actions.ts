@@ -25,8 +25,9 @@ export async function getLaundryItems(activeOnly?: boolean | string) {
 	try {
 		const session = await verifySession();
 		const response = await $fetch("@get/api/hotels/laundry/items", {
-			query:
-				activeOnly != null ? { activeOnly: String(activeOnly) } : undefined,
+			query: (activeOnly != null
+				? { activeOnly: String(activeOnly) }
+				: undefined) as { activeOnly?: string },
 			auth: { type: "Bearer", token: session.token },
 			throw: true,
 		});
