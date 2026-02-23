@@ -3,10 +3,12 @@
 import type {
 	APIInput,
 	Prettify,
+	ServerActionResponse,
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type CheckInRequest } from "./fetch";
+import { env } from "@/env";
 
 export async function makeReservation({
 	roomId,
@@ -347,6 +349,55 @@ export async function exportRooms(filters: {
 				error instanceof Error
 					? error.message
 					: "An error occurred during export",
+		};
+	}
+}
+
+export async function getAvailableRooms(roomType?: string) {
+	const { token } = await verifySession("FRONT_DESK");
+	const response = await $fetch("@get/api/front-desks/all-rooms-by-type", {
+		query: { roomType: roomType || null, roomStatus: "AVAILABLE" },
+		auth: { type: "Bearer", token },
+		throw: true,
+	});
+	return response.data;
+}
+
+export async function toggleRoomActive(
+	roomId: string,
+	reason?: string,
+): ServerActionResponse<{ message: string }> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	try {
+		const headers: Record<string, string> = {
+			Authorization: `Bearer ${token}`,
+		};
+		let body: string | undefined;
+		if (reason) {
+			headers["Content-Type"] = "application/json";
+			body = JSON.stringify({ reason });
+		}
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/front-desks/rooms/${roomId}/toggle-active`,
+			{
+				method: "PATCH",
+				headers,
+				body,
+			},
+		);
+
+		const data = await response.json();
+		if (!response.ok) {
+			return { success: false, error: data.message || "Failed to toggle room status" };
+		}
+
+		return { success: true, data: { message: data.message } };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Failed to toggle room status",
 		};
 	}
 }

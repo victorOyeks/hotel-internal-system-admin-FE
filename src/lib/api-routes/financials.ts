@@ -76,13 +76,18 @@ export const PaginatedOtherIncomeResponse = z.object({
 
 export const Expenditure = z.object({
 	id: z.string(),
-	description: z.string(),
+	referenceNumber: z.string().optional().nullable(),
+	title: z.string().optional().nullable(),
+	description: z.string().optional().nullable(),
 	amount: z.number(),
-	date: z.string(),
 	category: z.string(),
-	vendor: z.string(),
-	invoiceNumber: z.string(),
-	status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED"]),
+	status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED", "OVERDUE", "CANCELLED"]),
+	vendorName: z.string().optional().nullable(),
+	invoiceNumber: z.string().optional().nullable(),
+	expenseDate: z.string().optional().nullable(),
+	dueDate: z.string().optional().nullable(),
+	paidDate: z.string().optional().nullable(),
+	createdAt: z.string().optional().nullable(),
 	approvedBy: z.string().optional().nullable(),
 });
 

@@ -5,7 +5,9 @@ import { useSetAtom } from "jotai";
 import {
 	CheckCircleIcon,
 	ClipboardListIcon,
+	ClockIcon,
 	FileTextIcon,
+	InboxIcon,
 	PackageIcon,
 	XCircleIcon,
 } from "lucide-react";
@@ -44,41 +46,62 @@ function SummaryCards({ data }: { data: SummaryData }) {
 			title: "Purchase Orders",
 			value: data.pendingPurchaseOrders,
 			icon: PackageIcon,
-			color: "bg-blue-50 text-blue-600",
+			bgClass: "bg-blue-50",
+			textClass: "text-blue-600",
+			ringClass: "ring-blue-100",
 		},
 		{
 			title: "Goods Receipt Notes",
 			value: data.pendingGRNs,
 			icon: FileTextIcon,
-			color: "bg-amber-50 text-amber-600",
+			bgClass: "bg-amber-50",
+			textClass: "text-amber-600",
+			ringClass: "ring-amber-100",
 		},
 		{
 			title: "Stock Takes",
 			value: data.pendingStockTakes,
 			icon: ClipboardListIcon,
-			color: "bg-violet-50 text-violet-600",
+			bgClass: "bg-violet-50",
+			textClass: "text-violet-600",
+			ringClass: "ring-violet-100",
 		},
 	];
 
+	const total = data.totalPending;
+
 	return (
-		<div className="grid grid-cols-3 gap-3">
-			{cards.map((card) => {
-				const [bgClass, textClass] = card.color.split(" ");
-				return (
-					<div key={card.title} className="bg-white p-4 rounded-2xl">
-						<div className="flex items-center justify-between mb-2">
-							<span className="text-sm text-gray-500">{card.title}</span>
-							<div
-								className={`size-8 rounded-lg ${bgClass} flex items-center justify-center`}
-							>
-								<card.icon className={`size-4 ${textClass}`} />
-							</div>
-						</div>
-						<p className="text-2xl font-bold text-primary">{card.value}</p>
-						<p className="text-xs text-gray-400">pending approval</p>
+		<div className="grid grid-cols-4 gap-3">
+			<div className="bg-white p-4 rounded-2xl flex flex-col justify-between">
+				<div className="flex items-center justify-between">
+					<span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Total Pending</span>
+					<div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+						<ClockIcon className="size-4 text-primary" />
 					</div>
-				);
-			})}
+				</div>
+				<div className="mt-2">
+					<p className="text-3xl font-bold text-primary">{total}</p>
+					<p className="text-xs text-gray-400 mt-0.5">
+						{total === 0 ? "all clear" : total === 1 ? "request awaiting review" : "requests awaiting review"}
+					</p>
+				</div>
+			</div>
+			{cards.map((card) => (
+				<div key={card.title} className="bg-white p-4 rounded-2xl flex flex-col justify-between">
+					<div className="flex items-center justify-between">
+						<span className="text-xs text-gray-400 font-medium uppercase tracking-wider">{card.title}</span>
+						<div
+							className={`size-8 rounded-lg ${card.bgClass} ring-1 ${card.ringClass} flex items-center justify-center`}
+						>
+							<card.icon className={`size-4 ${card.textClass}`} />
+						</div>
+					</div>
+					<div className="mt-2">
+						<p className="text-3xl font-bold text-primary">{card.value}</p>
+						<p className="text-xs text-gray-400 mt-0.5">pending</p>
+					</div>
+				</div>
+			))}
 		</div>
 	);
 }
@@ -217,9 +240,12 @@ function PendingRequestsTable({
 
 	if (data.length === 0) {
 		return (
-			<div className="bg-white p-8 rounded-2xl text-center">
-				<CheckCircleIcon className="size-12 text-green-300 mx-auto mb-3" />
-				<p className="text-gray-500">No pending approval requests</p>
+			<div className="bg-white p-10 rounded-2xl text-center">
+				<div className="size-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+					<InboxIcon className="size-6 text-green-500" />
+				</div>
+				<p className="text-sm font-medium text-gray-700">You're all caught up</p>
+				<p className="text-xs text-gray-400 mt-1">No pending approval requests at the moment</p>
 			</div>
 		);
 	}
@@ -315,8 +341,12 @@ function HistoryTable({ data }: { data: ApprovalItem[] }) {
 
 	if (data.length === 0) {
 		return (
-			<div className="bg-white p-8 rounded-2xl text-center">
-				<p className="text-gray-500">No approval history yet</p>
+			<div className="bg-white p-10 rounded-2xl text-center">
+				<div className="size-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+					<ClipboardListIcon className="size-6 text-gray-400" />
+				</div>
+				<p className="text-sm font-medium text-gray-700">No history yet</p>
+				<p className="text-xs text-gray-400 mt-1">Approved and rejected requests will appear here</p>
 			</div>
 		);
 	}
@@ -399,15 +429,22 @@ export function Approvals({
 	}, [setBreadcrumb, breadcrumbs]);
 
 	return (
-		<div className="p-4 md:p-6 space-y-4">
+		<div className="p-4 md:p-6 space-y-5">
 			<SummaryCards data={summaryData} />
 
 			<Tabs defaultValue="pending" className="space-y-4">
 				<TabsList className="bg-white border p-1 rounded-xl">
-					<TabsTrigger value="pending" className="rounded-lg">
-						Pending ({summaryData.totalPending})
+					<TabsTrigger value="pending" className="rounded-lg gap-1.5">
+						<ClockIcon className="size-3.5" />
+						Pending
+						{summaryData.totalPending > 0 && (
+							<span className="ml-0.5 size-5 rounded-full bg-primary text-white text-[10px] font-medium flex items-center justify-center">
+								{summaryData.totalPending}
+							</span>
+						)}
 					</TabsTrigger>
-					<TabsTrigger value="history" className="rounded-lg">
+					<TabsTrigger value="history" className="rounded-lg gap-1.5">
+						<ClipboardListIcon className="size-3.5" />
 						History
 					</TabsTrigger>
 				</TabsList>
@@ -417,11 +454,12 @@ export function Approvals({
 				</TabsContent>
 
 				<TabsContent value="history">
-					<div className="bg-white p-8 rounded-2xl text-center">
-						<p className="text-gray-500 text-sm">
-							History is loaded on demand. Switch to this tab to view approval
-							history.
-						</p>
+					<div className="bg-white p-10 rounded-2xl text-center">
+						<div className="size-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+							<ClipboardListIcon className="size-6 text-gray-400" />
+						</div>
+						<p className="text-sm font-medium text-gray-700">No history yet</p>
+						<p className="text-xs text-gray-400 mt-1">Approved and rejected requests will appear here</p>
 					</div>
 				</TabsContent>
 			</Tabs>

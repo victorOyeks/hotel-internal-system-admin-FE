@@ -143,39 +143,50 @@ function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 		parseAsString.withDefault(getCurrentYearMonth()),
 	);
 
-	const { selectedMonthEarnings, selectedMonthName, selectedMonthLabel } =
-		useMemo(() => {
-			const [y, m] = selectedMonth.split("-").map(Number);
-			const monthDate = new Date(y, m - 1);
-			const name = monthDate
-				.toLocaleString("en-US", { month: "long" })
-				.toUpperCase();
-			const label = monthDate.toLocaleString("en-US", {
-				month: "long",
-				year: "numeric",
-			});
-			const earnings =
-				graphData.find((d) => d.month.toUpperCase() === name)
-					?.totalEarnings ?? 0;
-			return {
-				selectedMonthEarnings: earnings,
-				selectedMonthName: name,
-				selectedMonthLabel: label,
-			};
-		}, [graphData, selectedMonth]);
+	const {
+		selectedMonthEarnings,
+		selectedMonthName,
+		selectedMonthYear,
+		selectedMonthLabel,
+	} = useMemo(() => {
+		const [y, m] = selectedMonth.split("-").map(Number);
+		const monthDate = new Date(y, m - 1);
+		const name = monthDate
+			.toLocaleString("en-US", { month: "long" })
+			.toUpperCase();
+		const label = monthDate.toLocaleString("en-US", {
+			month: "long",
+			year: "numeric",
+		});
+		const earnings =
+			graphData.find(
+				(d) => d.month.toUpperCase() === name && d.year === y,
+			)?.totalEarnings ?? 0;
+		return {
+			selectedMonthEarnings: earnings,
+			selectedMonthName: name,
+			selectedMonthYear: y,
+			selectedMonthLabel: label,
+		};
+	}, [graphData, selectedMonth]);
 
 	const SelectedDot = useMemo(
 		() =>
 			function Dot(
 				props: DotProps & {
-					payload: { month: string; totalEarnings: number };
+					payload: { month: string; year: number; totalEarnings: number };
+					index: number;
 				},
 			) {
-				const { cx, cy, payload } = props;
+				const { cx, cy, payload, index } = props;
 				if (cx === undefined || cy === undefined) return null;
-				if (payload.month.toUpperCase() !== selectedMonthName) return null;
+				if (
+					payload.month.toUpperCase() !== selectedMonthName ||
+					payload.year !== selectedMonthYear
+				)
+					return null;
 				return (
-					<g>
+					<g key={`dot-${index}`}>
 						<circle
 							cx={cx}
 							cy={cy}
@@ -187,7 +198,7 @@ function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
 					</g>
 				);
 			},
-		[selectedMonthName],
+		[selectedMonthName, selectedMonthYear],
 	);
 
 	return (

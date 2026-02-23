@@ -81,6 +81,9 @@ import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
 import { CheckInForm, ReservationForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
+import { AssignToOrgContent } from "./rooms-table-actions";
+import { Building2Icon } from "lucide-react";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 type BookingViewResponse = Prettify<
 	APIOutput<"@get/api/front-desks/bookings">["data"]["content"][number]
@@ -795,6 +798,11 @@ function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
 function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 	const [openStatusDialog, setOpenStatusDialog] = useState(false);
 	const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
+	const [openAssignOrg, setOpenAssignOrg] = useState(false);
+
+	const canAssignOrg =
+		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
+		!booking.organizationName;
 
 	return (
 		<DropdownMenu modal={false}>
@@ -837,6 +845,29 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 					</DialogTrigger>
 					<PaymentHistoryContent bookingId={booking.id} />
 				</Dialog>
+
+				{canAssignOrg && (
+					<>
+						<DropdownMenuSeparator />
+						<Dialog open={openAssignOrg} onOpenChange={setOpenAssignOrg}>
+							<DialogTrigger asChild>
+								<DropdownMenuItem
+									onSelect={(e) => {
+										e.preventDefault();
+									}}
+								>
+									<Building2Icon className="mr-2 h-4 w-4" />
+									Assign to Organization
+								</DropdownMenuItem>
+							</DialogTrigger>
+							<AssignToOrgContent
+								bookingId={booking.id}
+								guestName={booking.guestName}
+								setOpen={setOpenAssignOrg}
+							/>
+						</Dialog>
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -852,6 +883,12 @@ const columns = [
 	columnHelper.accessor("guestName", {
 		header: "Guest Name",
 		cell: (info) => info.getValue(),
+	}),
+	columnHelper.accessor("roomIdentifier", {
+		header: "Room",
+		cell: (info) => (
+			<span className="font-mono text-sm">{info.getValue()}</span>
+		),
 	}),
 	columnHelper.accessor("roomType", {
 		header: "Room Type",
@@ -1318,7 +1355,7 @@ function BookingsListToolbar({
 					)}
 				</div>
 
-				{queryState.bookingStatus === "RESERVED" ? (
+				{queryState.bookingStatus === "RESERVED" && (
 					<Dialog
 						open={modalStates.reservationModalOpen}
 						onOpenChange={(open) =>
@@ -1353,39 +1390,39 @@ function BookingsListToolbar({
 							/>
 						</DialogContent>
 					</Dialog>
-				) : queryState === null ? (
-					<Dialog
-						open={modalStates.checkInModalOpen}
-						onOpenChange={(open) =>
-							setModalStates({ ...modalStates, checkInModalOpen: open })
-						}
-					>
-						<DialogTrigger asChild>
-							<Button size={"sm"} className="rounded-xl gap-2">
-								<PlusIcon className="w-4 h-4" />
-								Add Booking
-							</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Add New Booking</DialogTitle>
-								<DialogDescription>
-									Fill in the details below to create a new booking.
-								</DialogDescription>
-							</DialogHeader>
+				)}
 
-							<CheckInForm
-								data={{ rooms, roomTypes }}
-								setOpen={(open) =>
-									setModalStates({
-										...modalStates,
-										checkInModalOpen: open,
-									})
-								}
-							/>
-						</DialogContent>
-					</Dialog>
-				) : null}
+				<Dialog
+					open={modalStates.checkInModalOpen}
+					onOpenChange={(open) =>
+						setModalStates({ ...modalStates, checkInModalOpen: open })
+					}
+				>
+					<DialogTrigger asChild>
+						<Button size={"sm"} className="rounded-xl gap-2">
+							<PlusIcon className="w-4 h-4" />
+							Create Booking
+						</Button>
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Create New Booking</DialogTitle>
+							<DialogDescription>
+								Fill in the details below to create a new booking.
+							</DialogDescription>
+						</DialogHeader>
+
+						<CheckInForm
+							data={{ rooms, roomTypes }}
+							setOpen={(open) =>
+								setModalStates({
+									...modalStates,
+									checkInModalOpen: open,
+								})
+							}
+						/>
+					</DialogContent>
+				</Dialog>
 			</div>
 		</div>
 	);

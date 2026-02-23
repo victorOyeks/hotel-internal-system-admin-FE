@@ -16,8 +16,12 @@ import {
 	XCircleIcon,
 } from "lucide-react";
 import {
-	Bar,
-	BarChart,
+	Area,
+	AreaChart,
+	CartesianGrid,
+	Cell,
+	Pie,
+	PieChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -67,8 +71,64 @@ const statusVariants: Record<string, BadgeVariant> = {
 	RESERVED: "yellow",
 };
 
+// ==================== Shared Donut Chart ====================
+function DonutChart({
+	data,
+	centerLabel,
+	centerValue,
+}: {
+	data: Array<{ name: string; value: number; color: string }>;
+	centerLabel: string;
+	centerValue: string | number;
+}) {
+	const hasData = data.some((d) => d.value > 0);
+
+	return (
+		<div className="relative h-44">
+			<ResponsiveContainer width="100%" height="100%">
+				<PieChart>
+					<Pie
+						data={hasData ? data : [{ name: "Empty", value: 1, color: "#f3f4f6" }]}
+						cx="50%"
+						cy="50%"
+						innerRadius={50}
+						outerRadius={70}
+						paddingAngle={hasData ? 3 : 0}
+						dataKey="value"
+						strokeWidth={0}
+					>
+						{(hasData ? data : [{ name: "Empty", value: 1, color: "#f3f4f6" }]).map(
+							(entry, index) => (
+								<Cell key={index} fill={entry.color} />
+							),
+						)}
+					</Pie>
+					<Tooltip
+						contentStyle={{
+							backgroundColor: "#fff",
+							borderRadius: "8px",
+							border: "none",
+							boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+							fontSize: "12px",
+						}}
+					/>
+				</PieChart>
+			</ResponsiveContainer>
+			<div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+				<span className="text-xl font-bold text-primary">{centerValue}</span>
+				<span className="text-[10px] text-gray-400">{centerLabel}</span>
+			</div>
+		</div>
+	);
+}
+
 // ==================== Accommodation Tab ====================
 function AccommodationTab({ data }: { data: AccommodationData }) {
+	const roomChartData = [
+		{ name: "Available", value: data.availableRooms, color: "#22c55e" },
+		{ name: "Occupied", value: data.occupiedRooms, color: "#f59e0b" },
+	];
+
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -107,23 +167,21 @@ function AccommodationTab({ data }: { data: AccommodationData }) {
 					<h3 className="text-sm font-medium text-gray-600 mb-3">
 						Room Overview
 					</h3>
-					<div className="space-y-3">
-						{[
-							{ label: "Total Rooms", value: data.totalRooms, color: "#6366f1" },
-							{ label: "Available", value: data.availableRooms, color: "#22c55e" },
-							{ label: "Occupied", value: data.occupiedRooms, color: "#f59e0b" },
-						].map((item) => (
-							<div key={item.label} className="flex items-center gap-3">
+					<DonutChart
+						data={roomChartData}
+						centerLabel="Total Rooms"
+						centerValue={data.totalRooms}
+					/>
+					<div className="flex items-center justify-center gap-4 mt-2">
+						{roomChartData.map((item) => (
+							<div key={item.name} className="flex items-center gap-1.5">
 								<div
-									className="size-3 rounded-full flex-shrink-0"
+									className="size-2.5 rounded-full"
 									style={{ backgroundColor: item.color }}
 								/>
-								<div className="flex-1 flex items-center justify-between">
-									<span className="text-sm text-gray-600">{item.label}</span>
-									<span className="text-sm font-semibold text-primary">
-										{item.value}
-									</span>
-								</div>
+								<span className="text-xs text-gray-500">
+									{item.name} ({item.value})
+								</span>
 							</div>
 						))}
 					</div>
@@ -231,10 +289,21 @@ function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarDa
 					</h3>
 					<div className="h-56">
 						<ResponsiveContainer width="100%" height="100%">
-							<BarChart
+							<AreaChart
 								data={dailySummaries}
 								margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
 							>
+								<defs>
+									<linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0%" stopColor="#f59e0b" stopOpacity={0.3} />
+										<stop offset="100%" stopColor="#f59e0b" stopOpacity={0.02} />
+									</linearGradient>
+								</defs>
+								<CartesianGrid
+									strokeDasharray="3 3"
+									stroke="#f3f4f6"
+									vertical={false}
+								/>
 								<XAxis
 									dataKey="date"
 									axisLine={false}
@@ -252,6 +321,7 @@ function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarDa
 									tickFormatter={(v) => formatCurrency(v, "short")}
 								/>
 								<Tooltip
+									cursor={false}
 									contentStyle={{
 										backgroundColor: "#fff",
 										borderRadius: "8px",
@@ -264,13 +334,16 @@ function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarDa
 										"Revenue",
 									]}
 								/>
-								<Bar
+								<Area
+									type="monotone"
 									dataKey="dayTotal"
-									fill="#f59e0b"
-									radius={[4, 4, 0, 0]}
-									maxBarSize={24}
+									stroke="#f59e0b"
+									strokeWidth={2}
+									fill="url(#revenueGradient)"
+									dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
+									activeDot={{ r: 5, fill: "#f59e0b", stroke: "#fff", strokeWidth: 2 }}
 								/>
-							</BarChart>
+							</AreaChart>
 						</ResponsiveContainer>
 					</div>
 				</div>
@@ -359,6 +432,13 @@ function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarDa
 
 // ==================== Laundry Tab ====================
 function LaundryTab({ data }: { data: LaundryData }) {
+	const orderStatusData = [
+		{ name: "Pending", value: data.pendingOrders, color: "#f59e0b" },
+		{ name: "In Progress", value: data.inProgressOrders, color: "#3b82f6" },
+		{ name: "Completed", value: data.completedOrders, color: "#22c55e" },
+		{ name: "Cancelled", value: data.cancelledOrders, color: "#ef4444" },
+	];
+
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -397,24 +477,21 @@ function LaundryTab({ data }: { data: LaundryData }) {
 					<h3 className="text-sm font-medium text-gray-600 mb-3">
 						Order Status
 					</h3>
-					<div className="space-y-3">
-						{[
-							{ label: "Pending", value: data.pendingOrders, color: "#f59e0b" },
-							{ label: "In Progress", value: data.inProgressOrders, color: "#3b82f6" },
-							{ label: "Completed", value: data.completedOrders, color: "#22c55e" },
-							{ label: "Cancelled", value: data.cancelledOrders, color: "#ef4444" },
-						].map((item) => (
-							<div key={item.label} className="flex items-center gap-3">
+					<DonutChart
+						data={orderStatusData}
+						centerLabel="Total Orders"
+						centerValue={data.totalOrders}
+					/>
+					<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-2">
+						{orderStatusData.map((item) => (
+							<div key={item.name} className="flex items-center gap-1.5">
 								<div
-									className="size-3 rounded-full flex-shrink-0"
+									className="size-2.5 rounded-full"
 									style={{ backgroundColor: item.color }}
 								/>
-								<div className="flex-1 flex items-center justify-between">
-									<span className="text-sm text-gray-600">{item.label}</span>
-									<span className="text-sm font-semibold text-primary">
-										{item.value}
-									</span>
-								</div>
+								<span className="text-xs text-gray-500">
+									{item.name} ({item.value})
+								</span>
 							</div>
 						))}
 					</div>
@@ -473,6 +550,18 @@ function LaundryTab({ data }: { data: LaundryData }) {
 
 // ==================== Rentals Tab ====================
 function RentalsTab({ data }: { data: RentalsData }) {
+	const rentalStatusData = [
+		{ name: "Active", value: data.activeRentals, color: "#22c55e" },
+		{ name: "Overdue", value: data.overdueRentals, color: "#ef4444" },
+		{ name: "Completed", value: data.completedRentals, color: "#3b82f6" },
+		{ name: "Cancelled", value: data.cancelledRentals, color: "#9ca3af" },
+	];
+	const totalRentals =
+		data.activeRentals +
+		data.overdueRentals +
+		data.completedRentals +
+		data.cancelledRentals;
+
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -511,24 +600,21 @@ function RentalsTab({ data }: { data: RentalsData }) {
 					<h3 className="text-sm font-medium text-gray-600 mb-3">
 						Rental Status
 					</h3>
-					<div className="space-y-3">
-						{[
-							{ label: "Active", value: data.activeRentals, color: "#22c55e" },
-							{ label: "Overdue", value: data.overdueRentals, color: "#ef4444" },
-							{ label: "Completed", value: data.completedRentals, color: "#3b82f6" },
-							{ label: "Cancelled", value: data.cancelledRentals, color: "#9ca3af" },
-						].map((item) => (
-							<div key={item.label} className="flex items-center gap-3">
+					<DonutChart
+						data={rentalStatusData}
+						centerLabel="Total Rentals"
+						centerValue={totalRentals}
+					/>
+					<div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-2">
+						{rentalStatusData.map((item) => (
+							<div key={item.name} className="flex items-center gap-1.5">
 								<div
-									className="size-3 rounded-full flex-shrink-0"
+									className="size-2.5 rounded-full"
 									style={{ backgroundColor: item.color }}
 								/>
-								<div className="flex-1 flex items-center justify-between">
-									<span className="text-sm text-gray-600">{item.label}</span>
-									<span className="text-sm font-semibold text-primary">
-										{item.value}
-									</span>
-								</div>
+								<span className="text-xs text-gray-500">
+									{item.name} ({item.value})
+								</span>
 							</div>
 						))}
 					</div>
@@ -585,12 +671,17 @@ function RentalsTab({ data }: { data: RentalsData }) {
 
 // ==================== Inventory Tab ====================
 function InventoryTab({ data }: { data: InventoryData }) {
-	const total = data.totalItems || 1;
-	const items = [
-		{ label: "Available", value: data.available, color: "#22c55e" },
-		{ label: "Low in Stock", value: data.lowInStock, color: "#f59e0b" },
-		{ label: "Out of Stock", value: data.outOfStock, color: "#ef4444" },
+	const stockChartData = [
+		{ name: "Available", value: data.available, color: "#22c55e" },
+		{ name: "Low in Stock", value: data.lowInStock, color: "#f59e0b" },
+		{ name: "Out of Stock", value: data.outOfStock, color: "#ef4444" },
 	];
+
+	const healthPercent = data.totalItems > 0
+		? Math.round((data.available / data.totalItems) * 100)
+		: 0;
+
+	const categoryColors = ["#6366f1", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6", "#14b8a6"];
 
 	return (
 		<div className="space-y-4">
@@ -604,6 +695,7 @@ function InventoryTab({ data }: { data: InventoryData }) {
 					title="Available"
 					value={data.available}
 					icon={CheckCircleIcon}
+					subtitle={`${healthPercent}% stock health`}
 					iconBgClass="bg-green-50"
 					iconColorClass="text-green-600"
 				/>
@@ -623,30 +715,93 @@ function InventoryTab({ data }: { data: InventoryData }) {
 				/>
 			</div>
 
-			<div className="bg-white p-4 rounded-2xl">
-				<h3 className="text-sm font-medium text-gray-600 mb-4">
-					Stock Distribution
-				</h3>
-				<div className="space-y-4">
-					{items.map((item) => (
-						<div key={item.label}>
-							<div className="flex items-center justify-between text-sm mb-1">
-								<span className="text-gray-600">{item.label}</span>
-								<span className="font-semibold text-primary">
-									{item.value} ({total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%)
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+				<div className="bg-white p-4 rounded-2xl">
+					<h3 className="text-sm font-medium text-gray-600 mb-3">
+						Stock Distribution
+					</h3>
+					<DonutChart
+						data={stockChartData}
+						centerLabel="Total Items"
+						centerValue={data.totalItems}
+					/>
+					<div className="flex items-center justify-center gap-4 mt-2">
+						{stockChartData.map((item) => (
+							<div key={item.name} className="flex items-center gap-1.5">
+								<div
+									className="size-2.5 rounded-full"
+									style={{ backgroundColor: item.color }}
+								/>
+								<span className="text-xs text-gray-500">
+									{item.name} ({item.value})
 								</span>
 							</div>
-							<div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-								<div
-									className="h-full rounded-full transition-all"
-									style={{
-										width: `${total > 0 ? (item.value / total) * 100 : 0}%`,
-										backgroundColor: item.color,
-									}}
-								/>
-							</div>
+						))}
+					</div>
+					{data.categoryBreakdown && data.categoryBreakdown.length > 0 && (
+						<div className="mt-3 pt-3 border-t space-y-2">
+							<h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+								By Category
+							</h4>
+							{data.categoryBreakdown.map((cat, idx) => (
+								<div key={cat.category} className="flex items-center gap-3">
+									<div
+										className="size-2.5 rounded-full flex-shrink-0"
+										style={{ backgroundColor: categoryColors[idx % categoryColors.length] }}
+									/>
+									<div className="flex-1 flex items-center justify-between text-sm">
+										<span className="text-gray-600 capitalize">
+											{cat.category.toLowerCase().replace(/_/g, " ")}
+										</span>
+										<span className="font-semibold text-primary">{cat.count}</span>
+									</div>
+								</div>
+							))}
 						</div>
-					))}
+					)}
+				</div>
+
+				<div className="bg-white p-4 rounded-2xl">
+					<h3 className="text-sm font-medium text-gray-600 mb-3">
+						Stock Alerts
+					</h3>
+					<div className="space-y-2">
+						{data.stockAlerts && data.stockAlerts.length > 0 ? (
+							data.stockAlerts.map((item, idx) => (
+								<div
+									key={idx}
+									className="flex items-center justify-between py-2 border-b last:border-0 text-sm"
+								>
+									<div>
+										<p className="font-medium text-gray-700">{item.name}</p>
+										<p className="text-xs text-gray-400">
+											{item.category ? item.category.toLowerCase().replace(/_/g, " ") : ""}
+											{item.unit && ` · ${item.unit}`}
+										</p>
+									</div>
+									<div className="text-right">
+										<p className="font-medium text-primary">
+											Qty: {item.quantity}
+										</p>
+										<Badge
+											variant={item.status === "OUT_OF_STOCK" ? "destructive" : "yellow"}
+											className="capitalize text-[10px]"
+										>
+											{item.status.replace(/_/g, " ").toLowerCase()}
+										</Badge>
+									</div>
+								</div>
+							))
+						) : (
+							<div className="flex flex-col items-center justify-center py-8 text-center">
+								<CheckCircleIcon className="size-8 text-green-400 mb-2" />
+								<p className="text-sm font-medium text-gray-600">All items in stock</p>
+								<p className="text-xs text-gray-400 mt-1">
+									No stock alerts at this time
+								</p>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 		</div>

@@ -134,22 +134,29 @@ const CustomDot = (
 function CurvedLineChart({
 	graphData,
 	selectedMonthName,
+	selectedMonthYear,
 }: {
-	graphData: { month: string; totalEarnings: number }[];
+	graphData: { month: string; year: number; totalEarnings: number }[];
 	selectedMonthName: string;
+	selectedMonthYear: number;
 }) {
 	const SelectedDot = useMemo(
 		() =>
 			function Dot(
 				props: DotProps & {
-					payload: { month: string; totalEarnings: number };
+					index?: number;
+					payload: { month: string; year: number; totalEarnings: number };
 				},
 			) {
-				const { cx, cy, payload } = props;
+				const { cx, cy, payload, index } = props;
 				if (cx === undefined || cy === undefined) return null;
-				if (payload.month.toUpperCase() !== selectedMonthName) return null;
+				if (
+					payload.month.toUpperCase() !== selectedMonthName ||
+					payload.year !== selectedMonthYear
+				)
+					return null;
 				return (
-					<g>
+					<g key={`dot-${index}`}>
 						<circle
 							cx={cx}
 							cy={cy}
@@ -161,7 +168,7 @@ function CurvedLineChart({
 					</g>
 				);
 			},
-		[selectedMonthName],
+		[selectedMonthName, selectedMonthYear],
 	);
 
 	return (
@@ -221,7 +228,7 @@ export function EarningsSideB({
 	graphData,
 	totalEarning,
 }: {
-	graphData: { month: string; totalEarnings: number }[];
+	graphData: { month: string; year: number; totalEarnings: number }[];
 	totalEarning: number;
 }) {
 	const [selectedMonth] = useQueryState(
@@ -229,18 +236,23 @@ export function EarningsSideB({
 		parseAsString.withDefault(getCurrentYearMonth()),
 	);
 
-	const { selectedMonthName, selectedMonthLabel } = useMemo(() => {
-		const [y, m] = selectedMonth.split("-").map(Number);
-		const monthDate = new Date(y, m - 1);
-		const name = monthDate
-			.toLocaleString("en-US", { month: "long" })
-			.toUpperCase();
-		const label = monthDate.toLocaleString("en-US", {
-			month: "long",
-			year: "numeric",
-		});
-		return { selectedMonthName: name, selectedMonthLabel: label };
-	}, [selectedMonth]);
+	const { selectedMonthName, selectedMonthYear, selectedMonthLabel } =
+		useMemo(() => {
+			const [y, m] = selectedMonth.split("-").map(Number);
+			const monthDate = new Date(y, m - 1);
+			const name = monthDate
+				.toLocaleString("en-US", { month: "long" })
+				.toUpperCase();
+			const label = monthDate.toLocaleString("en-US", {
+				month: "long",
+				year: "numeric",
+			});
+			return {
+				selectedMonthName: name,
+				selectedMonthYear: y,
+				selectedMonthLabel: label,
+			};
+		}, [selectedMonth]);
 
 	return (
 		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
@@ -263,6 +275,7 @@ export function EarningsSideB({
 				<CurvedLineChart
 					graphData={graphData}
 					selectedMonthName={selectedMonthName}
+					selectedMonthYear={selectedMonthYear}
 				/>
 			</div>
 		</div>

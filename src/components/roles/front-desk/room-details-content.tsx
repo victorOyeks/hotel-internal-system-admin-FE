@@ -6,6 +6,7 @@ import {
 import type { RoomDetails } from "@/lib/fetch";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
+    AlertTriangle,
     Calendar,
     User,
     Hotel,
@@ -45,8 +46,23 @@ export function RoomDetailsContent({ room }: RoomDetailsContentProps) {
                     >
                         {room.checkInStatus.replace(/_/g, " ").toLowerCase()}
                     </Badge>
+                    {room.active === false && (
+                        <Badge variant="destructive" className="ml-1">
+                            Deactivated
+                        </Badge>
+                    )}
                 </DialogTitle>
             </DialogHeader>
+
+            {room.active === false && room.deactivationReason && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 border border-red-200 mt-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-red-700">Deactivation Reason</p>
+                        <p className="text-sm text-red-600 mt-0.5">{room.deactivationReason}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 py-4">
                 {/* Room Information - Column 1 */}

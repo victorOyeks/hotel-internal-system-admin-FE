@@ -1,6 +1,7 @@
 "use server";
 import { cookies } from "next/headers";
 import { getManagerCurrentHotel, verifySession } from "./dal";
+import { env } from "@/env";
 import {
 	$fetch,
 	Role,
@@ -89,6 +90,76 @@ export async function addNewRoomToHotel(
 		success: true,
 		data: data.data,
 	};
+}
+
+export async function updateRoom(
+	roomId: string,
+	payload: {
+		roomIdentifier: string;
+		roomType: string;
+		roomPrice: number;
+		roomStatus: string;
+		roomFacility: string[];
+	},
+): ServerActionResponseFromEndpoint<"@put/api/managers/hotels/rooms/:roomCustomId"> {
+	const sessionData = await verifySession();
+	if (!isManager(sessionData.roles)) {
+		return { success: false, error: "Unauthorized" };
+	}
+
+	const data = await $fetch("@put/api/managers/hotels/rooms/:roomCustomId", {
+		params: { roomCustomId: roomId },
+		auth: { type: "Bearer", token: sessionData.token },
+		body: payload,
+	});
+
+	if (data.error) {
+		return { success: false, error: data.error.message || "Failed to update room" };
+	}
+
+	return { success: true, data: data.data };
+}
+
+export async function toggleRoomActive(
+	roomId: string,
+	reason?: string,
+): ServerActionResponse<{ message: string }> {
+	const sessionData = await verifySession();
+	if (!isManager(sessionData.roles)) {
+		return { success: false, error: "Unauthorized" };
+	}
+
+	try {
+		const headers: Record<string, string> = {
+			Authorization: `Bearer ${sessionData.token}`,
+		};
+		let body: string | undefined;
+		if (reason) {
+			headers["Content-Type"] = "application/json";
+			body = JSON.stringify({ reason });
+		}
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/managers/hotels/rooms/${roomId}/toggle-active`,
+			{
+				method: "PATCH",
+				headers,
+				body,
+			},
+		);
+
+		const data = await response.json();
+		if (!response.ok) {
+			return { success: false, error: data.message || "Failed to toggle room status" };
+		}
+
+		return { success: true, data: { message: data.message } };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Failed to toggle room status",
+		};
+	}
 }
 
 export async function onboardStaffToHotel(
@@ -263,6 +334,64 @@ export async function suspendStaffAccount(
 		success: true,
 		data,
 	};
+}
+
+// ==================== BULK ROOM UPLOAD ====================
+
+export async function bulkUploadRooms(
+	formData: FormData,
+): ServerActionResponse<{
+	summary: {
+		totalRows: number;
+		successCount: number;
+		failedCount: number;
+		processingTimeMs: number;
+		fileName: string;
+		uploadedBy: string;
+		uploadedAt: string;
+	};
+	results: Array<{
+		rowNumber: number;
+		success: boolean;
+		roomIdentifier: string | null;
+		errorMessage: string | null;
+	}>;
+}> {
+	const sessionData = await verifySession();
+	if (!isManager(sessionData.roles)) {
+		return { success: false, error: "Unauthorized" };
+	}
+	const currentHotel = await getManagerCurrentHotel();
+	if (!currentHotel) {
+		return { success: false, error: "No hotel found for the manager" };
+	}
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/managers/hotels/${currentHotel.id}/rooms/bulk-upload`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+				body: formData,
+			},
+		);
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: data.message || "Bulk upload failed",
+			};
+		}
+
+		return { success: true, data: data.data };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Bulk upload failed",
+		};
+	}
 }
 
 // ==================== APPROVAL ACTIONS ====================

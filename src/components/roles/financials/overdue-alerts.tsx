@@ -42,11 +42,11 @@ export function OverdueAlerts({ overdueItems }: OverdueAlertsProps) {
                             className="flex items-center justify-between p-3 bg-white dark:bg-background rounded-lg border border-red-100 dark:border-red-900/50 shadow-sm"
                         >
                             <div className="flex flex-col">
-                                <span className="font-medium">{item.vendor}</span>
+                                <span className="font-medium">{item.vendorName ?? item.title ?? "-"}</span>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>Due: {new Date(item.date).toLocaleDateString()}</span>
+                                    <span>Due: {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "-"}</span>
                                     <span>•</span>
-                                    <span>{item.invoiceNumber}</span>
+                                    <span>{item.invoiceNumber ?? "-"}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">

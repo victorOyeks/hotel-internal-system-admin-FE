@@ -62,7 +62,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import type * as React from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	checkInGuest,
 	makeReservation,
@@ -70,6 +70,10 @@ import {
 } from "@/lib/front-desk-actions";
 import { toast } from "sonner";
 import { revalidateRoute, uploadImage } from "@/lib/actions";
+import {
+	assignBookingToOrganization,
+	getOrganizationsForCurrentUser,
+} from "@/lib/corporate-actions";
 import type { APIOutput } from "@/lib/action-utils";
 import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { atom, useAtom, useSetAtom } from "jotai";
@@ -699,6 +703,14 @@ export function CheckInForm({
 	});
 
 	const [selectedRoomId, setSelectedRoomId] = useState("");
+	const [selectedOrgId, setSelectedOrgId] = useState("");
+
+	const { data: orgData } = useQuery({
+		queryKey: ["front-desk", "organizations"],
+		queryFn: () => getOrganizationsForCurrentUser(),
+	});
+	const organizations = orgData?.organizations ?? [];
+	const orgHotelId = orgData?.hotelId ?? "";
 
 	const form = useForm({
 		resolver: zodResolver(checkInFormSchema),
@@ -750,13 +762,36 @@ export function CheckInForm({
 		onError: (error) => {
 			toast.error(error.message || "An error occurred during check-in.");
 		},
-		onSuccess: (data) => {
+		onSuccess: async (data) => {
+			// Chain organization assignment if one was selected
+			const bookingId = data.data?.id;
+			if (selectedOrgId && orgHotelId && bookingId) {
+				try {
+					const assignResult = await assignBookingToOrganization({
+						hotelId: orgHotelId,
+						bookingId,
+						organizationId: selectedOrgId,
+						dailySpendingCap: form.getValues("dailySpendingCap") || 0,
+					});
+					if (!assignResult.success) {
+						toast.error("Guest checked in but organization assignment failed", {
+							description: assignResult.error,
+						});
+					}
+				} catch {
+					toast.error("Guest checked in but organization assignment failed");
+				}
+			}
+
 			toast.success(data.message || "Guest checked in successfully.");
 			setShowSuccessDialog({
 				show: true,
-				message: "Guest checked in successfully.",
+				message: selectedOrgId
+					? "Guest checked in and assigned to organization."
+					: "Guest checked in successfully.",
 			});
 			form.reset();
+			setSelectedOrgId("");
 			setOpen(false);
 			revalidateRoute("/front-desk");
 		},
@@ -940,25 +975,41 @@ export function CheckInForm({
 						)}
 					/>
 
-					<FormField
-						control={form.control}
-						name="dailySpendingCap"
-						render={() => (
-							<FormItem>
-								<FormLabel>Daily Spending Cap</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										min="0"
-										{...form.register("dailySpendingCap", {
-											valueAsNumber: true,
-										})}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+					<div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
+						<div className="space-y-2">
+							<Label>Organization (Optional)</Label>
+							<Combobox
+								options={organizations.map((org) => ({
+									label: org.name,
+									value: org.id,
+								}))}
+								value={selectedOrgId}
+								onSelect={setSelectedOrgId}
+								placeholder="Select organization..."
+								emptyText="No organizations found"
+							/>
+						</div>
+
+						<FormField
+							control={form.control}
+							name="dailySpendingCap"
+							render={() => (
+								<FormItem>
+									<FormLabel>Daily Spending Cap</FormLabel>
+									<FormControl>
+										<Input
+											type="number"
+											min="0"
+											{...form.register("dailySpendingCap", {
+												valueAsNumber: true,
+											})}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
 
 
 					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
@@ -1198,6 +1249,15 @@ export function ReservationForm({
 		"room:type": parseAsString.withDefault(""),
 	});
 
+	const [selectedOrgId, setSelectedOrgId] = useState("");
+
+	const { data: orgData } = useQuery({
+		queryKey: ["front-desk", "organizations"],
+		queryFn: () => getOrganizationsForCurrentUser(),
+	});
+	const organizations = orgData?.organizations ?? [];
+	const orgHotelId = orgData?.hotelId ?? "";
+
 	const form = useForm({
 		resolver: zodResolver(reservationFormSchema),
 		defaultValues: {
@@ -1226,8 +1286,34 @@ export function ReservationForm({
 			});
 		},
 		onSuccess: async (data) => {
-			toast.success(data.message || "Reservation created successfully.");
+			const bookingId = data.data?.bookingId;
+			if (selectedOrgId && orgHotelId && bookingId) {
+				try {
+					const assignResult = await assignBookingToOrganization({
+						hotelId: orgHotelId,
+						bookingId,
+						organizationId: selectedOrgId,
+						dailySpendingCap: form.getValues("dailySpendingCap") || 0,
+					});
+					if (!assignResult.success) {
+						toast.error(
+							"Reservation created but organization assignment failed",
+							{ description: assignResult.error },
+						);
+					}
+				} catch {
+					toast.error(
+						"Reservation created but organization assignment failed",
+					);
+				}
+			}
+			toast.success(
+				selectedOrgId
+					? "Reservation created and assigned to organization."
+					: data.message || "Reservation created successfully.",
+			);
 			form.reset();
+			setSelectedOrgId("");
 			setOpen(false);
 			await revalidateRoute("/front-desk");
 		},
@@ -1362,6 +1448,22 @@ export function ReservationForm({
 							</FormItem>
 						)}
 					/>
+
+					<div className="col-span-full">
+						<div className="space-y-2">
+							<Label>Organization (Optional)</Label>
+							<Combobox
+								options={organizations.map((org: { id: string; name: string }) => ({
+									label: org.name,
+									value: org.id,
+								}))}
+								value={selectedOrgId}
+								onSelect={setSelectedOrgId}
+								placeholder="Select organization..."
+								emptyText="No organizations found"
+							/>
+						</div>
+					</div>
 
 					<FormField
 						control={form.control}

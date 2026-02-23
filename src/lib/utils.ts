@@ -34,8 +34,9 @@ export function formatCurrency(
 	type: "short" | "float" | "default" = "default",
 ) {
 	// cross-check at runtime if value is a number
+	if (value == null) return "0";
 	if (typeof value !== "number" || Number.isNaN(value)) {
-		return value.toString();
+		return String(value);
 	}
 
 	// Define the options based on the type

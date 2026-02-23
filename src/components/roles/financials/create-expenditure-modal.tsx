@@ -55,8 +55,8 @@ export function CreateExpenditureModal({
                 description: formData.description,
                 amount: parseFloat(formData.amount),
                 category: formData.category,
-                date: formData.date,
-                vendor: formData.vendor,
+                expenseDate: formData.date,
+                vendorName: formData.vendor,
                 invoiceNumber: formData.invoiceNumber,
             });
         },
