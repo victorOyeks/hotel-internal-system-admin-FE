@@ -1,5 +1,5 @@
 import { ExpenditureTable } from "@/components/roles/financials/expenditure-table";
-import { getExpenditures, getOverdueExpenditures } from "@/lib/financials-actions";
+import { getExpenditures, getOverdueExpenditures, getFinancialDashboard } from "@/lib/financials-actions";
 import { getCookieData } from "@/lib/server-fns";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
@@ -42,8 +42,21 @@ function ExpendituresPage({ searchParams }: PageProps) {
         })
     );
 
+    // Fetch Dashboard metrics for earnings
+    const dashboardData = use(
+        queryClient.ensureQueryData({
+            queryKey: ["financials", "dashboard", cookieData.userId, query.startDate, query.endDate],
+            queryFn: () => getFinancialDashboard({
+                startDate: query.startDate || undefined,
+                endDate: query.endDate || undefined,
+            })
+        })
+    );
+
     const data = (expenditureData?.content || []) as Expenditure[];
+    const totalPages = expenditureData?.totalPages || 0;
     const overdueItems = (overdueData || []) as Expenditure[];
+    const metrics = (dashboardData && "metrics" in dashboardData ? dashboardData.metrics : null) || { totalRevenue: 0, netProfit: 0, totalExpenses: 0 };
 
     return (
         <BreadCrumbWrapper
@@ -58,7 +71,7 @@ function ExpendituresPage({ searchParams }: PageProps) {
             <div className="p-4 space-y-4">
                 <OverdueAlerts overdueItems={overdueItems} />
 
-                <ExpenditureTable data={data} />
+                <ExpenditureTable data={data} totalPages={totalPages} metrics={metrics} />
             </div>
         </BreadCrumbWrapper>
     );
