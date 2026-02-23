@@ -305,74 +305,43 @@ function BranchPerformance({
 }: {
 	performanceData: PerformanceData;
 }) {
+	const sorted = useMemo(
+		() =>
+			[...performanceData].sort(
+				(a, b) => b.performancePercentage - a.performancePercentage,
+			),
+		[performanceData],
+	);
+
 	return (
-		<div className="bg-white p-4 md:p-6 rounded-3xl space-y-4">
+		<div className="bg-white p-4 md:p-6 rounded-3xl space-y-3">
 			<h2 className="text-xl font-semibold text-primary">Branch Performance</h2>
-			{/* Placeholder for branch performance chart */}
-			<div className="h-64 md:h-48 w-full">
-				<BranchPerformanceChart performanceData={performanceData} />
+			<div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+				{sorted.map((item) => (
+					<div key={item.hotelId} className="flex items-center gap-3">
+						<span
+							className="text-xs text-gray-600 truncate shrink-0"
+							style={{ width: 120 }}
+							title={item.hotelName}
+						>
+							{item.hotelName}
+						</span>
+						<div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+							<div
+								className="h-full rounded-full transition-all duration-500"
+								style={{
+									width: `${Math.min(item.performancePercentage, 100)}%`,
+									backgroundColor: "var(--primary-5)",
+								}}
+							/>
+						</div>
+						<span className="text-xs font-medium text-gray-700 shrink-0 w-8 text-right">
+							{item.performancePercentage}%
+						</span>
+					</div>
+				))}
 			</div>
 		</div>
-	);
-}
-
-function BranchPerformanceChart({
-	performanceData,
-}: {
-	performanceData: PerformanceData;
-}) {
-	const data = performanceData.map((item) => ({
-		name: item.hotelName,
-		value: item.performancePercentage,
-		yLabel: `${item.performancePercentage * 100}%`,
-	}));
-
-	return (
-		<ResponsiveContainer width="100%" height={240}>
-			<BarChart
-				data={data}
-				margin={{ top: 20, right: 10, left: -30, bottom: 5 }}
-				barCategoryGap="20%"
-			>
-				<YAxis
-					dataKey="value"
-					axisLine={false}
-					tickLine={false}
-					tick={{ fontSize: 11, fill: "var(--color-primary-1)" }}
-					tickFormatter={(_, i) => data[i].yLabel}
-				/>
-				<XAxis
-					dataKey="name"
-					axisLine={false}
-					tickLine={false}
-					tick={{ fontSize: 11, fill: "var(--color-primary-1)" }}
-				/>
-				<Bar
-					dataKey="value"
-					fill="var(--primary-5)"
-					radius={[6, 6, 6, 6]}
-					maxBarSize={20}
-				/>
-				<Tooltip
-					contentStyle={{
-						backgroundColor: "#fff",
-						borderRadius: "8px",
-						border: "none",
-						boxShadow:
-							"0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-					}}
-					itemStyle={{ color: "#000" }}
-					cursor={false}
-					formatter={(value: number) => [
-						value.toLocaleString("en-NG", {
-							style: "currency",
-							currency: "NGN",
-						}),
-						"Profit",
-					]}
-				/>
-			</BarChart>
-		</ResponsiveContainer>
 	);
 }
 

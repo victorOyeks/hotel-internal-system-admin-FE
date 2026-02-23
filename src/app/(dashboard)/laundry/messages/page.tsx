@@ -1,21 +1,26 @@
-import { getCookieData } from "@/lib/server-fns";
+import { redirect } from "next/navigation";
 import { use } from "react";
-
-const breadcrumbs = {
-	title: "Messages",
-	breadcrumbs: [
-		{ label: "Dashboard", href: "/dashboard" },
-		{ label: "Messages", href: "/dashboard/messages" },
-	],
-};
+import { verifySession, getUser } from "@/lib/dal";
+import { ChatLayout } from "@/components/chat/chat-layout";
 
 export default function LaundryMessagesPage() {
-	const cookieData = use(getCookieData())!;
+	const session = use(verifySession("LAUNDRY"));
+	const user = use(getUser());
+
+	if (!user || !user.hotels?.length) {
+		redirect("/dashboard");
+	}
+
+	const hotelId = user.hotels[0].id;
 
 	return (
-		<div className="flex flex-col gap-4 p-4">
-			<h1 className="text-2xl font-bold">Messages</h1>
-			<p className="text-muted-foreground">Messaging feature coming soon...</p>
+		<div className="h-[calc(100vh-60px)]">
+			<ChatLayout
+				token={session.token}
+				userId={session.userId}
+				hotelId={hotelId}
+				fullName={session.fullName}
+			/>
 		</div>
 	);
 }
