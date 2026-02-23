@@ -55,6 +55,7 @@ export const hotelOwnerLinks = [
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Operations",
 		icon: <BarChart3Icon />,
@@ -98,6 +99,7 @@ export const managerOwnerLinks = [
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Operations",
 		icon: <Building2Icon />,
