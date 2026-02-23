@@ -15,7 +15,7 @@ import {
 	wsConnectionStatusAtom,
 	typingIndicatorsAtom,
 	onlineUsersAtom,
-	totalUnreadCountAtom,
+	unreadRefetchTriggerAtom,
 } from "@/lib/chat-store";
 import type {
 	ChatMessageResponse,
@@ -36,7 +36,7 @@ export function useChatWebSocket(
 	const setConnectionStatus = useSetAtom(wsConnectionStatusAtom);
 	const setTypingIndicators = useSetAtom(typingIndicatorsAtom);
 	const setOnlineUsers = useSetAtom(onlineUsersAtom);
-	const setTotalUnread = useSetAtom(totalUnreadCountAtom);
+	const triggerUnreadRefetch = useSetAtom(unreadRefetchTriggerAtom);
 	const userIdRef = useRef(userId);
 	userIdRef.current = userId;
 
@@ -67,7 +67,7 @@ export function useChatWebSocket(
 
 			if (message.senderId !== userIdRef.current) {
 				chatWs.sendDeliveryConfirmation(message.id, message.conversationId);
-				setTotalUnread((prev) => prev + 1);
+				triggerUnreadRefetch((prev) => prev + 1);
 				playNotificationSound();
 				showMessageNotification(
 					message.senderName,
@@ -192,7 +192,7 @@ export function useChatWebSocket(
 		setConnectionStatus,
 		setTypingIndicators,
 		setOnlineUsers,
-		setTotalUnread,
+		triggerUnreadRefetch,
 	]);
 }
 

@@ -1,29 +1,83 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { useSetAtom } from "jotai";
-import { totalUnreadCountAtom } from "@/lib/chat-store";
-import { getTotalUnreadCount } from "@/lib/chat-actions";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { totalUnreadCountAtom, unreadRefetchTriggerAtom } from "@/lib/chat-store";
+import { getConversations, getSessionInfo } from "@/lib/chat-actions";
+import { useChatWebSocket } from "@/hooks/use-chat-websocket";
 
 /**
- * Fetches total unread message count on mount and polls every 30s.
- * Sets the totalUnreadCountAtom so the sidebar badge stays in sync.
+ * Global chat provider that runs at the dashboard level.
+ * - Connects WebSocket for real-time notifications (sound + desktop) on ALL pages
+ * - Fetches unread conversation count for the sidebar badge
+ * - Re-fetches when a new message arrives via the trigger atom
+ * - Polls every 30s as a fallback sync
  */
-export function ChatUnreadSync() {
-	const setTotalUnread = useSetAtom(totalUnreadCountAtom);
+export function ChatGlobalProvider({ hotelId }: { hotelId: string }) {
+	const [session, setSession] = useState<{
+		token: string;
+		userId: string;
+	} | null>(null);
 
-	const fetchUnread = useCallback(async () => {
-		const result = await getTotalUnreadCount();
-		if (result.success && typeof result.data === "number") {
-			setTotalUnread(result.data);
+	useEffect(() => {
+		getSessionInfo().then((info) => {
+			setSession({ token: info.token, userId: info.userId });
+		});
+	}, []);
+
+	if (!session) return null;
+
+	return (
+		<ChatGlobalInner
+			token={session.token}
+			userId={session.userId}
+			hotelId={hotelId}
+		/>
+	);
+}
+
+function ChatGlobalInner({
+	token,
+	userId,
+	hotelId,
+}: {
+	token: string;
+	userId: string;
+	hotelId: string;
+}) {
+	const setTotalUnread = useSetAtom(totalUnreadCountAtom);
+	const refetchTrigger = useAtomValue(unreadRefetchTriggerAtom);
+	const initialMount = useRef(true);
+
+	// Global WebSocket connection — enables sound + desktop notifications on all pages
+	useChatWebSocket(token, hotelId, userId);
+
+	const fetchUnreadConversations = useCallback(async () => {
+		const result = await getConversations(0, 100);
+		if (result.success && result.data) {
+			const data = result.data as { content: { unreadCount: number }[] };
+			const count = (data.content ?? []).filter(
+				(c) => c.unreadCount > 0,
+			).length;
+			setTotalUnread(count);
 		}
 	}, [setTotalUnread]);
 
+	// Fetch on mount + poll every 30s
 	useEffect(() => {
-		fetchUnread();
-		const interval = setInterval(fetchUnread, 30_000);
+		fetchUnreadConversations();
+		const interval = setInterval(fetchUnreadConversations, 30_000);
 		return () => clearInterval(interval);
-	}, [fetchUnread]);
+	}, [fetchUnreadConversations]);
+
+	// Re-fetch when a new message triggers the atom (skip initial mount)
+	useEffect(() => {
+		if (initialMount.current) {
+			initialMount.current = false;
+			return;
+		}
+		fetchUnreadConversations();
+	}, [refetchTrigger, fetchUnreadConversations]);
 
 	return null;
 }

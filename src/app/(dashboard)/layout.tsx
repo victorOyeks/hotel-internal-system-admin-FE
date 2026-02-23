@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { type PropsWithChildren, use } from "react";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
-import { ChatUnreadSync } from "@/components/shared/chat-notifications";
+import { ChatGlobalProvider } from "@/components/shared/chat-notifications";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
 import { getActiveRole, getManagerCurrentHotel, getOwnerCurrentHotel, getUser } from "@/lib/dal";
@@ -24,6 +24,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 	const ownerHotel = use(getOwnerCurrentHotel());
 	const activeRole = use(getActiveRole());
 	const activeHotel = activeRole === "HOTEL_OWNER" ? ownerHotel : managerHotel;
+	const hotelId = activeHotel?.id ?? user.hotels[0]?.id;
 	return (
 		<NuqsAdapter
 			defaultOptions={{
@@ -33,7 +34,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 			}}
 		>
 			<JotaiProvider>
-				<ChatUnreadSync />
+				{hotelId && <ChatGlobalProvider hotelId={hotelId} />}
 				<SidebarProvider>
 					<AppSidebar
 						collapsible="icon"
