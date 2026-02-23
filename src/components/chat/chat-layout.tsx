@@ -86,7 +86,7 @@ export function ChatLayout({
 	return (
 		<ChatProvider token={token} hotelId={hotelId} userId={userId}>
 			{isMobile ? (
-				<div className="h-full">
+				<div className="fixed inset-0 z-40 flex flex-col bg-white">
 					{mobileView === "sidebar" ? sidebar : chatArea}
 				</div>
 			) : (
