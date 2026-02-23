@@ -14,7 +14,7 @@ export default function InventoryMessagesPage() {
 	const hotelId = user.hotels[0].id;
 
 	return (
-		<div className="h-[calc(100vh-60px)]">
+		<div className="h-[calc(100dvh-60px)]">
 			<ChatLayout
 				token={session.token}
 				userId={session.userId}
