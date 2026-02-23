@@ -7,6 +7,8 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useAtomValue } from "jotai";
+import { totalUnreadCountAtom } from "@/lib/chat-store";
 
 function IconLoader({ children }: { children: ReactNode }) {
 	const { pending } = useLinkStatus();
@@ -40,6 +42,7 @@ export function NavMain({
 	}[];
 }) {
 	const pathname = usePathname();
+	const totalUnread = useAtomValue(totalUnreadCountAtom);
 	const pathMatcher = useMemo(
 		() => createPathMatcher(items.map((item) => item.url)),
 		[items],
@@ -61,6 +64,11 @@ export function NavMain({
 								{item.title}
 							</Link>
 						</sidebar.SidebarMenuButton>
+						{item.title === "Messages" && totalUnread > 0 && (
+							<sidebar.SidebarMenuBadge className="bg-red-500 text-white rounded-full">
+								{totalUnread > 99 ? "99+" : totalUnread}
+							</sidebar.SidebarMenuBadge>
+						)}
 					</sidebar.SidebarMenuItem>
 				))}
 			</sidebar.SidebarMenu>

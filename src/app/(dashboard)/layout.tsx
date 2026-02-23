@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { type PropsWithChildren, use } from "react";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
+import { ChatUnreadSync } from "@/components/shared/chat-notifications";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
 import { getActiveRole, getManagerCurrentHotel, getOwnerCurrentHotel, getUser } from "@/lib/dal";
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 			}}
 		>
 			<JotaiProvider>
+				<ChatUnreadSync />
 				<SidebarProvider>
 					<AppSidebar
 						collapsible="icon"

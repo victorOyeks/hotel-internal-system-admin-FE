@@ -7,6 +7,11 @@ import { chatWs } from "@/lib/chat-websocket";
 import { chatKeys } from "@/lib/chat-query-keys";
 import { getOnlineUsers } from "@/lib/chat-actions";
 import {
+	playNotificationSound,
+	showMessageNotification,
+	requestNotificationPermission,
+} from "@/lib/chat-notification";
+import {
 	wsConnectionStatusAtom,
 	typingIndicatorsAtom,
 	onlineUsersAtom,
@@ -51,6 +56,8 @@ export function useChatWebSocket(
 						setOnlineUsers(result.data as string[]);
 					}
 				});
+
+				requestNotificationPermission();
 			}
 		});
 
@@ -61,6 +68,11 @@ export function useChatWebSocket(
 			if (message.senderId !== userIdRef.current) {
 				chatWs.sendDeliveryConfirmation(message.id, message.conversationId);
 				setTotalUnread((prev) => prev + 1);
+				playNotificationSound();
+				showMessageNotification(
+					message.senderName,
+					message.content,
+				);
 			}
 		});
 
