@@ -41,7 +41,7 @@ export function MessageBubble({
 	return (
 		<div
 			className={cn(
-				"flex gap-2 px-4 group",
+				"flex gap-2 px-3 sm:px-4 group",
 				isOwn ? "justify-end" : "justify-start",
 				showAvatar ? "mt-3" : "mt-0.5",
 			)}
@@ -70,7 +70,7 @@ export function MessageBubble({
 			>
 				<div
 					className={cn(
-						"max-w-[70%] min-w-[80px]",
+						"max-w-[85%] sm:max-w-[70%] min-w-[80px]",
 						isOwn ? "order-1" : "order-2",
 					)}
 				>

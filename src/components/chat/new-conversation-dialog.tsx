@@ -193,7 +193,7 @@ export function NewConversationDialog({
 					</div>
 
 					<TabsContent value="direct" className="mt-0 pt-2">
-						<ScrollArea className="h-[300px]">
+						<ScrollArea className="h-[min(300px,50dvh)]">
 							{staffLoading ? (
 								<div className="flex items-center justify-center py-12">
 									<Loader2Icon className="size-5 animate-spin text-primary-4" />
@@ -267,7 +267,7 @@ export function NewConversationDialog({
 							</div>
 						)}
 
-						<ScrollArea className="h-[220px]">
+						<ScrollArea className="h-[min(220px,40dvh)]">
 							{staffLoading ? (
 								<div className="flex items-center justify-center py-12">
 									<Loader2Icon className="size-5 animate-spin text-primary-4" />

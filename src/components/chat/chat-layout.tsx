@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import {
 	ResizablePanelGroup,
@@ -48,6 +48,15 @@ export function ChatLayout({
 		return () => setBreadcrumb(null);
 	}, [setBreadcrumb]);
 
+	// Prevent body scroll behind fixed mobile chat
+	useEffect(() => {
+		if (!isMobile) return;
+		document.body.style.overflow = "hidden";
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [isMobile]);
+
 	// Subscribe to group conversation topics when active conversation changes
 	useEffect(() => {
 		if (activeConversation?.conversationType === "GROUP" && activeConversation.id) {
@@ -86,7 +95,7 @@ export function ChatLayout({
 	return (
 		<ChatProvider token={token} hotelId={hotelId} userId={userId}>
 			{isMobile ? (
-				<div className="fixed inset-0 z-40 flex flex-col bg-white">
+				<div className="fixed inset-0 z-40 flex flex-col bg-white pt-[env(safe-area-inset-top)]">
 					{mobileView === "sidebar" ? sidebar : chatArea}
 				</div>
 			) : (

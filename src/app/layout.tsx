@@ -1,6 +1,6 @@
 import Providers from "@/components/react-query";
 import { cn } from "@/lib/utils";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -30,6 +30,11 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
 	title: "Hotel Management System",
+};
+
+export const viewport: Viewport = {
+	viewportFit: "cover",
+	interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

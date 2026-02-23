@@ -90,7 +90,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 	};
 
 	return (
-		<div className="border-t bg-white shrink-0">
+		<div className="border-t bg-white shrink-0 pb-[env(safe-area-inset-bottom)]">
 			{replyTo && (
 				<ReplyPreview
 					senderName={replyTo.senderName}
