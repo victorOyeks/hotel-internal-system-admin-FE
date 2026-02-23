@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import {
 	ResizablePanelGroup,
@@ -8,6 +8,7 @@ import {
 	ResizableHandle,
 } from "@/components/ui/resizable";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRouter } from "next/navigation";
 import { ChatProvider } from "./chat-provider";
 import { ConversationSidebar } from "./conversation-sidebar";
 import { ChatArea } from "./chat-area";
@@ -29,6 +30,7 @@ export function ChatLayout({
 	fullName,
 }: ChatLayoutProps) {
 	const isMobile = useIsMobile();
+	const router = useRouter();
 	const setBreadcrumb = useSetAtom(breadcrumbAtom);
 	const [newConvOpen, setNewConvOpen] = useState(false);
 	const [activeConversationId, setActiveConversationId] = useAtom(
@@ -74,10 +76,16 @@ export function ChatLayout({
 		setMobileView("sidebar");
 	};
 
+	const handleNavigateBack = () => {
+		document.body.style.overflow = "";
+		router.push("/dashboard");
+	};
+
 	const sidebar = (
 		<ConversationSidebar
 			currentUserId={userId}
 			onNewConversation={() => setNewConvOpen(true)}
+			onBack={isMobile ? handleNavigateBack : undefined}
 		/>
 	);
 

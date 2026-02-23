@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { PenSquareIcon } from "lucide-react";
+import { PenSquareIcon, ArrowLeftIcon } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,11 +24,13 @@ import { cn } from "@/lib/utils";
 interface ConversationSidebarProps {
 	currentUserId: string;
 	onNewConversation: () => void;
+	onBack?: () => void;
 }
 
 export function ConversationSidebar({
 	currentUserId,
 	onNewConversation,
+	onBack,
 }: ConversationSidebarProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [, setActiveConversationId] = useAtom(activeConversationIdAtom);
@@ -81,6 +83,16 @@ export function ConversationSidebar({
 	return (
 		<div className="flex flex-col h-full overflow-hidden bg-white border-r border-gray-100 pb-[env(safe-area-inset-bottom)]">
 			<div className="flex items-center gap-2 p-3 border-b border-gray-100 shrink-0">
+				{onBack && (
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onBack}
+						className="size-8 shrink-0 text-primary-3 hover:text-primary-2 hover:bg-primary-6/50"
+					>
+						<ArrowLeftIcon className="size-4" />
+					</Button>
+				)}
 				<div className="flex items-center gap-1.5 shrink-0">
 					<span
 						className={cn(
