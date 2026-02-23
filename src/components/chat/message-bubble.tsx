@@ -84,8 +84,8 @@ export function MessageBubble({
 						className={cn(
 							"px-3 py-2 relative",
 							isOwn
-								? "bg-primary-4 text-white rounded-2xl rounded-br-sm"
-								: "bg-white border border-gray-100 text-gray-900 rounded-2xl rounded-bl-sm shadow-sm",
+								? "bg-primary-4 text-white rounded-xl rounded-br-sm"
+								: "bg-white border border-gray-200 text-gray-900 rounded-xl rounded-bl-sm",
 							message.isDeleted && "opacity-60",
 						)}
 					>

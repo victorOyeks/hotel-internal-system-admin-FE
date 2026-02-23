@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAtom } from "jotai";
+import { useState, useEffect, useLayoutEffect } from "react";
+import { useAtom, useSetAtom } from "jotai";
 import {
 	ResizablePanelGroup,
 	ResizablePanel,
@@ -19,6 +19,7 @@ import {
 	mobileChatViewAtom,
 } from "@/lib/chat-store";
 import { chatWs } from "@/lib/chat-websocket";
+import { breadcrumbAtom } from "@/lib/store";
 import type { ChatLayoutProps, ChatConversationResponse } from "@/lib/chat-types";
 
 export function ChatLayout({
@@ -28,12 +29,24 @@ export function ChatLayout({
 	fullName,
 }: ChatLayoutProps) {
 	const isMobile = useIsMobile();
+	const setBreadcrumb = useSetAtom(breadcrumbAtom);
 	const [newConvOpen, setNewConvOpen] = useState(false);
 	const [activeConversationId, setActiveConversationId] = useAtom(
 		activeConversationIdAtom,
 	);
 	const [activeConversation, setActiveConversation] = useAtom(activeConversationAtom);
 	const [mobileView, setMobileView] = useAtom(mobileChatViewAtom);
+
+	useLayoutEffect(() => {
+		setBreadcrumb({
+			title: "Messages",
+			breadcrumbs: [
+				{ label: "Dashboard", href: "/dashboard" },
+				{ label: "Messages", href: "/dashboard/messages" },
+			],
+		});
+		return () => setBreadcrumb(null);
+	}, [setBreadcrumb]);
 
 	// Subscribe to group conversation topics when active conversation changes
 	useEffect(() => {

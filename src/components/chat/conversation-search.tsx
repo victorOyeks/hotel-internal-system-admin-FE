@@ -19,7 +19,7 @@ export function ConversationSearch({
 				placeholder="Search conversations..."
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				className="pl-9 bg-gray-50/80 border-gray-200 h-9 text-sm"
+				className="pl-9 border-gray-200 h-9 text-sm"
 			/>
 		</div>
 	);

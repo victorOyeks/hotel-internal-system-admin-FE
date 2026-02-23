@@ -119,14 +119,14 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 					value={content}
 					onChange={(e) => handleChange(e.target.value)}
 					onKeyDown={handleKeyDown}
-					className="flex-1 min-h-[40px] max-h-[120px] resize-none border-gray-200 bg-gray-50/50 focus-visible:ring-primary-4/30"
+					className="flex-1 min-h-[40px] max-h-[120px] resize-none border-gray-200 focus-visible:ring-primary-4/30"
 					rows={1}
 				/>
 				<Button
 					size="icon"
 					onClick={handleSend}
 					disabled={!content.trim() || sendMessage.isPending}
-					className="bg-primary-4 hover:bg-primary-3 text-white shrink-0 size-10 rounded-xl"
+					className="bg-primary-4 hover:bg-primary-3 text-white shrink-0 size-10 rounded-lg"
 				>
 					<SendHorizontalIcon className="size-4" />
 				</Button>
