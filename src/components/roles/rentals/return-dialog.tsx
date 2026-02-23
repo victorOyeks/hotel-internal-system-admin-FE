@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -80,6 +81,7 @@ export function ReturnDialog({
 }: ReturnDialogProps) {
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const form = useForm<ReturnInspectionFormData>({
 		resolver: zodResolver(returnInspectionSchema),
@@ -125,6 +127,13 @@ export function ReturnDialog({
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
 			});
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "items"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "maintenance", "pending"],
+			});
+			router.refresh();
 			setOpen(false);
 			form.reset();
 			onSuccess?.();

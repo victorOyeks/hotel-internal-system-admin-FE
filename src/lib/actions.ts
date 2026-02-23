@@ -251,7 +251,7 @@ export async function assignManagerToHotelBranch(
 }
 
 export async function onboardManagerToHotel(
-	payload: Omit<OnboardStaffRequest, "role" | "staffId">,
+	payload: Omit<OnboardStaffRequest, "roles" | "staffId">,
 ): ServerActionResponseFromEndpoint<"@post/api/hotel-owners/managers"> {
 	try {
 		const sessionData = await verifySession();
@@ -279,7 +279,13 @@ export async function onboardManagerToHotel(
 export async function updateStaffDetailsByOwner({
 	staffId,
 	...payload
-}: Omit<OnboardStaffRequest, "password">): ServerActionResponse<string> {
+}: {
+	staffId: string;
+	fullName: string;
+	email: string;
+	phoneNumber: string;
+	role: string;
+}): ServerActionResponse<string> {
 	try {
 		const sessionData = await verifySession();
 		if (!sessionData.roles.includes("HOTEL_OWNER")) {

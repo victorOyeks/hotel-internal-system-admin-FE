@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -87,6 +88,7 @@ export function PaymentDialog({
 }: PaymentDialogProps) {
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const form = useForm<PaymentFormData>({
 		resolver: zodResolver(paymentSchema),
@@ -114,6 +116,7 @@ export function PaymentDialog({
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
 			});
+			router.refresh();
 			setOpen(false);
 			form.reset();
 			onSuccess?.();

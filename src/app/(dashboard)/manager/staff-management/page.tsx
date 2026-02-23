@@ -20,9 +20,12 @@ const hotelRoles = [
 	"HOTEL_OWNER",
 	"MANAGER",
 	"FRONT_DESK",
-	"MAINTENANCE",
 	"INVENTORY",
 	"RESTAURANT",
+	"MARKETER",
+	"RENTALS",
+	"LAUNDRY",
+	"FINANCIALS",
 	"SUPER_ADMIN",
 ] as const;
 

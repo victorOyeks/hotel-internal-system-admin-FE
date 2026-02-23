@@ -7,11 +7,9 @@ import z from "zod";
 
 const SearchParamsSchema = z
 	.object({
-		customId: z.string(),
 		category: z.string(),
-		unit: z.string(),
-		availability: z.string(),
-		searchName: z.string(),
+		status: z.string(),
+		search: z.string(),
 		page: z.coerce.number().default(0),
 		size: z.coerce.number().default(10),
 		section: z.enum(["all", "history"]).default("all"),
@@ -51,10 +49,13 @@ function InventoryPage({
 					"@get/api/hotel-owners/:hotelId/inventories",
 					{
 						query: {
-							...validatedSearchParams,
+							search: validatedSearchParams.search || undefined,
+							category: validatedSearchParams.category || undefined,
+							status: validatedSearchParams.status || undefined,
 							page: validatedSearchParams.page
 								? validatedSearchParams.page - 1
 								: 0,
+							size: validatedSearchParams.size || 10,
 						},
 						params: { hotelId: validatedParams.id },
 						auth: { type: "Bearer", token: cookieData.token },

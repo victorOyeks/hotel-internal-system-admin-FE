@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -141,7 +142,9 @@ export function RentalItemDialog({
 	onSuccess,
 }: RentalItemDialogProps) {
 	const [open, setOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState("basic");
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const isEditing = !!item;
 
 	const form = useForm<RentalItemFormData>({
@@ -200,6 +203,10 @@ export function RentalItemDialog({
 					: "Rental item created successfully",
 			);
 			queryClient.invalidateQueries({ queryKey: ["rentals", "items"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "dashboard-stats"],
+			});
+			router.refresh();
 			setOpen(false);
 			form.reset();
 			onSuccess?.();
@@ -213,8 +220,63 @@ export function RentalItemDialog({
 		mutation.mutate(data);
 	};
 
+	const tabOrder = ["basic", "pricing", "details", "requirements"] as const;
+	const fieldsByTab: Record<(typeof tabOrder)[number], Array<keyof RentalItemFormData>> =
+		{
+			basic: [
+				"name",
+				"description",
+				"category",
+				"condition",
+				"brand",
+				"model",
+				"serialNumber",
+				"totalQuantity",
+				"depositAmount",
+			],
+			pricing: [
+				"pricingType",
+				"hourlyRate",
+				"dailyRate",
+				"weeklyRate",
+				"monthlyRate",
+				"flatRate",
+				"replacementValue",
+				"lateReturnPenaltyPerHour",
+				"lateReturnPenaltyPerDay",
+			],
+			details: ["size", "color", "specifications", "usageInstructions", "safetyInstructions"],
+			requirements: [
+				"requiresDeposit",
+				"requiresIdentification",
+				"requiresSignedAgreement",
+				"minimumAge",
+				"active",
+			],
+		};
+
+	const handlePrimaryAction = async () => {
+		if (!isEditing && activeTab !== "requirements") {
+			const isValid = await form.trigger(fieldsByTab[activeTab], {
+				shouldFocus: true,
+			});
+			if (!isValid) return;
+			const currentIndex = tabOrder.indexOf(activeTab);
+			const nextTab = tabOrder[currentIndex + 1];
+			if (nextTab) setActiveTab(nextTab);
+			return;
+		}
+		await form.handleSubmit(onSubmit)();
+	};
+
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				setOpen(nextOpen);
+				if (nextOpen) setActiveTab("basic");
+			}}
+		>
 			<DialogTrigger asChild>
 				{trigger || (
 					<Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -235,7 +297,11 @@ export function RentalItemDialog({
 
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-						<Tabs defaultValue="basic" className="w-full">
+						<Tabs
+							value={activeTab}
+							onValueChange={(value) => setActiveTab(value)}
+							className="w-full"
+						>
 							<TabsList className="grid w-full grid-cols-4">
 								<TabsTrigger value="basic">Basic Info</TabsTrigger>
 								<TabsTrigger value="pricing">Pricing</TabsTrigger>
@@ -919,14 +985,19 @@ export function RentalItemDialog({
 								Cancel
 							</Button>
 							<Button
-								type="submit"
+								type="button"
+								onClick={handlePrimaryAction}
 								disabled={mutation.isPending}
 								className="bg-gradient-to-r from-blue-600 to-indigo-600"
 							>
 								{mutation.isPending && (
 									<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
 								)}
-								{isEditing ? "Update Item" : "Create Item"}
+								{isEditing
+									? "Update Item"
+									: activeTab === "requirements"
+										? "Create Item"
+										: "Next"}
 							</Button>
 						</div>
 					</form>

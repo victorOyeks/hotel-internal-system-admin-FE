@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,8 @@ const statusColors: Record<string, string> = {
 	DAMAGED: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
+const TERMINAL_STATUSES = new Set(["COMPLETED", "CANCELLED", "LOST", "DAMAGED"]);
+
 const paymentStatusColors: Record<string, string> = {
 	UNPAID: "bg-red-100 text-red-800 border-red-200",
 	DEPOSIT_PARTIALLY_PAID: "bg-amber-100 text-amber-800 border-amber-200",
@@ -103,9 +106,25 @@ export function RentalOrdersPage({
 	paginationMeta,
 	breadcrumbs,
 }: RentalOrdersPageProps) {
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const currentPage = Math.max(
+		1,
+		Number(searchParams.get("page") || paginationMeta.pageNumber + 1 || 1),
+	);
+	const currentSize = Math.max(1, Number(searchParams.get("size") || 20));
+	const totalPages = Math.max(1, paginationMeta.totalPages || 1);
+
+	const goToPage = (page: number) => {
+		const params = new URLSearchParams(searchParams.toString());
+		params.set("page", String(page));
+		params.set("size", String(currentSize));
+		router.push(`${pathname}?${params.toString()}`);
+	};
 
 	const filtered = orders.filter(
 		(o) =>
@@ -307,6 +326,8 @@ export function RentalOrdersPage({
 													</Badge>
 												</TableCell>
 												<TableCell className="text-center">
+													{/* biome-ignore lint/a11y/noStaticElementInteractions: container blocks row click when action buttons are used */}
+													{/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard interaction is handled by inner action buttons */}
 													<div
 														className="flex items-center justify-center gap-1"
 														onClick={(e) =>
@@ -320,7 +341,7 @@ export function RentalOrdersPage({
 															<Tooltip>
 																<TooltipTrigger asChild>
 																	<div>
-																		{order.status === "ACTIVE" || order.status === "PICKED_UP" ? (
+																		{!TERMINAL_STATUSES.has(order.status) ? (
 																			<ExtensionDialog
 																				orderId={order.id}
 																				currentReturnDate={new Date(order.rentalEndTime)}
@@ -355,7 +376,7 @@ export function RentalOrdersPage({
 															<Tooltip>
 																<TooltipTrigger asChild>
 																	<div>
-																		{order.status === "ACTIVE" || order.status === "PICKED_UP" || order.status === "OVERDUE" ? (
+																		{!TERMINAL_STATUSES.has(order.status) ? (
 																			<ReturnDialog
 																				orderId={order.id}
 																				trigger={
@@ -427,6 +448,33 @@ export function RentalOrdersPage({
 								</TableBody>
 							</Table>
 						</div>
+						{paginationMeta.totalElements > 20 && (
+							<div className="flex items-center justify-between border-t pt-4 mt-4">
+								<p className="text-xs text-muted-foreground">
+									Page {currentPage} of {totalPages}
+								</p>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => goToPage(Math.max(1, currentPage - 1))}
+										disabled={currentPage <= 1}
+									>
+										Previous
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() =>
+											goToPage(Math.min(totalPages, currentPage + 1))
+										}
+										disabled={currentPage >= totalPages}
+									>
+										Next
+									</Button>
+								</div>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>

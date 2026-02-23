@@ -1,16 +1,22 @@
 import { RentalPaymentsPage } from "@/components/roles/rentals/rental-payments";
 import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import { createLoader, type SearchParams } from "nuqs/server";
+import {
+	createLoader,
+	parseAsInteger,
+	type SearchParams,
+} from "nuqs/server";
 import { use } from "react";
 
 type PageProps = {
 	searchParams: Promise<SearchParams>;
 };
 
-const loadSearchParams = createLoader(paginationSearchParams);
+const loadSearchParams = createLoader({
+	page: parseAsInteger.withDefault(1),
+	size: parseAsInteger.withDefault(20),
+});
 
 const breadcrumbs = {
 	title: "Payments",

@@ -26,7 +26,83 @@ export default function RentalItemsPageRoute() {
 					signal,
 					throw: true,
 				});
-				return response.data;
+				const rows = Array.isArray(response.data)
+					? response.data
+					: (response.data?.content ?? []);
+
+				const isFaultyLog = (log: Record<string, unknown>) => {
+					const values = [
+						log?.type,
+						log?.action,
+						log?.status,
+						log?.maintenanceResultStatus,
+						log?.resultStatus,
+						log?.condition,
+					]
+						.filter(Boolean)
+						.map((value) => String(value).toUpperCase());
+					const byStatus = values.some(
+						(value) =>
+							value.includes("FAULTY") ||
+							value.includes("WRITE_OFF") ||
+							value.includes("BAD") ||
+							value.includes("DAMAGED") ||
+							value.includes("OUT_OF_SERVICE"),
+					);
+					if (byStatus) return true;
+					const text = `${String(log?.reason || "")} ${String(log?.notes || "")}`.toLowerCase();
+					return (
+						text.includes("cannot be fixed") ||
+						text.includes("can't be fixed") ||
+						text.includes("not fixable") ||
+						text.includes("irreparable") ||
+						text.includes("faulty") ||
+						text.includes("damaged") ||
+						text.includes("bad")
+					);
+				};
+
+				const settled = await Promise.allSettled(
+					rows.map(async (item: any) => {
+						const response = await $fetch(
+							"@get/api/hotels/rentals/items/:itemId/maintenance/history",
+							{
+								params: { itemId: item.id },
+								auth: { type: "Bearer", token },
+								signal,
+								throw: true,
+							},
+						);
+						const logs = Array.isArray(response.data)
+							? response.data
+							: (response.data?.content ?? []);
+						const faultyFromHistory = logs
+							.filter((log: Record<string, unknown>) => isFaultyLog(log))
+							.reduce(
+								(sum: number, log: Record<string, unknown>) =>
+									sum + Math.max(0, Number(log?.quantity ?? 0)),
+								0,
+							);
+						const faultyFromApi = Math.max(
+							0,
+							Number(
+								item?.faultyQuantity ??
+									item?.writeOffQuantity ??
+									item?.damagedQuantity ??
+									item?.outOfServiceQuantity ??
+									0,
+							),
+						);
+						return {
+							...item,
+							faultyQuantity: Math.max(faultyFromApi, faultyFromHistory),
+						};
+					}),
+				);
+
+				return settled.map((result, index) =>
+					result.status === "fulfilled" ? result.value : rows[index],
+				);
 			},
 		}),
 	);

@@ -82,32 +82,22 @@ const paymentStatusColors: Record<string, string> = {
 	OVERDUE_CHARGES_PENDING: "bg-red-100 text-red-800 border-red-200",
 };
 
-// Valid status transitions based on rental order flow
-const validTransitions: Record<string, string[]> = {
-	PENDING: ["CONFIRMED", "CANCELLED"],
-	CONFIRMED: ["PICKED_UP", "CANCELLED"],
-	PICKED_UP: ["ACTIVE"],
-	ACTIVE: ["RETURNED"],
-	OVERDUE: ["RETURNED"],
-	RETURNED: ["COMPLETED", "DAMAGED", "LOST"],
-	// Terminal statuses - no transitions
-	COMPLETED: [],
-	CANCELLED: [],
-	LOST: [],
-	DAMAGED: [],
-};
+// Terminal statuses — once set, the order is closed and cannot be changed
+const TERMINAL_STATUSES = new Set(["COMPLETED", "CANCELLED", "LOST", "DAMAGED"]);
 
-// Action labels for status transitions (friendly names shown in dropdown)
-const transitionLabels: Record<string, string> = {
-	CONFIRMED: "Confirm",
-	CANCELLED: "Cancel Order",
-	PICKED_UP: "Mark Picked Up",
-	ACTIVE: "Mark Active",
-	RETURNED: "Mark Returned",
-	COMPLETED: "Complete",
-	DAMAGED: "Mark Damaged",
-	LOST: "Mark Lost",
-};
+// All possible statuses in logical order
+const ALL_STATUSES = [
+	"PENDING",
+	"CONFIRMED",
+	"PICKED_UP",
+	"ACTIVE",
+	"OVERDUE",
+	"RETURNED",
+	"COMPLETED",
+	"CANCELLED",
+	"LOST",
+	"DAMAGED",
+];
 
 const statusLabels: Record<string, string> = {
 	PENDING: "Pending",
@@ -139,6 +129,7 @@ export function RentalOrderDetailsDialog({
 	const [isChangingStatus, setIsChangingStatus] = useState(false);
 	const [selectedStatus, setSelectedStatus] = useState("");
 	const [statusNotes, setStatusNotes] = useState("");
+	const [showConfirmation, setShowConfirmation] = useState(false);
 	const queryClient = useQueryClient();
 	const router = useRouter();
 
@@ -181,6 +172,7 @@ export function RentalOrderDetailsDialog({
 			setIsChangingStatus(false);
 			setSelectedStatus("");
 			setStatusNotes("");
+			setShowConfirmation(false);
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({ queryKey: ["rentals", "dashboard-stats"] });
 			router.refresh();
@@ -279,9 +271,11 @@ export function RentalOrderDetailsDialog({
 									<Button
 										variant="outline"
 										size="sm"
-										disabled={!(validTransitions[order.status]?.length > 0)}
+										disabled={TERMINAL_STATUSES.has(order.status)}
 										onClick={() => {
 											setSelectedStatus("");
+											setStatusNotes("");
+											setShowConfirmation(false);
 											setIsChangingStatus(true);
 										}}
 									>
@@ -293,68 +287,121 @@ export function RentalOrderDetailsDialog({
 
 							{isChangingStatus && (
 								<div className="bg-muted/50 p-4 rounded-lg space-y-3">
-									<p className="text-sm font-medium">Update Order Status</p>
-									<div className="grid grid-cols-2 gap-3">
-										<div>
-											<label className="text-xs text-muted-foreground mb-1 block">
-												New Status
-											</label>
-											<Select
-												value={selectedStatus}
-												onValueChange={setSelectedStatus}
-											>
-												<SelectTrigger>
-													<SelectValue placeholder="Select status" />
-												</SelectTrigger>
-												<SelectContent>
-													{(validTransitions[order.status] || []).map((status) => (
-															<SelectItem key={status} value={status}>
-																{transitionLabels[status] || statusLabels[status]}
-															</SelectItem>
-														))}
-												</SelectContent>
-											</Select>
-										</div>
-										<div>
-											<label className="text-xs text-muted-foreground mb-1 block">
-												Notes (optional)
-											</label>
-											<Input
-												placeholder="Reason for status change..."
-												value={statusNotes}
-												onChange={(e) => setStatusNotes(e.target.value)}
-											/>
-										</div>
-									</div>
-									<div className="flex gap-2">
-										<Button
-											size="sm"
-											disabled={!selectedStatus || selectedStatus === order.status || statusMutation.isPending}
-											onClick={() =>
-												statusMutation.mutate({
-													status: selectedStatus,
-													notes: statusNotes || undefined,
-												})
-											}
-										>
-											{statusMutation.isPending && (
-												<Loader2Icon className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-											)}
-											Update Status
-										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											disabled={statusMutation.isPending}
-											onClick={() => {
-												setIsChangingStatus(false);
-												setSelectedStatus("");
-												setStatusNotes("");
-											}}
-										>
-											Cancel
-										</Button>
-									</div>
+									{showConfirmation ? (
+										<>
+											<p className="text-sm font-medium">Confirm Status Change</p>
+											<div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-1">
+												<p className="font-medium text-destructive">This action is permanent and cannot be undone.</p>
+												<p className="text-muted-foreground">
+													You are about to mark this order as{" "}
+													<span className="font-semibold text-foreground">{statusLabels[selectedStatus]}</span>.{" "}
+													Once set, the status cannot be changed again.
+												</p>
+												{statusNotes && (
+													<p className="text-muted-foreground">Notes: <span className="italic">{statusNotes}</span></p>
+												)}
+											</div>
+											<div className="flex gap-2">
+												<Button
+													size="sm"
+													variant="destructive"
+													disabled={statusMutation.isPending}
+													onClick={() =>
+														statusMutation.mutate({
+															status: selectedStatus,
+															notes: statusNotes || undefined,
+														})
+													}
+												>
+													{statusMutation.isPending && (
+														<Loader2Icon className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+													)}
+													Yes, confirm
+												</Button>
+												<Button
+													variant="ghost"
+													size="sm"
+													disabled={statusMutation.isPending}
+													onClick={() => setShowConfirmation(false)}
+												>
+													Go back
+												</Button>
+											</div>
+										</>
+									) : (
+										<>
+											<p className="text-sm font-medium">Update Order Status</p>
+											<div className="grid grid-cols-2 gap-3">
+												<div>
+													<label className="text-xs text-muted-foreground mb-1 block">
+														New Status
+													</label>
+													<Select
+														value={selectedStatus}
+														onValueChange={(val) => {
+															setSelectedStatus(val);
+															setShowConfirmation(false);
+														}}
+													>
+														<SelectTrigger>
+															<SelectValue placeholder="Select status" />
+														</SelectTrigger>
+														<SelectContent>
+															{ALL_STATUSES.filter((s) => s !== order.status).map((status) => (
+																<SelectItem key={status} value={status}>
+																	{statusLabels[status]}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+												<div>
+													<label className="text-xs text-muted-foreground mb-1 block">
+														Notes (optional)
+													</label>
+													<Input
+														placeholder="Reason for status change..."
+														value={statusNotes}
+														onChange={(e) => setStatusNotes(e.target.value)}
+													/>
+												</div>
+											</div>
+											<div className="flex gap-2">
+												<Button
+													size="sm"
+													disabled={!selectedStatus || statusMutation.isPending}
+													onClick={() => {
+														if (TERMINAL_STATUSES.has(selectedStatus)) {
+															setShowConfirmation(true);
+														} else {
+															statusMutation.mutate({
+																status: selectedStatus,
+																notes: statusNotes || undefined,
+															});
+														}
+													}}
+												>
+													{statusMutation.isPending && (
+														<Loader2Icon className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+													)}
+													Update Status
+												</Button>
+												<Button
+													variant="ghost"
+													size="sm"
+													disabled={statusMutation.isPending}
+													onClick={() => {
+														setIsChangingStatus(false);
+														setSelectedStatus("");
+														setStatusNotes("");
+														setShowConfirmation(false);
+													}}
+												>
+													Cancel
+												</Button>
+											</div>
+										</>
+									)}
 								</div>
 							)}
 

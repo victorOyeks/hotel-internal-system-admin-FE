@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getRentalItemDetails, sendToMaintenance } from "@/lib/rental-actions";
-import { $fetch } from "@/lib/fetch";
+import {
+	getRentalItemDetails,
+	getRentalItemMaintenanceHistory,
+	sendToMaintenance,
+	updateRentalItem,
+} from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -26,9 +31,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	PackageIcon,
 	Loader2Icon,
-	WrenchIcon,
 	SendIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +40,13 @@ type RentalItemDetailsDialogProps = {
 	itemId: string | null;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+};
+
+type RestockHistoryRecord = {
+	id: string;
+	quantity: number;
+	note?: string;
+	createdAt: string;
 };
 
 const categoryLabels: Record<string, string> = {
@@ -83,16 +93,55 @@ function formatCurrency(amount: number) {
 	}).format(amount);
 }
 
+function isFaultyMaintenanceEntry(entry: any) {
+	const values = [
+		entry?.type,
+		entry?.action,
+		entry?.status,
+		entry?.maintenanceResultStatus,
+		entry?.resultStatus,
+		entry?.condition,
+	]
+		.filter(Boolean)
+		.map((value) => String(value).toUpperCase());
+	const byStatus = values.some(
+		(value) =>
+			value.includes("WRITE_OFF") ||
+			value.includes("FAULTY") ||
+			value.includes("BAD") ||
+			value.includes("DAMAGED") ||
+			value.includes("OUT_OF_SERVICE"),
+	);
+	if (byStatus) return true;
+	const text = `${String(entry?.reason || "")} ${String(entry?.notes || "")}`.toLowerCase();
+	return (
+		text.includes("cannot be fixed") ||
+		text.includes("can't be fixed") ||
+		text.includes("not fixable") ||
+		text.includes("irreparable") ||
+		text.includes("faulty") ||
+		text.includes("damaged") ||
+		text.includes("bad")
+	);
+}
+
 export function RentalItemDetailsDialog({
 	itemId,
 	open,
 	onOpenChange,
 }: RentalItemDetailsDialogProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 	const [maintenanceQty, setMaintenanceQty] = useState(1);
 	const [maintenanceReason, setMaintenanceReason] = useState("");
 	const [maintenanceNotes, setMaintenanceNotes] = useState("");
+	const [showRestockForm, setShowRestockForm] = useState(false);
+	const [restockQty, setRestockQty] = useState(1);
+	const [restockNotes, setRestockNotes] = useState("");
+	const [localRestockHistory, setLocalRestockHistory] = useState<RestockHistoryRecord[]>(
+		[],
+	);
 
 	const maintenanceMutation = useMutation({
 		mutationFn: async () => {
@@ -108,7 +157,15 @@ export function RentalItemDetailsDialog({
 		onSuccess: () => {
 			toast.success("Item sent to maintenance");
 			queryClient.invalidateQueries({ queryKey: ["rentals", "items", itemId] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items"] });
 			queryClient.invalidateQueries({ queryKey: ["rentals", "maintenance"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "maintenance", "pending"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "dashboard-stats"],
+			});
+			router.refresh();
 			setShowMaintenanceForm(false);
 			setMaintenanceQty(1);
 			setMaintenanceReason("");
@@ -116,6 +173,95 @@ export function RentalItemDetailsDialog({
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "Failed to send to maintenance");
+		},
+	});
+
+	const restockMutation = useMutation({
+		mutationFn: async () => {
+			if (!itemId || !item) {
+				throw new Error("Item not available for restock");
+			}
+			if (restockQty < 1) {
+				throw new Error("Restock quantity must be at least 1");
+			}
+			const payload = {
+				name: item.name,
+				description: item.description || "",
+				category: item.category,
+				condition: item.condition || "GOOD",
+				pricingType: item.pricingType || "DAILY",
+				brand: item.brand || "",
+				model: item.model || "",
+				serialNumber: item.serialNumber || "",
+				hourlyRate: item.hourlyRate ?? 0,
+				dailyRate: item.dailyRate ?? 0,
+				weeklyRate: item.weeklyRate ?? 0,
+				monthlyRate: item.monthlyRate ?? 0,
+				flatRate: item.flatRate ?? 0,
+				depositAmount: item.depositAmount ?? 0,
+				totalQuantity: Math.max(0, Number(item.totalQuantity ?? 0)) + restockQty,
+				replacementValue: item.replacementValue ?? 0,
+				lateReturnPenaltyPerHour: item.lateReturnPenaltyPerHour ?? 0,
+				lateReturnPenaltyPerDay: item.lateReturnPenaltyPerDay ?? 0,
+				size: item.size || "",
+				color: item.color || "",
+				specifications: item.specifications || "",
+				usageInstructions: item.usageInstructions || "",
+				safetyInstructions: item.safetyInstructions || "",
+				requiresDeposit: Boolean(item.requiresDeposit),
+				requiresIdentification: Boolean(item.requiresIdentification),
+				requiresSignedAgreement: Boolean(item.requiresSignedAgreement),
+				minimumAge: item.minimumAge ?? 0,
+				active: item.active !== false,
+			};
+
+			const result = await updateRentalItem(itemId, payload);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		onSuccess: () => {
+			const applyRestockUpdate = (entry: Record<string, unknown>) => ({
+				...entry,
+				totalQuantity: Math.max(0, Number(entry?.totalQuantity ?? 0)) + restockQty,
+				availableQuantity:
+					Math.max(0, Number(entry?.availableQuantity ?? 0)) + restockQty,
+			});
+
+			queryClient.setQueryData(["rentals", "items", itemId], (prev: unknown) => {
+				if (!prev || typeof prev !== "object") return prev;
+				return applyRestockUpdate(prev as Record<string, unknown>);
+			});
+
+			queryClient.setQueryData(["rentals", "items"], (prev: unknown) => {
+				if (!Array.isArray(prev)) return prev;
+				return prev.map((entry) =>
+					String((entry as Record<string, unknown>)?.id || "") === String(itemId)
+						? applyRestockUpdate(entry as Record<string, unknown>)
+						: entry,
+				);
+			});
+
+			toast.success("Item restocked successfully");
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items", itemId] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "items"] });
+			queryClient.invalidateQueries({
+				queryKey: ["rentals", "dashboard-stats"],
+			});
+			setShowRestockForm(false);
+			setLocalRestockHistory((prev) => [
+				{
+					id: crypto.randomUUID(),
+					quantity: restockQty,
+					note: restockNotes || "Restock",
+					createdAt: new Date().toISOString(),
+				},
+				...prev,
+			].slice(0, 20));
+			setRestockQty(1);
+			setRestockNotes("");
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to restock item");
 		},
 	});
 
@@ -132,23 +278,113 @@ export function RentalItemDetailsDialog({
 	const { data: maintenanceHistory } = useQuery({
 		queryKey: ["rentals", "items", itemId, "maintenance"],
 		queryFn: async () => {
-			// TODO: Add server action for maintenance history
-			return [];
+			const result = await getRentalItemMaintenanceHistory(itemId!);
+			if (!result.success) return [];
+			return Array.isArray(result.data)
+				? result.data
+				: (result.data?.content ?? []);
 		},
 		enabled: !!itemId && open,
 	});
 
-	if (!itemId) return null;
+	const cachedItems = (queryClient.getQueryData(["rentals", "items"]) || []) as Array<any>;
+	const cachedItem = cachedItems.find((entry) => String(entry?.id || "") === String(itemId));
+	const faultyFromCachedList = Math.max(
+		0,
+		Number(
+			cachedItem?.faultyQuantity ??
+				cachedItem?.writeOffQuantity ??
+				cachedItem?.damagedQuantity ??
+				cachedItem?.outOfServiceQuantity ??
+				0,
+		),
+	);
 
+	const faultyQuantityFromItem = Math.max(
+		0,
+		Number(
+			item?.faultyQuantity ??
+				item?.writeOffQuantity ??
+				item?.damagedQuantity ??
+				item?.outOfServiceQuantity ??
+				0,
+		),
+	);
+	const hasFaultyFieldFromApi =
+		item?.faultyQuantity !== undefined ||
+		item?.writeOffQuantity !== undefined ||
+		item?.damagedQuantity !== undefined ||
+		item?.outOfServiceQuantity !== undefined;
+	const faultyFromHistory = Array.isArray(maintenanceHistory)
+		? maintenanceHistory
+				.filter((entry: any) => isFaultyMaintenanceEntry(entry))
+				.reduce(
+					(sum: number, entry: any) =>
+						sum + Math.max(0, Number(entry?.quantity || 0)),
+					0,
+				)
+		: 0;
+	const effectiveFaultyQuantity = Math.max(
+		faultyQuantityFromItem,
+		faultyFromCachedList,
+		faultyFromHistory,
+	);
+	const faultyDisplayValue =
+		hasFaultyFieldFromApi || faultyFromHistory > 0
+			? String(effectiveFaultyQuantity)
+			: "0";
+	const totalQuantity = Math.max(0, Number(item?.totalQuantity ?? 0));
+	const rawMaintenanceQuantity = Math.max(0, Number(item?.maintenanceQuantity ?? 0));
+	const rawRentedQuantity = Math.max(0, Number(item?.rentedQuantity ?? 0));
+	const faultyQuantity = Math.max(0, Number(faultyDisplayValue || 0));
+	const maintenanceQuantity = Math.min(
+		rawMaintenanceQuantity,
+		Math.max(0, totalQuantity - faultyQuantity),
+	);
+	const rentedQuantity = Math.min(
+		rawRentedQuantity,
+		Math.max(0, totalQuantity - maintenanceQuantity - faultyQuantity),
+	);
+	// Available must follow: total - rented - maintenance - faulty
+	const availableQuantity = Math.max(
+		0,
+		totalQuantity - rentedQuantity - maintenanceQuantity - faultyQuantity,
+	);
 	const utilizationRate =
-		item?.totalQuantity > 0
-			? ((item.totalQuantity - item.availableQuantity) / item.totalQuantity) *
-				100
+		totalQuantity > 0
+			? ((totalQuantity - availableQuantity) / totalQuantity) * 100
 			: 0;
+	const restockHistoryRows = useMemo(() => {
+		const fromMaintenance = Array.isArray(maintenanceHistory)
+			? maintenanceHistory
+					.filter((entry: any) => {
+						const value = `${String(entry?.action || "")} ${String(entry?.type || "")} ${String(entry?.status || "")}`.toUpperCase();
+						return value.includes("RESTOCK") || value.includes("STOCK_IN");
+					})
+					.map((entry: any) => ({
+						id: String(entry?.id || crypto.randomUUID()),
+						quantity: Math.max(0, Number(entry?.quantity ?? 0)),
+						note: String(entry?.reason || entry?.notes || "Restock"),
+						createdAt: String(entry?.createdAt || entry?.updatedAt || new Date().toISOString()),
+					}))
+			: [];
+
+		const merged = [...localRestockHistory, ...fromMaintenance];
+		const byId = new Map<string, RestockHistoryRecord>();
+		for (const row of merged) byId.set(row.id, row);
+		return Array.from(byId.values())
+			.sort(
+				(a, b) =>
+					new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+			)
+			.slice(0, 20);
+	}, [localRestockHistory, maintenanceHistory]);
+
+	if (!itemId) return null;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="w-[96vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
 						<Loader2Icon className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -175,7 +411,7 @@ export function RentalItemDetailsDialog({
 										{conditionLabels[item.condition] || item.condition}
 									</Badge>
 									{item.active ? (
-										item.availableQuantity > 0 ? (
+										availableQuantity > 0 ? (
 											<Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
 												Available
 											</Badge>
@@ -291,22 +527,28 @@ export function RentalItemDetailsDialog({
 							{/* Inventory & Availability */}
 							<div>
 								<h3 className="text-sm font-semibold text-muted-foreground mb-2">Inventory</h3>
-								<div className="grid grid-cols-4 gap-3">
-									<div className="border rounded-lg p-3">
+								<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Total</p>
-										<p className="text-2xl font-bold">{item.totalQuantity}</p>
+										<p className="text-xl sm:text-2xl font-bold">{item.totalQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Available</p>
-										<p className="text-2xl font-bold text-green-700">{item.availableQuantity}</p>
+										<p className="text-xl sm:text-2xl font-bold text-green-700">{availableQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Rented</p>
-										<p className="text-2xl font-bold">{item.rentedQuantity || 0}</p>
+										<p className="text-xl sm:text-2xl font-bold">{rentedQuantity}</p>
 									</div>
-									<div className="border rounded-lg p-3">
+									<div className="border rounded-lg p-3 min-w-0">
 										<p className="text-xs text-muted-foreground">Maintenance</p>
-										<p className="text-2xl font-bold">{item.maintenanceQuantity || 0}</p>
+										<p className="text-xl sm:text-2xl font-bold">{maintenanceQuantity}</p>
+									</div>
+									<div className="border rounded-lg p-3 min-w-0">
+										<p className="text-xs text-muted-foreground">Faulty</p>
+										<p className="text-xl sm:text-2xl font-bold text-red-700">
+											{faultyDisplayValue}
+										</p>
 									</div>
 								</div>
 								<div className="mt-3">
@@ -324,7 +566,106 @@ export function RentalItemDetailsDialog({
 							</div>
 
 							{/* Maintenance Action */}
-							{item.availableQuantity > 0 && (
+							<>
+								<Separator />
+								<div>
+									<div className="flex items-center justify-between mb-2">
+										<h3 className="text-sm font-semibold text-muted-foreground">
+											Restock
+										</h3>
+										{!showRestockForm && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => setShowRestockForm(true)}
+											>
+												Restock Item
+											</Button>
+										)}
+									</div>
+									{showRestockForm && (
+										<div className="bg-muted/40 border rounded-lg p-3 space-y-3">
+											<div className="grid grid-cols-2 gap-3">
+												<div className="space-y-1.5">
+													<Label className="text-xs">Quantity to Add</Label>
+													<Input
+														type="number"
+														min={1}
+														value={restockQty}
+														onChange={(e) =>
+															setRestockQty(parseInt(e.target.value) || 1)
+														}
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<Label className="text-xs">Note (optional)</Label>
+													<Input
+														placeholder="e.g. New shipment"
+														value={restockNotes}
+														onChange={(e) => setRestockNotes(e.target.value)}
+													/>
+												</div>
+											</div>
+											<div className="flex justify-end gap-2">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => setShowRestockForm(false)}
+													disabled={restockMutation.isPending}
+												>
+													Cancel
+												</Button>
+												<Button
+													size="sm"
+													onClick={() => restockMutation.mutate()}
+													disabled={restockMutation.isPending}
+												>
+													{restockMutation.isPending && (
+														<Loader2Icon className="w-3 h-3 mr-1 animate-spin" />
+													)}
+													Confirm Restock
+												</Button>
+											</div>
+										</div>
+									)}
+								</div>
+							</>
+							{restockHistoryRows.length > 0 && (
+								<>
+									<div>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">
+											Restock History
+										</h3>
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>Date</TableHead>
+													<TableHead className="text-center">Qty Added</TableHead>
+													<TableHead>Note</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{restockHistoryRows.map((row) => (
+													<TableRow key={row.id}>
+														<TableCell className="text-sm">
+															{new Date(row.createdAt).toLocaleString()}
+														</TableCell>
+														<TableCell className="text-center font-medium">
+															{row.quantity}
+														</TableCell>
+														<TableCell className="text-sm">
+															{row.note || "-"}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</div>
+								</>
+							)}
+
+							{/* Maintenance Action */}
+							{availableQuantity > 0 && (
 								<>
 									<Separator />
 									<div>
@@ -349,7 +690,7 @@ export function RentalItemDetailsDialog({
 														<Input
 															type="number"
 															min={1}
-															max={item.availableQuantity}
+															max={availableQuantity}
 															value={maintenanceQty}
 															onChange={(e) =>
 																setMaintenanceQty(
@@ -437,12 +778,14 @@ export function RentalItemDetailsDialog({
 								</>
 							)}
 
-							{/* Maintenance History */}
+							{/* Additional Info */}
 							{maintenanceHistory && maintenanceHistory.length > 0 && (
 								<>
 									<Separator />
 									<div>
-										<h3 className="text-sm font-semibold text-muted-foreground mb-2">Maintenance History</h3>
+										<h3 className="text-sm font-semibold text-muted-foreground mb-2">
+											Maintenance History
+										</h3>
 										<Table>
 											<TableHeader>
 												<TableRow>
@@ -456,9 +799,7 @@ export function RentalItemDetailsDialog({
 												{maintenanceHistory.map((log: any) => (
 													<TableRow key={log.id}>
 														<TableCell className="text-sm">
-															{new Date(
-																log.createdAt,
-															).toLocaleDateString()}
+															{new Date(log.createdAt).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
 															<Badge variant="outline" className="text-xs font-normal">
@@ -466,9 +807,7 @@ export function RentalItemDetailsDialog({
 															</Badge>
 														</TableCell>
 														<TableCell className="text-sm">{log.quantity}</TableCell>
-														<TableCell className="text-sm">
-															{log.reason || "-"}
-														</TableCell>
+														<TableCell className="text-sm">{log.reason || "-"}</TableCell>
 													</TableRow>
 												))}
 											</TableBody>
@@ -477,7 +816,6 @@ export function RentalItemDetailsDialog({
 								</>
 							)}
 
-							{/* Additional Info */}
 							{(item.usageInstructions ||
 								item.safetyInstructions ||
 								item.specifications) && (

@@ -81,6 +81,33 @@ export const getManagerCurrentHotel = cache(async () => {
 	return currentHotel;
 });
 
+export const getOwnerCurrentHotel = cache(async () => {
+	const user = await getUser();
+
+	if (!user) {
+		return null;
+	}
+
+	if (!user.roles.includes("HOTEL_OWNER")) {
+		return null;
+	}
+
+	if (!user.hotels || user.hotels.length === 0) {
+		return null;
+	}
+
+	const jar = await cookies();
+	const hotelId = jar.get(`${user.id}:currentOwnerHotel`)?.value;
+
+	const currentHotel = user.hotels.find((hotel) => hotel.id === hotelId);
+
+	if (!currentHotel) {
+		const firstHotel = user.hotels[0];
+		return firstHotel;
+	}
+	return currentHotel;
+});
+
 export const setActiveRole = cache(async (role: HotelRole) => {
 	const session = await verifySession();
 	if (!session) {

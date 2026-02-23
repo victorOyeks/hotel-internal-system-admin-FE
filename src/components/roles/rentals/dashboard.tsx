@@ -324,12 +324,15 @@ function QuickAction({
 	subtitle: string;
 }) {
 	return (
-		<div className="flex items-center gap-3 bg-white border rounded-xl px-3 py-2.5 hover:bg-muted/50 hover:shadow-sm transition-all cursor-pointer">
-			<div className="text-muted-foreground">{icon}</div>
-			<div>
-				<p className="text-sm font-medium">{title}</p>
-				<p className="text-[11px] text-muted-foreground">{subtitle}</p>
+		<div className="group flex items-center gap-3 rounded-2xl border border-rose-200/90 bg-white px-3 py-2.5 transition-colors hover:bg-rose-50/40 cursor-pointer">
+			<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+				{icon}
 			</div>
+			<div className="min-w-0">
+				<p className="text-sm font-medium text-slate-900">{title}</p>
+				<p className="truncate text-[11px] text-slate-500">{subtitle}</p>
+			</div>
+			<ArrowRightIcon className="ml-auto h-4 w-4 text-slate-500 transition-transform group-hover:translate-x-0.5" />
 		</div>
 	);
 }

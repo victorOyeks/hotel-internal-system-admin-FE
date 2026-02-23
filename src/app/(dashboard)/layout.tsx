@@ -4,7 +4,7 @@ import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Provider as JotaiProvider } from "jotai";
-import { getActiveRole, getManagerCurrentHotel, getUser } from "@/lib/dal";
+import { getActiveRole, getManagerCurrentHotel, getOwnerCurrentHotel, getUser } from "@/lib/dal";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { throttle } from "nuqs/server";
 import type { HotelRole } from "@/lib/types";
@@ -19,8 +19,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 		redirect("/reset-password");
 	}
 
-	const activeHotel = use(getManagerCurrentHotel());
+	const managerHotel = use(getManagerCurrentHotel());
+	const ownerHotel = use(getOwnerCurrentHotel());
 	const activeRole = use(getActiveRole());
+	const activeHotel = activeRole === "HOTEL_OWNER" ? ownerHotel : managerHotel;
 	return (
 		<NuqsAdapter
 			defaultOptions={{

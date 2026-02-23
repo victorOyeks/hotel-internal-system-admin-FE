@@ -5,9 +5,14 @@ import {
 	BedDoubleIcon,
 	BedIcon,
 	BedSingleIcon,
-	CalendarIcon,
 	DollarSign,
 	TrendingUpIcon,
+	UtensilsIcon,
+	ShirtIcon,
+	PackageIcon,
+	WarehouseIcon,
+	ShieldCheckIcon,
+	UsersIcon,
 } from "lucide-react";
 import {
 	Bar,
@@ -21,12 +26,15 @@ import {
 	YAxis,
 } from "recharts";
 import type { ActiveShape } from "recharts/types/util/types";
-import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useMemo } from "react";
+import { useQueryState, parseAsString } from "nuqs";
+import { MonthYearPicker } from "@/components/shared/month-year-picker";
 import type { APIOutput } from "@/lib/action-utils";
+import { QuickStatCard } from "@/components/shared/stat-card";
+import { DonutChart } from "@/components/shared/donut-chart";
 
 function EarningsSideA({ overviewData }: { overviewData: OverviewData }) {
 	const earnings = [
@@ -125,9 +133,37 @@ const CustomDot = (
 
 function CurvedLineChart({
 	graphData,
+	selectedMonthName,
 }: {
 	graphData: { month: string; totalEarnings: number }[];
+	selectedMonthName: string;
 }) {
+	const SelectedDot = useMemo(
+		() =>
+			function Dot(
+				props: DotProps & {
+					payload: { month: string; totalEarnings: number };
+				},
+			) {
+				const { cx, cy, payload } = props;
+				if (cx === undefined || cy === undefined) return null;
+				if (payload.month.toUpperCase() !== selectedMonthName) return null;
+				return (
+					<g>
+						<circle
+							cx={cx}
+							cy={cy}
+							r={5}
+							fill="#22c55e"
+							stroke="white"
+							strokeWidth={2}
+						/>
+					</g>
+				);
+			},
+		[selectedMonthName],
+	);
+
 	return (
 		<ResponsiveContainer width="100%" height="100%">
 			<LineChart
@@ -138,8 +174,23 @@ function CurvedLineChart({
 					dataKey="month"
 					axisLine={false}
 					tickLine={false}
-					tick={{ fontSize: 12, fill: "#9ca3af" }}
-					className="text-gray-400"
+					tick={(props: { x: number; y: number; payload: { value: string } }) => {
+						const { x, y, payload } = props;
+						const isSelected =
+							payload.value.toUpperCase() === selectedMonthName;
+						return (
+							<text
+								x={x}
+								y={y + 12}
+								textAnchor="middle"
+								fontSize={12}
+								fontWeight={isSelected ? 700 : 400}
+								fill={isSelected ? "#16a34a" : "#9ca3af"}
+							>
+								{payload.value.slice(0, 3)}
+							</text>
+						);
+					}}
 				/>
 				<YAxis hide />
 				<Tooltip<number, string>
@@ -153,12 +204,17 @@ function CurvedLineChart({
 					dataKey="totalEarnings"
 					stroke="#22c55e"
 					strokeWidth={3}
-					dot={false}
+					dot={SelectedDot as ActiveShape<DotProps>}
 					activeDot={CustomDot as ActiveShape<DotProps>}
 				/>
 			</LineChart>
 		</ResponsiveContainer>
 	);
+}
+
+function getCurrentYearMonth() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function EarningsSideB({
@@ -168,16 +224,27 @@ export function EarningsSideB({
 	graphData: { month: string; totalEarnings: number }[];
 	totalEarning: number;
 }) {
+	const [selectedMonth] = useQueryState(
+		"selectedMonth",
+		parseAsString.withDefault(getCurrentYearMonth()),
+	);
+
+	const { selectedMonthName, selectedMonthLabel } = useMemo(() => {
+		const [y, m] = selectedMonth.split("-").map(Number);
+		const monthDate = new Date(y, m - 1);
+		const name = monthDate
+			.toLocaleString("en-US", { month: "long" })
+			.toUpperCase();
+		const label = monthDate.toLocaleString("en-US", {
+			month: "long",
+			year: "numeric",
+		});
+		return { selectedMonthName: name, selectedMonthLabel: label };
+	}, [selectedMonth]);
+
 	return (
 		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-3xl space-y-4">
-			<Button
-				variant={"outline"}
-				size={"sm"}
-				className="shadow-none text-gray-500"
-			>
-				<CalendarIcon />
-				<span>This month</span>
-			</Button>
+			<MonthYearPicker />
 
 			<div>
 				<h1 className="text-3xl font-semibold text-primary">
@@ -187,13 +254,16 @@ export function EarningsSideB({
 					<span>Total profit</span>
 					<span className="text-green-500 font-semibold flex items-center space-x-1">
 						<TrendingUpIcon className="inline size-4" />
-						<span>+20%</span>
+						<span>{selectedMonthLabel}</span>
 					</span>
 				</p>
 			</div>
 
 			<div className="h-64 md:h-38 w-full">
-				<CurvedLineChart graphData={graphData} />
+				<CurvedLineChart
+					graphData={graphData}
+					selectedMonthName={selectedMonthName}
+				/>
 			</div>
 		</div>
 	);
@@ -347,12 +417,151 @@ type OverviewData =
 	APIOutput<"@get/api/hotel-owners/dashboard/overview">["data"];
 type PerformanceData =
 	APIOutput<"@get/api/hotel-owners/dashboard-performance">["data"];
+type HotelOverviewData =
+	APIOutput<"@get/api/hotel-owners/:hotelId/overview">["data"] | null;
+
+function HotelQuickStats({
+	data,
+	hotelName,
+}: {
+	data: NonNullable<HotelOverviewData>;
+	hotelName?: string;
+}) {
+	return (
+		<div className="space-y-3">
+			<h2 className="text-lg font-semibold text-primary">
+				{hotelName ? `${hotelName} — Today's Snapshot` : "Hotel Snapshot"}
+			</h2>
+			<div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+				<QuickStatCard
+					title="Today's Revenue"
+					primaryValue={formatCurrency(data.todayRevenue, "short")}
+					primaryLabel="earned today"
+					icon={DollarSign}
+					accentColor="bg-green-50 text-green-600"
+				/>
+				<QuickStatCard
+					title="Pending Approvals"
+					primaryValue={data.pendingApprovals}
+					primaryLabel="awaiting review"
+					icon={ShieldCheckIcon}
+					href="/dashboard/approvals"
+					accentColor="bg-yellow-50 text-yellow-600"
+				/>
+				<QuickStatCard
+					title="Staff"
+					primaryValue={data.staffCount}
+					primaryLabel="active staff"
+					icon={UsersIcon}
+					href="/dashboard/staff-management"
+					accentColor="bg-indigo-50 text-indigo-600"
+				/>
+				<QuickStatCard
+					title="Occupancy"
+					primaryValue={`${data.occupancyRate.toFixed(1)}%`}
+					primaryLabel={`${data.availableRooms} of ${data.totalRooms} available`}
+					icon={BedDoubleIcon}
+					href="/dashboard/rooms"
+					accentColor="bg-blue-50 text-blue-600"
+				/>
+			</div>
+		</div>
+	);
+}
+
+function DepartmentStats({
+	data,
+}: {
+	data: NonNullable<HotelOverviewData>;
+}) {
+	return (
+		<div className="space-y-3">
+			<h2 className="text-lg font-semibold text-primary">Department Overview</h2>
+			<div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+				<QuickStatCard
+					title="Restaurant"
+					primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
+					primaryLabel="today's sales"
+					secondaryValue={data.restaurantActiveOrders}
+					secondaryLabel="active orders"
+					icon={UtensilsIcon}
+					href="/dashboard/operations"
+					accentColor="bg-orange-50 text-orange-600"
+				/>
+				<QuickStatCard
+					title="Laundry"
+					primaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
+					primaryLabel="today's revenue"
+					secondaryValue={data.laundryPendingOrders}
+					secondaryLabel="pending"
+					icon={ShirtIcon}
+					href="/dashboard/operations"
+					accentColor="bg-purple-50 text-purple-600"
+				/>
+				<QuickStatCard
+					title="Rentals"
+					primaryValue={data.activeRentals}
+					primaryLabel="active rentals"
+					secondaryValue={data.overdueRentals}
+					secondaryLabel="overdue"
+					icon={PackageIcon}
+					href="/dashboard/operations"
+					accentColor="bg-teal-50 text-teal-600"
+				/>
+				<QuickStatCard
+					title="Inventory"
+					primaryValue={data.lowStockCount}
+					primaryLabel="low stock items"
+					secondaryValue={data.pendingRestockRequests}
+					secondaryLabel="restock requests"
+					icon={WarehouseIcon}
+					href="/dashboard/inventory"
+					accentColor="bg-rose-50 text-rose-600"
+				/>
+			</div>
+		</div>
+	);
+}
+
+function RevenueBreakdown({
+	data,
+}: {
+	data: NonNullable<HotelOverviewData>;
+}) {
+	const revenueData = [
+		{ name: "Accommodation", value: data.accommodationRevenue, color: "#3b82f6" },
+		{ name: "Restaurant", value: data.restaurantRevenue, color: "#f97316" },
+		{ name: "Laundry", value: data.laundryRevenue, color: "#8b5cf6" },
+		{ name: "Rentals", value: data.rentalRevenue, color: "#14b8a6" },
+		{ name: "Other Income", value: data.otherIncomeRevenue, color: "#6b7280" },
+	].filter((d) => d.value > 0);
+
+	const totalRevenue =
+		data.accommodationRevenue +
+		data.restaurantRevenue +
+		data.laundryRevenue +
+		data.rentalRevenue +
+		data.otherIncomeRevenue;
+
+	if (revenueData.length === 0) return null;
+
+	return (
+		<DonutChart
+			data={revenueData}
+			title={`Revenue Breakdown — ${data.selectedMonth}`}
+			centerLabel="Total Revenue"
+			centerValue={formatCurrency(totalRevenue, "short")}
+		/>
+	);
+}
 
 export function HotelOwnerDashboard({
 	breadcrumbs = [],
 	graphData,
 	overviewData,
 	performanceData,
+	hotelOverviewData,
+	selectedHotelName,
 }: {
 	breadcrumbs: Breadcrumb[];
 	overviewData: OverviewData;
@@ -361,6 +570,8 @@ export function HotelOwnerDashboard({
 		totalEarnings: number;
 	}[];
 	performanceData: PerformanceData;
+	hotelOverviewData?: HotelOverviewData;
+	selectedHotelName?: string;
 }) {
 	const setBreadCrumb = useSetAtom(breadcrumbAtom);
 
@@ -374,8 +585,21 @@ export function HotelOwnerDashboard({
 	return (
 		<div className="p-4 md:p-6 space-y-2 md:space-y-4">
 			<DashboardHero overviewData={overviewData} graphData={graphData} />
+
+			{hotelOverviewData && (
+				<>
+					<HotelQuickStats
+						data={hotelOverviewData}
+						hotelName={selectedHotelName}
+					/>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+						<DepartmentStats data={hotelOverviewData} />
+						<RevenueBreakdown data={hotelOverviewData} />
+					</div>
+				</>
+			)}
+
 			<BranchPerformance performanceData={performanceData} />
-			{/* <HotelSuits /> */}
 		</div>
 	);
 }
