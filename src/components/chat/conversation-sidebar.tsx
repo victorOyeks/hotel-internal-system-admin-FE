@@ -79,7 +79,7 @@ export function ConversationSidebar({
 	}, [activeConversationId, conversationsData, setActiveConversation]);
 
 	return (
-		<div className="flex flex-col h-full overflow-hidden bg-white border-r border-gray-100">
+		<div className="flex flex-col h-full overflow-hidden bg-white border-r border-gray-100 pb-[env(safe-area-inset-bottom)]">
 			<div className="flex items-center gap-2 p-3 border-b border-gray-100 shrink-0">
 				<div className="flex items-center gap-1.5 shrink-0">
 					<span
