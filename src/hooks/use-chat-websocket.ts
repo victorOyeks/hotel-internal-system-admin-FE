@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSetAtom } from "jotai";
 import { chatWs } from "@/lib/chat-websocket";
 import { chatKeys } from "@/lib/chat-query-keys";
+import { getOnlineUsers } from "@/lib/chat-actions";
 import {
 	wsConnectionStatusAtom,
 	typingIndicatorsAtom,
@@ -43,6 +44,13 @@ export function useChatWebSocket(
 			if (status === "connected") {
 				queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
 				queryClient.invalidateQueries({ queryKey: chatKeys.unreadCount() });
+
+				// Fetch initial online users so we know who's already online
+				getOnlineUsers().then((result) => {
+					if (result.success && Array.isArray(result.data)) {
+						setOnlineUsers(result.data as string[]);
+					}
+				});
 			}
 		});
 
