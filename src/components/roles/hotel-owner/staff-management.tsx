@@ -13,43 +13,18 @@ import {
 } from "@tanstack/react-table";
 import {
 	DoorOpenIcon,
-	// HotelIcon,
 	Loader2Icon,
-	MessageCircleMoreIcon,
-	MoreVerticalIcon,
 	PlusCircleIcon,
 	SearchIcon,
-	TrashIcon,
 	AlertTriangleIcon,
-	RotateCcwIcon,
-	XIcon,
-	KeyIcon,
-	BanIcon,
-	MailIcon,
-	PhoneIcon,
+	UserXIcon,
+	ReplaceIcon,
+	EyeOffIcon,
+	EyeIcon,
 	CalendarIcon,
-	ShieldIcon,
-	ClockIcon,
+	TrashIcon,
 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-// import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableFooter,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
@@ -60,8 +35,15 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
-import { DialogTrigger } from "@radix-ui/react-dialog";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@/components/ui/sheet";
 import {
 	Form,
 	FormControl,
@@ -86,13 +68,18 @@ import {
 	ExportDialog,
 	SuccessDialog,
 } from "@/components/shared/shared-dialogs";
-import { Textarea } from "@/components/ui/textarea";
 import {
+	type CustomPageStaffResponse,
 	type Pagination,
 	Role,
-	type CustomPageStaffResponse,
 } from "@/lib/fetch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { RotateCcwIcon, XIcon } from "lucide-react";
 import {
 	deleteStaffMember,
 	onboardManagerToHotel,
@@ -104,16 +91,20 @@ import {
 	suspendStaffAccountOwner,
 } from "@/lib/hotel-owner-actions";
 import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetDescription,
-} from "@/components/ui/sheet";
-import { toast } from "sonner";
-import { parseAsString, useQueryStates } from "nuqs";
-import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { Badge } from "@/components/ui/badge";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+	MultiSelect,
+	MultiSelectContent,
+	MultiSelectItem,
+	MultiSelectTrigger,
+	MultiSelectValue,
+} from "@/components/ui/multi-select";
 
 const columnHelper = createColumnHelper<CustomPageStaffResponse>();
 const successDialogAtom = atom({
@@ -121,49 +112,68 @@ const successDialogAtom = atom({
 	message: "",
 });
 
-const HotelStaffFilter = ({
+function StaffFilter({
 	queryState,
 	setQueryState,
+	setOpen,
 }: {
 	queryState: {
-		search: string;
-		role: string | null;
-		status: string | null;
+		search: string | null;
+		status: "ACTIVE" | "INACTIVE" | "PENDING" | "SUSPENDED" | null;
+		role:
+			| "HOTEL_OWNER"
+			| "MANAGER"
+			| "FRONT_DESK"
+			| "INVENTORY"
+			| "RESTAURANT"
+			| "MARKETER"
+			| "RENTALS"
+			| "LAUNDRY"
+			| "FINANCIALS"
+			| "SUPER_ADMIN"
+			| null;
 	};
 	setQueryState: (state: Partial<typeof queryState>) => void;
-}) => {
+	setOpen: (open: boolean) => void;
+}) {
 	const [tempFilters, setTempFilters] = useState({
-		role: queryState.role || null,
-		status: queryState.status || null,
+		status: queryState.status,
+		role: queryState.role,
 	});
 
-	// Memoized callback functions to prevent unnecessary re-renders
 	const applyFilters = useCallback(() => {
 		setQueryState({
 			...queryState,
-			role: tempFilters.role,
 			status: tempFilters.status,
+			role: tempFilters.role,
 		});
-	}, [queryState, tempFilters, setQueryState]);
+		setOpen(false);
+	}, [
+		queryState,
+		tempFilters.status,
+		tempFilters.role,
+		setQueryState,
+		setOpen,
+	]);
 
 	const clearFilters = useCallback(() => {
 		const clearedFilters = {
-			role: null,
 			status: null,
+			role: null,
 		};
 		setTempFilters(clearedFilters);
 		setQueryState({
 			search: queryState.search,
-			role: null,
 			status: null,
+			role: null,
 		});
-	}, [queryState.search, setQueryState]);
+		setOpen(false);
+	}, [queryState.search, setQueryState, setOpen]);
 
-	// Memoize filter state computations
 	const filterStates = useMemo(() => {
-		const hasActiveFilters = !!(tempFilters.role || tempFilters.status);
-		const hasAppliedFilters = !!(queryState.role || queryState.status);
-		const appliedFiltersCount = [queryState.role, queryState.status].filter(
+		const hasActiveFilters = tempFilters.status || tempFilters.role;
+		const hasAppliedFilters = queryState.status || queryState.role;
+		const appliedFiltersCount = [queryState.status, queryState.role].filter(
 			Boolean,
 		).length;
 
@@ -172,30 +182,33 @@ const HotelStaffFilter = ({
 			hasAppliedFilters,
 			appliedFiltersCount,
 		};
-	}, [tempFilters, queryState.role, queryState.status]);
+	}, [
+		tempFilters.status,
+		tempFilters.role,
+		queryState.status,
+		queryState.role,
+	]);
 
-	const roleOptions = useMemo(
-		() => [
-			{ value: "MANAGER", label: "Manager" },
-			{ value: "FRONT_DESK", label: "Front Desk" },
-			{ value: "INVENTORY_MANAGER", label: "Inventory Manager" },
-			{ value: "HOTEL_OWNER", label: "Hotel Owner" },
-		],
-		[],
-	);
+	const statusOptions = [
+		{ value: "ACTIVE", label: "Active", color: "bg-green-500" },
+		{ value: "INACTIVE", label: "Inactive", color: "bg-gray-500" },
+		{ value: "PENDING", label: "Pending", color: "bg-yellow-500" },
+		{ value: "SUSPENDED", label: "Suspended", color: "bg-red-500" },
+	];
 
-	const statusOptions = useMemo(
-		() => [
-			{ value: "ACTIVE", label: "Active" },
-			{ value: "INACTIVE", label: "Inactive" },
-			{ value: "PENDING", label: "Pending" },
-			{ value: "SUSPENDED", label: "Suspended" },
-		],
-		[],
-	);
+	const roleOptions = [
+		{ value: "MANAGER", label: "Manager" },
+		{ value: "FRONT_DESK", label: "Front Desk" },
+		{ value: "INVENTORY", label: "Inventory" },
+		{ value: "RESTAURANT", label: "Restaurant" },
+		{ value: "MARKETER", label: "Marketer" },
+		{ value: "RENTALS", label: "Rentals" },
+		{ value: "LAUNDRY", label: "Laundry" },
+		{ value: "FINANCIALS", label: "Financials" },
+	];
 
 	return (
-		<div className="space-y-4 w-80">
+		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<h4 className="font-semibold text-sm">Filter Staff</h4>
 				<Button
@@ -209,32 +222,6 @@ const HotelStaffFilter = ({
 				</Button>
 			</div>
 
-			{/* Role Filter */}
-			<div className="space-y-2">
-				<Label className="text-sm font-medium">Role</Label>
-				<Select
-					value={tempFilters.role || "all"}
-					onValueChange={(value) =>
-						setTempFilters({
-							...tempFilters,
-							role: value === "all" ? null : value,
-						})
-					}
-				>
-					<SelectTrigger className="w-full">
-						<SelectValue placeholder="All Roles" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Roles</SelectItem>
-						{roleOptions.map((option) => (
-							<SelectItem key={option.value} value={option.value}>
-								{option.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
-
 			{/* Status Filter */}
 			<div className="space-y-2">
 				<Label className="text-sm font-medium">Status</Label>
@@ -243,16 +230,46 @@ const HotelStaffFilter = ({
 					onValueChange={(value) =>
 						setTempFilters({
 							...tempFilters,
-							status: value === "all" ? null : value,
+							status:
+								value === "all" ? null : (value as typeof tempFilters.status),
 						})
 					}
 				>
 					<SelectTrigger className="w-full">
-						<SelectValue placeholder="All Status" />
+						<SelectValue placeholder="All statuses" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="all">All Status</SelectItem>
+						<SelectItem value="all">All statuses</SelectItem>
 						{statusOptions.map((option) => (
+							<SelectItem key={option.value} value={option.value}>
+								<div className="flex items-center gap-2">
+									<div className={`w-2 h-2 ${option.color} rounded-full`}></div>
+									{option.label}
+								</div>
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			{/* Role Filter */}
+			<div className="space-y-2">
+				<Label className="text-sm font-medium">Role</Label>
+				<Select
+					value={tempFilters.role || "all"}
+					onValueChange={(value) =>
+						setTempFilters({
+							...tempFilters,
+							role: value === "all" ? null : (value as typeof tempFilters.role),
+						})
+					}
+				>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder="All roles" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All roles</SelectItem>
+						{roleOptions.map((option) => (
 							<SelectItem key={option.value} value={option.value}>
 								{option.label}
 							</SelectItem>
@@ -266,19 +283,15 @@ const HotelStaffFilter = ({
 				<div className="pt-2 border-t">
 					<p className="text-xs text-muted-foreground mb-2">Active filters:</p>
 					<div className="flex flex-wrap gap-1">
-						{tempFilters.role && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
-								Role:{" "}
-								{roleOptions.find((r) => r.value === tempFilters.role)?.label}
+						{tempFilters.status && (
+							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+								Status: {tempFilters.status.toLowerCase()}
 							</span>
 						)}
-						{tempFilters.status && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
-								Status:{" "}
-								{
-									statusOptions.find((s) => s.value === tempFilters.status)
-										?.label
-								}
+						{tempFilters.role && (
+							<span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-5/10 rounded-md text-xs">
+								Role:{" "}
+								{roleOptions.find((r) => r.value === tempFilters.role)?.label}
 							</span>
 						)}
 					</div>
@@ -301,24 +314,39 @@ const HotelStaffFilter = ({
 			</div>
 		</div>
 	);
-};
+}
 
 function HotelListToolbar({
 	table,
 }: {
 	table: TableType<CustomPageStaffResponse>;
 }) {
-	const [searchParam, setSearchParam] = useQueryStates({
-		search: parseAsString.withDefault(""),
-		role: parseAsString,
-		status: parseAsString,
+	const [queryState, setQueryState] = useQueryStates({
+		search: parseAsString,
+		status: parseAsStringLiteral([
+			"ACTIVE",
+			"INACTIVE",
+			"PENDING",
+			"SUSPENDED",
+		]),
+		role: parseAsStringLiteral([
+			"HOTEL_OWNER",
+			"MANAGER",
+			"FRONT_DESK",
+			"INVENTORY",
+			"RESTAURANT",
+			"MARKETER",
+			"RENTALS",
+			"LAUNDRY",
+			"FINANCIALS",
+			"SUPER_ADMIN",
+		]),
 	});
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
 			console.log("Exporting data with the following details:", data);
 			setExportDialogOpen(false);
 			setSuccessDialogOpen({
@@ -329,73 +357,75 @@ function HotelListToolbar({
 		[setSuccessDialogOpen],
 	);
 
+	const [open, setOpen] = useState(false);
+
 	return (
-		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl">
+		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
 			<div>
-				<p>All staff({table.getRowCount()})</p>
+				<p className="text-primary md:pl-2">All staff ({table.getRowCount()})</p>
 			</div>
 
 			<div className="flex items-center gap-x-2 ">
 				<div className="relative">
 					<input
 						type="text"
-						placeholder="Search"
-						value={searchParam.search}
-						onChange={(e) =>
-							setSearchParam((prev) => ({ ...prev, search: e.target.value }))
-						}
+						placeholder="Search staff..."
+						value={queryState.search ?? ""}
+						onChange={(e) => setQueryState({ search: e.target.value || null })}
 						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
 					/>
 					<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
 				</div>
+
 				<div className="flex items-center gap-2">
-					<TableFilter>
-						<HotelStaffFilter
-							queryState={searchParam}
-							setQueryState={setSearchParam}
+					<TableFilter open={open} setOpen={setOpen}>
+						<StaffFilter
+							queryState={queryState}
+							setQueryState={setQueryState}
+							setOpen={setOpen}
 						/>
 					</TableFilter>
 
 					{/* Applied Filters Display */}
-					{(searchParam.role || searchParam.status) && (
+					{(queryState.status || queryState.role) && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
-							{searchParam.role && (
-								<div className="flex items-center gap-1">
-									<span>Role:</span>
-									<span className="bg-secondary px-2 py-1 rounded-md font-medium">
-										{searchParam.role}
-									</span>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-										onClick={() => setSearchParam({ role: null })}
-									>
-										<XIcon className="h-3 w-3" />
-									</Button>
-								</div>
-							)}
-							{searchParam.status && (
-								<div className="flex items-center gap-1">
+							{queryState.status && (
+								<>
 									<span>Status:</span>
-									<span className="bg-secondary px-2 py-1 rounded-md font-medium">
-										{searchParam.status}
+									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+										{queryState.status}
 									</span>
 									<Button
 										variant="ghost"
 										size="sm"
 										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-										onClick={() => setSearchParam({ status: null })}
+										onClick={() => setQueryState({ status: null })}
 									>
 										<XIcon className="h-3 w-3" />
 									</Button>
-								</div>
+								</>
+							)}
+							{queryState.role && (
+								<>
+									<span>Role:</span>
+									<span className="bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+										{queryState.role.replace("_", " ")}
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+										onClick={() => setQueryState({ role: null })}
+									>
+										<XIcon className="h-3 w-3" />
+									</Button>
+								</>
 							)}
 						</div>
 					)}
 				</div>
 
-				<AddNewStaffDialog />
+				<AddNewManagerDialog />
 
 				<ExportDialog
 					open={exportDialogOpen}
@@ -407,7 +437,7 @@ function HotelListToolbar({
 	);
 }
 
-function AddNewStaffDialog() {
+function AddNewManagerDialog() {
 	const [open, setOpen] = useState(false);
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -425,58 +455,60 @@ function AddNewStaffDialog() {
 			<DialogContent className="p-4 rounded-2xl">
 				<DialogTitle>Add new manager</DialogTitle>
 				<DialogDescription className="sr-only">
-					Fill in the details below to add a new staff member.
+					Fill in the details below to add a new manager.
 				</DialogDescription>
 
 				<div className="mt-4">
-					<AddStaffForm setOpen={setOpen} />
+					<AddManagerForm setOpen={setOpen} />
 				</div>
 			</DialogContent>
 		</Dialog>
 	);
 }
 
-const newStaffFormSchema = z.object({
-	fullName: z.string().nonempty("Staff name is required"),
+const newManagerFormSchema = z.object({
+	fullName: z.string().nonempty("Manager name is required"),
 	email: z.email("Invalid email address"),
 	phoneNumber: z.string().nonempty("Phone number is required"),
-	password: z.string().min(8, "Password must be at least 8 characters long"),
-	// role: z.string().refine((val) => Role.safeParse(val).success, {
-	//   message: "Invalid role",
-	// }),
+	password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function AddManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+	const [showPassword, setShowPassword] = useState(false);
+
+	const queryClient = useQueryClient();
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof newStaffFormSchema>) => {
-			const response = await onboardManagerToHotel(data);
-			if (!response.success) {
-				throw new Error(response.error);
+		mutationFn: async (data: z.infer<typeof newManagerFormSchema>) => {
+			const res = await onboardManagerToHotel(data);
+			if (!res.success) {
+				throw new Error(res.error || "Failed to add manager");
 			}
-			return response.data;
+			return res.data;
 		},
 		onSuccess: async () => {
 			setOpen(false);
 			form.reset();
 			setShowSuccessDialog({
 				show: true,
-				message: "Staff added successfully",
+				message: "Manager added successfully",
 			});
+			await queryClient.invalidateQueries({ queryKey: ["staffs"] });
 			revalidateRoute("/hotel-owner/staff-management");
 		},
-		onError: () => {
+		onError: (e) => {
 			toast.error("Something went wrong", {
-				description: "Failed to add staff",
+				description: e.message || "Failed to add manager",
 			});
 		},
 	});
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const form = useForm({
-		resolver: zodResolver(newStaffFormSchema),
+		resolver: zodResolver(newManagerFormSchema),
 		defaultValues: {
 			fullName: "",
 			email: "",
 			phoneNumber: "",
+			password: "",
 		},
 		progressive: true,
 		mode: "onBlur",
@@ -494,7 +526,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 					control={form.control}
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Staff Name</FormLabel>
+							<FormLabel>Manager Name</FormLabel>
 							<FormControl>
 								<Input placeholder="e.g John Doe" {...field} />
 							</FormControl>
@@ -509,12 +541,18 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 						<FormItem>
 							<FormLabel>Email address</FormLabel>
 							<FormControl>
-								<Input placeholder="e.g john.doe@example.com" {...field} />
+								<Input
+									placeholder="e.g john.doe@example.com"
+									autoComplete="new-email"
+									data-form-type="other"
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
 					)}
 				/>
+
 				<FormField
 					control={form.control}
 					name="phoneNumber"
@@ -522,7 +560,11 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 						<FormItem>
 							<FormLabel>Phone Number</FormLabel>
 							<FormControl>
-								<Input type="tel" placeholder="e.g +123456789" {...field} />
+								<Input
+									type="tel"
+									placeholder="e.g +234 801 234 5678"
+									{...field}
+								/>
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -535,13 +577,30 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 					render={({ field }) => (
 						<FormItem>
 							<FormLabel>Password</FormLabel>
-							<FormControl>
-								<Input
-									type="password"
-									placeholder="Enter a secure password"
-									{...field}
-								/>
-							</FormControl>
+							<div className="relative">
+								<FormControl>
+									<Input
+										type={showPassword ? "text" : "password"}
+										placeholder="Enter a password"
+										autoComplete="new-password"
+										data-form-type="other"
+										{...field}
+									/>
+								</FormControl>
+								<Button
+									type="button"
+									variant={"ghost"}
+									size={"icon"}
+									className="absolute right-0 top-1/2 -translate-y-1/2"
+									onClick={() => setShowPassword((prev) => !prev)}
+								>
+									{showPassword ? (
+										<EyeOffIcon className="h-4 w-4" />
+									) : (
+										<EyeIcon className="h-4 w-4" />
+									)}
+								</Button>
+							</div>
 							<FormMessage />
 						</FormItem>
 					)}
@@ -558,7 +617,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 							<span>Creating, please wait...</span>
 						</>
 					) : (
-						"Add staff"
+						"Add Manager"
 					)}
 				</Button>
 			</form>
@@ -566,57 +625,74 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	);
 }
 
-const hotelOwnerStaffEditSchema = newStaffFormSchema
-	.extend({
-		role: Role,
-	})
-	.omit({
-		password: true,
-	});
+const editStaffFormSchema = z.object({
+	fullName: z.string().nonempty("Staff name is required"),
+	email: z.email("Invalid email address"),
+	phoneNumber: z.string().nonempty("Phone number is required"),
+	staffId: z.string().optional(),
+	roles: z.array(Role).min(1, "At least one role is required"),
+});
 
 function UpdateHotelStaffForm({
 	initialValues,
 	staffId,
 	setOpen,
 }: {
-	initialValues: z.infer<typeof hotelOwnerStaffEditSchema>;
+	initialValues: z.infer<typeof editStaffFormSchema>;
 	staffId: string;
 	setOpen: (open: boolean) => void;
 }) {
+	const queryClient = useQueryClient();
+	const setSelectedStaff = useSetAtom(selectedStaffAtom);
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const form = useForm({
-		resolver: zodResolver(hotelOwnerStaffEditSchema),
+		resolver: zodResolver(editStaffFormSchema),
 		defaultValues: initialValues,
 		progressive: true,
 		mode: "onBlur",
 		reValidateMode: "onBlur",
 	});
 
-	const { mutate, isPending } = useMutation({
-		mutationFn: async () => {
-			const response = await updateStaffDetailsByOwner({
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof editStaffFormSchema>) => {
+			const res = await updateStaffDetailsByOwner({
 				staffId,
-				...form.getValues(),
+				fullName: data.fullName,
+				email: data.email,
+				phoneNumber: data.phoneNumber,
+				roles: data.roles as string[],
 			});
-			if (!response.success) {
-				throw new Error(response.error);
+			if (!res.success) {
+				throw new Error(res.error || "Failed to update staff details");
 			}
+			return res.data;
 		},
 		onSuccess: async () => {
 			setOpen(false);
-			form.reset();
 			setShowSuccessDialog({
 				show: true,
-				message: "Changes saved successfully",
+				message: "Staff details updated successfully",
 			});
+			await queryClient.invalidateQueries({ queryKey: ["staffs"] });
 			revalidateRoute("/hotel-owner/staff-management");
 		},
-		onError: () => {
+		onError: (e) => {
 			toast.error("Something went wrong", {
-				description: "Failed to update staff details",
+				description: e.message || "Failed to update staff details",
 			});
 		},
 	});
+
+	const handleSubmit = useCallback(
+		(data: z.infer<typeof editStaffFormSchema>) => {
+			toast.promise(mutateAsync(data), {
+				loading: "Updating staff details...",
+				success: "Staff details updated successfully",
+				error: (e) => e.message || "Failed to update staff details",
+			});
+		},
+		[mutateAsync],
+	);
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
@@ -625,10 +701,7 @@ function UpdateHotelStaffForm({
 				Edit staff details
 			</DialogDescription>
 			<Form {...form}>
-				<form
-					className="space-y-4"
-					onSubmit={form.handleSubmit(() => mutate())}
-				>
+				<form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
 					<FormField
 						control={form.control}
 						name="fullName"
@@ -655,6 +728,7 @@ function UpdateHotelStaffForm({
 							</FormItem>
 						)}
 					/>
+
 					<FormField
 						control={form.control}
 						name="phoneNumber"
@@ -662,42 +736,85 @@ function UpdateHotelStaffForm({
 							<FormItem>
 								<FormLabel>Phone Number</FormLabel>
 								<FormControl>
-									<Input type="tel" placeholder="e.g +123456789" {...field} />
+									<Input
+										type="tel"
+										placeholder="e.g +234 801 234 5678"
+										{...field}
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
 					/>
+
 					<FormField
 						control={form.control}
-						name="role"
+						name="staffId"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Assign role</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select a role" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
-										<SelectItem value="MANAGER">Manager</SelectItem>
-										<SelectItem value="INVENTORY">Inventory</SelectItem>
-										<SelectItem value="RESTAURANT">Restaurant</SelectItem>
-										<SelectItem value="MARKETER">Marketer</SelectItem>
-										<SelectItem value="RENTALS">Rentals</SelectItem>
-										<SelectItem value="LAUNDRY">Laundry</SelectItem>
-										<SelectItem value="FINANCIALS">Financials</SelectItem>
-									</SelectContent>
-								</Select>
+								<FormLabel>
+									Staff ID{" "}
+									<span className="text-muted-foreground font-normal">
+										(Optional)
+									</span>
+								</FormLabel>
+								<FormControl>
+									<Input placeholder="e.g STF-001" {...field} />
+								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
 					/>
+
+					<FormField
+						control={form.control}
+						name="roles"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Roles</FormLabel>
+								<FormControl>
+									<MultiSelect
+										values={field.value}
+										onValuesChange={field.onChange}
+									>
+										<MultiSelectTrigger className="w-full">
+											<MultiSelectValue placeholder="Select roles" />
+										</MultiSelectTrigger>
+										<MultiSelectContent
+											search={{ placeholder: "Search roles..." }}
+										>
+											<MultiSelectItem value="MANAGER">
+												Manager
+											</MultiSelectItem>
+											<MultiSelectItem value="FRONT_DESK">
+												Front Desk
+											</MultiSelectItem>
+											<MultiSelectItem value="INVENTORY">
+												Inventory
+											</MultiSelectItem>
+											<MultiSelectItem value="RESTAURANT">
+												Restaurant
+											</MultiSelectItem>
+											<MultiSelectItem value="MARKETER">
+												Marketer
+											</MultiSelectItem>
+											<MultiSelectItem value="RENTALS">
+												Rentals
+											</MultiSelectItem>
+											<MultiSelectItem value="LAUNDRY">
+												Laundry
+											</MultiSelectItem>
+											<MultiSelectItem value="FINANCIALS">
+												Financials
+											</MultiSelectItem>
+										</MultiSelectContent>
+									</MultiSelect>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
 					<Button
 						type="submit"
 						className="mt-4 w-full font-semibold"
@@ -718,48 +835,105 @@ function UpdateHotelStaffForm({
 	);
 }
 
-const contactManagerFormSchema = z.object({
-	title: z.string().nonempty("Title is required"),
-	message: z.string().nonempty("Message is required"),
-});
+const resetPasswordFormSchema = z
+	.object({
+		newPassword: z.string().min(8, "Password must be at least 8 characters"),
+		confirmPassword: z
+			.string()
+			.min(8, "Password must be at least 8 characters"),
+	})
+	.refine((data) => data.newPassword === data.confirmPassword, {
+		message: "Passwords do not match",
+	});
 
-function ContactStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function ResetPasswordForm({
+	setOpen,
+	staffId,
+}: {
+	setOpen: (open: boolean) => void;
+	staffId: string;
+}) {
+	const [showPassword, setShowPassword] = useState(false);
+	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const form = useForm({
-		resolver: zodResolver(contactManagerFormSchema),
+		resolver: zodResolver(resetPasswordFormSchema),
 		defaultValues: {
-			title: "",
-			message: "",
+			newPassword: "",
+			confirmPassword: "",
+		},
+		progressive: true,
+		mode: "onBlur",
+		reValidateMode: "onBlur",
+	});
+
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: (payload: z.infer<typeof resetPasswordFormSchema>) => {
+			return resetPasswordForStaffOwner(staffId, payload);
+		},
+		onError: async () => {
+			toast.error("Something went wrong", {
+				description: "Failed to reset password",
+			});
+		},
+		onSuccess: async () => {
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Password reset successfully",
+			});
+			form.reset();
 		},
 	});
 
-	const handleSubmit = (data: z.infer<typeof contactManagerFormSchema>) => {
-		console.log("Message sent:", data.message);
-		setOpen(false);
-		setShowSuccessDialog({
-			show: true,
-			message: "Message delivered",
-		});
-		form.reset();
-	};
+	const handleSubmit = useCallback(
+		(data: z.infer<typeof resetPasswordFormSchema>) => {
+			toast.promise(mutateAsync(data), {
+				loading: "Resetting password...",
+				success: "Password reset successfully",
+				error: "Failed to reset password",
+			});
+		},
+		[mutateAsync],
+	);
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle>Contact Staff</DialogTitle>
+			<DialogTitle>Reset password</DialogTitle>
 			<DialogDescription className="sr-only">
-				Fill in the details below to send a message to the staff.
+				Fill in the details below to reset staff password.
 			</DialogDescription>
 			<Form {...form}>
 				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 					<FormField
 						control={form.control}
-						name="title"
+						name="newPassword"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Title</FormLabel>
-								<FormControl>
-									<Input placeholder="Message Title" {...field} />
-								</FormControl>
+								<FormLabel>New Password</FormLabel>
+								<div className="relative">
+									<FormControl>
+										<Input
+											type={showPassword ? "text" : "password"}
+											placeholder="Enter password"
+											className="pr-10"
+											{...field}
+										/>
+									</FormControl>
+									<Button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										variant="link"
+										size="icon"
+										className="absolute right-1 top-1/2 -translate-y-1/2"
+									>
+										{showPassword ? (
+											<EyeOffIcon className="h-5 w-5 text-gray-500" />
+										) : (
+											<EyeIcon className="h-5 w-5 text-gray-500" />
+										)}
+									</Button>
+								</div>
 								<FormMessage />
 							</FormItem>
 						)}
@@ -767,23 +941,264 @@ function ContactStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 					<FormField
 						control={form.control}
-						name="message"
+						name="confirmPassword"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Message</FormLabel>
+								<FormLabel>Confirm New Password</FormLabel>
+								<div className="relative">
+									<FormControl>
+										<Input
+											type={showConfirmPassword ? "text" : "password"}
+											placeholder="Enter password"
+											className="pr-10"
+											{...field}
+										/>
+									</FormControl>
+									<Button
+										type="button"
+										onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+										variant="link"
+										size="icon"
+										className="absolute right-1 top-1/2 -translate-y-1/2"
+									>
+										{showConfirmPassword ? (
+											<EyeOffIcon className="h-5 w-5 text-gray-500" />
+										) : (
+											<EyeIcon className="h-5 w-5 text-gray-500" />
+										)}
+									</Button>
+								</div>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Resetting, please wait...</span>
+							</>
+						) : (
+							"Reset Password"
+						)}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
+}
+
+const suspendStaffSchema = z.object({
+	reason: z.string().nonempty(),
+	fromDate: z.date().refine((date) => date <= new Date(), {
+		message: "From date cannot be in the past",
+	}),
+	toDate: z.date().refine((date) => date >= new Date(), {
+		message: "To date cannot be in the past",
+	}),
+});
+
+function SuspendStaffDialog({
+	setOpen,
+	id,
+}: {
+	setOpen: (open: boolean) => void;
+	id: string;
+}) {
+	const queryClient = useQueryClient();
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: (data: { reason: string; fromDate: string; toDate: string }) =>
+			suspendStaffAccountOwner(id, data),
+		onSuccess: () => {
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff suspended successfully",
+			});
+			queryClient.invalidateQueries({
+				exact: true,
+				queryKey: ["staffs"],
+			});
+			revalidateRoute("/hotel-owner/staff-management");
+		},
+		onError: () => {
+			toast.error("Something went wrong", {
+				description: "Failed to suspend staff",
+			});
+		},
+	});
+	const form = useForm({
+		resolver: zodResolver(suspendStaffSchema),
+		defaultValues: {
+			fromDate: new Date(),
+			toDate: new Date(),
+			reason: "",
+		},
+		reValidateMode: "onSubmit",
+		mode: "onSubmit",
+	});
+
+	const handleSubmit = useCallback(
+		async (data: z.infer<typeof suspendStaffSchema>) => {
+			const isValid = await form.trigger();
+			if (!isValid) return;
+			const newData = {
+				...data,
+				fromDate: format(data.fromDate, "yyyy-MM-dd"),
+				toDate: format(data.toDate, "yyyy-MM-dd"),
+			};
+			await mutateAsync(newData);
+		},
+		[form, mutateAsync],
+	);
+
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle className="sr-only">Suspend Staff</DialogTitle>
+			<DialogDescription className="sr-only">
+				Type "SUSPEND" to confirm
+			</DialogDescription>
+
+			<div className="flex flex-col items-center justify-center">
+				<AlertTriangleIcon className="text-destructive-2 size-12" />
+				<h2 className="text-destructive-2">Warning!</h2>
+				<p className="text-gray-600 text-center">
+					This action Cannot be Undone, to confirm this action is deliberate
+					"type SUSPEND below"
+				</p>
+			</div>
+
+			<Form {...form}>
+				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+					<FormField
+						control={form.control}
+						name="reason"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Reason for suspension</FormLabel>
 								<FormControl>
-									<Textarea
-										className="resize-none"
-										placeholder="Type your message here..."
-										{...field}
-									/>
+									<Input placeholder="Type reason for suspension" {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
 						)}
 					/>
-					<Button type="submit" className="w-full font-semibold">
-						Send Message
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-4">
+						<FormField
+							control={form.control}
+							name="fromDate"
+							render={({ field }) => (
+								<FormItem className="col-span-1">
+									<FormLabel>From Date</FormLabel>
+
+									<Popover>
+										<PopoverTrigger asChild>
+											<FormControl>
+												<Button
+													variant={"outline"}
+													className={cn(
+														"w-full text-left font-normal",
+														!field.value && "text-muted-foreground",
+													)}
+												>
+													{field.value ? (
+														format(field.value, "PPP")
+													) : (
+														<span>Pick a starting date</span>
+													)}
+													<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+												</Button>
+											</FormControl>
+										</PopoverTrigger>
+										<PopoverContent className="w-auto p-0" align="start">
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												disabled={(date) =>
+													date < new Date(new Date().setHours(0, 0, 0, 0))
+												}
+												captionLayout="dropdown-months"
+											/>
+										</PopoverContent>
+									</Popover>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="toDate"
+							render={({ field }) => (
+								<FormItem className="col-span-1">
+									<FormLabel>To Date</FormLabel>
+									<FormControl>
+										<Popover>
+											<PopoverTrigger asChild>
+												<FormControl>
+													<Button
+														variant={"outline"}
+														className={cn(
+															"w-full text-left font-normal",
+															!field.value && "text-muted-foreground",
+														)}
+													>
+														{field.value ? (
+															format(field.value, "PPP")
+														) : (
+															<span>Pick an ending date</span>
+														)}
+														<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+													</Button>
+												</FormControl>
+											</PopoverTrigger>
+											<PopoverContent className="w-auto p-0" align="start">
+												<Calendar
+													mode="single"
+													selected={field.value}
+													onSelect={field.onChange}
+													disabled={(date) =>
+														date < new Date(new Date().setHours(0, 0, 0, 0))
+													}
+													captionLayout="dropdown-months"
+												/>
+											</PopoverContent>
+										</Popover>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+
+					<Button
+						type="submit"
+						className="w-full font-semibold"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="animate-spin" />
+								<span>Suspending, please wait...</span>
+							</>
+						) : (
+							"Suspend Staff"
+						)}
+					</Button>
+					<Button
+						type="button"
+						className="w-full font-semibold bg-gray-100"
+						variant={"ghost"}
+						onClick={() => setOpen(false)}
+					>
+						Cancel
 					</Button>
 				</form>
 			</Form>
@@ -844,14 +1259,13 @@ function DeleteStaffDialog({
 
 	const handleDelete = useCallback(async () => {
 		const isValid = await form.trigger();
-
 		if (!isValid) return;
 		await mutateAsync(id);
 	}, [form, mutateAsync, id]);
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle className="sr-only">Delete Hotel</DialogTitle>
+			<DialogTitle className="sr-only">Delete Staff</DialogTitle>
 			<DialogDescription className="sr-only">
 				Type "DELETE" to confirm
 			</DialogDescription>
@@ -861,7 +1275,7 @@ function DeleteStaffDialog({
 				<h2 className="text-destructive-2">Warning!</h2>
 				<p className="text-gray-600 text-center">
 					This action Cannot be Undone, to confirm this action is deliberate
-					“type delete below”
+					"type DELETE below"
 				</p>
 			</div>
 
@@ -908,337 +1322,40 @@ function DeleteStaffDialog({
 	);
 }
 
-const resetPasswordSchema = z.object({
-	newPassword: z.string().min(8, "Password must be at least 8 characters"),
-	confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-	message: "Passwords do not match",
-	path: ["confirmPassword"],
-});
+const statusVariantMap = {
+	ACTIVE: "green",
+	INACTIVE: "yellow",
+	SUSPENDED: "destructive",
+	PENDING: "blue",
+} as const;
 
-function ResetPasswordDialog({
-	setOpen,
-	staffId,
-	staffName,
-}: {
-	setOpen: (open: boolean) => void;
-	staffId: string;
-	staffName: string;
-}) {
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	const form = useForm({
-		resolver: zodResolver(resetPasswordSchema),
-		defaultValues: {
-			newPassword: "",
-			confirmPassword: "",
-		},
-	});
-
-	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof resetPasswordSchema>) => {
-			const response = await resetPasswordForStaffOwner(staffId, data);
-			if (!response.success) {
-				throw new Error(response.error);
-			}
-			return response.data;
-		},
-		onSuccess: () => {
-			setOpen(false);
-			form.reset();
-			setShowSuccessDialog({
-				show: true,
-				message: "Password reset successfully",
-			});
-		},
-		onError: (e) => {
-			toast.error("Failed to reset password", {
-				description: e.message,
-			});
-		},
-	});
-
-	return (
-		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle>Reset Password</DialogTitle>
-			<DialogDescription>
-				Set a new password for <strong>{staffName}</strong>
-			</DialogDescription>
-			<Form {...form}>
-				<form
-					className="space-y-4"
-					onSubmit={form.handleSubmit((data) => mutate(data))}
-				>
-					<FormField
-						control={form.control}
-						name="newPassword"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>New Password</FormLabel>
-								<FormControl>
-									<Input
-										type="password"
-										placeholder="Enter new password"
-										{...field}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="confirmPassword"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Confirm Password</FormLabel>
-								<FormControl>
-									<Input
-										type="password"
-										placeholder="Confirm new password"
-										{...field}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<Button
-						type="submit"
-						className="w-full font-semibold"
-						disabled={isPending}
-					>
-						{isPending ? (
-							<>
-								<Loader2Icon className="animate-spin" />
-								<span>Resetting...</span>
-							</>
-						) : (
-							"Reset Password"
-						)}
-					</Button>
-				</form>
-			</Form>
-		</DialogContent>
-	);
-}
-
-const suspendStaffSchema = z.object({
-	reason: z.string().min(1, "Reason is required"),
-	fromDate: z.string().min(1, "Start date is required"),
-	toDate: z.string().min(1, "End date is required"),
-});
-
-function SuspendStaffDialog({
-	setOpen,
-	staffId,
-	staffName,
-}: {
-	setOpen: (open: boolean) => void;
-	staffId: string;
-	staffName: string;
-}) {
-	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	const form = useForm({
-		resolver: zodResolver(suspendStaffSchema),
-		defaultValues: {
-			reason: "",
-			fromDate: "",
-			toDate: "",
-		},
-	});
-
-	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof suspendStaffSchema>) => {
-			const response = await suspendStaffAccountOwner(staffId, data);
-			if (!response.success) {
-				throw new Error(response.error);
-			}
-			return response.data;
-		},
-		onSuccess: () => {
-			setOpen(false);
-			form.reset();
-			setShowSuccessDialog({
-				show: true,
-				message: "Staff account suspended",
-			});
-			revalidateRoute("/hotel-owner/staff-management");
-		},
-		onError: (e) => {
-			toast.error("Failed to suspend staff", {
-				description: e.message,
-			});
-		},
-	});
-
-	return (
-		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle>Suspend Staff</DialogTitle>
-			<DialogDescription>
-				Suspend <strong>{staffName}</strong>'s account for a period of time.
-			</DialogDescription>
-			<Form {...form}>
-				<form
-					className="space-y-4"
-					onSubmit={form.handleSubmit((data) => mutate(data))}
-				>
-					<FormField
-						control={form.control}
-						name="reason"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Reason</FormLabel>
-								<FormControl>
-									<Textarea
-										className="resize-none"
-										placeholder="Reason for suspension..."
-										{...field}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<div className="grid grid-cols-2 gap-3">
-						<FormField
-							control={form.control}
-							name="fromDate"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>From</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="toDate"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>To</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-					<Button
-						type="submit"
-						className="w-full font-semibold"
-						variant="destructive"
-						disabled={isPending}
-					>
-						{isPending ? (
-							<>
-								<Loader2Icon className="animate-spin" />
-								<span>Suspending...</span>
-							</>
-						) : (
-							"Suspend Account"
-						)}
-					</Button>
-				</form>
-			</Form>
-		</DialogContent>
-	);
-}
-
-function StaffDetailSheet({
-	staff,
-	open,
-	onOpenChange,
-}: {
-	staff: CustomPageStaffResponse | null;
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-}) {
-	if (!staff) return null;
-
-	const role = staff.roles?.[0] ?? "N/A";
-	const refinedRole = role
+function formatRole(role: string) {
+	return role
 		.replaceAll("_", " ")
 		.toLowerCase()
-		.replace(/\b\w/g, (c: string) => c.toUpperCase());
-
-	return (
-		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent className="overflow-y-auto">
-				<SheetHeader>
-					<SheetTitle>{staff.fullName}</SheetTitle>
-					<SheetDescription>Staff details</SheetDescription>
-				</SheetHeader>
-				<div className="px-4 space-y-5">
-					<div className="flex items-center justify-center">
-						<div className="size-20 bg-primary-5/30 rounded-full flex items-center justify-center text-primary text-2xl font-bold">
-							{staff.fullName
-								.split(" ")
-								.map((n) => n[0])
-								.join("")
-								.toUpperCase()
-								.slice(0, 2)}
-						</div>
-					</div>
-
-					<div className="space-y-3">
-						<div className="flex items-center gap-3 text-sm">
-							<MailIcon className="size-4 text-gray-400 flex-shrink-0" />
-							<span className="text-gray-600">{staff.email}</span>
-						</div>
-						<div className="flex items-center gap-3 text-sm">
-							<PhoneIcon className="size-4 text-gray-400 flex-shrink-0" />
-							<span className="text-gray-600">
-								{staff.phoneNumber || "Not provided"}
-							</span>
-						</div>
-						<div className="flex items-center gap-3 text-sm">
-							<ShieldIcon className="size-4 text-gray-400 flex-shrink-0" />
-							<Badge variant="outline">{refinedRole}</Badge>
-						</div>
-						<div className="flex items-center gap-3 text-sm">
-							<ClockIcon className="size-4 text-gray-400 flex-shrink-0" />
-							<span className="text-gray-600">
-								Last login:{" "}
-								{staff.lastLogin && staff.lastLogin !== "N/A"
-									? new Date(staff.lastLogin).toLocaleString("en-US", {
-											month: "short",
-											day: "numeric",
-											year: "numeric",
-											hour: "numeric",
-											minute: "numeric",
-											hour12: true,
-										})
-									: "Never"}
-							</span>
-						</div>
-					</div>
-
-					{staff.hotels && staff.hotels.length > 0 && (
-						<div className="space-y-2">
-							<h4 className="text-sm font-medium text-gray-500">
-								Assigned Hotels
-							</h4>
-							<div className="space-y-1">
-								{staff.hotels.map((hotel: any) => (
-									<div
-										key={hotel.id || hotel}
-										className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg"
-									>
-										{hotel.name || hotel}
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-				</div>
-			</SheetContent>
-		</Sheet>
-	);
+		.replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+function formatStatus(status: string) {
+	return status
+		.replaceAll("_", " ")
+		.toLowerCase()
+		.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDate(value: string | null | undefined) {
+	if (!value || value === "N/A") return "N/A";
+	return new Date(value).toLocaleString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "numeric",
+		hour12: true,
+	});
+}
+
+const selectedStaffAtom = atom<CustomPageStaffResponse | null>(null);
 
 const columns = [
 	columnHelper.display({
@@ -1250,290 +1367,273 @@ const columns = [
 	columnHelper.accessor("fullName", {
 		header: "Staff Name",
 		cell: (info) => (
-			<div className="flex items-center gap-x-2">
-				{/* <Image
-          src={info.row.original.profilePicture}
-          alt={info.row.original.fullName}
-          className="w-10 h-10 rounded-full"
-          width={40}
-          height={40}
-        /> */}
-				<span className="font-semibold">{info.getValue()}</span>
-			</div>
+			<span className="font-semibold">{info.getValue()}</span>
 		),
 	}),
-	columnHelper.accessor("roles", {
-		header: "Role",
+	columnHelper.accessor("staffId", {
+		header: "Staff ID",
+		cell: (info) => <span>{info.getValue() || info.row.original.customId}</span>,
+	}),
+	columnHelper.accessor("userStatus", {
+		header: "Status",
 		cell: (info) => {
-			const roles = info.getValue();
-			const role = roles?.[0] ?? "N/A";
-			const refinedRole = role
-				.replaceAll("_", " ")
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase());
-			return <Badge variant={"outline"}>{refinedRole}</Badge>;
+			const status = (info.getValue() ?? "INACTIVE") as keyof typeof statusVariantMap;
+			return (
+				<Badge variant={statusVariantMap[status] ?? "outline"}>
+					{formatStatus(status)}
+				</Badge>
+			);
 		},
 	}),
 	columnHelper.accessor("email", {
 		header: "Email",
-		cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
+		cell: (info) => <span>{info.getValue()}</span>,
 	}),
-	// columnHelper.accessor("status", {
-	//   header: "Status",
-	//   cell: (info) => <span>{info.getValue()}</span>,
-	// }),
 	columnHelper.accessor("phoneNumber", {
-		header: "Phone Number",
+		header: "Phone",
 		cell: (info) => <span>{info.getValue() ?? "-"}</span>,
 	}),
 	columnHelper.accessor("lastLogin", {
 		header: "Last Login",
-		cell: (info) => {
-			const value = info.getValue?.() ?? null;
-			if (!value || value === "N/A") return <span>N/A</span>;
-			const date = new Date(value);
-
-			// e.g. Jun 15, 2023, 10:30 AM
-			const formattedDate = date.toLocaleString("en-US", {
-				month: "short",
-				day: "numeric",
-				year: "numeric",
-				hour: "numeric",
-				minute: "numeric",
-				hour12: true,
-			});
-			return <span>{formattedDate}</span>;
-		},
-	}),
-	columnHelper.display({
-		id: "actions",
-		cell: (info) => {
-			const [open, setOpen] = useState<
-				| "contact-staff"
-				| "delete-staff"
-				| "edit-staff"
-				| "reset-password"
-				| "suspend-staff"
-				| false
-			>(false);
-
-			const rowData = info.row.original;
-
-			const dialog = useMemo(() => {
-				switch (open) {
-					case "contact-staff":
-						return (
-							<ContactStaffForm
-								setOpen={(isOpen) => setOpen(isOpen ? "contact-staff" : false)}
-							/>
-						);
-					case "edit-staff":
-						return (
-							<UpdateHotelStaffForm
-								initialValues={{
-									fullName: rowData.fullName,
-									email: rowData.email,
-									role: (rowData.roles?.[0] ?? "FRONT_DESK") as z.infer<typeof Role>,
-									phoneNumber: rowData.phoneNumber ?? "",
-								}}
-								staffId={rowData.id}
-								setOpen={(isOpen) => setOpen(isOpen ? "edit-staff" : false)}
-							/>
-						);
-					case "delete-staff":
-						return (
-							<DeleteStaffDialog
-								setOpen={(isOpen) => setOpen(isOpen ? "delete-staff" : false)}
-								id={rowData.id}
-							/>
-						);
-					case "reset-password":
-						return (
-							<ResetPasswordDialog
-								setOpen={(isOpen) =>
-									setOpen(isOpen ? "reset-password" : false)
-								}
-								staffId={rowData.id}
-								staffName={rowData.fullName}
-							/>
-						);
-					case "suspend-staff":
-						return (
-							<SuspendStaffDialog
-								setOpen={(isOpen) =>
-									setOpen(isOpen ? "suspend-staff" : false)
-								}
-								staffId={rowData.id}
-								staffName={rowData.fullName}
-							/>
-						);
-					default:
-						return null;
-				}
-			}, [open, rowData]);
-
-			return (
-				<Dialog
-					open={typeof open === "string"}
-					onOpenChange={(isOpen) => {
-						if (!isOpen) setOpen(false);
-					}}
-				>
-					<DropdownMenu modal={false}>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" className="h-8 w-8 p-0">
-								<span className="sr-only">Open menu</span>
-								<MoreVerticalIcon />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent className="bg-white" align="end">
-							<DropdownMenuItem asChild>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("edit-staff")}
-								>
-									<DoorOpenIcon />
-									Edit Staff
-								</DialogTrigger>
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("contact-staff")}
-								>
-									<MessageCircleMoreIcon />
-									Contact Staff
-								</DialogTrigger>
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("reset-password")}
-								>
-									<KeyIcon />
-									Reset Password
-								</DialogTrigger>
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="hover:bg-yellow-500/10 text-yellow-600 focus:text-yellow-600"
-								asChild
-							>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("suspend-staff")}
-								>
-									<BanIcon className="text-yellow-600" />
-									Suspend Staff
-								</DialogTrigger>
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="hover:bg-red-500/10 text-red-500 focus:text-red-500"
-								asChild
-							>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("delete-staff")}
-								>
-									<TrashIcon className="text-red-500" />
-									Delete Staff
-								</DialogTrigger>
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-
-					{dialog}
-				</Dialog>
-			);
-		},
+		cell: (info) => (
+			<span className="text-gray-500">{formatDate(info.getValue())}</span>
+		),
 	}),
 ];
 
-function HotelList({
-	table,
-	onRowClick,
-}: {
-	table: TableType<CustomPageStaffResponse>;
-	onRowClick?: (staff: CustomPageStaffResponse) => void;
-}) {
+function StaffDetailSheet() {
+	const [staff, setStaff] = useAtom(selectedStaffAtom);
+	const [dialogOpen, setDialogOpen] = useState<
+		"edit-staff" | "reset-password" | "suspend-staff" | "delete-staff" | false
+	>(false);
+
+	const dialogContent = useMemo(() => {
+		if (!staff) return null;
+		switch (dialogOpen) {
+			case "edit-staff":
+				return (
+					<UpdateHotelStaffForm
+						staffId={staff.id}
+						initialValues={{
+							fullName: staff.fullName,
+							email: staff.email,
+							phoneNumber: staff.phoneNumber ?? "",
+							staffId: staff.staffId ?? "",
+							roles: (staff.roles ?? []) as z.infer<typeof Role>[],
+						}}
+						setOpen={(isOpen) => setDialogOpen(isOpen ? "edit-staff" : false)}
+					/>
+				);
+			case "reset-password":
+				return (
+					<ResetPasswordForm
+						staffId={staff.id}
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "reset-password" : false)
+						}
+					/>
+				);
+			case "suspend-staff":
+				return (
+					<SuspendStaffDialog
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "suspend-staff" : false)
+						}
+						id={staff.id}
+					/>
+				);
+			case "delete-staff":
+				return (
+					<DeleteStaffDialog
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "delete-staff" : false)
+						}
+						id={staff.id}
+					/>
+				);
+			default:
+				return null;
+		}
+	}, [dialogOpen, staff]);
+
+	if (!staff) return null;
+
+	const status = (staff.userStatus ?? "INACTIVE") as keyof typeof statusVariantMap;
+	const roles = staff.roles ?? [];
+
+	const details = [
+		{ label: "Staff ID", value: staff.staffId || staff.customId },
+		{ label: "Full Name", value: staff.fullName },
+		{ label: "Email", value: staff.email },
+		{ label: "Phone Number", value: staff.phoneNumber ?? "-" },
+		{ label: "Verified", value: staff.verified ? "Yes" : "No" },
+		{ label: "Last Login", value: formatDate(staff.lastLogin) },
+	];
+
 	return (
-		<div className="overflow-hidden rounded-md border">
-			<Table>
-				<TableHeader className="bg-gray-100">
-					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
-							{headerGroup.headers.map((header) => {
-								return (
-									<TableHead key={header.id} className="text-gray-500">
+		<>
+			<Sheet open={!!staff} onOpenChange={(open) => !open && setStaff(null)}>
+				<SheetContent className="overflow-y-auto">
+					<SheetHeader>
+						<SheetTitle className="text-lg">Staff Details</SheetTitle>
+						<SheetDescription className="sr-only">
+							View staff member details
+						</SheetDescription>
+					</SheetHeader>
+
+					<div className="space-y-6 p-4">
+						{/* Header */}
+						<div className="flex items-center justify-between">
+							<div>
+								<h3 className="text-xl font-semibold">{staff.fullName}</h3>
+								<p className="text-sm text-muted-foreground">{staff.email}</p>
+							</div>
+							<Badge variant={statusVariantMap[status] ?? "outline"}>
+								{formatStatus(status)}
+							</Badge>
+						</div>
+
+						{/* Details Grid */}
+						<div className="grid grid-cols-1 gap-4">
+							{details.map((item) => (
+								<div
+									key={item.label}
+									className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+								>
+									<span className="text-sm text-muted-foreground">
+										{item.label}
+									</span>
+									<span className="text-sm font-medium text-right">
+										{item.value}
+									</span>
+								</div>
+							))}
+						</div>
+
+						{/* Roles */}
+						<div className="space-y-2">
+							<span className="text-sm text-muted-foreground">Roles</span>
+							<div className="flex flex-wrap gap-2">
+								{roles.length > 0 ? roles.map((r) => (
+									<Badge key={r} variant="outline">{formatRole(r)}</Badge>
+								)) : (
+									<span className="text-sm text-muted-foreground">No roles assigned</span>
+								)}
+							</div>
+						</div>
+
+						{/* Actions */}
+						<div className="space-y-2 pt-2">
+							<Button
+								className="w-full"
+								variant="outline"
+								onClick={() => setDialogOpen("edit-staff")}
+							>
+								<DoorOpenIcon className="mr-2 h-4 w-4" />
+								Edit Staff Details
+							</Button>
+							<Button
+								className="w-full"
+								variant="outline"
+								onClick={() => setDialogOpen("reset-password")}
+							>
+								<ReplaceIcon className="mr-2 h-4 w-4" />
+								Reset Password
+							</Button>
+							{staff.userStatus !== "SUSPENDED" && (
+								<Button
+									className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+									variant="outline"
+									onClick={() => setDialogOpen("suspend-staff")}
+								>
+									<UserXIcon className="mr-2 h-4 w-4" />
+									Suspend Staff
+								</Button>
+							)}
+							<Button
+								className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+								variant="outline"
+								onClick={() => setDialogOpen("delete-staff")}
+							>
+								<TrashIcon className="mr-2 h-4 w-4" />
+								Delete Staff
+							</Button>
+						</div>
+					</div>
+				</SheetContent>
+			</Sheet>
+
+			<Dialog
+				open={typeof dialogOpen === "string"}
+				onOpenChange={(isOpen) => isOpen || setDialogOpen(false)}
+			>
+				{dialogContent}
+			</Dialog>
+		</>
+	);
+}
+
+function StaffTable({ table }: { table: TableType<CustomPageStaffResponse> }) {
+	const setSelectedStaff = useSetAtom(selectedStaffAtom);
+
+	if (!table.getRowModel().rows?.length) {
+		return (
+			<div className="overflow-hidden rounded-md border bg-card p-8 text-center">
+				<p className="text-gray-500">No staff records found</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="overflow-hidden rounded-md border bg-card">
+			<div className="overflow-x-auto">
+				<table className="w-full text-sm">
+					<thead>
+						<tr className="border-b bg-gray-100 text-left text-gray-500">
+							{table.getHeaderGroups().map((headerGroup) =>
+								headerGroup.headers.map((header) => (
+									<th key={header.id} className="px-4 py-3 font-medium">
 										{header.isPlaceholder
 											? null
 											: flexRender(
 													header.column.columnDef.header,
 													header.getContext(),
 												)}
-									</TableHead>
-								);
-							})}
-						</TableRow>
-					))}
-				</TableHeader>
-
-				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
+									</th>
+								)),
+							)}
+						</tr>
+					</thead>
+					<tbody>
+						{table.getRowModel().rows.map((row) => (
+							<tr
 								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
-								className="cursor-pointer hover:bg-gray-50/80"
-								onClick={(e) => {
-									const target = e.target as HTMLElement;
-									if (target.closest("button, [role='menuitem'], [data-slot]")) return;
-									onRowClick?.(row.original);
-								}}
+								className="border-b last:border-0 cursor-pointer hover:bg-gray-50"
+								onClick={() => setSelectedStaff(row.original)}
 							>
 								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id} className="text-gray-600">
+									<td key={cell.id} className="px-4 py-3 text-gray-600">
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
+									</td>
 								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
+}
 
-				<TableFooter>
-					<TableRow>
-						<TableCell colSpan={columns.length}>
-							<div className="w-full flex items-center justify-between">
-								<p>
-									Showing{" "}
-									{table.getState().pagination.pageIndex *
-										table.getState().pagination.pageSize +
-										1}{" "}
-									to{" "}
-									{Math.min(
-										(table.getState().pagination.pageIndex + 1) *
-											table.getState().pagination.pageSize,
-										table.getFilteredRowModel().rows.length,
-									)}{" "}
-									of {table.getFilteredRowModel().rows.length} results
-								</p>
+function StaffPagination({ table }: { table: TableType<CustomPageStaffResponse> }) {
+	if (table.getPageCount() <= 1) return null;
 
-								<DataTablePagination table={table} />
-							</div>
-						</TableCell>
-					</TableRow>
-				</TableFooter>
-			</Table>
+	return (
+		<div className="flex items-center justify-between">
+			<p className="text-sm text-gray-500">
+				Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+			</p>
+			<DataTablePagination table={table} />
 		</div>
 	);
 }
@@ -1551,8 +1651,6 @@ export function HotelOwnerStaff({
 	paginationMeta: Pagination;
 }) {
 	const [pagination, setPagination] = usePaginationSearchParams();
-	const [selectedStaff, setSelectedStaff] =
-		useState<CustomPageStaffResponse | null>(null);
 	const table = useReactTable({
 		data: staffs,
 		columns: columns,
@@ -1576,22 +1674,17 @@ export function HotelOwnerStaff({
 	}, [setBreadcrumb, breadcrumb]);
 
 	return (
-		<div className="p-4 space-y-2 md:space-y-4">
+		<div className="h-full w-full p-4 space-y-2 md:space-y-4">
 			<HotelListToolbar table={table} />
-			<HotelList table={table} onRowClick={setSelectedStaff} />
+			<StaffTable table={table} />
+			{table.getPageCount() > 1 && <StaffPagination table={table} />}
+			<StaffDetailSheet />
 			<SuccessDialog
 				open={successDialogOpen.show}
 				setOpenAction={(show) =>
 					setSuccessDialogOpen({ ...successDialogOpen, show })
 				}
 				message={successDialogOpen.message}
-			/>
-			<StaffDetailSheet
-				staff={selectedStaff}
-				open={!!selectedStaff}
-				onOpenChange={(open) => {
-					if (!open) setSelectedStaff(null);
-				}}
 			/>
 		</div>
 	);

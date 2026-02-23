@@ -2691,15 +2691,16 @@ export const schema = createSchema({
 			.partial(),
 	},
 	"@get/api/hotel-owners/dashboard/graph": {
+		query: z.object({
+			hotelId: z.string(),
+		}),
 		output: ApiResponseDashboardGraphResponse,
 	},
 	"@get/api/hotel-owners/dashboard/overview": {
-		query: z
-			.object({
-				selectedMonth: z.string(),
-			})
-			.partial()
-			.optional(),
+		query: z.object({
+			hotelId: z.string(),
+			selectedMonth: z.string().optional(),
+		}),
 		output: ApiResponseHotelOwnerDashboardOverviewResponse,
 	},
 	"@get/api/hotel-owners/dashboard-performance": {

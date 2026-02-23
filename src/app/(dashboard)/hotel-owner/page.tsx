@@ -33,11 +33,22 @@ function HomePage({ searchParams }: PageProps) {
 
 	const auth = { type: "Bearer" as const, token: cookieData.token };
 
+	if (!currentHotel) {
+		return (
+			<div className="flex items-center justify-center h-[60vh]">
+				<p className="text-muted-foreground">No hotel found. Please onboard a hotel first.</p>
+			</div>
+		);
+	}
+
+	const hotelId = currentHotel.id;
+
 	// Create all promises first (parallel pattern)
 	const graphPromise = queryClient.ensureQueryData({
-		queryKey: ["hotel-owner", "dashboard-graph"],
+		queryKey: ["hotel-owner", "dashboard-graph", hotelId],
 		queryFn: async ({ signal }) => {
 			const res = await $fetch("@get/api/hotel-owners/dashboard/graph", {
+				query: { hotelId },
 				signal,
 				auth,
 				throw: true,
@@ -47,10 +58,10 @@ function HomePage({ searchParams }: PageProps) {
 	});
 
 	const overviewPromise = queryClient.ensureQueryData({
-		queryKey: ["hotel-owner", "dashboard-overview", selectedMonth],
+		queryKey: ["hotel-owner", "dashboard-overview", hotelId, selectedMonth],
 		queryFn: async ({ signal }) => {
 			const res = await $fetch("@get/api/hotel-owners/dashboard/overview", {
-				query: { selectedMonth },
+				query: { hotelId, selectedMonth },
 				signal,
 				auth,
 				throw: true,
@@ -70,35 +81,31 @@ function HomePage({ searchParams }: PageProps) {
 		},
 	});
 
-	const hotelOverviewPromise = currentHotel
-		? queryClient.ensureQueryData({
-				queryKey: ["hotel-owner", "hotel-overview", currentHotel.id, selectedMonth],
-				queryFn: async () => {
-					try {
-						const res = await $fetch(
-							"@get/api/hotel-owners/:hotelId/overview",
-							{
-								params: { hotelId: currentHotel.id },
-								query: { selectedMonth },
-								auth,
-								throw: true,
-							},
-						);
-						return res.data;
-					} catch {
-						return null;
-					}
-				},
-			})
-		: null;
+	const hotelOverviewPromise = queryClient.ensureQueryData({
+		queryKey: ["hotel-owner", "hotel-overview", hotelId, selectedMonth],
+		queryFn: async () => {
+			try {
+				const res = await $fetch(
+					"@get/api/hotel-owners/:hotelId/overview",
+					{
+						params: { hotelId },
+						query: { selectedMonth },
+						auth,
+						throw: true,
+					},
+				);
+				return res.data;
+			} catch {
+				return null;
+			}
+		},
+	});
 
 	// Await all in parallel
 	const graphData = use(graphPromise);
 	const overviewData = use(overviewPromise);
 	const dashboardPerformanceData = use(performancePromise);
-	const hotelOverviewData = hotelOverviewPromise
-		? use(hotelOverviewPromise)
-		: null;
+	const hotelOverviewData = use(hotelOverviewPromise);
 
 	return (
 		<HotelOwnerDashboard
@@ -108,7 +115,7 @@ function HomePage({ searchParams }: PageProps) {
 			graphData={graphData}
 			performanceData={dashboardPerformanceData}
 			hotelOverviewData={hotelOverviewData}
-			selectedHotelName={currentHotel?.name}
+			selectedHotelName={currentHotel.name}
 		/>
 	);
 }

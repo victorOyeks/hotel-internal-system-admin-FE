@@ -286,7 +286,7 @@ export async function updateStaffDetailsByOwner({
 	fullName: string;
 	email: string;
 	phoneNumber: string;
-	role: string;
+	roles: string[];
 }): ServerActionResponse<string> {
 	try {
 		const sessionData = await verifySession();
