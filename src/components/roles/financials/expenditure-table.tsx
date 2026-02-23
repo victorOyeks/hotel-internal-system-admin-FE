@@ -24,7 +24,7 @@ import type { Expenditure } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon } from "lucide-react";
+import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon, CheckCircleIcon, XCircleIcon, BanknoteIcon, Loader2 } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,8 +33,20 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+} from "@/components/ui/sheet";
+import { useState, useMemo, useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { CreateExpenditureModal } from "./create-expenditure-modal";
+import { updateExpenditureStatus } from "@/lib/financials-actions";
+import { usePaginationSearchParams } from "@/lib/search-params.pagination";
+import { useQueryState, parseAsString } from "nuqs";
 
 const columnHelper = createColumnHelper<Expenditure>();
 
@@ -86,58 +98,96 @@ export const columns = [
             return <Badge variant={variant}>{status}</Badge>;
         },
     }),
-    columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => {
-            return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                            onClick={() => navigator.clipboard.writeText(row.original.id)}
-                        >
-                            Copy ID
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        {row.original.status === "PENDING" && (
-                            <>
-                                <DropdownMenuItem>Approve</DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">Reject</DropdownMenuItem>
-                            </>
-                        )}
-                        {row.original.status === "APPROVED" && (
-                            <DropdownMenuItem className="text-green-600">Mark as Paid</DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            );
-        },
-    }),
 ];
 
-function Earnings() {
+function ExpenditureDetailSheet({ expenditure, open, onOpenChange }: { expenditure: Expenditure | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+    if (!expenditure) return null;
+
+    const formatDate = (dateStr?: string | null) => {
+        if (!dateStr) return "-";
+        try {
+            return new Date(dateStr).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "2-digit",
+            });
+        } catch {
+            return dateStr;
+        }
+    };
+
+    const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+        PENDING: "secondary",
+        REJECTED: "destructive",
+        APPROVED: "default",
+        PAID: "outline",
+        OVERDUE: "destructive",
+        CANCELLED: "secondary",
+    };
+
+    const details = [
+        { label: "Reference", value: expenditure.referenceNumber ?? "-" },
+        { label: "Title", value: expenditure.title ?? "-" },
+        { label: "Description", value: expenditure.description ?? "-" },
+        { label: "Category", value: expenditure.category },
+        { label: "Amount", value: formatCurrency(expenditure.amount) },
+        { label: "Vendor", value: expenditure.vendorName ?? "-" },
+        { label: "Invoice No.", value: expenditure.invoiceNumber ?? "-" },
+        { label: "Expense Date", value: formatDate(expenditure.expenseDate) },
+        { label: "Due Date", value: formatDate(expenditure.dueDate) },
+        { label: "Paid Date", value: formatDate(expenditure.paidDate) },
+        { label: "Created", value: formatDate(expenditure.createdAt) },
+        { label: "Approved By", value: expenditure.approvedBy ?? "-" },
+    ];
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-md overflow-y-auto">
+                <SheetHeader>
+                    <SheetTitle>Expenditure Details</SheetTitle>
+                    <SheetDescription>
+                        {expenditure.title || expenditure.referenceNumber || "Expenditure"}
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">Status:</span>
+                        <Badge variant={statusVariant[expenditure.status] ?? "secondary"}>
+                            {expenditure.status}
+                        </Badge>
+                    </div>
+                    <div className="divide-y">
+                        {details.map((item) => (
+                            <div key={item.label} className="flex justify-between py-3">
+                                <span className="text-sm text-gray-500">{item.label}</span>
+                                <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
+                                    {item.value}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+function Earnings({ metrics }: { metrics?: { totalRevenue: number, netProfit: number, totalExpenses: number } }) {
     const earnings = [
         {
-            title: "Total Balance",
+            title: "Total Revenue",
             icon: DollarSignIcon,
-            value: 600_000,
+            value: metrics?.totalRevenue ?? 0,
         },
         {
             title: "Total Profit",
             icon: DollarSignIcon,
-            value: 200_000,
+            value: metrics?.netProfit ?? 0,
         },
         {
             title: "Expenses",
             icon: DollarSignIcon,
-            value: 100_000,
+            value: metrics?.totalExpenses ?? 0,
         },
     ];
     return (
@@ -226,21 +276,122 @@ function InnerTable({ table }: { table: TableType<Expenditure> }) {
     );
 }
 
-export function ExpenditureTable({ data }: { data: Expenditure[] }) {
+export function ExpenditureTable({ data, totalPages, metrics }: { data: Expenditure[], totalPages: number, metrics?: { totalRevenue: number, netProfit: number, totalExpenses: number } }) {
+    const [{ pageIndex, pageSize }, setPagination] = usePaginationSearchParams();
+    const [search, setSearch] = useQueryState("search", parseAsString.withDefault("").withOptions({ shallow: false, clearOnDefault: true }));
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+    const queryClient = useQueryClient();
+
+    const statusMutation = useMutation({
+        mutationFn: async ({ id, status }: { id: string; status: "PENDING" | "APPROVED" | "PAID" | "REJECTED" }) => {
+            await updateExpenditureStatus(id, status);
+        },
+        onSuccess: (_data, variables) => {
+            const labels: Record<string, string> = {
+                APPROVED: "approved",
+                REJECTED: "rejected",
+                PAID: "marked as paid",
+            };
+            toast.success(`Expenditure ${labels[variables.status] ?? "updated"} successfully`);
+            queryClient.invalidateQueries({ queryKey: ["financials"] });
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to update expenditure status");
+        },
+    });
+
+    const handleViewDetails = useCallback((expenditure: Expenditure) => {
+        setSelectedExpenditure(expenditure);
+        setIsDetailOpen(true);
+    }, []);
+
+    const handleStatusUpdate = useCallback((id: string, status: "PENDING" | "APPROVED" | "PAID" | "REJECTED") => {
+        statusMutation.mutate({ id, status });
+    }, [statusMutation]);
+
+    const allColumns = useMemo(() => [
+        ...columns,
+        columnHelper.display({
+            id: "actions",
+            cell: ({ row }) => {
+                const isUpdating = statusMutation.isPending && statusMutation.variables?.id === row.original.id;
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating}>
+                                {isUpdating ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => navigator.clipboard.writeText(row.original.id)}
+                            >
+                                Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleViewDetails(row.original)}>
+                                View Details
+                            </DropdownMenuItem>
+                            {row.original.status === "PENDING" && (
+                                <>
+                                    <DropdownMenuItem onClick={() => handleStatusUpdate(row.original.id, "APPROVED")}>
+                                        <CheckCircleIcon className="mr-2 h-4 w-4 text-blue-500" />
+                                        Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="text-red-600"
+                                        onClick={() => handleStatusUpdate(row.original.id, "REJECTED")}
+                                    >
+                                        <XCircleIcon className="mr-2 h-4 w-4" />
+                                        Reject
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                            {row.original.status === "APPROVED" && (
+                                <DropdownMenuItem
+                                    className="text-green-600"
+                                    onClick={() => handleStatusUpdate(row.original.id, "PAID")}
+                                >
+                                    <BanknoteIcon className="mr-2 h-4 w-4" />
+                                    Mark as Paid
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        }),
+    ], [handleViewDetails, handleStatusUpdate, statusMutation.isPending, statusMutation.variables?.id]);
+
     const table = useReactTable({
         data,
-        columns,
+        columns: allColumns,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        manualPagination: true,
+        pageCount: totalPages,
+        state: {
+            pagination: { pageIndex, pageSize },
+        },
+        onPaginationChange: setPagination,
     });
-
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     return (
         <div className="space-y-4">
-            <Earnings />
+            <Earnings metrics={metrics} />
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
@@ -253,7 +404,11 @@ export function ExpenditureTable({ data }: { data: Expenditure[] }) {
                             <input
                                 type="text"
                                 placeholder="Search..."
-                                onChange={(e) => table.setGlobalFilter(e.target.value)}
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPagination({ pageIndex: 0 });
+                                }}
                                 className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full outline-none text-sm"
                             />
                             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary h-4 w-4" />
@@ -282,6 +437,12 @@ export function ExpenditureTable({ data }: { data: Expenditure[] }) {
             <CreateExpenditureModal
                 open={isCreateModalOpen}
                 onOpenChange={setIsCreateModalOpen}
+            />
+
+            <ExpenditureDetailSheet
+                expenditure={selectedExpenditure}
+                open={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
             />
         </div>
     );
