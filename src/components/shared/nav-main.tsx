@@ -59,16 +59,16 @@ export function NavMain({
 							asChild
 							isActive={pathMatcher.match(pathname)?.path === item.url}
 						>
-							<Link href={item.url}>
+							<Link href={item.url} className="flex items-center w-full">
 								<IconLoader>{item.icon}</IconLoader>
-								{item.title}
+								<span className="flex-1">{item.title}</span>
+								{item.title === "Messages" && totalUnread > 0 && (
+									<span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-white/90 px-1.5 text-[10px] font-bold leading-none text-primary-1 tabular-nums">
+										{totalUnread > 99 ? "99+" : totalUnread}
+									</span>
+								)}
 							</Link>
 						</sidebar.SidebarMenuButton>
-						{item.title === "Messages" && totalUnread > 0 && (
-							<sidebar.SidebarMenuBadge className="bg-white/90 text-primary-1 text-[11px] font-semibold h-5 min-w-5 rounded-full shadow-sm">
-								{totalUnread > 99 ? "99+" : totalUnread}
-							</sidebar.SidebarMenuBadge>
-						)}
 					</sidebar.SidebarMenuItem>
 				))}
 			</sidebar.SidebarMenu>
