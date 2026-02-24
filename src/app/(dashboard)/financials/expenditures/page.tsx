@@ -56,7 +56,9 @@ function ExpendituresPage({ searchParams }: PageProps) {
     const data = (expenditureData?.content || []) as Expenditure[];
     const totalPages = expenditureData?.totalPages || 0;
     const overdueItems = (overdueData || []) as Expenditure[];
-    const metrics = (dashboardData && "metrics" in dashboardData ? dashboardData.metrics : null) || { totalRevenue: 0, netProfit: 0, totalExpenses: 0 };
+    const metrics = dashboardData
+        ? { totalRevenue: dashboardData.totalRevenue, netProfit: dashboardData.netProfit, totalExpenses: dashboardData.totalExpenses }
+        : { totalRevenue: 0, netProfit: 0, totalExpenses: 0 };
 
     return (
         <BreadCrumbWrapper

@@ -22,9 +22,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type { Expenditure } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon, CheckCircleIcon, XCircleIcon, BanknoteIcon, Loader2 } from "lucide-react";
+import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon, Loader2 } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -71,7 +71,7 @@ export const columns = [
     }),
     columnHelper.accessor("category", {
         header: "Category",
-        cell: (info) => info.getValue(),
+        cell: (info) => info.getValue()?.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()),
     }),
     columnHelper.accessor("vendorName", {
         header: "Vendor",
@@ -88,14 +88,15 @@ export const columns = [
         header: "Status",
         cell: (info) => {
             const status = info.getValue() as string;
-            let variant: "default" | "secondary" | "destructive" | "outline" = "default";
+            let variant: BadgeVariant = "default";
 
-            if (status === "PENDING") variant = "secondary";
-            else if (status === "REJECTED") variant = "destructive";
-            else if (status === "APPROVED") variant = "default";
-            else if (status === "PAID") variant = "outline";
+            if (status === "PENDING") variant = "yellow";
+            else if (status === "REJECTED") variant = "red";
+            else if (status === "APPROVED") variant = "blue";
+            else if (status === "PAID") variant = "green";
 
-            return <Badge variant={variant}>{status}</Badge>;
+            const label = status.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
+            return <Badge variant={variant}>{label}</Badge>;
         },
     }),
 ];
@@ -116,13 +117,13 @@ function ExpenditureDetailSheet({ expenditure, open, onOpenChange }: { expenditu
         }
     };
 
-    const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-        PENDING: "secondary",
-        REJECTED: "destructive",
-        APPROVED: "default",
-        PAID: "outline",
-        OVERDUE: "destructive",
-        CANCELLED: "secondary",
+    const statusVariant: Record<string, BadgeVariant> = {
+        PENDING: "yellow",
+        REJECTED: "red",
+        APPROVED: "blue",
+        PAID: "green",
+        OVERDUE: "red",
+        CANCELLED: "red",
     };
 
     const details = [
@@ -149,10 +150,10 @@ function ExpenditureDetailSheet({ expenditure, open, onOpenChange }: { expenditu
                         {expenditure.title || expenditure.referenceNumber || "Expenditure"}
                     </SheetDescription>
                 </SheetHeader>
-                <div className="mt-6 space-y-4">
+                <div className="mt-6 space-y-4 px-2">
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">Status:</span>
-                        <Badge variant={statusVariant[expenditure.status] ?? "secondary"}>
+                        <Badge variant={statusVariant[expenditure.status] ?? "outline"}>
                             {expenditure.status}
                         </Badge>
                     </div>
@@ -346,24 +347,20 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                             {row.original.status === "PENDING" && (
                                 <>
                                     <DropdownMenuItem onClick={() => handleStatusUpdate(row.original.id, "APPROVED")}>
-                                        <CheckCircleIcon className="mr-2 h-4 w-4 text-blue-500" />
                                         Approve
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        className="text-red-600"
+                                        variant="destructive"
                                         onClick={() => handleStatusUpdate(row.original.id, "REJECTED")}
                                     >
-                                        <XCircleIcon className="mr-2 h-4 w-4" />
                                         Reject
                                     </DropdownMenuItem>
                                 </>
                             )}
                             {row.original.status === "APPROVED" && (
                                 <DropdownMenuItem
-                                    className="text-green-600"
                                     onClick={() => handleStatusUpdate(row.original.id, "PAID")}
                                 >
-                                    <BanknoteIcon className="mr-2 h-4 w-4" />
                                     Mark as Paid
                                 </DropdownMenuItem>
                             )}

@@ -3,10 +3,17 @@
 import { getCookieData } from "@/lib/server-fns";
 import { $fetch } from "./fetch";
 import { cache } from "react";
-import type { OtherIncome } from "./api-routes/financials";
+import type {
+	OtherIncome,
+	FinancialDashboardResponse,
+} from "./api-routes/financials";
 
 export const getFinancialDashboard = cache(
-	async (params: { startDate?: string; endDate?: string; period?: string }) => {
+	async (params: {
+		startDate?: string;
+		endDate?: string;
+		period?: string;
+	}): Promise<FinancialDashboardResponse | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
@@ -17,7 +24,7 @@ export const getFinancialDashboard = cache(
 		};
 
 		const res = await $fetch("@get/api/financials/dashboard", opts);
-		return res.data;
+		return res.data as FinancialDashboardResponse;
 	},
 );
 

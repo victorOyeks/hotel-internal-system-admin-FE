@@ -11,41 +11,113 @@ const ApiResponseObject = z.object({
 
 // --- Schemas ---
 
-export const FinancialDashboardMetrics = z.object({
-	totalRevenue: z.number(),
-	totalExpenses: z.number(),
-	netProfit: z.number(),
-	grossProfitMargin: z.number(),
-	revenueGrowth: z.number(),
-	expenseGrowth: z.number(),
-	occupancyRate: z.number(),
-	revPAR: z.number(),
-	adr: z.number(),
-});
-
-export type FinancialDashboardMetrics = z.infer<
-	typeof FinancialDashboardMetrics
->;
-
-export const FinancialDashboardGraphData = z.object({
-	period: z.string(),
+export const FinancialDashboardTrendData = z.object({
+	periodStart: z.string().optional().nullable(),
+	periodEnd: z.string().optional().nullable(),
+	periodLabel: z.string().optional().nullable(),
 	revenue: z.number(),
 	expenses: z.number(),
 	profit: z.number(),
+	cashFlow: z.number().optional().nullable(),
+	profitMargin: z.number().optional().nullable(),
+	transactionCount: z.number().optional().nullable(),
 });
 
-export type FinancialDashboardGraphData = z.infer<
-	typeof FinancialDashboardGraphData
+export type FinancialDashboardTrendData = z.infer<
+	typeof FinancialDashboardTrendData
+>;
+
+export const FinancialDashboardTopRevenueStream = z.object({
+	source: z.string(),
+	amount: z.number(),
+	percentage: z.number(),
+	transactionCount: z.number().optional().nullable(),
+	averageTransactionValue: z.number().optional().nullable(),
+	paidAmount: z.number().optional().nullable(),
+	pendingAmount: z.number().optional().nullable(),
+	refundedAmount: z.number().optional().nullable(),
+});
+
+export type FinancialDashboardTopRevenueStream = z.infer<
+	typeof FinancialDashboardTopRevenueStream
+>;
+
+export const FinancialDashboardTopExpenseCategory = z.object({
+	category: z.string(),
+	categoryDisplay: z.string().optional().nullable(),
+	amount: z.number(),
+	percentage: z.number(),
+	transactionCount: z.number().optional().nullable(),
+	averageExpenseValue: z.number().optional().nullable(),
+	paidAmount: z.number().optional().nullable(),
+	pendingAmount: z.number().optional().nullable(),
+	overdueAmount: z.number().optional().nullable(),
+});
+
+export type FinancialDashboardTopExpenseCategory = z.infer<
+	typeof FinancialDashboardTopExpenseCategory
 >;
 
 export const FinancialDashboardResponse = z.object({
-	metrics: FinancialDashboardMetrics,
-	graphData: z.array(FinancialDashboardGraphData),
+	hotelId: z.string().optional().nullable(),
+	startDate: z.string().optional().nullable(),
+	endDate: z.string().optional().nullable(),
+	period: z.string().optional().nullable(),
+	totalRevenue: z.number(),
+	totalExpenses: z.number(),
+	netProfit: z.number(),
+	netProfitMargin: z.number().optional().nullable(),
+	cashBalance: z.number().optional().nullable(),
+	revenueGrowth: z.number().optional().nullable(),
+	expenseGrowth: z.number().optional().nullable(),
+	profitGrowth: z.number().optional().nullable(),
+	topRevenueStreams: z
+		.array(FinancialDashboardTopRevenueStream)
+		.optional()
+		.nullable(),
+	topExpenseCategories: z
+		.array(FinancialDashboardTopExpenseCategory)
+		.optional()
+		.nullable(),
+	totalOutstandingReceivables: z.number().optional().nullable(),
+	totalOverduePayables: z.number().optional().nullable(),
+	overdueExpendituresCount: z.number().optional().nullable(),
+	totalCustomerTransactions: z.number().optional().nullable(),
+	averageRevenuePerTransaction: z.number().optional().nullable(),
+	occupancyRate: z.number().optional().nullable(),
+	averageDailyRate: z.number().optional().nullable(),
+	revenuePerAvailableRoom: z.number().optional().nullable(),
+	financialAlerts: z.array(z.string()).optional().nullable(),
+	trendData: z.array(FinancialDashboardTrendData).optional().nullable(),
 });
 
 export type FinancialDashboardResponse = z.infer<
 	typeof FinancialDashboardResponse
 >;
+
+// Convenience aliases used by UI components
+export type FinancialDashboardMetrics = Pick<
+	FinancialDashboardResponse,
+	| "totalRevenue"
+	| "totalExpenses"
+	| "netProfit"
+	| "netProfitMargin"
+	| "cashBalance"
+	| "revenueGrowth"
+	| "expenseGrowth"
+	| "profitGrowth"
+	| "occupancyRate"
+	| "averageDailyRate"
+	| "revenuePerAvailableRoom"
+	| "totalOutstandingReceivables"
+	| "totalOverduePayables"
+	| "overdueExpendituresCount"
+	| "topRevenueStreams"
+	| "topExpenseCategories"
+	| "financialAlerts"
+>;
+
+export type FinancialDashboardGraphData = FinancialDashboardTrendData;
 
 export const OtherIncome = z.object({
 	id: z.string(),

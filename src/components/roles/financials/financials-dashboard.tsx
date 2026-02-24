@@ -1,6 +1,6 @@
 "use client";
 
-import type { FinancialDashboardMetrics, FinancialDashboardGraphData } from "@/lib/api-routes/financials";
+import type { FinancialDashboardResponse, FinancialDashboardGraphData } from "@/lib/api-routes/financials";
 import { DollarSignIcon, CalendarIcon, TrendingUpIcon } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
@@ -29,7 +29,7 @@ import type { ActiveShape } from "recharts/types/util/types";
 
 // --- Earnings Component ---
 
-function Earnings({ metrics }: { metrics: FinancialDashboardMetrics }) {
+function Earnings({ metrics }: { metrics: FinancialDashboardResponse }) {
     const earnings = [
         {
             title: "Total Balance",
@@ -102,7 +102,7 @@ function CurvedLineChart({
                 margin={{ top: 40, right: 30, left: 20, bottom: 20 }}
             >
                 <XAxis
-                    dataKey="period"
+                    dataKey="periodLabel"
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: "#9ca3af" }}
@@ -238,7 +238,7 @@ function Hero({
     metrics,
     graphData,
 }: {
-    metrics: FinancialDashboardMetrics;
+    metrics: FinancialDashboardResponse;
     graphData: FinancialDashboardGraphData[];
 }) {
     return (
@@ -335,7 +335,7 @@ function ExpensePerfByBranch() {
 // --- Main Dashboard Component ---
 
 interface FinancialsDashboardProps {
-    metrics?: FinancialDashboardMetrics;
+    metrics?: FinancialDashboardResponse;
     graphData?: FinancialDashboardGraphData[];
 }
 
