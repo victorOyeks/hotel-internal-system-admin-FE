@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+
 let audioCtx: AudioContext | null = null;
 
 /**
@@ -53,36 +55,45 @@ export function requestNotificationPermission() {
 }
 
 /**
- * Show a desktop notification for a new chat message.
- * Only shows when the tab is not focused (like WhatsApp desktop).
+ * Show an in-app toast notification AND a browser desktop notification.
+ * - Toast always shows (bottom-right, like WhatsApp desktop)
+ * - Browser notification shows only when tab is not focused
  */
 export function showMessageNotification(
 	senderName: string,
 	messageContent: string,
-	onClick?: () => void,
 ) {
-	if (typeof window === "undefined" || !("Notification" in window)) return;
-	if (Notification.permission !== "granted") return;
-	if (document.hasFocus()) return; // Don't show if tab is focused
-
 	const body =
-		messageContent.length > 80
-			? `${messageContent.slice(0, 80)}...`
+		messageContent.length > 100
+			? `${messageContent.slice(0, 100)}...`
 			: messageContent;
 
-	const notification = new Notification(senderName, {
-		body,
-		icon: "/favicon.ico",
-		tag: "chat-message", // Replaces previous notification instead of stacking
-		silent: true, // We play our own sound
+	// In-app toast — always visible
+	toast.message(senderName, {
+		description: body,
+		position: "bottom-right",
+		duration: 4000,
 	});
 
-	notification.onclick = () => {
-		window.focus();
-		notification.close();
-		onClick?.();
-	};
+	// Browser desktop notification — only when tab is not focused
+	if (
+		typeof window !== "undefined" &&
+		"Notification" in window &&
+		Notification.permission === "granted" &&
+		!document.hasFocus()
+	) {
+		const notification = new Notification(senderName, {
+			body,
+			icon: "/favicon.ico",
+			tag: "chat-message",
+			silent: true,
+		});
 
-	// Auto-close after 5 seconds
-	setTimeout(() => notification.close(), 5000);
+		notification.onclick = () => {
+			window.focus();
+			notification.close();
+		};
+
+		setTimeout(() => notification.close(), 5000);
+	}
 }

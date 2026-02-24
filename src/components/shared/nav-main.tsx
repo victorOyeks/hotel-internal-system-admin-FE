@@ -65,7 +65,7 @@ export function NavMain({
 							</Link>
 						</sidebar.SidebarMenuButton>
 						{item.title === "Messages" && totalUnread > 0 && (
-							<sidebar.SidebarMenuBadge className="bg-red-500 text-white rounded-full">
+							<sidebar.SidebarMenuBadge className="bg-white/90 text-primary-1 text-[11px] font-semibold h-5 min-w-5 rounded-full shadow-sm">
 								{totalUnread > 99 ? "99+" : totalUnread}
 							</sidebar.SidebarMenuBadge>
 						)}
