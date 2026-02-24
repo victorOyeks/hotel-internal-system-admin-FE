@@ -60,49 +60,54 @@ export default function RentalMaintenancePageRoute() {
 		}),
 	);
 
+	// Single batch call instead of N+1 per-item calls
 	const maintenanceHistoryLogs = use(
 		qc.ensureQueryData({
 			queryKey: ["rentals", "maintenance", "history"],
 			queryFn: async ({ signal }) => {
 				try {
-					const settled = await Promise.allSettled(
-						rentalItems.map(async (item: any) => {
-							const response = await $fetch(
-								"@get/api/hotels/rentals/items/:itemId/maintenance/history",
-								{
-									params: { itemId: item.id },
-									auth: { type: "Bearer", token },
-									signal,
-									throw: true,
-								},
-							);
-							const logs = Array.isArray(response.data)
-								? response.data
-								: (response.data?.content ?? []);
-							return logs.map((log: any) => ({
-								...log,
-								rentalItemId: log?.rentalItemId || log?.itemId || item.id,
-								rentalItem: {
-									...(log?.rentalItem || {}),
-									id:
-										log?.rentalItem?.id ||
-										log?.rentalItemId ||
-										log?.itemId ||
-										item.id,
-									name: log?.rentalItem?.name || item.name || "Unknown item",
-									category: log?.rentalItem?.category || item.category || "OTHERS",
-								},
-							}));
-						}),
+					const response = await $fetch(
+						"@get/api/hotels/rentals/maintenance/history",
+						{
+							auth: { type: "Bearer", token },
+							signal,
+							throw: true,
+						},
 					);
-					return settled
-						.filter(
-							(
-								result,
-							): result is PromiseFulfilledResult<Array<Record<string, unknown>>> =>
-								result.status === "fulfilled",
-						)
-						.flatMap((result) => result.value);
+					const logs = Array.isArray(response.data)
+						? response.data
+						: (response.data?.content ?? []);
+
+					// Build a lookup of rental items by ID for enrichment
+					const itemMap = new Map<string, any>();
+					for (const item of rentalItems) {
+						itemMap.set(item.id, item);
+					}
+
+					return logs.map((log: any) => {
+						const item = itemMap.get(log?.rentalItemId) ?? {};
+						return {
+							...log,
+							rentalItemId: log?.rentalItemId || log?.itemId || "",
+							rentalItem: {
+								...(log?.rentalItem || {}),
+								id:
+									log?.rentalItem?.id ||
+									log?.rentalItemId ||
+									log?.itemId ||
+									"",
+								name:
+									log?.rentalItem?.name ||
+									log?.rentalItemName ||
+									item?.name ||
+									"Unknown item",
+								category:
+									log?.rentalItem?.category ||
+									item?.category ||
+									"OTHERS",
+							},
+						};
+					});
 				} catch {
 					return [];
 				}

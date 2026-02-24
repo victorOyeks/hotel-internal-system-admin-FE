@@ -8,7 +8,7 @@ type RentalsLayoutProps = {
 export default function RentalsLayout({ children }: RentalsLayoutProps) {
 	return (
 		<>
-			<RentalsAutoRefresh intervalMs={1000} />
+			<RentalsAutoRefresh intervalMs={60_000} />
 			{children}
 		</>
 	);
