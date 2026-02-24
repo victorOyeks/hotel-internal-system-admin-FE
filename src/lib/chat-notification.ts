@@ -3,6 +3,25 @@
 import { toast } from "sonner";
 
 let audioCtx: AudioContext | null = null;
+let audioUnlocked = false;
+
+// Unlock AudioContext on first user interaction
+if (typeof window !== "undefined") {
+	const unlock = () => {
+		if (audioUnlocked) return;
+		audioUnlocked = true;
+		if (!audioCtx) {
+			audioCtx = new AudioContext();
+		}
+		if (audioCtx.state === "suspended") {
+			audioCtx.resume();
+		}
+		window.removeEventListener("click", unlock);
+		window.removeEventListener("keydown", unlock);
+	};
+	window.addEventListener("click", unlock, { once: true });
+	window.addEventListener("keydown", unlock, { once: true });
+}
 
 /**
  * Plays a short notification chime using the Web Audio API.
@@ -12,6 +31,11 @@ export function playNotificationSound() {
 	try {
 		if (!audioCtx) {
 			audioCtx = new AudioContext();
+		}
+
+		// Resume if suspended (browser autoplay policy)
+		if (audioCtx.state === "suspended") {
+			audioCtx.resume();
 		}
 
 		const now = audioCtx.currentTime;
