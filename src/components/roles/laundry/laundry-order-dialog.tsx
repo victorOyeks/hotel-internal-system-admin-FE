@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createLaundryOrder, getLaundryItems } from "@/lib/laundry-actions";
+import { getCheckedInBookingsForRentals } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -89,7 +91,6 @@ const laundryOrderSchema = z.object({
 	customerName: z.string().min(1, "Customer name is required"),
 	customerPhone: z.string().optional(),
 	customerEmail: z.string().email("Invalid email").optional().or(z.literal("")),
-	roomIdentifier: z.string().optional(),
 	urgency: z.string().min(1, "Select urgency level"),
 	items: z.array(orderItemSchema).min(1, "At least one item is required"),
 	specialInstructions: z.string().optional(),
@@ -103,12 +104,20 @@ type LaundryOrderDialogProps = {
 	onSuccess?: () => void;
 };
 
+type CheckedInBooking = {
+	bookingId: string;
+	guestName: string;
+	guestPhoneNumber?: string;
+	roomIdentifier?: string;
+};
+
 export function LaundryOrderDialog({
 	trigger,
 	onSuccess,
 }: LaundryOrderDialogProps) {
 	const [open, setOpen] = useState(false);
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const form = useForm<LaundryOrderFormData>({
 		resolver: zodResolver(laundryOrderSchema),
@@ -116,7 +125,6 @@ export function LaundryOrderDialog({
 			customerName: "",
 			customerPhone: "",
 			customerEmail: "",
-			roomIdentifier: "",
 			bookingId: "",
 			urgency: "STANDARD",
 			items: [
@@ -150,13 +158,34 @@ export function LaundryOrderDialog({
 		enabled: open,
 	});
 
+	const { data: checkedInBookings, isLoading: isLoadingCheckedInBookings } =
+		useQuery({
+			queryKey: ["rentals", "checked-in-bookings"],
+			queryFn: async () => {
+				const result = await getCheckedInBookingsForRentals();
+				if (!result.success) throw new Error(result.error);
+				return (result.data as any[])
+					.map((booking) => ({
+						bookingId: String(
+							booking.bookingId ?? booking.id ?? booking.customId ?? "",
+						),
+						guestName: String(
+							booking.guestName ?? booking.customerName ?? "Guest",
+						),
+						guestPhoneNumber: booking.guestPhoneNumber ?? booking.phoneNumber,
+						roomIdentifier: booking.roomIdentifier ?? booking.roomNo,
+					}))
+					.filter((booking) => booking.bookingId);
+			},
+			enabled: open,
+		});
+
 	const mutation = useMutation({
 		mutationFn: async (data: LaundryOrderFormData) => {
 			const payload = {
 				...data,
 				customerPhone: data.customerPhone || undefined,
 				customerEmail: data.customerEmail || undefined,
-				roomIdentifier: data.roomIdentifier || undefined,
 				bookingId: data.bookingId || undefined,
 				specialInstructions: data.specialInstructions || undefined,
 				customerNotes: data.customerNotes || undefined,
@@ -180,6 +209,7 @@ export function LaundryOrderDialog({
 			queryClient.invalidateQueries({
 				queryKey: ["laundry", "dashboard-stats"],
 			});
+			router.refresh();
 			setOpen(false);
 			form.reset();
 			onSuccess?.();
@@ -191,6 +221,18 @@ export function LaundryOrderDialog({
 
 	const selectedUrgency = form.watch("urgency");
 	const urgencyInfo = URGENCY_LEVELS.find((u) => u.value === selectedUrgency);
+	const selectedBookingId = form.watch("bookingId");
+
+	useEffect(() => {
+		if (!selectedBookingId || !checkedInBookings?.length) return;
+		const selected = checkedInBookings.find(
+			(booking) => booking.bookingId === selectedBookingId,
+		);
+		if (!selected) return;
+
+		form.setValue("customerName", selected.guestName || "");
+		form.setValue("customerPhone", selected.guestPhoneNumber || "");
+	}, [selectedBookingId, checkedInBookings, form]);
 
 	// Calculate estimated total
 	const watchedItems = form.watch("items");
@@ -270,40 +312,54 @@ export function LaundryOrderDialog({
 									/>
 								</div>
 
-								<div className="grid grid-cols-2 gap-4">
-									<FormField
-										control={form.control}
-										name="roomIdentifier"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Room Number</FormLabel>
+								<FormField
+									control={form.control}
+									name="bookingId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Booking ID</FormLabel>
+											<Select
+												value={field.value || "__WALK_IN__"}
+												onValueChange={(value) => {
+													field.onChange(value === "__WALK_IN__" ? "" : value);
+												}}
+											>
 												<FormControl>
-													<Input
-														placeholder="e.g. 305"
-														{...field}
-													/>
+													<SelectTrigger>
+														<SelectValue placeholder="Select checked-in customer" />
+													</SelectTrigger>
 												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-									<FormField
-										control={form.control}
-										name="bookingId"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Booking ID</FormLabel>
-												<FormControl>
-													<Input
-														placeholder="For hotel guests"
-														{...field}
-													/>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-								</div>
+												<SelectContent>
+													<SelectItem value="__WALK_IN__">
+														Walk-in customer (no booking)
+													</SelectItem>
+													{isLoadingCheckedInBookings ? (
+														<SelectItem value="__LOADING__" disabled>
+															Loading checked-in customers...
+														</SelectItem>
+													) : checkedInBookings?.length ? (
+														checkedInBookings.map((booking) => (
+															<SelectItem
+																key={booking.bookingId}
+																value={booking.bookingId}
+															>
+																{booking.guestName}
+																{booking.roomIdentifier
+																	? ` (Room ${booking.roomIdentifier})`
+																	: ""}
+															</SelectItem>
+														))
+													) : (
+														<SelectItem value="__NO_BOOKINGS__" disabled>
+															No checked-in customers found
+														</SelectItem>
+													)}
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 							</CardContent>
 						</Card>
 
