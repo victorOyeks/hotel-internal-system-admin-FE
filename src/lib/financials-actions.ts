@@ -6,6 +6,9 @@ import { cache } from "react";
 import type {
 	OtherIncome,
 	FinancialDashboardResponse,
+	ProfitAndLossStatement,
+	CashFlowStatement,
+	ComprehensiveSummaryData,
 } from "./api-routes/financials";
 
 export const getFinancialDashboard = cache(
@@ -138,9 +141,7 @@ export const updateExpenditureStatus = async (
 	const res = await $fetch("@patch/api/financials/expenditures/:id/status", {
 		params: { id },
 		auth: { type: "Bearer", token: cookieData.token },
-		body: {
-			status,
-		},
+		query: { status },
 		throw: true,
 	});
 
@@ -148,7 +149,11 @@ export const updateExpenditureStatus = async (
 };
 
 export const getProfitAndLoss = cache(
-	async (params: { startDate: string; endDate: string; period?: string }) => {
+	async (params: {
+		startDate: string;
+		endDate: string;
+		period?: string;
+	}): Promise<ProfitAndLossStatement | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
@@ -160,12 +165,16 @@ export const getProfitAndLoss = cache(
 
 		const res = await $fetch("@get/api/financials/profit-and-loss", opts);
 
-		return res.data;
+		return res.data as ProfitAndLossStatement;
 	},
 );
 
 export const getCashFlow = cache(
-	async (params: { startDate: string; endDate: string; period?: string }) => {
+	async (params: {
+		startDate: string;
+		endDate: string;
+		period?: string;
+	}): Promise<CashFlowStatement | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
@@ -177,7 +186,7 @@ export const getCashFlow = cache(
 
 		const res = await $fetch("@get/api/financials/cash-flow", opts);
 
-		return res.data;
+		return res.data as CashFlowStatement;
 	},
 );
 
@@ -197,6 +206,7 @@ export const getOverdueExpenditures = cache(async () => {
 
 export const getConsumptionReport = cache(
 	async (params: {
+		hotelId?: string;
 		startDate?: string;
 		endDate?: string;
 		page?: string;
@@ -219,7 +229,10 @@ export const getConsumptionReport = cache(
 );
 
 export const getComprehensiveSummary = cache(
-	async (params: { startDate?: string; endDate?: string }) => {
+	async (params: {
+		startDate?: string;
+		endDate?: string;
+	}): Promise<ComprehensiveSummaryData | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
@@ -231,7 +244,7 @@ export const getComprehensiveSummary = cache(
 
 		const res = await $fetch("@get/api/financials/summary/comprehensive", opts);
 
-		return res.data;
+		return res.data as ComprehensiveSummaryData;
 	},
 );
 

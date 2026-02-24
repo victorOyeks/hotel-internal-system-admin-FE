@@ -51,8 +51,8 @@ function ReportsPage({ searchParams }: PageProps) {
         queryClient.ensureQueryData({
             queryKey: ["financials", "consumption", cookieData.userId, query],
             queryFn: () => getConsumptionReport({
-                startDate: query.startDate || "",
-                endDate: query.endDate || "",
+                startDate: query.startDate || undefined,
+                endDate: query.endDate || undefined,
                 page: "0",
                 size: "20"
             })

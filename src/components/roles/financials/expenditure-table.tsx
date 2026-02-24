@@ -47,6 +47,7 @@ import { CreateExpenditureModal } from "./create-expenditure-modal";
 import { updateExpenditureStatus } from "@/lib/financials-actions";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { useQueryState, parseAsString } from "nuqs";
+import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<Expenditure>();
 
@@ -298,6 +299,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
             };
             toast.success(`Expenditure ${labels[variables.status] ?? "updated"} successfully`);
             queryClient.invalidateQueries({ queryKey: ["financials"] });
+            revalidateRoute("/dashboard/expenditures")
         },
         onError: (error) => {
             toast.error(error instanceof Error ? error.message : "Failed to update expenditure status");
@@ -319,6 +321,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
             id: "actions",
             cell: ({ row }) => {
                 const isUpdating = statusMutation.isPending && statusMutation.variables?.id === row.original.id;
+                const pendingStatus = statusMutation.variables?.status;
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -346,22 +349,27 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                             </DropdownMenuItem>
                             {row.original.status === "PENDING" && (
                                 <>
-                                    <DropdownMenuItem onClick={() => handleStatusUpdate(row.original.id, "APPROVED")}>
-                                        Approve
+                                    <DropdownMenuItem
+                                        disabled={isUpdating}
+                                        onClick={() => handleStatusUpdate(row.original.id, "APPROVED")}
+                                    >
+                                        {isUpdating && pendingStatus === "APPROVED" ? "Approving..." : "Approve"}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         variant="destructive"
+                                        disabled={isUpdating}
                                         onClick={() => handleStatusUpdate(row.original.id, "REJECTED")}
                                     >
-                                        Reject
+                                        {isUpdating && pendingStatus === "REJECTED" ? "Rejecting..." : "Reject"}
                                     </DropdownMenuItem>
                                 </>
                             )}
                             {row.original.status === "APPROVED" && (
                                 <DropdownMenuItem
+                                    disabled={isUpdating}
                                     onClick={() => handleStatusUpdate(row.original.id, "PAID")}
                                 >
-                                    Mark as Paid
+                                    {isUpdating && pendingStatus === "PAID" ? "Processing..." : "Mark as Paid"}
                                 </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>
@@ -369,7 +377,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                 );
             },
         }),
-    ], [handleViewDetails, handleStatusUpdate, statusMutation.isPending, statusMutation.variables?.id]);
+    ], [handleViewDetails, handleStatusUpdate, statusMutation.isPending, statusMutation.variables?.id, statusMutation.variables?.status]);
 
     const table = useReactTable({
         data,

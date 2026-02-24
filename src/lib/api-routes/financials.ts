@@ -343,7 +343,7 @@ export const financialsRoutes = {
 	},
 	"@patch/api/financials/expenditures/:id/status": {
 		params: z.object({ id: z.string() }),
-		input: z.object({
+		query: z.object({
 			status: z.enum(["PENDING", "APPROVED", "PAID", "REJECTED"]),
 		}),
 		output: ApiResponseObject.extend({

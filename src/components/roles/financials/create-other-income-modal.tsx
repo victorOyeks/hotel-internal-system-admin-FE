@@ -8,7 +8,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createOtherIncome } from "@/lib/financials-actions";
-import { Loader2, PlusIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface CreateOtherIncomeModalProps {
     open: boolean;
@@ -108,7 +108,7 @@ export function CreateOtherIncomeModal({
                         <div className="space-y-2">
                             <Label htmlFor="amount">Amount <span className="text-red-500">*</span></Label>
                             <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                                <span className="absolute left-3 top-2.5 text-muted-foreground">₦</span>
                                 <Input
                                     id="amount"
                                     type="number"
