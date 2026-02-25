@@ -53,7 +53,7 @@ function ChatGlobalInner({
 	useChatWebSocket(token, hotelId, userId);
 
 	const fetchUnreadConversations = useCallback(async () => {
-		const result = await getConversations(0, 100);
+		const result = await getConversations(0, 100, hotelId);
 		if (result.success && result.data) {
 			const data = result.data as { content: { unreadCount: number }[] };
 			const count = (data.content ?? []).filter(
@@ -61,7 +61,7 @@ function ChatGlobalInner({
 			).length;
 			setTotalUnread(count);
 		}
-	}, [setTotalUnread]);
+	}, [setTotalUnread, hotelId]);
 
 	// Fetch on mount + poll every 30s
 	useEffect(() => {

@@ -51,7 +51,7 @@ export function useChatWebSocket(
 				queryClient.invalidateQueries({ queryKey: chatKeys.unreadCount() });
 
 				// Fetch initial online users so we know who's already online
-				getOnlineUsers().then((result) => {
+				getOnlineUsers(hotelId).then((result) => {
 					if (result.success && Array.isArray(result.data)) {
 						setOnlineUsers(result.data as string[]);
 					}

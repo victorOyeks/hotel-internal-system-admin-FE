@@ -34,8 +34,8 @@ async function chatFetch<T>(
 	}
 }
 
-export async function getOrCreateOneOnOneConversation(otherUserId: string) {
-	return chatFetch(`/conversations/one-on-one/${otherUserId}`, {
+export async function getOrCreateOneOnOneConversation(otherUserId: string, hotelId: string) {
+	return chatFetch(`/conversations/one-on-one/${otherUserId}?hotelId=${hotelId}`, {
 		method: "POST",
 	});
 }
@@ -43,9 +43,10 @@ export async function getOrCreateOneOnOneConversation(otherUserId: string) {
 export async function createGroupConversation(
 	conversationName: string,
 	participantUserIds: string[],
+	hotelId: string,
 ) {
 	return chatFetch(
-		`/conversations/group?conversationName=${encodeURIComponent(conversationName)}`,
+		`/conversations/group?conversationName=${encodeURIComponent(conversationName)}&hotelId=${hotelId}`,
 		{
 			method: "POST",
 			body: JSON.stringify(participantUserIds),
@@ -53,8 +54,10 @@ export async function createGroupConversation(
 	);
 }
 
-export async function getConversations(page = 0, size = 20) {
-	return chatFetch(`/conversations?page=${page}&size=${size}`, {
+export async function getConversations(page = 0, size = 20, hotelId?: string) {
+	const params = new URLSearchParams({ page: String(page), size: String(size) });
+	if (hotelId) params.set("hotelId", hotelId);
+	return chatFetch(`/conversations?${params.toString()}`, {
 		method: "GET",
 	});
 }
@@ -63,9 +66,16 @@ export async function searchConversations(
 	searchTerm: string,
 	page = 0,
 	size = 20,
+	hotelId?: string,
 ) {
+	const params = new URLSearchParams({
+		searchTerm,
+		page: String(page),
+		size: String(size),
+	});
+	if (hotelId) params.set("hotelId", hotelId);
 	return chatFetch(
-		`/conversations/search?searchTerm=${encodeURIComponent(searchTerm)}&page=${page}&size=${size}`,
+		`/conversations/search?${params.toString()}`,
 		{ method: "GET" },
 	);
 }
@@ -75,6 +85,7 @@ export async function sendMessage(
 	content: string,
 	messageType = "TEXT",
 	replyToMessageId?: string,
+	hotelId?: string,
 ) {
 	const params = new URLSearchParams({
 		content,
@@ -82,6 +93,9 @@ export async function sendMessage(
 	});
 	if (replyToMessageId) {
 		params.set("replyToMessageId", replyToMessageId);
+	}
+	if (hotelId) {
+		params.set("hotelId", hotelId);
 	}
 	return chatFetch(
 		`/conversations/${conversationId}/messages?${params.toString()}`,
@@ -113,8 +127,9 @@ export async function getUnreadCount(conversationId: string) {
 	);
 }
 
-export async function getTotalUnreadCount() {
-	return chatFetch<number>("/unread-count", { method: "GET" });
+export async function getTotalUnreadCount(hotelId?: string) {
+	const params = hotelId ? `?hotelId=${hotelId}` : "";
+	return chatFetch<number>(`/unread-count${params}`, { method: "GET" });
 }
 
 export async function deleteMessage(messageId: string) {
@@ -134,8 +149,9 @@ export async function getConversationPresence(conversationId: string) {
 	});
 }
 
-export async function getOnlineUsers() {
-	return chatFetch("/presence/online", { method: "GET" });
+export async function getOnlineUsers(hotelId?: string) {
+	const params = hotelId ? `?hotelId=${hotelId}` : "";
+	return chatFetch(`/presence/online${params}`, { method: "GET" });
 }
 
 export async function checkUserOnline(userId: string) {

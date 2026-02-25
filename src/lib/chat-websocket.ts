@@ -44,6 +44,7 @@ class ChatWebSocketService {
 			webSocketFactory: () => new SockJS(`${baseUrl}/ws`),
 			connectHeaders: {
 				Authorization: `Bearer ${token}`,
+				"X-Hotel-Id": hotelId,
 			},
 			reconnectDelay: 5000,
 			heartbeatIncoming: 10000,

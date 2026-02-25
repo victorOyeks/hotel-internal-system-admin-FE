@@ -18,6 +18,7 @@ import {
 	activeConversationIdAtom,
 	activeConversationAtom,
 	mobileChatViewAtom,
+	chatHotelIdAtom,
 } from "@/lib/chat-store";
 import { chatWs } from "@/lib/chat-websocket";
 import { breadcrumbAtom } from "@/lib/store";
@@ -38,6 +39,12 @@ export function ChatLayout({
 	);
 	const [activeConversation, setActiveConversation] = useAtom(activeConversationAtom);
 	const [mobileView, setMobileView] = useAtom(mobileChatViewAtom);
+	const setChatHotelId = useSetAtom(chatHotelIdAtom);
+
+	// Set hotel context for chat hooks
+	useEffect(() => {
+		setChatHotelId(hotelId);
+	}, [hotelId, setChatHotelId]);
 
 	useLayoutEffect(() => {
 		setBreadcrumb({

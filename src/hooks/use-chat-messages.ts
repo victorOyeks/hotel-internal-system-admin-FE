@@ -5,6 +5,7 @@ import {
 	useMutation,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 import { chatKeys } from "@/lib/chat-query-keys";
 import {
 	getMessages,
@@ -13,6 +14,7 @@ import {
 	editMessage as editMessageAction,
 	markConversationAsRead as markReadAction,
 } from "@/lib/chat-actions";
+import { chatHotelIdAtom } from "@/lib/chat-store";
 import type {
 	ChatMessageResponse,
 	CustomPage,
@@ -36,6 +38,7 @@ export function useChatMessages(conversationId: string | null) {
 
 export function useSendMessage() {
 	const queryClient = useQueryClient();
+	const hotelId = useAtomValue(chatHotelIdAtom);
 
 	return useMutation({
 		mutationFn: async ({
@@ -54,6 +57,7 @@ export function useSendMessage() {
 				content,
 				messageType,
 				replyToMessageId,
+				hotelId,
 			);
 			if (!result.success) throw new Error(result.error);
 			return result.data as ChatMessageResponse;
