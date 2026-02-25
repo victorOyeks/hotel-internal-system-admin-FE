@@ -55,7 +55,6 @@ export const hotelOwnerLinks = [
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Operations",
 		icon: <BarChart3Icon />,
@@ -73,6 +72,7 @@ export const hotelOwnerLinks = [
 		url: "/dashboard/notifications",
 	},
 	{ title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 
 export const managerOwnerLinks = [
@@ -99,7 +99,6 @@ export const managerOwnerLinks = [
 		icon: <IdCardIcon />,
 		url: "/dashboard/staff-management",
 	},
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Operations",
 		icon: <Building2Icon />,
@@ -121,6 +120,7 @@ export const managerOwnerLinks = [
 		icon: <BookOpenIcon />,
 		url: "/dashboard/activity",
 	},
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 
 export const inventoryOfficerLinks = [
@@ -131,7 +131,6 @@ export const inventoryOfficerLinks = [
 		url: "/dashboard/products",
 	},
 	// { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Suppliers",
 		icon: <TruckIcon />,
@@ -173,6 +172,7 @@ export const inventoryOfficerLinks = [
 		icon: <FileDiffIcon />,
 		url: "/dashboard/adjustments",
 	},
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 
 export const frontDeskLinks = [
@@ -180,7 +180,6 @@ export const frontDeskLinks = [
 	{ title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
 	{ title: "Rooms", icon: <HotelIcon />, url: "/dashboard/rooms" },
 	{ title: "Guests Log", icon: <IdCardIcon />, url: "/dashboard/guests" },
-	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 	{
 		title: "Lost & Found",
 		icon: <FolderClosedIcon />,
@@ -192,6 +191,7 @@ export const frontDeskLinks = [
 		icon: <LandmarkIcon />,
 		url: "/dashboard/organizations",
 	},
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 
 export const restaurantLinks = [

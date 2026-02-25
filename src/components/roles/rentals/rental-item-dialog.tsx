@@ -158,16 +158,16 @@ export function RentalItemDialog({
 			brand: "",
 			model: "",
 			serialNumber: "",
-			hourlyRate: 0,
-			dailyRate: 0,
-			weeklyRate: 0,
-			monthlyRate: 0,
-			flatRate: 0,
-			depositAmount: 0,
+			hourlyRate: undefined,
+			dailyRate: undefined,
+			weeklyRate: undefined,
+			monthlyRate: undefined,
+			flatRate: undefined,
+			depositAmount: undefined,
 			totalQuantity: 1,
-			replacementValue: 0,
-			lateReturnPenaltyPerHour: 0,
-			lateReturnPenaltyPerDay: 0,
+			replacementValue: undefined,
+			lateReturnPenaltyPerHour: undefined,
+			lateReturnPenaltyPerDay: undefined,
 			size: "",
 			color: "",
 			specifications: "",
@@ -176,7 +176,7 @@ export function RentalItemDialog({
 			requiresDeposit: true,
 			requiresIdentification: false,
 			requiresSignedAgreement: false,
-			minimumAge: 0,
+			minimumAge: undefined,
 			active: true,
 		},
 	});
@@ -460,9 +460,15 @@ export function RentalItemDialog({
 													<Input
 														type="number"
 														min="1"
+														placeholder="1"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
-															field.onChange(parseInt(e.target.value))
+															field.onChange(
+																e.target.value
+																	? parseInt(e.target.value)
+																	: undefined,
+															)
 														}
 													/>
 												</FormControl>
@@ -487,8 +493,13 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
-															field.onChange(parseFloat(e.target.value))
+															field.onChange(
+																e.target.value
+																	? parseFloat(e.target.value)
+																	: undefined,
+															)
 														}
 													/>
 												</FormControl>
@@ -558,6 +569,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -585,6 +597,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -612,6 +625,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -639,6 +653,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -666,6 +681,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -694,6 +710,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -726,6 +743,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -753,6 +771,7 @@ export function RentalItemDialog({
 														step="0.01"
 														placeholder="0.00"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
@@ -934,6 +953,7 @@ export function RentalItemDialog({
 														min="0"
 														placeholder="0"
 														{...field}
+														value={field.value ?? ""}
 														onChange={(e) =>
 															field.onChange(
 																e.target.value
