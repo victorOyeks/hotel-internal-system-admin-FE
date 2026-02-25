@@ -10,6 +10,7 @@ import { ProfitLossStatement } from "@/components/roles/financials/profit-loss-s
 import { CashFlowStatement } from "@/components/roles/financials/cash-flow-statement";
 import { ConsumptionReport } from "@/components/roles/financials/consumption-report";
 import { ComprehensiveSummary } from "@/components/roles/financials/comprehensive-summary";
+import { FinancialFilters } from "@/components/roles/financials/financial-filters";
 
 const loadSearchParams = createLoader(financialSearchParams);
 
@@ -81,11 +82,14 @@ function ReportsPage({ searchParams }: PageProps) {
             }}
         >
             <div className="space-y-4 px-2">
-                <div>
-                    <h1 className="text-xl font-semibold text-primary">Financial Reports</h1>
-                    <p className="text-sm text-gray-400">
-                        Detailed statements and analysis of your financial performance.
-                    </p>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h1 className="text-xl font-semibold text-primary">Financial Reports</h1>
+                        <p className="text-sm text-gray-400">
+                            Detailed statements and analysis of your financial performance.
+                        </p>
+                    </div>
+                    <FinancialFilters />
                 </div>
 
                 <Tabs defaultValue="pl" className="space-y-4">

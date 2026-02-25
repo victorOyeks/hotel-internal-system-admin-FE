@@ -24,7 +24,7 @@ import type { OtherIncome } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon } from "lucide-react";
+import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,7 +33,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { TableFilter } from "@/components/shared/table-filter";
 import { useState } from "react";
+import { useQueryStates, useQueryState, parseAsString } from "nuqs";
 import { CreateOtherIncomeModal } from "./create-other-income-modal";
 
 const columnHelper = createColumnHelper<OtherIncome>();
@@ -237,6 +246,13 @@ export function OtherIncomeTable({ data }: { data: OtherIncome[] }) {
         getFilteredRowModel: getFilteredRowModel(),
     });
 
+    const [search, setSearch] = useQueryState("search", parseAsString.withDefault("").withOptions({ shallow: false, clearOnDefault: true }));
+    const [filters, setFilters] = useQueryStates({
+        category: parseAsString,
+        startDate: parseAsString,
+        endDate: parseAsString,
+    });
+    const [filterOpen, setFilterOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     return (
@@ -254,21 +270,106 @@ export function OtherIncomeTable({ data }: { data: OtherIncome[] }) {
                             <input
                                 type="text"
                                 placeholder="Search..."
-                                onChange={(e) => table.setGlobalFilter(e.target.value)}
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    table.setGlobalFilter(e.target.value);
+                                }}
                                 className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full outline-none text-sm"
                             />
                             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary h-4 w-4" />
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button
-                                size={"sm"}
-                                variant={"ghost"}
-                                className="rounded-md md:rounded-xl bg-gray-100"
-                            >
-                                <FilterIcon className="md:mr-2 h-4 w-4" />
-                                <span className="hidden md:inline">Filter</span>
-                            </Button>
+                            <TableFilter open={filterOpen} setOpen={setFilterOpen} count={(filters.category ? 1 : 0) + (filters.startDate ? 1 : 0) + (filters.endDate ? 1 : 0)}>
+                                <div className="flex flex-col gap-y-4 w-[280px]">
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Category</h4>
+                                        <Select
+                                            value={filters.category ?? "all"}
+                                            onValueChange={(value) =>
+                                                setFilters({
+                                                    category: value === "all" ? null : value,
+                                                })
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All categories" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Categories</SelectItem>
+                                                <SelectItem value="VENDING">Vending</SelectItem>
+                                                <SelectItem value="LAUNDRY">Laundry</SelectItem>
+                                                <SelectItem value="PARKING">Parking</SelectItem>
+                                                <SelectItem value="EVENT">Event</SelectItem>
+                                                <SelectItem value="OTHER">Other</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Start Date</h4>
+                                        <input
+                                            type="date"
+                                            value={filters.startDate ?? ""}
+                                            onChange={(e) => setFilters({ startDate: e.target.value || null })}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">End Date</h4>
+                                        <input
+                                            type="date"
+                                            value={filters.endDate ?? ""}
+                                            onChange={(e) => setFilters({ endDate: e.target.value || null })}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between border-t pt-4">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilters({ category: null, startDate: null, endDate: null })}
+                                            className="text-muted-foreground hover:text-foreground"
+                                        >
+                                            Reset
+                                        </Button>
+                                        <Button size="sm" onClick={() => setFilterOpen(false)}>
+                                            Done
+                                        </Button>
+                                    </div>
+                                </div>
+                            </TableFilter>
+
+                            {/* Applied Filters */}
+                            {(filters.category || filters.startDate || filters.endDate) && (
+                                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+                                    {filters.category && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            {filters.category}
+                                            <button type="button" onClick={() => setFilters({ category: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {filters.startDate && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            From: {filters.startDate}
+                                            <button type="button" onClick={() => setFilters({ startDate: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {filters.endDate && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            To: {filters.endDate}
+                                            <button type="button" onClick={() => setFilters({ endDate: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
                             <Button size={"sm"} onClick={() => setIsCreateModalOpen(true)} className="rounded-md md:rounded-xl">
                                 <PlusIcon className="mr-2 h-4 w-4" />
                                 <span className="hidden md:inline">Add Income</span>

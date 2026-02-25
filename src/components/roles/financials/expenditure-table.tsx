@@ -24,7 +24,7 @@ import type { Expenditure } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, FilterIcon, DollarSignIcon, SearchIcon, Loader2 } from "lucide-react";
+import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,6 +33,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { TableFilter } from "@/components/shared/table-filter";
 import {
     Sheet,
     SheetContent,
@@ -46,7 +54,7 @@ import { toast } from "sonner";
 import { CreateExpenditureModal } from "./create-expenditure-modal";
 import { updateExpenditureStatus } from "@/lib/financials-actions";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { useQueryState, parseAsString } from "nuqs";
+import { useQueryState, useQueryStates, parseAsString } from "nuqs";
 import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<Expenditure>();
@@ -281,6 +289,12 @@ function InnerTable({ table }: { table: TableType<Expenditure> }) {
 export function ExpenditureTable({ data, totalPages, metrics }: { data: Expenditure[], totalPages: number, metrics?: { totalRevenue: number, netProfit: number, totalExpenses: number } }) {
     const [{ pageIndex, pageSize }, setPagination] = usePaginationSearchParams();
     const [search, setSearch] = useQueryState("search", parseAsString.withDefault("").withOptions({ shallow: false, clearOnDefault: true }));
+    const [filters, setFilters] = useQueryStates({
+        status: parseAsString,
+        startDate: parseAsString,
+        endDate: parseAsString,
+    });
+    const [filterOpen, setFilterOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -420,14 +434,94 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button
-                                size={"sm"}
-                                variant={"ghost"}
-                                className="rounded-md md:rounded-xl bg-gray-100"
-                            >
-                                <FilterIcon className="md:mr-2 h-4 w-4" />
-                                <span className="hidden md:inline">Filter</span>
-                            </Button>
+                            <TableFilter open={filterOpen} setOpen={setFilterOpen} count={(filters.status ? 1 : 0) + (filters.startDate ? 1 : 0) + (filters.endDate ? 1 : 0)}>
+                                <div className="flex flex-col gap-y-4 w-[280px]">
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Status</h4>
+                                        <Select
+                                            value={filters.status ?? "all"}
+                                            onValueChange={(value) =>
+                                                setFilters({
+                                                    status: value === "all" ? null : value as any,
+                                                })
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="All statuses" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Statuses</SelectItem>
+                                                <SelectItem value="PENDING">Pending</SelectItem>
+                                                <SelectItem value="APPROVED">Approved</SelectItem>
+                                                <SelectItem value="PAID">Paid</SelectItem>
+                                                <SelectItem value="REJECTED">Rejected</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Start Date</h4>
+                                        <input
+                                            type="date"
+                                            value={filters.startDate ?? ""}
+                                            onChange={(e) => setFilters({ startDate: e.target.value || null })}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">End Date</h4>
+                                        <input
+                                            type="date"
+                                            value={filters.endDate ?? ""}
+                                            onChange={(e) => setFilters({ endDate: e.target.value || null })}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between border-t pt-4">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setFilters({ status: null, startDate: null, endDate: null })}
+                                            className="text-muted-foreground hover:text-foreground"
+                                        >
+                                            Reset
+                                        </Button>
+                                        <Button size="sm" onClick={() => setFilterOpen(false)}>
+                                            Done
+                                        </Button>
+                                    </div>
+                                </div>
+                            </TableFilter>
+
+                            {/* Applied Filters */}
+                            {(filters.status || filters.startDate || filters.endDate) && (
+                                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+                                    {filters.status && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            {filters.status}
+                                            <button type="button" onClick={() => setFilters({ status: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {filters.startDate && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            From: {filters.startDate}
+                                            <button type="button" onClick={() => setFilters({ startDate: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {filters.endDate && (
+                                        <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
+                                            To: {filters.endDate}
+                                            <button type="button" onClick={() => setFilters({ endDate: null })} className="hover:text-foreground">
+                                                <XIcon className="h-3 w-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
                             <Button size={"sm"} onClick={() => setIsCreateModalOpen(true)} className="rounded-md md:rounded-xl">
                                 <PlusIcon className="mr-2 h-4 w-4" />
                                 <span className="hidden md:inline">Record Expenditure</span>
