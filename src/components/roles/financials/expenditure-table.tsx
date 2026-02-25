@@ -24,7 +24,7 @@ import type { Expenditure } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon } from "lucide-react";
+import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon, Loader2 } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -341,7 +341,8 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating}>
                                 {isUpdating ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2
+                                        className="h-4 w-4 animate-spin" />
                                 ) : (
                                     <>
                                         <span className="sr-only">Open menu</span>
@@ -442,7 +443,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                                             value={filters.status ?? "all"}
                                             onValueChange={(value) =>
                                                 setFilters({
-                                                    status: value === "all" ? null : value as any,
+                                                    status: value === "all" ? null : value,
                                                 })
                                             }
                                         >

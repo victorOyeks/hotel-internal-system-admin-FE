@@ -6,7 +6,6 @@ import { use } from "react";
 import { createLoader, type SearchParams } from "nuqs/server";
 import { financialSearchParams } from "@/lib/search-params.financials.server";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
-import type { OtherIncome } from "@/lib/api-routes/financials";
 
 const loadSearchParams = createLoader(financialSearchParams);
 
@@ -34,7 +33,13 @@ function OtherIncomePage({ searchParams }: PageProps) {
         })
     );
 
-    const data = (otherIncomeData?.content || []) as OtherIncome[];
+    const data = (
+        otherIncomeData && "data" in otherIncomeData && otherIncomeData.data && typeof otherIncomeData.data === "object" && "content" in otherIncomeData.data
+            ? otherIncomeData.data.content
+            : otherIncomeData && "content" in otherIncomeData
+                ? otherIncomeData.content
+                : []
+    );
 
     return (
         <BreadCrumbWrapper
