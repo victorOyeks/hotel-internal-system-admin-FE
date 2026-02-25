@@ -31,6 +31,7 @@ export function useChatMessages(conversationId: string | null) {
 		initialPageParam: 0,
 		getNextPageParam: (lastPage) =>
 			lastPage.last ? undefined : lastPage.pageNumber + 1,
+		maxPages: 10,
 		enabled: !!conversationId,
 		staleTime: 60_000,
 	});

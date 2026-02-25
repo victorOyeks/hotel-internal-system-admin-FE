@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { totalUnreadCountAtom, unreadRefetchTriggerAtom } from "@/lib/chat-store";
-import { getConversations, getSessionInfo } from "@/lib/chat-actions";
+import { getTotalUnreadCount, getSessionInfo } from "@/lib/chat-actions";
 import { useChatWebSocket } from "@/hooks/use-chat-websocket";
 
 /**
@@ -52,23 +52,19 @@ function ChatGlobalInner({
 	// Global WebSocket connection — enables sound + desktop notifications on all pages
 	useChatWebSocket(token, hotelId, userId);
 
-	const fetchUnreadConversations = useCallback(async () => {
-		const result = await getConversations(0, 100, hotelId);
-		if (result.success && result.data) {
-			const data = result.data as { content: { unreadCount: number }[] };
-			const count = (data.content ?? []).filter(
-				(c) => c.unreadCount > 0,
-			).length;
-			setTotalUnread(count);
+	const fetchUnreadCount = useCallback(async () => {
+		const result = await getTotalUnreadCount(hotelId);
+		if (result.success && result.data !== undefined) {
+			setTotalUnread(result.data as number);
 		}
 	}, [setTotalUnread, hotelId]);
 
-	// Fetch on mount + poll every 30s
+	// Fetch on mount + poll every 60s as fallback sync
 	useEffect(() => {
-		fetchUnreadConversations();
-		const interval = setInterval(fetchUnreadConversations, 30_000);
+		fetchUnreadCount();
+		const interval = setInterval(fetchUnreadCount, 60_000);
 		return () => clearInterval(interval);
-	}, [fetchUnreadConversations]);
+	}, [fetchUnreadCount]);
 
 	// Re-fetch when a new message triggers the atom (skip initial mount)
 	useEffect(() => {
@@ -76,8 +72,8 @@ function ChatGlobalInner({
 			initialMount.current = false;
 			return;
 		}
-		fetchUnreadConversations();
-	}, [refetchTrigger, fetchUnreadConversations]);
+		fetchUnreadCount();
+	}, [refetchTrigger, fetchUnreadCount]);
 
 	return null;
 }

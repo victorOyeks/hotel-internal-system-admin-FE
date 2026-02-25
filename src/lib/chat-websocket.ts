@@ -1,6 +1,6 @@
 "use client";
 
-import { Client } from "@stomp/stompjs";
+import { Client, type StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import type {
 	ChatMessageResponse,
@@ -23,6 +23,7 @@ class ChatWebSocketService {
 	private client: Client | null = null;
 	private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 	private subscribedConversations = new Set<string>();
+	private activeSubscriptions: StompSubscription[] = [];
 
 	private onMessage: MessageHandler | null = null;
 	private onTyping: TypingHandler | null = null;
@@ -51,6 +52,8 @@ class ChatWebSocketService {
 			heartbeatOutgoing: 10000,
 
 			onConnect: () => {
+				// Unsubscribe stale subscriptions from previous connection before re-subscribing
+				this.unsubscribeAll();
 				this.onConnectionChange?.("connected");
 				this.subscribeToUserChannels();
 				if (this._hotelId) {
@@ -63,6 +66,7 @@ class ChatWebSocketService {
 			},
 
 			onDisconnect: () => {
+				this.unsubscribeAll();
 				this.onConnectionChange?.("disconnected");
 				this.stopHeartbeat();
 			},
@@ -76,48 +80,67 @@ class ChatWebSocketService {
 		this.client.activate();
 	}
 
+	private unsubscribeAll(): void {
+		for (const sub of this.activeSubscriptions) {
+			try {
+				sub.unsubscribe();
+			} catch {
+				// Ignore errors on stale subscriptions
+			}
+		}
+		this.activeSubscriptions = [];
+	}
+
 	private subscribeToUserChannels(): void {
 		if (!this.client?.connected) return;
 
-		this.client.subscribe("/user/queue/chat/messages", (message) => {
-			const msg: ChatMessageResponse = JSON.parse(message.body);
-			this.onMessage?.(msg);
-		});
-
-		this.client.subscribe(
-			"/user/queue/chat/message-deleted",
-			(message) => {
-				const messageId: string = JSON.parse(message.body);
-				this.onDelete?.(messageId);
-			},
+		this.activeSubscriptions.push(
+			this.client.subscribe("/user/queue/chat/messages", (message) => {
+				const msg: ChatMessageResponse = JSON.parse(message.body);
+				this.onMessage?.(msg);
+			}),
 		);
 
-		this.client.subscribe("/user/queue/chat/message-edited", (message) => {
-			const msg: ChatMessageResponse = JSON.parse(message.body);
-			this.onEdit?.(msg);
-		});
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				"/user/queue/chat/message-deleted",
+				(message) => {
+					const messageId: string = JSON.parse(message.body);
+					this.onDelete?.(messageId);
+				},
+			),
+		);
 
-		this.client.subscribe("/user/queue/chat/typing", (message) => {
-			const event: TypingIndicatorDTO = JSON.parse(message.body);
-			this.onTyping?.(event);
-		});
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				"/user/queue/chat/message-edited",
+				(message) => {
+					const msg: ChatMessageResponse = JSON.parse(message.body);
+					this.onEdit?.(msg);
+				},
+			),
+		);
 
-		this.client.subscribe(
-			"/user/queue/chat/delivery-status",
-			(message) => {
-				const status: DeliveryStatusUpdateDTO = JSON.parse(message.body);
-				this.onDelivery?.(status);
-			},
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				"/user/queue/chat/delivery-status",
+				(message) => {
+					const status: DeliveryStatusUpdateDTO = JSON.parse(message.body);
+					this.onDelivery?.(status);
+				},
+			),
 		);
 	}
 
 	private subscribeToPresenceChannel(hotelId: string): void {
 		if (!this.client?.connected) return;
 
-		this.client.subscribe(`/topic/presence/${hotelId}`, (message) => {
-			const presence: UserPresenceResponse = JSON.parse(message.body);
-			this.onPresence?.(presence);
-		});
+		this.activeSubscriptions.push(
+			this.client.subscribe(`/topic/presence/${hotelId}`, (message) => {
+				const presence: UserPresenceResponse = JSON.parse(message.body);
+				this.onPresence?.(presence);
+			}),
+		);
 	}
 
 	subscribeToConversationTopic(conversationId: string): void {
@@ -135,28 +158,45 @@ class ChatWebSocketService {
 			body: JSON.stringify(conversationId),
 		});
 
-		this.client.subscribe(
-			`/topic/conversations/${conversationId}`,
-			(message) => {
-				const msg: ChatMessageResponse = JSON.parse(message.body);
-				this.onMessage?.(msg);
-			},
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				`/topic/conversations/${conversationId}`,
+				(message) => {
+					const msg: ChatMessageResponse = JSON.parse(message.body);
+					this.onMessage?.(msg);
+				},
+			),
 		);
 
-		this.client.subscribe(
-			`/topic/conversations/${conversationId}/deleted`,
-			(message) => {
-				const messageId: string = JSON.parse(message.body);
-				this.onDelete?.(messageId);
-			},
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				`/topic/conversations/${conversationId}/deleted`,
+				(message) => {
+					const messageId: string = JSON.parse(message.body);
+					this.onDelete?.(messageId);
+				},
+			),
 		);
 
-		this.client.subscribe(
-			`/topic/conversations/${conversationId}/edited`,
-			(message) => {
-				const msg: ChatMessageResponse = JSON.parse(message.body);
-				this.onEdit?.(msg);
-			},
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				`/topic/conversations/${conversationId}/edited`,
+				(message) => {
+					const msg: ChatMessageResponse = JSON.parse(message.body);
+					this.onEdit?.(msg);
+				},
+			),
+		);
+
+		// Topic-based typing: single broadcast from server instead of per-participant sends
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				`/topic/conversations/${conversationId}/typing`,
+				(message) => {
+					const event: TypingIndicatorDTO = JSON.parse(message.body);
+					this.onTyping?.(event);
+				},
+			),
 		);
 	}
 
@@ -222,6 +262,7 @@ class ChatWebSocketService {
 
 	disconnect(): void {
 		this.stopHeartbeat();
+		this.unsubscribeAll();
 		this.subscribedConversations.clear();
 		this.onMessage = null;
 		this.onTyping = null;

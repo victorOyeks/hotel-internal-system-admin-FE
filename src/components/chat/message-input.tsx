@@ -20,6 +20,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 	const [replyTo, setReplyTo] = useAtom(replyToMessageAtom);
 	const [editing, setEditing] = useAtom(editingMessageAtom);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const lastTypingSentRef = useRef(0);
 	const { sendTyping } = useTypingIndicator(conversationId);
 	const sendMessage = useSendMessage();
 	const editMessage = useEditMessage();
@@ -78,7 +79,11 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 	const handleChange = (value: string) => {
 		setContent(value);
 		if (value.trim()) {
-			sendTyping(true);
+			const now = Date.now();
+			if (now - lastTypingSentRef.current > 300) {
+				sendTyping(true);
+				lastTypingSentRef.current = now;
+			}
 		} else {
 			sendTyping(false);
 		}
