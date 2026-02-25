@@ -9,6 +9,7 @@ import type {
 	ProfitAndLossStatement,
 	CashFlowStatement,
 	ComprehensiveSummaryData,
+	ItemConsumptionReport,
 } from "./api-routes/financials";
 
 export const getFinancialDashboard = cache(
@@ -206,12 +207,12 @@ export const getOverdueExpenditures = cache(async () => {
 
 export const getConsumptionReport = cache(
 	async (params: {
-		hotelId?: string;
 		startDate?: string;
 		endDate?: string;
-		page?: string;
-		size?: string;
-	}) => {
+		itemType?: string;
+		page?: number;
+		size?: number;
+	}): Promise<ItemConsumptionReport | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
@@ -224,7 +225,7 @@ export const getConsumptionReport = cache(
 			throw: true,
 		});
 
-		return res.data;
+		return res.data as ItemConsumptionReport;
 	},
 );
 

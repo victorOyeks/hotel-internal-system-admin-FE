@@ -53,8 +53,8 @@ function ReportsPage({ searchParams }: PageProps) {
             queryFn: () => getConsumptionReport({
                 startDate: query.startDate || undefined,
                 endDate: query.endDate || undefined,
-                page: "0",
-                size: "20"
+                page: query.page,
+                size: query.size
             })
         })
     );
@@ -80,23 +80,21 @@ function ReportsPage({ searchParams }: PageProps) {
                 ],
             }}
         >
-            <div className="p-4 space-y-6">
-                <div className="flex flex-col space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight">Financial Reports</h1>
-                    <p className="text-muted-foreground">
+            <div className="space-y-4 px-2">
+                <div>
+                    <h1 className="text-xl font-semibold text-primary">Financial Reports</h1>
+                    <p className="text-sm text-gray-400">
                         Detailed statements and analysis of your financial performance.
                     </p>
                 </div>
 
                 <Tabs defaultValue="pl" className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <TabsList>
-                            <TabsTrigger value="pl">Profit & Loss</TabsTrigger>
-                            <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
-                            <TabsTrigger value="consumption">Consumption</TabsTrigger>
-                            <TabsTrigger value="summary">Summary</TabsTrigger>
-                        </TabsList>
-                    </div>
+                    <TabsList>
+                        <TabsTrigger value="pl">Profit &amp; Loss</TabsTrigger>
+                        <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
+                        <TabsTrigger value="consumption">Consumption</TabsTrigger>
+                        <TabsTrigger value="summary">Summary</TabsTrigger>
+                    </TabsList>
 
                     <TabsContent value="pl" className="space-y-4">
                         <ProfitLossStatement data={plData} />

@@ -1,72 +1,72 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-
-// Define a local type for now as we don't have a shared one yet
-interface ConsumptionItem {
-    itemId: string;
-    itemName: string;
-    quantityConsumed: number;
-    unit: string;
-    totalCost: number;
-    category: string;
-}
+import type { ItemConsumptionReport } from "@/lib/api-routes/financials";
 
 interface ConsumptionReportProps {
-    data: any; // Using any for pagination wrapper for now
+    data: ItemConsumptionReport | null;
 }
 
 export function ConsumptionReport({ data }: ConsumptionReportProps) {
-    const items: ConsumptionItem[] = data?.content || [];
+    const items = data?.items ?? [];
+    const summary = data?.summary;
 
     if (!items.length) {
         return (
-            <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0">
-                <CardHeader>
-                    <CardTitle>
-                        <h2 className="text-primary text-xl">Consumption Report</h2>
-                    </CardTitle>
-                    <CardDescription>No consumption data available for the selected period.</CardDescription>
-                </CardHeader>
-            </Card>
-        )
+            <div className="bg-white p-4 rounded-2xl">
+                <h3 className="text-sm font-medium text-gray-600">Consumption Report</h3>
+                <p className="text-sm text-gray-400 mt-1">No consumption data available for the selected period.</p>
+            </div>
+        );
     }
 
     return (
-        <Card className="border border-primary-5/40 py-2 md:rounded-3xl overflow-clip h-full gap-x-0">
-            <CardHeader className="pb-4">
-                <CardTitle>
-                    <h2 className="text-primary text-xl">Inventory Consumption</h2>
-                </CardTitle>
-                <CardDescription>
-                    Breakdown of inventory items consumed and their associated costs.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Item Name</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead className="text-right">Quantity</TableHead>
-                            <TableHead className="text-right">Total Cost</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {items.map((item, index) => (
-                            <TableRow key={index}>
-                                <TableCell className="font-medium">{item.itemName}</TableCell>
-                                <TableCell><Badge variant="secondary" className="font-normal">{item.category}</Badge></TableCell>
-                                <TableCell className="text-right">{item.quantityConsumed} {item.unit}</TableCell>
-                                <TableCell className="text-right font-medium">{formatCurrency(item.totalCost)}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+        <div className="space-y-4">
+            {/* Summary Line */}
+            {summary && (
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
+                    <span>{summary.totalUniqueItems ?? 0} items ({summary.totalFoodItems ?? 0} food · {summary.totalDrinkItems ?? 0} drinks)</span>
+                    <span>Revenue: {formatCurrency(summary.totalRevenue ?? 0)}</span>
+                    <span>{summary.totalOrders ?? 0} orders</span>
+                    <span>{summary.totalQuantityConsumed ?? 0} qty consumed</span>
+                </div>
+            )}
+
+            {/* Items Table */}
+            <div className="bg-white p-4 rounded-2xl">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-600">Item Consumption Details</h3>
+                    {data?.totalItems != null && (
+                        <span className="text-xs text-gray-400">{data.totalItems} total items</span>
+                    )}
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b text-left text-gray-500">
+                                <th className="pb-2 font-medium">Item Name</th>
+                                <th className="pb-2 font-medium">Type</th>
+                                <th className="pb-2 font-medium text-right">Qty</th>
+                                <th className="pb-2 font-medium text-right">Orders</th>
+                                <th className="pb-2 font-medium text-right">Revenue</th>
+                                <th className="pb-2 font-medium text-right">Avg Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item, index) => (
+                                <tr key={index} className="border-b last:border-0">
+                                    <td className="py-2 text-gray-700 font-medium">{item.itemName ?? "Unknown"}</td>
+                                    <td className="py-2 text-gray-500">{item.itemType ?? "N/A"}</td>
+                                    <td className="py-2 text-right text-gray-600">{item.totalQuantityConsumed ?? 0}</td>
+                                    <td className="py-2 text-right text-gray-600">{item.numberOfOrders ?? 0}</td>
+                                    <td className="py-2 text-right font-medium text-primary">{formatCurrency(item.totalRevenue ?? 0)}</td>
+                                    <td className="py-2 text-right text-gray-500">{formatCurrency(item.averagePrice ?? 0)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     );
 }

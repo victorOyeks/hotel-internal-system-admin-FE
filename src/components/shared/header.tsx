@@ -210,10 +210,10 @@ export function Header({ user }: { user: UserInfoResponse }) {
 	return (
 		<header className="flex shrink-0 items-center justify-between py-2 px-2">
 			<div className="flex items-center space-x-1 md:space-x-2">
-				<SidebarTrigger className="-ml-1 md:hidden" />
+				<SidebarTrigger className="-ml-1" />
 				<Separator
 					orientation="vertical"
-					className="md:hidden data-[orientation=vertical]:h-4"
+					className="data-[orientation=vertical]:h-4"
 				/>
 				<div className="md:self-baseline-last">
 					{breadcrumb ? (
