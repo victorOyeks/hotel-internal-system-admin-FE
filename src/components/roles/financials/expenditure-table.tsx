@@ -216,7 +216,7 @@ function Earnings({ metrics }: { metrics?: { totalRevenue: number, netProfit: nu
 
 function InnerTable({ table }: { table: TableType<Expenditure> }) {
     return (
-        <div className="border border-primary-5/20 rounded-xl overflow-clip">
+        <div className="border border-primary-5/20 rounded-xl overflow-clip bg-card">
             <Table>
                 <TableHeader className="bg-gray-100">
                     {table.getHeaderGroups().map((headerGroup) => (

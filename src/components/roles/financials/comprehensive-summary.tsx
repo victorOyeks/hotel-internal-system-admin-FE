@@ -1,106 +1,263 @@
 "use client";
 
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    createColumnHelper,
+    getCoreRowModel,
+    useReactTable,
+    flexRender,
+} from "@tanstack/react-table";
 import { formatCurrency } from "@/lib/utils";
 import type { ComprehensiveSummaryData } from "@/lib/api-routes/financials";
+import { useMemo } from "react";
+import { CalendarIcon, DollarSignIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+
+type RevenueStreamRow = {
+    label: string;
+    amount: number;
+    percentage: number | null | undefined;
+};
+
+const revenueColumnHelper = createColumnHelper<RevenueStreamRow>();
+
+const revenueStreamColumns = [
+    revenueColumnHelper.accessor("label", {
+        header: "Source",
+        cell: (info) => (
+            <span className="text-gray-600">{info.getValue()}</span>
+        ),
+    }),
+    revenueColumnHelper.accessor("amount", {
+        header: "Amount",
+        cell: (info) => (
+            <div className="font-medium">
+                {formatCurrency(info.getValue())}
+            </div>
+        ),
+    }),
+    revenueColumnHelper.accessor("percentage", {
+        header: "Share",
+        cell: (info) => {
+            const val = info.getValue();
+            return (
+                <span className="text-gray-400">
+                    {val != null ? `${val.toFixed(1)}%` : ""}
+                </span>
+            );
+        },
+    }),
+];
+
+function RevenueBySourceTable({ data }: { data: RevenueStreamRow[] }) {
+    const table = useReactTable({
+        data,
+        columns: revenueStreamColumns,
+        getCoreRowModel: getCoreRowModel(),
+    });
+
+    return (
+        <div className="border border-primary-5/20 rounded-xl overflow-clip bg-card">
+            <Table>
+                <TableHeader className="bg-gray-100">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                            {headerGroup.headers.map((header) => (
+                                <TableHead
+                                    key={header.id}
+                                    className="text-gray-500"
+                                >
+                                    {header.isPlaceholder
+                                        ? null
+                                        : flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext(),
+                                        )}
+                                </TableHead>
+                            ))}
+                        </TableRow>
+                    ))}
+                </TableHeader>
+
+                <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                            <TableRow
+                                key={row.id}
+                                data-state={row.getIsSelected() && "selected"}
+                            >
+                                {row.getVisibleCells().map((cell) => (
+                                    <TableCell
+                                        key={cell.id}
+                                        className="text-gray-600"
+                                    >
+                                        {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                        )}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell
+                                colSpan={revenueStreamColumns.length}
+                                className="h-24 text-center"
+                            >
+                                No data.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+}
 
 interface ComprehensiveSummaryProps {
     data: ComprehensiveSummaryData | null;
 }
 
 export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
+    const revenueStreams = useMemo(
+        () =>
+            !data
+                ? []
+                : [
+                    {
+                        label: "Booking Revenue",
+                        amount: data.totalBookingRevenue ?? 0,
+                        percentage: data.bookingRevenuePercentage,
+                    },
+                    {
+                        label: "Restaurant Revenue",
+                        amount: data.totalRestaurantRevenue ?? 0,
+                        percentage: data.restaurantRevenuePercentage,
+                    },
+                    {
+                        label: "Laundry Revenue",
+                        amount: data.totalLaundryRevenue ?? 0,
+                        percentage: data.laundryRevenuePercentage,
+                    },
+                    {
+                        label: "Rental Revenue",
+                        amount: data.totalRentalRevenue ?? 0,
+                        percentage: data.rentalRevenuePercentage,
+                    },
+                    {
+                        label: "Other Income",
+                        amount: data.totalOtherIncome ?? 0,
+                        percentage: data.otherIncomePercentage,
+                    },
+                ].filter((stream) => stream.amount > 0),
+        [data],
+    );
+
     if (!data) return null;
 
-    const revenueStreams = [
-        { label: "Booking Revenue", amount: data.totalBookingRevenue, percentage: data.bookingRevenuePercentage },
-        { label: "Restaurant Revenue", amount: data.totalRestaurantRevenue, percentage: data.restaurantRevenuePercentage },
-        { label: "Laundry Revenue", amount: data.totalLaundryRevenue, percentage: data.laundryRevenuePercentage },
-        { label: "Rental Revenue", amount: data.totalRentalRevenue, percentage: data.rentalRevenuePercentage },
-        { label: "Other Income", amount: data.totalOtherIncome, percentage: data.otherIncomePercentage },
-    ].filter(stream => (stream.amount ?? 0) > 0);
+    const stats = [
+        {
+            title: "Grand Total Revenue",
+            icon: DollarSignIcon,
+            value: formatCurrency(data.grandTotalRevenue ?? 0),
+        },
+        {
+            title: "Revenue Growth",
+            icon: TrendingUpIcon,
+            value: data.revenueGrowthPercentage != null
+                ? `${data.revenueGrowthPercentage >= 0 ? "+" : ""}${data.revenueGrowthPercentage.toFixed(1)}%`
+                : "N/A",
+        },
+        {
+            title: "Total Bookings",
+            icon: CalendarIcon,
+            value: `${data.totalBookings ?? 0}`,
+            subtitle: `${data.checkIns ?? 0} in · ${data.checkOuts ?? 0} out`,
+        },
+        {
+            title: "Avg Booking Value",
+            icon: UsersIcon,
+            value: formatCurrency(data.averageBookingValue ?? 0),
+        },
+    ];
 
     return (
         <div className="space-y-4">
-            {/* Period Info */}
-            {data.startDate && data.endDate && (
-                <div className="text-xs text-gray-400">
-                    {data.startDate} – {data.endDate}
-                    {data.hotelName && ` · ${data.hotelName}`}
-                </div>
-            )}
-
-            {/* Overview Metrics */}
-            <div className="bg-white p-4 rounded-2xl">
-                <h3 className="text-sm font-medium text-gray-600 mb-3">Overview</h3>
-                <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-gray-500">Grand Total Revenue</span>
-                        <span className="text-lg font-bold text-primary">{formatCurrency(data.grandTotalRevenue ?? 0)}</span>
-                    </div>
-                    {data.revenueGrowthPercentage != null && (
-                        <div className="flex justify-between items-baseline">
-                            <span className="text-gray-500">Revenue Growth</span>
-                            <span className={`font-medium ${data.revenueGrowthPercentage >= 0 ? "text-green-600" : "text-red-500"}`}>
-                                {data.revenueGrowthPercentage >= 0 ? "+" : ""}{data.revenueGrowthPercentage.toFixed(1)}%
-                            </span>
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {stats.map((stat) => (
+                    <div
+                        key={stat.title}
+                        className="col-span-1 bg-white border border-primary-5/40 p-2 rounded-2xl md:rounded-3xl flex items-center space-x-2"
+                    >
+                        <div className="size-8 md:size-12 aspect-square bg-green-500/20 rounded-full flex items-center justify-center">
+                            <stat.icon className="text-secondary size-5" />
                         </div>
-                    )}
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-gray-500">Total Bookings</span>
-                        <span className="font-medium text-primary">
-                            {data.totalBookings ?? 0}
-                            <span className="text-xs text-gray-400 ml-1">({data.checkIns ?? 0} in · {data.checkOuts ?? 0} out)</span>
-                        </span>
-                    </div>
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-gray-500">Avg Booking Value</span>
-                        <span className="font-medium text-primary">{formatCurrency(data.averageBookingValue ?? 0)}</span>
-                    </div>
-                    {data.totalKitchenRevenue != null && data.totalBarRevenue != null && (
-                        <div className="flex justify-between items-baseline">
-                            <span className="text-gray-500">Kitchen / Bar</span>
-                            <span className="font-medium text-primary">
-                                {formatCurrency(data.totalKitchenRevenue)} / {formatCurrency(data.totalBarRevenue)}
-                            </span>
+                        <div className="flex-1">
+                            <p className="text-xs md:text-sm text-gray-400">{stat.title}</p>
+                            <p className="text-lg text-primary font-semibold font-inter tracking-[0.01em]">
+                                {stat.value}
+                            </p>
+                            {stat.subtitle && (
+                                <p className="text-xs text-gray-400">{stat.subtitle}</p>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                ))}
             </div>
 
-            {/* Revenue by Source */}
+            {/* Revenue by Source - React Table */}
             {revenueStreams.length > 0 && (
-                <div className="bg-white p-4 rounded-2xl">
-                    <h3 className="text-sm font-medium text-gray-600 mb-3">Revenue by Source</h3>
-                    <table className="w-full text-sm">
-                        <tbody>
-                            {revenueStreams.map((stream) => (
-                                <tr key={stream.label} className="border-b last:border-0">
-                                    <td className="py-2 text-gray-600">{stream.label}</td>
-                                    <td className="py-2 text-right font-medium text-primary">
-                                        {formatCurrency(stream.amount ?? 0)}
-                                    </td>
-                                    <td className="py-2 text-right text-gray-400 w-16">
-                                        {stream.percentage != null ? `${stream.percentage.toFixed(1)}%` : ""}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Revenue by Source</p>
+                    <RevenueBySourceTable data={revenueStreams} />
                 </div>
             )}
 
             {/* Narrative Summary */}
-            <div className="bg-white p-4 rounded-2xl">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Executive Summary</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                    {data.hotelName && <>{data.hotelName} generated </>}
-                    <strong className="text-primary">{formatCurrency(data.grandTotalRevenue ?? 0)}</strong> in total revenue.
-                    Room bookings contributed <strong className="text-primary">{formatCurrency(data.totalBookingRevenue ?? 0)}</strong> across{" "}
-                    <strong className="text-primary">{data.totalBookings ?? 0}</strong> bookings.
-                    {data.revenueGrowthPercentage != null && (
-                        <> Revenue {data.revenueGrowthPercentage >= 0 ? "grew" : "declined"} by{" "}
-                            <strong className="text-primary">{Math.abs(data.revenueGrowthPercentage).toFixed(1)}%</strong> compared to the previous period.</>
-                    )}
-                </p>
+            <div className="space-y-2">
+                <p className="text-sm font-medium">Executive Summary</p>
+                <div className="border border-primary-5/20 rounded-xl p-4 bg-card">
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                        {data.hotelName && <>{data.hotelName} generated </>}
+                        <strong className="text-primary">
+                            {formatCurrency(data.grandTotalRevenue ?? 0)}
+                        </strong>{" "}
+                        in total revenue. Room bookings contributed{" "}
+                        <strong className="text-primary">
+                            {formatCurrency(data.totalBookingRevenue ?? 0)}
+                        </strong>{" "}
+                        across{" "}
+                        <strong className="text-primary">
+                            {data.totalBookings ?? 0}
+                        </strong>{" "}
+                        bookings.
+                        {data.revenueGrowthPercentage != null && (
+                            <>
+                                {" "}
+                                Revenue{" "}
+                                {data.revenueGrowthPercentage >= 0
+                                    ? "grew"
+                                    : "declined"}{" "}
+                                by{" "}
+                                <strong className="text-primary">
+                                    {Math.abs(
+                                        data.revenueGrowthPercentage,
+                                    ).toFixed(1)}
+                                    %
+                                </strong>{" "}
+                                compared to the previous period.
+                            </>
+                        )}
+                    </p>
+                </div>
             </div>
         </div>
     );

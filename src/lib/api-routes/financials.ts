@@ -544,8 +544,8 @@ export const financialsRoutes = {
 				startDate: z.string().optional().nullable(),
 				endDate: z.string().optional().nullable(),
 				itemType: z.string().optional().nullable(),
-				page: z.string().optional().nullable(),
-				size: z.string().optional().nullable(),
+				page: z.union([z.string(), z.number()]).optional().nullable(),
+				size: z.union([z.string(), z.number()]).optional().nullable(),
 			})
 			.partial(),
 		output: ApiResponseObject.extend({

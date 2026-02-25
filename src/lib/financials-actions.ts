@@ -46,7 +46,11 @@ export const getOtherIncome = cache(
 
 		const opts = {
 			auth: { type: "Bearer" as const, token: cookieData.token },
-			query: { ...params },
+			query: {
+				...params,
+				page: params.page?.toString(),
+				size: params.size?.toString(),
+			},
 			throw: true,
 		};
 
@@ -104,7 +108,11 @@ export const getExpenditures = cache(
 
 		const res = await $fetch("@get/api/financials/expenditures", {
 			auth: { type: "Bearer", token: cookieData.token },
-			query: { ...params },
+			query: {
+				...params,
+				page: params.page?.toString(),
+				size: params.size?.toString(),
+			},
 			throw: true,
 		});
 
@@ -172,9 +180,9 @@ export const getProfitAndLoss = cache(
 
 export const getCashFlow = cache(
 	async (params: {
-		startDate: string;
-		endDate: string;
-		period?: string;
+		startDate: string | null;
+		endDate: string | null;
+		period?: string | null;
 	}): Promise<CashFlowStatement | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
@@ -207,11 +215,11 @@ export const getOverdueExpenditures = cache(async () => {
 
 export const getConsumptionReport = cache(
 	async (params: {
-		startDate?: string;
-		endDate?: string;
-		itemType?: string;
-		page?: number;
-		size?: number;
+		startDate?: string | null;
+		endDate?: string | null;
+		itemType?: string | null;
+		page?: number | null;
+		size?: number | null;
 	}): Promise<ItemConsumptionReport | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
@@ -221,7 +229,11 @@ export const getConsumptionReport = cache(
 				type: "Bearer",
 				token: cookieData.token,
 			},
-			query: { ...params },
+			query: {
+				...params,
+				page: params.page,
+				size: params.size,
+			},
 			throw: true,
 		});
 
@@ -231,8 +243,8 @@ export const getConsumptionReport = cache(
 
 export const getComprehensiveSummary = cache(
 	async (params: {
-		startDate?: string;
-		endDate?: string;
+		startDate?: string | null;
+		endDate?: string | null;
 	}): Promise<ComprehensiveSummaryData | null> => {
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
@@ -302,7 +314,11 @@ export const getRestaurantRoomFoodSales = cache(
 				type: "Bearer",
 				token: cookieData.token,
 			},
-			query: { ...params },
+			query: {
+				...params,
+				page: params.page?.toString(),
+				size: params.size?.toString(),
+			},
 			throw: true,
 		});
 
@@ -328,7 +344,11 @@ export const getRestaurantItemSalesDetail = cache(
 					type: "Bearer",
 					token: cookieData.token,
 				},
-				query: { ...params },
+				query: {
+					...params,
+					page: params.page?.toString(),
+					size: params.size?.toString(),
+				},
 				throw: true,
 			},
 		);

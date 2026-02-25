@@ -64,8 +64,8 @@ function ReportsPage({ searchParams }: PageProps) {
         queryClient.ensureQueryData({
             queryKey: ["financials", "comprehensive", cookieData.userId, query],
             queryFn: () => getComprehensiveSummary({
-                startDate: query.startDate || "",
-                endDate: query.endDate || ""
+                startDate: query.startDate,
+                endDate: query.endDate
             })
         })
     );
