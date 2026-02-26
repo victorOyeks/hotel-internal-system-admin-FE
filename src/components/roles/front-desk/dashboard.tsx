@@ -80,6 +80,14 @@ import { atom, useAtom, useSetAtom } from "jotai";
 import { DatePicker } from "@/components/shared/date-picker";
 import { formatDate } from "date-fns";
 
+/** Format a Date to yyyy-mm-dd using local timezone (avoids UTC shift). */
+function toLocalDateString(date: Date): string {
+	const y = date.getFullYear();
+	const m = String(date.getMonth() + 1).padStart(2, "0");
+	const d = String(date.getDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
+}
+
 const successDialogAtom = atom({
 	show: false,
 	message: "",
@@ -763,8 +771,8 @@ export function CheckInForm({
 			noOfChildren: 0,
 			nightlyRate: 0,
 			dailySpendingCap: 0,
-			checkInDate: new Date().toISOString().split("T")[0],
-			checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+			checkInDate: toLocalDateString(new Date()),
+			checkOutDate: toLocalDateString(new Date(Date.now() + 86400000)),
 			discountValue: 0,
 			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
 			initialPayment: {

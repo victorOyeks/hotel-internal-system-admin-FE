@@ -50,11 +50,13 @@ export function DatePicker({
 		initialDate ? formatDate(new Date(initialDate)) : "",
 	);
 
-	// Update form when date changes
+	// Update form when date changes — use local date to avoid UTC timezone shift
 	const handleDateChange = (newDate: Date | undefined) => {
 		if (newDate && isValidDate(newDate)) {
-			const dateString = newDate.toISOString().split("T")[0];
-			onChange(dateString);
+			const y = newDate.getFullYear();
+			const m = String(newDate.getMonth() + 1).padStart(2, "0");
+			const d = String(newDate.getDate()).padStart(2, "0");
+			onChange(`${y}-${m}-${d}`);
 		}
 	};
 
