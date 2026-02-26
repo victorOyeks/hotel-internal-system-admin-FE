@@ -9,6 +9,7 @@ import { getOnlineUsers } from "@/lib/chat-actions";
 import {
 	playNotificationSound,
 	showMessageNotification,
+	showPushNotification,
 	requestNotificationPermission,
 } from "@/lib/chat-notification";
 import {
@@ -17,6 +18,11 @@ import {
 	onlineUsersAtom,
 	unreadRefetchTriggerAtom,
 } from "@/lib/chat-store";
+import {
+	notificationsAtom,
+	notificationUnreadCountAtom,
+	notificationRefetchTriggerAtom,
+} from "@/lib/notification-store";
 import type {
 	ChatMessageResponse,
 	ChatConversationResponse,
@@ -25,18 +31,23 @@ import type {
 	DeliveryStatusUpdateDTO,
 	UserPresenceResponse,
 } from "@/lib/chat-types";
+import type { NotificationResponse } from "@/lib/notification-types";
 import type { InfiniteData } from "@tanstack/react-query";
 
 export function useChatWebSocket(
 	token: string,
 	hotelId: string,
 	userId: string,
+	role?: string,
 ) {
 	const queryClient = useQueryClient();
 	const setConnectionStatus = useSetAtom(wsConnectionStatusAtom);
 	const setTypingIndicators = useSetAtom(typingIndicatorsAtom);
 	const setOnlineUsers = useSetAtom(onlineUsersAtom);
 	const triggerUnreadRefetch = useSetAtom(unreadRefetchTriggerAtom);
+	const setNotifications = useSetAtom(notificationsAtom);
+	const setNotificationUnreadCount = useSetAtom(notificationUnreadCountAtom);
+	const triggerNotifRefetch = useSetAtom(notificationRefetchTriggerAtom);
 	const userIdRef = useRef(userId);
 	userIdRef.current = userId;
 
@@ -180,7 +191,19 @@ export function useChatWebSocket(
 			});
 		});
 
-		chatWs.connect(baseUrl, token, hotelId);
+		chatWs.onNotificationReceived((notification: NotificationResponse) => {
+			// Prepend to popover list (keep max 20)
+			setNotifications((prev) => [notification, ...prev].slice(0, 20));
+			// Increment unread badge
+			setNotificationUnreadCount((prev) => prev + 1);
+			// Trigger refetch
+			triggerNotifRefetch((prev) => prev + 1);
+			// Sound + push
+			playNotificationSound();
+			showPushNotification(notification.title, notification.message);
+		});
+
+		chatWs.connect(baseUrl, token, hotelId, role);
 
 		return () => {
 			chatWs.disconnect();
@@ -188,11 +211,15 @@ export function useChatWebSocket(
 	}, [
 		token,
 		hotelId,
+		role,
 		queryClient,
 		setConnectionStatus,
 		setTypingIndicators,
 		setOnlineUsers,
 		triggerUnreadRefetch,
+		setNotifications,
+		setNotificationUnreadCount,
+		triggerNotifRefetch,
 	]);
 }
 

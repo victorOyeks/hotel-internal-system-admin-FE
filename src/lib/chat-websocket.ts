@@ -8,6 +8,7 @@ import type {
 	DeliveryStatusUpdateDTO,
 	UserPresenceResponse,
 } from "./chat-types";
+import type { NotificationResponse } from "./notification-types";
 
 type MessageHandler = (message: ChatMessageResponse) => void;
 type TypingHandler = (event: TypingIndicatorDTO) => void;
@@ -15,6 +16,7 @@ type DeleteHandler = (messageId: string) => void;
 type EditHandler = (message: ChatMessageResponse) => void;
 type DeliveryHandler = (status: DeliveryStatusUpdateDTO) => void;
 type PresenceHandler = (presence: UserPresenceResponse) => void;
+type NotificationHandler = (notification: NotificationResponse) => void;
 type ConnectionHandler = (
 	status: "connecting" | "connected" | "disconnected" | "error",
 ) => void;
@@ -31,14 +33,17 @@ class ChatWebSocketService {
 	private onEdit: EditHandler | null = null;
 	private onDelivery: DeliveryHandler | null = null;
 	private onPresence: PresenceHandler | null = null;
+	private onNotification: NotificationHandler | null = null;
 	private onConnectionChange: ConnectionHandler | null = null;
 
 	private _hotelId: string | null = null;
+	private _role: string | null = null;
 
-	connect(baseUrl: string, token: string, hotelId: string): void {
+	connect(baseUrl: string, token: string, hotelId: string, role?: string): void {
 		if (this.client?.connected) return;
 
 		this._hotelId = hotelId;
+		this._role = role ?? null;
 		this.onConnectionChange?.("connecting");
 
 		this.client = new Client({
@@ -58,6 +63,7 @@ class ChatWebSocketService {
 				this.subscribeToUserChannels();
 				if (this._hotelId) {
 					this.subscribeToPresenceChannel(this._hotelId);
+					this.subscribeToNotificationChannels(this._hotelId, this._role);
 				}
 				this.startHeartbeat();
 				for (const convId of this.subscribedConversations) {
@@ -140,6 +146,43 @@ class ChatWebSocketService {
 				const presence: UserPresenceResponse = JSON.parse(message.body);
 				this.onPresence?.(presence);
 			}),
+		);
+	}
+
+	private subscribeToNotificationChannels(
+		hotelId: string,
+		role: string | null,
+	): void {
+		if (!this.client?.connected) return;
+
+		const handler = (message: { body: string }) => {
+			const notification: NotificationResponse = JSON.parse(message.body);
+			this.onNotification?.(notification);
+		};
+
+		// User-specific notifications
+		this.activeSubscriptions.push(
+			this.client.subscribe("/user/queue/notifications", handler),
+		);
+
+		// Role-based notifications
+		if (role) {
+			this.activeSubscriptions.push(
+				this.client.subscribe(
+					`/topic/roles/${hotelId}/${role}`,
+					handler,
+				),
+			);
+		}
+
+		// Hotel-wide notifications
+		this.activeSubscriptions.push(
+			this.client.subscribe(`/topic/hotels/${hotelId}`, handler),
+		);
+
+		// Global notifications
+		this.activeSubscriptions.push(
+			this.client.subscribe("/topic/global", handler),
 		);
 	}
 
@@ -272,6 +315,9 @@ class ChatWebSocketService {
 	onPresenceUpdate(handler: PresenceHandler) {
 		this.onPresence = handler;
 	}
+	onNotificationReceived(handler: NotificationHandler) {
+		this.onNotification = handler;
+	}
 	onConnectionStatusChange(handler: ConnectionHandler) {
 		this.onConnectionChange = handler;
 	}
@@ -286,6 +332,7 @@ class ChatWebSocketService {
 		this.onEdit = null;
 		this.onDelivery = null;
 		this.onPresence = null;
+		this.onNotification = null;
 		this.onConnectionChange = null;
 		if (this.client) {
 			this.client.deactivate();

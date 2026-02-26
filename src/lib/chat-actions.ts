@@ -204,5 +204,6 @@ export async function getSessionInfo() {
 		token: session.token,
 		userId: session.userId,
 		fullName: session.fullName,
+		role: session.roles?.[0] ?? "",
 	};
 }

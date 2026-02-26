@@ -121,3 +121,42 @@ export function showMessageNotification(
 		setTimeout(() => notification.close(), 5000);
 	}
 }
+
+/**
+ * Show a generic push notification (for non-chat events like approvals, bookings, etc.)
+ * - Toast always shows (top-right for distinction from chat)
+ * - Browser notification shows only when tab is not focused
+ */
+export function showPushNotification(title: string, body: string) {
+	const truncated =
+		body.length > 120 ? `${body.slice(0, 120)}...` : body;
+
+	// In-app toast
+	toast.message(title, {
+		description: truncated,
+		position: "top-right",
+		duration: 5000,
+	});
+
+	// Browser desktop notification
+	if (
+		typeof window !== "undefined" &&
+		"Notification" in window &&
+		Notification.permission === "granted" &&
+		!document.hasFocus()
+	) {
+		const notification = new Notification(title, {
+			body: truncated,
+			icon: "/favicon.ico",
+			tag: "hospio-notification",
+			silent: true,
+		});
+
+		notification.onclick = () => {
+			window.focus();
+			notification.close();
+		};
+
+		setTimeout(() => notification.close(), 5000);
+	}
+}
