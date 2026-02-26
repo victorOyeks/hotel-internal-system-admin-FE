@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ChatUserAvatar } from "./chat-user-avatar";
@@ -42,7 +43,7 @@ function formatTimestamp(dateStr: string | null): string {
 	return format(date, "MMM d");
 }
 
-export function ConversationItem({
+export const ConversationItem = memo(function ConversationItem({
 	conversation,
 	isActive,
 	currentUserId,
@@ -115,4 +116,4 @@ export function ConversationItem({
 			</div>
 		</button>
 	);
-}
+});

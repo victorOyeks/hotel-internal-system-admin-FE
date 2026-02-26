@@ -43,12 +43,10 @@ export function MessageList({
 
 	const allMessages = useMemo(() => {
 		if (!data) return [];
-		const msgs = data.pages.flatMap((page) => [...page.content]);
-		msgs.sort(
-			(a, b) =>
-				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-		);
-		return msgs;
+		// Server returns pages in DESC order (newest first).
+		// Reverse pages then flatten to get ASC order — O(n) instead of O(n log n) sort.
+		const reversed = [...data.pages].reverse();
+		return reversed.flatMap((page) => [...page.content].reverse());
 	}, [data]);
 
 	// Mark as read when conversation opens

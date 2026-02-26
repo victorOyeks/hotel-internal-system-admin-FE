@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DeliveryStatus } from "./delivery-status";
@@ -17,7 +18,7 @@ interface MessageBubbleProps {
 	onDelete: () => void;
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
 	message,
 	isOwn,
 	showAvatar,
@@ -148,4 +149,4 @@ export function MessageBubble({
 			</MessageContextMenu>
 		</div>
 	);
-}
+});
