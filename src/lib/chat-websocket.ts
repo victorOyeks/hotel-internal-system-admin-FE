@@ -148,6 +148,22 @@ class ChatWebSocketService {
 		this.subscribeToConversationTopicInternal(conversationId);
 	}
 
+	subscribeToTypingTopic(conversationId: string): void {
+		if (!this.client?.connected) return;
+		// Avoid duplicate subscriptions — typing is already included in full topic subscription
+		if (this.subscribedConversations.has(conversationId)) return;
+
+		this.activeSubscriptions.push(
+			this.client.subscribe(
+				`/topic/conversations/${conversationId}/typing`,
+				(message) => {
+					const event: TypingIndicatorDTO = JSON.parse(message.body);
+					this.onTyping?.(event);
+				},
+			),
+		);
+	}
+
 	private subscribeToConversationTopicInternal(
 		conversationId: string,
 	): void {

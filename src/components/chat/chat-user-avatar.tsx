@@ -20,9 +20,9 @@ const sizeClasses = {
 };
 
 const dotSizeClasses = {
-	sm: "size-2.5",
-	md: "size-3",
-	lg: "size-3.5",
+	sm: "size-2",
+	md: "size-2.5",
+	lg: "size-3",
 };
 
 function getInitials(name: string): string {
@@ -56,7 +56,7 @@ export function ChatUserAvatar({
 			{showOnlineIndicator && online && (
 				<span
 					className={cn(
-						"absolute bottom-0 right-0 rounded-full bg-secondary-4 ring-2 ring-white",
+						"absolute bottom-0 right-0 rounded-full bg-emerald-500 ring-[1.5px] ring-white",
 						dotSizeClasses[size],
 					)}
 				/>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChatUserAvatar } from "./chat-user-avatar";
 import { useChatPresence } from "@/hooks/use-chat-presence";
 import type { ChatConversationResponse } from "@/lib/chat-types";
-import { cn } from "@/lib/utils";
+
 
 interface ChatHeaderProps {
 	conversation: ChatConversationResponse;
@@ -63,6 +63,7 @@ export function ChatHeader({
 					avatarUrl={otherParticipant?.userAvatar}
 					userId={otherParticipant?.userId}
 					size="md"
+					showOnlineIndicator={false}
 				/>
 			)}
 
@@ -75,14 +76,23 @@ export function ChatHeader({
 						{totalCount} members{activeCount > 0 && `, ${activeCount} online`}
 					</p>
 				) : (
-					<p
-						className={cn(
-							"text-xs",
-							online ? "text-secondary-4" : "text-muted-foreground",
+					<div className="flex items-center gap-1.5 mt-0.5">
+						{online ? (
+							<>
+								<span className="relative flex size-1.5">
+									<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+									<span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+								</span>
+								<span className="text-[11px] text-gray-500 font-medium tracking-wide">
+									Active now
+								</span>
+							</>
+						) : (
+							<span className="text-[11px] text-gray-400 tracking-wide">
+								Away
+							</span>
 						)}
-					>
-						{online ? "Online" : "Offline"}
-					</p>
+					</div>
 				)}
 			</div>
 		</div>

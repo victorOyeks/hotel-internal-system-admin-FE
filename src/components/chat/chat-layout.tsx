@@ -66,10 +66,14 @@ export function ChatLayout({
 		};
 	}, [isMobile]);
 
-	// Subscribe to group conversation topics when active conversation changes
+	// Subscribe to conversation topics when active conversation changes
 	useEffect(() => {
-		if (activeConversation?.conversationType === "GROUP" && activeConversation.id) {
+		if (!activeConversation?.id) return;
+		if (activeConversation.conversationType === "GROUP") {
 			chatWs.subscribeToConversationTopic(activeConversation.id);
+		} else {
+			// 1:1 chats use user queues for messages/edits/deletes, but typing is topic-based
+			chatWs.subscribeToTypingTopic(activeConversation.id);
 		}
 	}, [activeConversation]);
 
