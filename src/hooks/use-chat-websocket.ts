@@ -9,9 +9,9 @@ import { getOnlineUsers } from "@/lib/chat-actions";
 import {
 	playNotificationSound,
 	showMessageNotification,
-	showPushNotification,
 	requestNotificationPermission,
 } from "@/lib/chat-notification";
+import { toast } from "sonner";
 import {
 	wsConnectionStatusAtom,
 	typingIndicatorsAtom,
@@ -201,9 +201,8 @@ export function useChatWebSocket(
 			setNotificationUnreadCount((prev) => prev + 1);
 			// Trigger refetch
 			triggerNotifRefetch((prev) => prev + 1);
-			// Sound + push
-			playNotificationSound();
-			showPushNotification(notification.title, notification.message);
+			// Show toast notification (no sound, no browser push)
+			toast(notification.title, { description: notification.message });
 		});
 
 		chatWs.connect(baseUrl, token, hotelId, role);
