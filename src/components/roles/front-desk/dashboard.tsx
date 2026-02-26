@@ -156,19 +156,19 @@ export function FrontDeskStats({
 			{data.map((stat) => (
 				<div
 					key={stat.label}
-					className="bg-card border border-primary-5/10 rounded-xl md:rounded-2xl p-3 flex flex-col gap-y-4"
+					className="bg-card border border-primary-5/10 rounded-xl px-3 py-4 flex items-center gap-x-3"
 				>
 					<div
 						className={cn(
-							"size-10 rounded-full flex items-center justify-center mb-2",
+							"size-9 rounded-full flex items-center justify-center shrink-0",
 							stat.color,
 						)}
 					>
-						<stat.icon className="size-5" />
+						<stat.icon className="size-4" />
 					</div>
-					<div className="space-y-2">
-						<div className="text-sm text-muted-foreground">{stat.label}</div>
-						<div className="text-2xl font-medium">{stat.value}</div>
+					<div>
+						<div className="text-xs text-muted-foreground">{stat.label}</div>
+						<div className="text-lg font-semibold">{stat.value}</div>
 					</div>
 				</div>
 			))}
@@ -535,33 +535,12 @@ function CreateNewBookingForm({
 		roomTypes: Array<string>;
 	};
 }) {
-	const [mode, setMode] = useState<"check-in" | "reservation">("check-in");
-	return (
-		<div className="space-y-4">
-			<div className="border-b border-primary-5/20 max-w-[content]">
-				<Button
-					variant={mode === "check-in" ? "secondary" : "ghost"}
-					className="rounded-none"
-					onClick={() => setMode("check-in")}
-				>
-					Check-In
-				</Button>
-				<Button
-					variant={mode === "reservation" ? "secondary" : "ghost"}
-					className="rounded-none"
-					onClick={() => setMode("reservation")}
-				>
-					Reservation
-				</Button>
-			</div>
-
-			<UnifiedBookingForm key={mode} data={data} setOpen={setOpen} mode={mode} />
-		</div>
-	);
+	return <UnifiedBookingForm data={data} setOpen={setOpen} />;
 }
 
 const bookingFormSchema = z
 	.object({
+		bookingType: z.enum(["check-in", "reservation"], { message: "Booking type is required" }),
 		title: z.string().min(1, "Title is required"),
 		guestName: z.string().min(1, "Guest name is required"),
 		guestEmail: z.string().email("Invalid email address").or(z.literal("")),
@@ -712,17 +691,16 @@ function RoomListCombobox({
 export function UnifiedBookingForm({
 	data,
 	setOpen,
-	mode,
+	mode: initialMode = "check-in",
 }: {
 	data: {
 		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
-	mode: "check-in" | "reservation";
+	mode?: "check-in" | "reservation" | undefined;
 }) {
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	const isCheckIn = mode === "check-in";
 
 	const [roomQuery, setRoomQuery] = useQueryStates({
 		"room:type": parseAsString.withDefault(""),
@@ -741,6 +719,7 @@ export function UnifiedBookingForm({
 	const form = useForm({
 		resolver: zodResolver(bookingFormSchema),
 		defaultValues: {
+			bookingType: initialMode as "check-in" | "reservation" | undefined,
 			title: "Mr",
 			guestName: "",
 			guestEmail: "",
@@ -749,8 +728,8 @@ export function UnifiedBookingForm({
 			noOfChildren: 0,
 			nightlyRate: 0,
 			dailySpendingCap: 0,
-			checkInDate: isCheckIn ? toLocalDateString(new Date()) : "",
-			checkOutDate: isCheckIn ? toLocalDateString(new Date(Date.now() + 86400000)) : "",
+			checkInDate: initialMode === "check-in" ? toLocalDateString(new Date()) : "",
+			checkOutDate: initialMode === "check-in" ? toLocalDateString(new Date(Date.now() + 86400000)) : "",
 			discountValue: 0,
 			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
 			initialPayment: {
@@ -769,15 +748,29 @@ export function UnifiedBookingForm({
 		reValidateMode: "onChange",
 	});
 
+	const bookingType = form.watch("bookingType");
+	const isCheckIn = bookingType === "check-in";
+
 	const { isPending, mutate } = useMutation({
 		mutationFn: async (formData: z.infer<typeof bookingFormSchema>) => {
-			const { roomId, initialPayment, ...restData } = formData;
-			const includePayment = showPayment && initialPayment.amount > 0;
+			const includePayment = showPayment && formData.initialPayment.amount > 0;
 			const payload = {
-				roomId,
-				...restData,
+				roomId: formData.roomId,
+				title: formData.title,
+				guestName: formData.guestName,
+				guestEmail: formData.guestEmail,
+				phoneNumber: formData.phoneNumber,
+				noOfAdults: formData.noOfAdults,
+				noOfChildren: formData.noOfChildren,
+				nightlyRate: formData.nightlyRate,
+				dailySpendingCap: formData.dailySpendingCap,
+				checkInDate: formData.checkInDate,
+				checkOutDate: formData.checkOutDate,
+				discountValue: formData.discountValue,
+				discountType: formData.discountType,
+				notes: formData.notes,
 				initialPayment: includePayment
-					? { ...initialPayment, paymentDate: new Date(initialPayment.paymentDate) }
+					? { ...formData.initialPayment, paymentDate: new Date(formData.initialPayment.paymentDate) }
 					: undefined,
 			};
 
@@ -805,7 +798,7 @@ export function UnifiedBookingForm({
 						hotelId: orgHotelId,
 						bookingId,
 						organizationId: selectedOrgId,
-						dailySpendingCap: form.getValues("dailySpendingCap") || 0,
+						dailySpendingCap: Number(form.getValues("dailySpendingCap")) || 0,
 					});
 					if (!assignResult.success) {
 						toast.error(
@@ -854,6 +847,42 @@ export function UnifiedBookingForm({
 					mutate(formData);
 				})}
 			>
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
+					<FormField
+						control={form.control}
+						name="bookingType"
+						render={({ field }) => (
+							<FormItem className="md:col-span-2">
+								<FormLabel>Booking Type <span className="text-red-500">*</span></FormLabel>
+								<Select
+									onValueChange={(value) => {
+										field.onChange(value);
+										if (value === "check-in") {
+											form.setValue("checkInDate", toLocalDateString(new Date()));
+											form.setValue("checkOutDate", toLocalDateString(new Date(Date.now() + 86400000)));
+										} else {
+											form.setValue("checkInDate", "");
+											form.setValue("checkOutDate", "");
+										}
+									}}
+									defaultValue={field.value}
+								>
+									<FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder="Select booking type" />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										<SelectItem value="check-in">Check-In</SelectItem>
+										<SelectItem value="reservation">Reservation</SelectItem>
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+				</div>
+
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
 					<FormField
 						control={form.control}
@@ -1377,7 +1406,7 @@ const actions: QuickAction[] = [
 	{
 		type: "link",
 		title: "Bookings",
-		href: "/front-desk/bookings",
+		href: "/dashboard/bookings",
 		icon: CalendarIcon,
 		style: "border-blue-200 bg-blue-50/60 text-blue-700 hover:bg-blue-100/80",
 		key: "view-bookings",
@@ -1385,7 +1414,7 @@ const actions: QuickAction[] = [
 	{
 		type: "link",
 		title: "Rooms",
-		href: "/front-desk/rooms",
+		href: "/dashboard/rooms",
 		icon: BedIcon,
 		style: "border-violet-200 bg-violet-50/60 text-violet-700 hover:bg-violet-100/80",
 		key: "manage-rooms",
@@ -1393,7 +1422,7 @@ const actions: QuickAction[] = [
 	{
 		type: "link",
 		title: "Guests",
-		href: "/front-desk/guests",
+		href: "/dashboard/guests",
 		icon: UsersIcon,
 		style: "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-100/80",
 		key: "view-guests",
@@ -1401,7 +1430,7 @@ const actions: QuickAction[] = [
 	{
 		type: "link",
 		title: "Payments",
-		href: "/front-desk/payments",
+		href: "/dashboard/payments",
 		icon: CreditCardIcon,
 		style: "border-teal-200 bg-teal-50/60 text-teal-700 hover:bg-teal-100/80",
 		key: "payments",

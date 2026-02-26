@@ -904,45 +904,6 @@ const columns = [
 		cell: (info) => formatCurrency(info.getValue()),
 	}),
 
-	columnHelper.display({
-		id: "paymentStatus",
-		header: "Payment",
-		cell: (info) => {
-			const booking = info.row.original;
-			const isFullyPaid = booking.amountPaid >= booking.totalAmountDue;
-			const paymentPercentage =
-				booking.totalAmountDue > 0
-					? (booking.amountPaid / booking.totalAmountDue) * 100
-					: 0;
-
-			return (
-				<div className="flex flex-col gap-1">
-					<div className="flex items-center gap-1">
-						<div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-							<div
-								className={`h-full ${isFullyPaid
-									? "bg-green-500"
-									: paymentPercentage > 50
-										? "bg-blue-500"
-										: "bg-amber-500"
-									}`}
-								style={{ width: `${Math.min(paymentPercentage, 100)}%` }}
-							/>
-						</div>
-						<span className="text-xs text-gray-600">
-							{Math.round(paymentPercentage)}%
-						</span>
-					</div>
-					{booking.amountRemaining > 0 && (
-						<span className="text-xs text-amber-600">
-							{formatCurrency(booking.amountRemaining)} due
-						</span>
-					)}
-				</div>
-			);
-		},
-	}),
-
 	columnHelper.accessor("bookingStatus", {
 		header: "Status",
 		cell: (info) => {
