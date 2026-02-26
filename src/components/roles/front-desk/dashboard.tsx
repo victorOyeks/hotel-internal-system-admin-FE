@@ -538,10 +538,10 @@ const checkInFormSchema = z.object({
 		.nonnegative("Number of children cannot be negative")
 		.default(0),
 	nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
-	dailySpendingCap: z
-		.number()
-		.nonnegative("Daily spending cap must be 0 or greater")
-		.default(0),
+	dailySpendingCap: z.preprocess(
+		(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
+		z.number().nonnegative("Daily spending cap must be 0 or greater"),
+	),
 	discountValue: z.number().nonnegative().default(0),
 	discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
 	initialPayment: z.object({
@@ -590,9 +590,10 @@ const reservationFormSchema = z
 		guestName: z.string().nonempty("Guest name is required"),
 		phoneNumber: z.string().nonempty("Phone number is required"),
 		nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
-		dailySpendingCap: z
-			.number()
-			.nonnegative("Daily spending cap must be 0 or greater"),
+		dailySpendingCap: z.preprocess(
+			(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
+			z.number().nonnegative("Daily spending cap must be 0 or greater"),
+		),
 		checkInDate: z.string().nonempty("Check-in date is required"),
 		checkOutDate: z.string().nonempty("Check-out date is required"),
 		roomId: z.string().nonempty("Room is required"),
@@ -719,6 +720,10 @@ export function CheckInForm({
 			guestName: "",
 			guestEmail: "",
 			phoneNumber: "",
+			noOfAdults: 1,
+			noOfChildren: 0,
+			nightlyRate: 0,
+			dailySpendingCap: 0,
 			checkInDate: new Date().toISOString().split("T")[0],
 			checkOutDate: new Date().toISOString().split("T")[0],
 			discountValue: 0,
@@ -960,14 +965,15 @@ export function CheckInForm({
 								<FormControl>
 									<Input
 										type="number"
-										placeholder="e.g 5000"
+										placeholder="Auto-filled from room"
 										min="0"
 										step="0.01"
-										value={form.watch("nightlyRate")}
+										value={form.watch("nightlyRate") || ""}
 										onChange={(e) =>
 											form.setValue("nightlyRate", Number(e.target.value))
 										}
 										readOnly
+										className="bg-muted/50"
 									/>
 								</FormControl>
 								<FormMessage />
@@ -1415,12 +1421,13 @@ export function ReservationForm({
 									<Input
 										type="number"
 										step="0.01"
-										placeholder="e.g 25000"
-										value={form.watch("nightlyRate")}
+										placeholder="Auto-filled from room"
+										value={form.watch("nightlyRate") || ""}
 										onChange={(e) =>
 											form.setValue("nightlyRate", Number(e.target.value))
 										}
 										readOnly
+										className="bg-muted/50"
 									/>
 								</FormControl>
 								<FormMessage />
