@@ -3,6 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 
+function isChunkLoadError(error: Error): boolean {
+	const message = error.message || "";
+	return (
+		error.name === "ChunkLoadError" ||
+		message.includes("Loading chunk") ||
+		message.includes("Failed to fetch dynamically imported module") ||
+		message.includes("Importing a module script failed")
+	);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-shadow
 export default function ErrorPage({
 	error,
@@ -12,6 +22,11 @@ export default function ErrorPage({
 	reset: () => void;
 }) {
 	useEffect(() => {
+		if (isChunkLoadError(error)) {
+			// New deployment invalidated old chunks — reload to get the latest version
+			window.location.reload();
+			return;
+		}
 		console.error(error);
 	}, [error]);
 
