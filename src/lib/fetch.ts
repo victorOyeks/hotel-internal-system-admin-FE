@@ -3925,81 +3925,6 @@ export const schema = createSchema({
 		output: ApiResponseListRoomResponse,
 		query: ListRoomsQuery,
 	},
-	"@post/api/front-desks/:roomId/check-in": {
-		params: z.object({ roomId: z.string() }),
-		input: z.object({
-			guestName: z.string().nonempty(),
-			phoneNumber: z.string().nonempty(),
-			noOfAdults: z.number(),
-			noOfChildren: z.number(),
-			nightlyRate: z.number().min(0),
-			dailySpendingCap: z.number().min(0),
-			amountPaid: z.number().min(0),
-			roomStatus: z.literal("CHECKED_IN"),
-			checkInDate: z.string().nonempty(), // yyyy-mm-dd
-		}),
-		output: ApiResponseObject.extend({
-			data: z.string(),
-		}),
-	},
-	"@post/api/front-desks/:roomId/check-out": {
-		params: z.object({ roomId: z.string() }),
-		input: z.object({
-			finalAmountPaid: z.number().min(0),
-		}),
-		output: ApiResponseObject.extend({
-			data: z.object({
-				guestName: z.string(),
-				roomIdentifier: z.string(),
-				roomType: z.string(),
-				branchName: z.string(),
-				checkInDate: z.string(),
-				checkOutDate: z.string(),
-				totalAmountPaid: z.number(),
-				bookingStatus: BookingStatus,
-			}),
-		}),
-	},
-	"@post/api/front-desks/:roomId/make-reservation": {
-		params: z.object({ roomId: z.string() }),
-		input: z.object({
-			guestName: z.string().nonempty(),
-			phoneNumber: z.string().nonempty(),
-			nightlyRate: z.number().min(0),
-			dailySpendingCap: z.number().min(0),
-			checkInDate: z.string().nonempty(), // yyyy-mm-dd
-			checkOutDate: z.string().nonempty(), // yyyy-mm-dd
-			notes: z.string().nullable().optional(),
-			discountValue: z.number().optional(),
-			discountType: z.enum(["PERCENTAGE", "FIXED"]).optional(),
-			initialPayment: RecordBookingPaymentRequest.optional(),
-		}),
-		output: ApiResponseObject.extend({
-			data: z.object({
-				bookingId: z.string(),
-				guestName: z.string(),
-				roomIdentifier: z.string(),
-				roomType: z.string(),
-				branchName: z.string(),
-				checkInDate: z.string(),
-				checkOutDate: z.string(),
-				status: BookingStatus,
-			}),
-		}),
-	},
-	"@post/api/front-desks/:roomId/cancel-reservation": {
-		params: z.object({ roomId: z.string() }),
-		output: ApiResponseObject.extend({
-			data: z.object({
-				bookingId: z.string(),
-				guestName: z.string(),
-				roomIdentifier: z.string(),
-				roomType: z.string(),
-				status: BookingStatus,
-				message: z.string(),
-			}),
-		}),
-	},
 	"@get/api/front-desks/dashboard-cards": {
 		output: ApiResponseObject.extend({
 			data: z.object({
@@ -4747,8 +4672,8 @@ export const schema = createSchema({
 			.partial(),
 		output: ApiResponseObject,
 	},
-	"@get/api/front-desks/rooms/:roomIdentifier/guest-details": {
-		params: z.object({ roomIdentifier: z.string() }),
+	"@get/api/front-desks/rooms/:roomId/guest-details": {
+		params: z.object({ roomId: z.string() }),
 		output: ApiResponseObject,
 	},
 	"@get/api/hotel-bank-accounts": {
@@ -5433,23 +5358,23 @@ export const schema = createSchema({
 		query: z.object({ hotelId: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},
-	"@post/api/front-desks/:roomIdentifier/cancel-reservation": {
-		params: z.object({ roomIdentifier: z.string() }),
+	"@post/api/front-desks/:roomId/cancel-reservation": {
+		params: z.object({ roomId: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@post/api/front-desks/:roomIdentifier/check-in": {
+	"@post/api/front-desks/:roomId/check-in": {
 		input: CheckInRequest,
-		params: z.object({ roomIdentifier: z.string() }),
+		params: z.object({ roomId: z.string() }),
 		output: ApiResponseCheckInResponse,
 	},
-	"@post/api/front-desks/:roomIdentifier/check-out": {
+	"@post/api/front-desks/:roomId/check-out": {
 		input: z.any(),
-		params: z.object({ roomIdentifier: z.string() }),
+		params: z.object({ roomId: z.string() }),
 		output: ApiResponseObject,
 	},
-	"@post/api/front-desks/:roomIdentifier/make-reservation": {
+	"@post/api/front-desks/:roomId/make-reservation": {
 		input: z.any(),
-		params: z.object({ roomIdentifier: z.string() }),
+		params: z.object({ roomId: z.string() }),
 		output: ApiResponseObject,
 	},
 	"@post/api/hotel-bank-accounts": {
