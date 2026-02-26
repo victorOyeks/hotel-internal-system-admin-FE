@@ -104,7 +104,12 @@ export function DatePicker({
 							captionLayout="dropdown"
 							month={month}
 							onMonthChange={setMonth}
-							disabled={(date) => (minDate ? date < minDate : false)}
+							disabled={(date) => {
+								if (!minDate) return false;
+								const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+								const m = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+								return d < m;
+							}}
 							onSelect={(selectedDate) => {
 								setDate(selectedDate);
 								setValue(formatDate(selectedDate));

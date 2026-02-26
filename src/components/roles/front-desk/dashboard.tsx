@@ -764,7 +764,7 @@ export function CheckInForm({
 			nightlyRate: 0,
 			dailySpendingCap: 0,
 			checkInDate: new Date().toISOString().split("T")[0],
-			checkOutDate: new Date().toISOString().split("T")[0],
+			checkOutDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
 			discountValue: 0,
 			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
 			initialPayment: {
