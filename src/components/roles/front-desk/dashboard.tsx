@@ -60,6 +60,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { parseAsString, useQueryState, useQueryStates } from "nuqs";
 import type * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -505,98 +506,43 @@ function CreateNewBookingForm({
 		roomTypes: Array<string>;
 	};
 }) {
-	const [view, setView] = useState<"check-in" | "reservation">("check-in");
+	const [mode, setMode] = useState<"check-in" | "reservation">("check-in");
 	return (
 		<div className="space-y-4">
 			<div className="border-b border-primary-5/20 max-w-[content]">
 				<Button
-					variant={view === "check-in" ? "secondary" : "ghost"}
+					variant={mode === "check-in" ? "secondary" : "ghost"}
 					className="rounded-none"
-					onClick={() => setView("check-in")}
+					onClick={() => setMode("check-in")}
 				>
 					Check-In
 				</Button>
 				<Button
-					variant={view === "reservation" ? "secondary" : "ghost"}
+					variant={mode === "reservation" ? "secondary" : "ghost"}
 					className="rounded-none"
-					onClick={() => setView("reservation")}
+					onClick={() => setMode("reservation")}
 				>
 					Reservation
 				</Button>
 			</div>
 
-			{view === "check-in" ? (
-				<CheckInForm data={data} setOpen={setOpen} />
-			) : (
-				<ReservationForm data={data} setOpen={setOpen} />
-			)}
+			<UnifiedBookingForm key={mode} data={data} setOpen={setOpen} mode={mode} />
 		</div>
 	);
 }
 
-const checkInFormSchema = z.object({
-	title: z.string().min(1, "Title is required"),
-	guestName: z.string().min(1, "Guest name is required"),
-	guestEmail: z.email("Invalid email address"),
-	phoneNumber: z.string().min(1, "Phone number is required"),
-	noOfAdults: z.number().int().positive("Number of adults must be at least 1"),
-	noOfChildren: z
-		.number()
-		.int()
-		.nonnegative("Number of children cannot be negative")
-		.default(0),
-	nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
-	dailySpendingCap: z.preprocess(
-		(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
-		z.number().nonnegative("Daily spending cap must be 0 or greater"),
-	),
-	discountValue: z.number().nonnegative().default(0),
-	discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
-	initialPayment: z.object({
-		amount: z.number().nonnegative(),
-		currency: z.string().default("NGN"),
-		method: z.enum([
-			"CASH",
-			"CARD",
-			"CREDIT_CARD",
-			"DEBIT_CARD",
-			"BANK_TRANSFER",
-			"MOBILE_MONEY",
-			"CHEQUE",
-			"ONLINE_PAYMENT",
-			"PAYPAL",
-			"CRYPTOCURRENCY",
-			"DIRECT_DEBIT",
-			"PETTY_CASH",
-			"OTHERS",
-		]),
-		reference: z.string().min(1, "Payment reference is required"),
-		status: z.enum([
-			"SUCCESS",
-			"FAILED",
-			"PENDING",
-			"CANCELLED",
-			"REFUNDED",
-			"PARTLY_PAID",
-			"FULLY_PAID",
-		]),
-		type: z.enum([
-			"DEPOSIT",
-			"INSTALLMENT",
-			"FINAL",
-			"REFUND",
-			"OTHER",
-		]),
-		paymentDate: z.string(),
-	}),
-	checkInDate: z.string().min(1, "Check-in date is required"),
-	checkOutDate: z.string().min(1, "Check-out date is required"),
-});
-
-const reservationFormSchema = z
+const bookingFormSchema = z
 	.object({
-		guestName: z.string().nonempty("Guest name is required"),
-		phoneNumber: z.string().nonempty("Phone number is required"),
+		title: z.string().min(1, "Title is required"),
+		guestName: z.string().min(1, "Guest name is required"),
+		guestEmail: z.string().email("Invalid email address").or(z.literal("")),
+		phoneNumber: z.string().min(1, "Phone number is required"),
+		noOfAdults: z.number().int().positive("Number of adults must be at least 1"),
+		noOfChildren: z
+			.number()
+			.int()
+			.nonnegative("Number of children cannot be negative")
+			.default(0),
 		nightlyRate: z.number().positive("Nightly rate must be greater than 0"),
 		dailySpendingCap: z.preprocess(
 			(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
@@ -641,9 +587,9 @@ const reservationFormSchema = z
 			]),
 			paymentDate: z.string(),
 		}),
-		checkInDate: z.string().nonempty("Check-in date is required"),
-		checkOutDate: z.string().nonempty("Check-out date is required"),
-		roomId: z.string().nonempty("Room is required"),
+		checkInDate: z.string().min(1, "Check-in date is required"),
+		checkOutDate: z.string().min(1, "Check-out date is required"),
+		roomId: z.string().min(1, "Room is required"),
 		notes: z.string().optional(),
 	})
 	.refine(
@@ -734,24 +680,27 @@ function RoomListCombobox({
 
 
 
-export function CheckInForm({
+export function UnifiedBookingForm({
 	data,
 	setOpen,
+	mode,
 }: {
 	data: {
 		rooms: Array<RoomType>;
 		roomTypes: Array<string>;
 	};
 	setOpen: (open: boolean) => void;
+	mode: "check-in" | "reservation";
 }) {
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const isCheckIn = mode === "check-in";
 
 	const [roomQuery, setRoomQuery] = useQueryStates({
 		"room:type": parseAsString.withDefault(""),
 	});
 
-	const [selectedRoomId, setSelectedRoomId] = useState("");
 	const [selectedOrgId, setSelectedOrgId] = useState("");
+	const [showPayment, setShowPayment] = useState(false);
 
 	const { data: orgData } = useQuery({
 		queryKey: ["front-desk", "organizations"],
@@ -761,7 +710,7 @@ export function CheckInForm({
 	const orgHotelId = orgData?.hotelId ?? "";
 
 	const form = useForm({
-		resolver: zodResolver(checkInFormSchema),
+		resolver: zodResolver(bookingFormSchema),
 		defaultValues: {
 			title: "Mr",
 			guestName: "",
@@ -771,8 +720,8 @@ export function CheckInForm({
 			noOfChildren: 0,
 			nightlyRate: 0,
 			dailySpendingCap: 0,
-			checkInDate: toLocalDateString(new Date()),
-			checkOutDate: toLocalDateString(new Date(Date.now() + 86400000)),
+			checkInDate: isCheckIn ? toLocalDateString(new Date()) : "",
+			checkOutDate: isCheckIn ? toLocalDateString(new Date(Date.now() + 86400000)) : "",
 			discountValue: 0,
 			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
 			initialPayment: {
@@ -784,43 +733,51 @@ export function CheckInForm({
 				type: "DEPOSIT" as const,
 				paymentDate: new Date().toISOString(),
 			},
+			roomId: "",
+			notes: "",
 		},
 		mode: "onSubmit",
-		reValidateMode: "onChange"
+		reValidateMode: "onChange",
 	});
 
 	const { isPending, mutate } = useMutation({
-		mutationFn: async (
-			data: z.infer<typeof checkInFormSchema> & {
-				roomId: string;
-			},
-		) => {
-			const { roomId, initialPayment, ...restData } = data;
-			const response = await checkInGuest({
+		mutationFn: async (formData: z.infer<typeof bookingFormSchema>) => {
+			const { roomId, initialPayment, ...restData } = formData;
+			const paymentData = showPayment && initialPayment.amount > 0
+				? {
+					initialPayment: {
+						...initialPayment,
+						paymentDate: new Date(initialPayment.paymentDate),
+					},
+				}
+				: {};
+
+			if (isCheckIn) {
+				const response = await checkInGuest({
+					roomId,
+					...restData,
+					...paymentData,
+				});
+				if (!response.success) {
+					throw new Error(response.error || "An error occurred");
+				}
+				return { data: response.data, bookingId: response.data?.data?.id };
+			}
+
+			const response = await makeReservation({
 				roomId,
 				...restData,
-				...(initialPayment.amount > 0
-					? {
-						initialPayment: {
-							...initialPayment,
-							paymentDate: new Date(initialPayment.paymentDate),
-						},
-					}
-					: {}),
+				...paymentData,
 			});
-
 			if (!response.success) {
 				throw new Error(response.error || "An error occurred");
 			}
-
-			return response.data;
+			return { data: response.data, bookingId: response.data?.data?.bookingId };
 		},
 		onError: (error) => {
-			toast.error(error.message || "An error occurred during check-in.");
+			toast.error(error.message || `An error occurred during ${isCheckIn ? "check-in" : "reservation"}.`);
 		},
-		onSuccess: async (data) => {
-			// Chain organization assignment if one was selected
-			const bookingId = data.data?.id;
+		onSuccess: async ({ data, bookingId }) => {
 			if (selectedOrgId && orgHotelId && bookingId) {
 				try {
 					const assignResult = await assignBookingToOrganization({
@@ -830,36 +787,41 @@ export function CheckInForm({
 						dailySpendingCap: form.getValues("dailySpendingCap") || 0,
 					});
 					if (!assignResult.success) {
-						toast.error("Guest checked in but organization assignment failed", {
-							description: assignResult.error,
-						});
+						toast.error(
+							`${isCheckIn ? "Guest checked in" : "Reservation created"} but organization assignment failed`,
+							{ description: assignResult.error },
+						);
 					}
 				} catch {
-					toast.error("Guest checked in but organization assignment failed");
+					toast.error(
+						`${isCheckIn ? "Guest checked in" : "Reservation created"} but organization assignment failed`,
+					);
 				}
 			}
 
-			toast.success(data.message || "Guest checked in successfully.");
+			toast.success(data?.message || (isCheckIn ? "Guest checked in successfully." : "Reservation created successfully."));
 			setShowSuccessDialog({
 				show: true,
 				message: selectedOrgId
-					? "Guest checked in and assigned to organization."
-					: "Guest checked in successfully.",
+					? isCheckIn
+						? "Guest checked in and assigned to organization."
+						: "Reservation created and assigned to organization."
+					: isCheckIn
+						? "Guest checked in successfully."
+						: "Reservation created successfully.",
 			});
 			form.reset();
 			setSelectedOrgId("");
 			setOpen(false);
-			revalidateRoute("/front-desk");
+			await revalidateRoute("/front-desk");
 		},
 	});
 
-	// use effect to clean queries on unmount
-	// biome-ignore lint/correctness/useExhaustiveDependencies: false
+	// Clean queries on unmount
+	// biome-ignore lint/correctness/useExhaustiveDependencies: cleanup only
 	useEffect(() => {
 		return () => {
-			setRoomQuery({
-				"room:type": "",
-			});
+			setRoomQuery({ "room:type": "" });
 		};
 	}, []);
 
@@ -867,12 +829,8 @@ export function CheckInForm({
 		<Form {...form}>
 			<form
 				className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
-				onSubmit={form.handleSubmit((data) => {
-					if (!selectedRoomId) {
-						toast.error("Please select a room");
-						return;
-					}
-					mutate({ ...data, roomId: selectedRoomId });
+				onSubmit={form.handleSubmit((formData) => {
+					mutate(formData);
 				})}
 			>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
@@ -954,20 +912,29 @@ export function CheckInForm({
 						/>
 					</div>
 
-					<div className="grid gap-2">
-						<Label>Room</Label>
-						<RoomListCombobox
-							rooms={data.rooms}
-							value={selectedRoomId}
-							onSelect={(value) => {
-								setSelectedRoomId(value);
-								const room = data.rooms.find((room) => room.id === value);
-								if (room) {
-									form.setValue("nightlyRate", room.roomPrice);
-								}
-							}}
-						/>
-					</div>
+					<FormField
+						control={form.control}
+						name="roomId"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room</FormLabel>
+								<FormControl>
+									<RoomListCombobox
+										rooms={data.rooms}
+										value={field.value}
+										onSelect={(value) => {
+											field.onChange(value);
+											const room = data.rooms.find((r) => r.id === value);
+											if (room) {
+												form.setValue("nightlyRate", room.roomPrice);
+											}
+										}}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
 
 					<FormField
 						control={form.control}
@@ -1032,507 +999,6 @@ export function CheckInForm({
 						)}
 					/>
 
-					<div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
-						<div className="space-y-2">
-							<Label>Organization (Optional)</Label>
-							<Combobox
-								options={organizations.map((org) => ({
-									label: org.name,
-									value: org.id,
-								}))}
-								value={selectedOrgId}
-								onSelect={setSelectedOrgId}
-								placeholder="Select organization..."
-								emptyText="No organizations found"
-							/>
-						</div>
-
-						<FormField
-							control={form.control}
-							name="dailySpendingCap"
-							render={() => (
-								<FormItem>
-									<FormLabel>Daily Spending Cap</FormLabel>
-									<FormControl>
-										<Input
-											type="number"
-											min="0"
-											{...form.register("dailySpendingCap", {
-												valueAsNumber: true,
-											})}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
-
-
-					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
-						<h4 className="font-medium text-sm text-muted-foreground mb-2">
-							Payment & Discount
-						</h4>
-						<div className="grid grid-cols-2 gap-4">
-							<FormField
-								control={form.control}
-								name="discountType"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Discount Type</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
-											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select type" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												<SelectItem value="FIXED">Fixed Amount</SelectItem>
-												<SelectItem value="PERCENTAGE">Percentage</SelectItem>
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="discountValue"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Discount Value</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												{...field}
-												onChange={(e) =>
-													field.onChange(Number.parseFloat(e.target.value))
-												}
-												className="w-full"
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
-
-						<div className="grid grid-cols-2 gap-4">
-							<FormField
-								control={form.control}
-								name="initialPayment.amount"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Initial Payment</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												{...field}
-												onChange={(e) =>
-													field.onChange(Number.parseFloat(e.target.value))
-												}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="initialPayment.method"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Payment Method</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
-											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select method" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												{[
-													"CASH",
-													"CARD",
-													"CREDIT_CARD",
-													"DEBIT_CARD",
-													"BANK_TRANSFER",
-													"MOBILE_MONEY",
-													"CHEQUE",
-													"ONLINE_PAYMENT",
-													"PAYPAL",
-													"CRYPTOCURRENCY",
-													"DIRECT_DEBIT",
-													"PETTY_CASH",
-													"OTHERS",
-												].map((method) => (
-													<SelectItem key={method} value={method}>
-														{method.replace(/_/g, " ")}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
-					</div>
-
-					<FormField
-						control={form.control}
-						name="checkInDate"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Check-in Date</FormLabel>
-								<FormControl>
-									<DatePicker
-										initialDate={field.value}
-										onChange={field.onChange}
-										placeholder="Select check-in date"
-										minDate={new Date()}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="checkOutDate"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Check-out Date</FormLabel>
-								<FormControl>
-									<DatePicker
-										initialDate={field.value}
-										onChange={field.onChange}
-										placeholder="Select check-out date"
-										minDate={
-											form.watch("checkInDate")
-												? new Date(
-													new Date(form.watch("checkInDate")).getTime() +
-													24 * 60 * 60 * 1000,
-												)
-												: new Date()
-										}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
-
-				{/* Check-in Summary */}
-				{form.watch("checkInDate") &&
-					form.watch("checkOutDate") &&
-					form.watch("nightlyRate") > 0 &&
-					(() => {
-						const nights = Math.ceil(
-							(new Date(form.watch("checkOutDate")).getTime() -
-								new Date(form.watch("checkInDate")).getTime()) /
-							(1000 * 60 * 60 * 24),
-						);
-						const rate = form.watch("nightlyRate");
-						const discountVal = form.watch("discountValue") || 0;
-						const discountType = form.watch("discountType");
-						const effectiveRate =
-							discountVal > 0
-								? discountType === "PERCENTAGE"
-									? rate * (1 - discountVal / 100)
-									: Math.max(0, rate - discountVal)
-								: rate;
-						const total = nights * effectiveRate;
-						return (
-							<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-								<h3 className="font-medium text-sm">Check-in Summary</h3>
-								<div className="grid grid-cols-2 gap-2 text-sm">
-									<div>
-										<span className="text-muted-foreground">Duration:</span>
-										<span className="ml-2 font-medium">
-											{nights} night(s)
-										</span>
-									</div>
-									<div>
-										<span className="text-muted-foreground">Nightly Rate:</span>
-										<span className="ml-2 font-medium">
-											{formatCurrency(rate)}
-										</span>
-									</div>
-									{discountVal > 0 && (
-										<>
-											<div>
-												<span className="text-muted-foreground">Discount:</span>
-												<span className="ml-2 font-medium text-green-600">
-													{discountType === "PERCENTAGE"
-														? `${discountVal}%`
-														: formatCurrency(discountVal)}
-												</span>
-											</div>
-											<div>
-												<span className="text-muted-foreground">Effective Rate:</span>
-												<span className="ml-2 font-medium">
-													{formatCurrency(effectiveRate)}
-												</span>
-											</div>
-										</>
-									)}
-									<div className="col-span-2">
-										<span className="text-muted-foreground">Total Cost:</span>
-										<span className="ml-2 font-medium text-lg">
-											{formatCurrency(total)}
-										</span>
-									</div>
-								</div>
-							</div>
-						);
-					})()}
-
-				<Button
-					type="submit"
-					className="mt-4 w-full font-semibold"
-					disabled={isPending}
-				>
-					{isPending ? (
-						<>
-							<Loader2Icon className="animate-spin" />
-							<span>Processing check-in...</span>
-						</>
-					) : (
-						"Check In Guest"
-					)}
-				</Button>
-			</form>
-		</Form>
-	);
-}
-
-export function ReservationForm({
-	data,
-	setOpen,
-}: {
-	data: {
-		rooms: Array<RoomType>;
-		roomTypes: Array<string>;
-	};
-	setOpen: (open: boolean) => void;
-}) {
-	const [roomQuery, setRoomQuery] = useQueryStates({
-		"room:type": parseAsString.withDefault(""),
-	});
-
-	const [selectedOrgId, setSelectedOrgId] = useState("");
-
-	const { data: orgData } = useQuery({
-		queryKey: ["front-desk", "organizations"],
-		queryFn: () => getOrganizationsForCurrentUser(),
-	});
-	const organizations = orgData?.organizations ?? [];
-	const orgHotelId = orgData?.hotelId ?? "";
-
-	const form = useForm({
-		resolver: zodResolver(reservationFormSchema),
-		defaultValues: {
-			guestName: "",
-			phoneNumber: "",
-			nightlyRate: 0,
-			dailySpendingCap: 0,
-			discountValue: 0,
-			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
-			initialPayment: {
-				amount: 0,
-				currency: "NGN",
-				method: "CASH" as const,
-				reference: `REF-${Date.now()}`,
-				status: "SUCCESS" as const,
-				type: "DEPOSIT" as const,
-				paymentDate: new Date().toISOString(),
-			},
-			checkInDate: "",
-			checkOutDate: "",
-			roomId: "",
-			notes: "",
-		},
-	});
-
-	const { isPending, mutate } = useMutation({
-		mutationFn: async (data: z.infer<typeof reservationFormSchema>) => {
-			const { roomId, initialPayment, ...restData } = data;
-			const response = await makeReservation({
-				roomId,
-				...restData,
-				...(initialPayment.amount > 0
-					? {
-						initialPayment: {
-							...initialPayment,
-							paymentDate: new Date(initialPayment.paymentDate),
-						},
-					}
-					: {}),
-			});
-			if (!response.success) {
-				throw new Error(response.error || "An error occurred");
-			}
-			return response.data;
-		},
-		onError: (e) => {
-			toast.error("An error occurred while creating the reservation.", {
-				description: e.message,
-			});
-		},
-		onSuccess: async (data) => {
-			const bookingId = data.data?.bookingId;
-			if (selectedOrgId && orgHotelId && bookingId) {
-				try {
-					const assignResult = await assignBookingToOrganization({
-						hotelId: orgHotelId,
-						bookingId,
-						organizationId: selectedOrgId,
-						dailySpendingCap: form.getValues("dailySpendingCap") || 0,
-					});
-					if (!assignResult.success) {
-						toast.error(
-							"Reservation created but organization assignment failed",
-							{ description: assignResult.error },
-						);
-					}
-				} catch {
-					toast.error(
-						"Reservation created but organization assignment failed",
-					);
-				}
-			}
-			toast.success(
-				selectedOrgId
-					? "Reservation created and assigned to organization."
-					: data.message || "Reservation created successfully.",
-			);
-			form.reset();
-			setSelectedOrgId("");
-			setOpen(false);
-			await revalidateRoute("/front-desk");
-		},
-	});
-
-	// use effect to clean queries on unmount
-	// biome-ignore lint/correctness/useExhaustiveDependencies: false
-	useEffect(() => {
-		return () => {
-			setRoomQuery({
-				"room:type": "",
-			});
-		};
-	}, []);
-
-	return (
-		<Form {...form}>
-			<form
-				className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
-				onSubmit={form.handleSubmit((data) => {
-					mutate(data);
-				})}
-			>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
-					<FormField
-						control={form.control}
-						name="guestName"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Guest Name</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g John Doe" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="phoneNumber"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Phone Number</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g +234 801 234 5678" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-
-					<div className="grid gap-2">
-						<Label>Room Type</Label>
-						<Combobox
-							options={data.roomTypes.map((type) => ({
-								label: type,
-								value: type,
-							}))}
-							value={roomQuery["room:type"]}
-							onSelect={(value) => setRoomQuery({ "room:type": value })}
-							placeholder="Select room type..."
-							emptyText="No room types found"
-						/>
-					</div>
-
-					<FormField
-						control={form.control}
-						name="roomId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Room</FormLabel>
-								<FormControl>
-									<RoomListCombobox
-										rooms={data.rooms}
-										value={field.value}
-										onSelect={(value) => {
-											field.onChange(value);
-											const room = data.rooms.find((room) => room.id === value);
-											if (room) {
-												form.setValue("nightlyRate", room.roomPrice);
-											}
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="nightlyRate"
-						render={() => (
-							<FormItem>
-								<FormLabel>Nightly Rate</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										step="0.01"
-										placeholder=""
-										value={form.watch("nightlyRate") || ""}
-										onChange={(e) =>
-											form.setValue("nightlyRate", Number(e.target.value))
-										}
-										readOnly
-										className="bg-muted/50"
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
 					<FormField
 						control={form.control}
 						name="dailySpendingCap"
@@ -1542,6 +1008,7 @@ export function ReservationForm({
 								<FormControl>
 									<Input
 										type="number"
+										min="0"
 										step="0.01"
 										placeholder="e.g 10000"
 										{...form.register("dailySpendingCap", {
@@ -1622,69 +1089,80 @@ export function ReservationForm({
 							/>
 						</div>
 
-						<div className="grid grid-cols-2 gap-4">
-							<FormField
-								control={form.control}
-								name="initialPayment.amount"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Initial Payment</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												{...field}
-												onChange={(e) =>
-													field.onChange(Number.parseFloat(e.target.value))
-												}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
+						<div className="flex items-center space-x-2">
+							<Checkbox
+								id="includePayment"
+								checked={showPayment}
+								onCheckedChange={(checked) => setShowPayment(checked === true)}
 							/>
-							<FormField
-								control={form.control}
-								name="initialPayment.method"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Payment Method</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
-											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select method" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												{[
-													"CASH",
-													"CARD",
-													"CREDIT_CARD",
-													"DEBIT_CARD",
-													"BANK_TRANSFER",
-													"MOBILE_MONEY",
-													"CHEQUE",
-													"ONLINE_PAYMENT",
-													"PAYPAL",
-													"CRYPTOCURRENCY",
-													"DIRECT_DEBIT",
-													"PETTY_CASH",
-													"OTHERS",
-												].map((method) => (
-													<SelectItem key={method} value={method}>
-														{method.replace(/_/g, " ")}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+							<Label htmlFor="includePayment" className="cursor-pointer">Include initial payment</Label>
 						</div>
+
+						{showPayment && (
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="initialPayment.amount"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Payment Amount</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min="0"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseFloat(e.target.value))
+													}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="initialPayment.method"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Payment Method</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select method" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{[
+														"CASH",
+														"CARD",
+														"CREDIT_CARD",
+														"DEBIT_CARD",
+														"BANK_TRANSFER",
+														"MOBILE_MONEY",
+														"CHEQUE",
+														"ONLINE_PAYMENT",
+														"PAYPAL",
+														"CRYPTOCURRENCY",
+														"DIRECT_DEBIT",
+														"PETTY_CASH",
+														"OTHERS",
+													].map((method) => (
+														<SelectItem key={method} value={method}>
+															{method.replace(/_/g, " ")}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						)}
 					</div>
 
 					<FormField
@@ -1733,7 +1211,7 @@ export function ReservationForm({
 					/>
 				</div>
 
-				{/* Reservation Summary */}
+				{/* Booking Summary */}
 				{form.watch("checkInDate") &&
 					form.watch("checkOutDate") &&
 					form.watch("nightlyRate") > 0 &&
@@ -1755,7 +1233,9 @@ export function ReservationForm({
 						const total = nights * effectiveRate;
 						return (
 							<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-								<h3 className="font-medium text-sm">Reservation Summary</h3>
+								<h3 className="font-medium text-sm">
+									{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
+								</h3>
 								<div className="grid grid-cols-2 gap-2 text-sm">
 									<div>
 										<span className="text-muted-foreground">Duration:</span>
@@ -1806,7 +1286,7 @@ export function ReservationForm({
 							<FormLabel>Notes (Optional)</FormLabel>
 							<FormControl>
 								<Textarea
-									placeholder="Add any special requests or notes about the reservation..."
+									placeholder="Add any special requests or notes..."
 									className="resize-none"
 									rows={3}
 									{...field}
@@ -1825,10 +1305,10 @@ export function ReservationForm({
 					{isPending ? (
 						<>
 							<Loader2Icon className="animate-spin" />
-							<span>Creating reservation...</span>
+							<span>{isCheckIn ? "Processing check-in..." : "Creating reservation..."}</span>
 						</>
 					) : (
-						"Create Reservation"
+						isCheckIn ? "Check In Guest" : "Create Reservation"
 					)}
 				</Button>
 			</form>

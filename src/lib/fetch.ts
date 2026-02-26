@@ -495,6 +495,7 @@ export const CheckInRequest = z.object({
 	checkOutDate: z.string(),
 	discountValue: z.number(),
 	discountType: z.enum(["PERCENTAGE", "FIXED"]),
+	notes: z.string().optional(),
 	initialPayment: RecordBookingPaymentRequest,
 });
 

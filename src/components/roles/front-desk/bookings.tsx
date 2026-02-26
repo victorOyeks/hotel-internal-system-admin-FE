@@ -79,7 +79,7 @@ import {
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
-import { CheckInForm, ReservationForm, type RoomType } from "./dashboard";
+import { UnifiedBookingForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
 import { AssignToOrgContent } from "./rooms-table-actions";
 import { Building2Icon } from "lucide-react";
@@ -1376,11 +1376,12 @@ function BookingsListToolbar({
 								</DialogDescription>
 							</DialogHeader>
 
-							<ReservationForm
+							<UnifiedBookingForm
 								data={{
 									rooms,
 									roomTypes,
 								}}
+								mode="reservation"
 								setOpen={(open) =>
 									setModalStates({
 										...modalStates,
@@ -1412,8 +1413,9 @@ function BookingsListToolbar({
 							</DialogDescription>
 						</DialogHeader>
 
-						<CheckInForm
+						<UnifiedBookingForm
 							data={{ rooms, roomTypes }}
+							mode="check-in"
 							setOpen={(open) =>
 								setModalStates({
 									...modalStates,
