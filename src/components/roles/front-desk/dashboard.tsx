@@ -795,14 +795,18 @@ export function CheckInForm({
 				roomId: string;
 			},
 		) => {
-			const { roomId, ...restData } = data;
+			const { roomId, initialPayment, ...restData } = data;
 			const response = await checkInGuest({
 				roomId,
 				...restData,
-				initialPayment: {
-					...restData.initialPayment,
-					paymentDate: new Date(restData.initialPayment.paymentDate),
-				},
+				...(initialPayment.amount > 0
+					? {
+						initialPayment: {
+							...initialPayment,
+							paymentDate: new Date(initialPayment.paymentDate),
+						},
+					}
+					: {}),
 			});
 
 			if (!response.success) {
@@ -1231,43 +1235,67 @@ export function CheckInForm({
 				{/* Check-in Summary */}
 				{form.watch("checkInDate") &&
 					form.watch("checkOutDate") &&
-					form.watch("nightlyRate") > 0 && (
-						<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-							<h3 className="font-medium text-sm">Check-in Summary</h3>
-							<div className="grid grid-cols-2 gap-2 text-sm">
-								<div>
-									<span className="text-muted-foreground">Duration:</span>
-									<span className="ml-2 font-medium">
-										{Math.ceil(
-											(new Date(form.watch("checkOutDate")).getTime() -
-												new Date(form.watch("checkInDate")).getTime()) /
-											(1000 * 60 * 60 * 24),
-										)}{" "}
-										night(s)
-									</span>
-								</div>
-								<div>
-									<span className="text-muted-foreground">Nightly Rate:</span>
-									<span className="ml-2 font-medium">
-										{formatCurrency(form.watch("nightlyRate"))}
-									</span>
-								</div>
-								<div className="col-span-2">
-									<span className="text-muted-foreground">Total Cost:</span>
-									<span className="ml-2 font-medium text-lg">
-
-										{formatCurrency(
-											Math.ceil(
-												(new Date(form.watch("checkOutDate")).getTime() -
-													new Date(form.watch("checkInDate")).getTime()) /
-												(1000 * 60 * 60 * 24),
-											) * form.watch("nightlyRate")
-										)}
-									</span>
+					form.watch("nightlyRate") > 0 &&
+					(() => {
+						const nights = Math.ceil(
+							(new Date(form.watch("checkOutDate")).getTime() -
+								new Date(form.watch("checkInDate")).getTime()) /
+							(1000 * 60 * 60 * 24),
+						);
+						const rate = form.watch("nightlyRate");
+						const discountVal = form.watch("discountValue") || 0;
+						const discountType = form.watch("discountType");
+						const effectiveRate =
+							discountVal > 0
+								? discountType === "PERCENTAGE"
+									? rate * (1 - discountVal / 100)
+									: Math.max(0, rate - discountVal)
+								: rate;
+						const total = nights * effectiveRate;
+						return (
+							<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+								<h3 className="font-medium text-sm">Check-in Summary</h3>
+								<div className="grid grid-cols-2 gap-2 text-sm">
+									<div>
+										<span className="text-muted-foreground">Duration:</span>
+										<span className="ml-2 font-medium">
+											{nights} night(s)
+										</span>
+									</div>
+									<div>
+										<span className="text-muted-foreground">Nightly Rate:</span>
+										<span className="ml-2 font-medium">
+											{formatCurrency(rate)}
+										</span>
+									</div>
+									{discountVal > 0 && (
+										<>
+											<div>
+												<span className="text-muted-foreground">Discount:</span>
+												<span className="ml-2 font-medium text-green-600">
+													{discountType === "PERCENTAGE"
+														? `${discountVal}%`
+														: formatCurrency(discountVal)}
+												</span>
+											</div>
+											<div>
+												<span className="text-muted-foreground">Effective Rate:</span>
+												<span className="ml-2 font-medium">
+													{formatCurrency(effectiveRate)}
+												</span>
+											</div>
+										</>
+									)}
+									<div className="col-span-2">
+										<span className="text-muted-foreground">Total Cost:</span>
+										<span className="ml-2 font-medium text-lg">
+											{formatCurrency(total)}
+										</span>
+									</div>
 								</div>
 							</div>
-						</div>
-					)}
+						);
+					})()}
 
 				<Button
 					type="submit"
@@ -1338,14 +1366,18 @@ export function ReservationForm({
 
 	const { isPending, mutate } = useMutation({
 		mutationFn: async (data: z.infer<typeof reservationFormSchema>) => {
-			const { roomId, ...restData } = data;
+			const { roomId, initialPayment, ...restData } = data;
 			const response = await makeReservation({
 				roomId,
 				...restData,
-				initialPayment: {
-					...restData.initialPayment,
-					paymentDate: new Date(restData.initialPayment.paymentDate),
-				},
+				...(initialPayment.amount > 0
+					? {
+						initialPayment: {
+							...initialPayment,
+							paymentDate: new Date(initialPayment.paymentDate),
+						},
+					}
+					: {}),
 			});
 			if (!response.success) {
 				throw new Error(response.error || "An error occurred");
@@ -1704,43 +1736,67 @@ export function ReservationForm({
 				{/* Reservation Summary */}
 				{form.watch("checkInDate") &&
 					form.watch("checkOutDate") &&
-					form.watch("nightlyRate") > 0 && (
-						<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-							<h3 className="font-medium text-sm">Reservation Summary</h3>
-							<div className="grid grid-cols-2 gap-2 text-sm">
-								<div>
-									<span className="text-muted-foreground">Duration:</span>
-									<span className="ml-2 font-medium">
-										{Math.ceil(
-											(new Date(form.watch("checkOutDate")).getTime() -
-												new Date(form.watch("checkInDate")).getTime()) /
-											(1000 * 60 * 60 * 24),
-										)}{" "}
-										night(s)
-									</span>
-								</div>
-								<div>
-									<span className="text-muted-foreground">Nightly Rate:</span>
-									<span className="ml-2 font-medium">
-										₦{form.watch("nightlyRate").toLocaleString()}
-									</span>
-								</div>
-								<div className="col-span-2">
-									<span className="text-muted-foreground">Total Cost:</span>
-									<span className="ml-2 font-medium text-lg">
-										₦
-										{(
-											Math.ceil(
-												(new Date(form.watch("checkOutDate")).getTime() -
-													new Date(form.watch("checkInDate")).getTime()) /
-												(1000 * 60 * 60 * 24),
-											) * form.watch("nightlyRate")
-										).toLocaleString()}
-									</span>
+					form.watch("nightlyRate") > 0 &&
+					(() => {
+						const nights = Math.ceil(
+							(new Date(form.watch("checkOutDate")).getTime() -
+								new Date(form.watch("checkInDate")).getTime()) /
+							(1000 * 60 * 60 * 24),
+						);
+						const rate = form.watch("nightlyRate");
+						const discountVal = form.watch("discountValue") || 0;
+						const discountType = form.watch("discountType");
+						const effectiveRate =
+							discountVal > 0
+								? discountType === "PERCENTAGE"
+									? rate * (1 - discountVal / 100)
+									: Math.max(0, rate - discountVal)
+								: rate;
+						const total = nights * effectiveRate;
+						return (
+							<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+								<h3 className="font-medium text-sm">Reservation Summary</h3>
+								<div className="grid grid-cols-2 gap-2 text-sm">
+									<div>
+										<span className="text-muted-foreground">Duration:</span>
+										<span className="ml-2 font-medium">
+											{nights} night(s)
+										</span>
+									</div>
+									<div>
+										<span className="text-muted-foreground">Nightly Rate:</span>
+										<span className="ml-2 font-medium">
+											{formatCurrency(rate)}
+										</span>
+									</div>
+									{discountVal > 0 && (
+										<>
+											<div>
+												<span className="text-muted-foreground">Discount:</span>
+												<span className="ml-2 font-medium text-green-600">
+													{discountType === "PERCENTAGE"
+														? `${discountVal}%`
+														: formatCurrency(discountVal)}
+												</span>
+											</div>
+											<div>
+												<span className="text-muted-foreground">Effective Rate:</span>
+												<span className="ml-2 font-medium">
+													{formatCurrency(effectiveRate)}
+												</span>
+											</div>
+										</>
+									)}
+									<div className="col-span-2">
+										<span className="text-muted-foreground">Total Cost:</span>
+										<span className="ml-2 font-medium text-lg">
+											{formatCurrency(total)}
+										</span>
+									</div>
 								</div>
 							</div>
-						</div>
-					)}
+						);
+					})()}
 
 				<FormField
 					control={form.control}
