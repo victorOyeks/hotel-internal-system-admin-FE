@@ -691,7 +691,7 @@ function RoomListCombobox({
 export function UnifiedBookingForm({
 	data,
 	setOpen,
-	mode: initialMode = "check-in",
+	mode: initialMode,
 }: {
 	data: {
 		rooms: Array<RoomType>;
@@ -707,6 +707,7 @@ export function UnifiedBookingForm({
 	});
 
 	const [selectedOrgId, setSelectedOrgId] = useState("");
+	const [showOrganization, setShowOrganization] = useState(false);
 	const [showPayment, setShowPayment] = useState(false);
 
 	const { data: orgData } = useQuery({
@@ -719,7 +720,7 @@ export function UnifiedBookingForm({
 	const form = useForm({
 		resolver: zodResolver(bookingFormSchema),
 		defaultValues: {
-			bookingType: initialMode as "check-in" | "reservation" | undefined,
+			bookingType: initialMode,
 			title: "Mr",
 			guestName: "",
 			guestEmail: "",
@@ -852,7 +853,7 @@ export function UnifiedBookingForm({
 						control={form.control}
 						name="bookingType"
 						render={({ field }) => (
-							<FormItem className="md:col-span-2">
+							<FormItem>
 								<FormLabel>Booking Type <span className="text-red-500">*</span></FormLabel>
 								<Select
 									onValueChange={(value) => {
@@ -1071,9 +1072,20 @@ export function UnifiedBookingForm({
 						)}
 					/>
 
-					<div className="col-span-full">
-						<div className="space-y-2">
-							<Label>Organization (Optional)</Label>
+					<div className="col-span-full flex items-center space-x-2">
+						<Checkbox
+							id="linkOrganization"
+							checked={showOrganization}
+							onCheckedChange={(checked) => {
+								setShowOrganization(checked === true);
+								if (!checked) setSelectedOrgId("");
+							}}
+						/>
+						<Label htmlFor="linkOrganization" className="cursor-pointer">Link to organization</Label>
+					</div>
+
+					{showOrganization && (
+						<div className="col-span-full">
 							<Combobox
 								options={organizations.map((org: { id: string; name: string }) => ({
 									label: org.name,
@@ -1085,7 +1097,8 @@ export function UnifiedBookingForm({
 								emptyText="No organizations found"
 							/>
 						</div>
-					</div>
+					)}
+
 
 					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
 						<h4 className="font-medium text-sm text-muted-foreground mb-2">
@@ -1290,7 +1303,7 @@ export function UnifiedBookingForm({
 									<div>
 										<span className="text-muted-foreground">Duration:</span>
 										<span className="ml-2 font-medium">
-											{nights} night(s)
+											{nights} {nights === 1 ? "night" : "nights"}
 										</span>
 									</div>
 									<div>
@@ -1529,7 +1542,7 @@ function BaseModal({
 		<Dialog modal open={open} onOpenChange={setOpen}>
 			<DialogTrigger>{trigger}</DialogTrigger>
 
-			<DialogContent className={`rounded-4xl ${maxWidth}`}>
+			<DialogContent className={`rounded-2xl ${maxWidth}`}>
 				{children}
 			</DialogContent>
 		</Dialog>
