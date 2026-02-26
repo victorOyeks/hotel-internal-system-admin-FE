@@ -37,6 +37,16 @@ import { logout } from "@/lib/actions";
 import { toast } from "sonner";
 import { NotificationsPopover } from "../notification-popover";
 
+function getInitials(name: string) {
+	return name
+		.split(" ")
+		.filter(Boolean)
+		.map((w) => w[0])
+		.slice(0, 2)
+		.join("")
+		.toUpperCase();
+}
+
 function ProfilePopover({ user }: { user: UserInfoResponse }) {
 	return (
 		<Popover>
@@ -44,12 +54,8 @@ function ProfilePopover({ user }: { user: UserInfoResponse }) {
 				<Button size="icon" variant="ghost" className="rounded-full p-2">
 					<Avatar>
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">A</span>
+							<span className="text-xs">{getInitials(user.fullName)}</span>
 						</AvatarFallback>
-						<AvatarImage
-							src="https://i.pravatar.cc/150?img=3"
-							alt="User Avatar"
-						/>
 					</Avatar>
 				</Button>
 			</PopoverTrigger>
@@ -71,12 +77,8 @@ function ProfilePopover({ user }: { user: UserInfoResponse }) {
 				<div className="max-w-[content] mx-auto flex items-center space-x-3">
 					<Avatar className="size-12 rounded-full">
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">A</span>
+							<span className="text-2xl">{getInitials(user.fullName)}</span>
 						</AvatarFallback>
-						<AvatarImage
-							src="https://i.pravatar.cc/150?img=3"
-							alt="User Avatar"
-						/>
 					</Avatar>
 
 					<div className="">
@@ -125,12 +127,8 @@ export function ChatProfilePopover({ user }: { user: UserInfoResponse }) {
 				<Button size="icon" variant="ghost" className="rounded-full p-2">
 					<Avatar>
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">A</span>
+							<span className="text-xs">{getInitials(user.fullName)}</span>
 						</AvatarFallback>
-						<AvatarImage
-							src="https://i.pravatar.cc/150?img=3"
-							alt="User Avatar"
-						/>
 					</Avatar>
 				</Button>
 			</PopoverTrigger>
@@ -152,12 +150,8 @@ export function ChatProfilePopover({ user }: { user: UserInfoResponse }) {
 				<div className="max-w-[content] mx-auto flex flex-col items-center justify-center space-y-3">
 					<Avatar className="size-21 rounded-full">
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">A</span>
+							<span className="text-2xl">{getInitials(user.fullName)}</span>
 						</AvatarFallback>
-						<AvatarImage
-							src="https://i.pravatar.cc/150?img=3"
-							alt="User Avatar"
-						/>
 					</Avatar>
 
 					<div className="text-center space-y-0.5">
