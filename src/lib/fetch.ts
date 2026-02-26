@@ -3970,6 +3970,9 @@ export const schema = createSchema({
 			checkInDate: z.string().nonempty(), // yyyy-mm-dd
 			checkOutDate: z.string().nonempty(), // yyyy-mm-dd
 			notes: z.string().nullable().optional(),
+			discountValue: z.number().optional(),
+			discountType: z.enum(["PERCENTAGE", "FIXED"]).optional(),
+			initialPayment: RecordBookingPaymentRequest.optional(),
 		}),
 		output: ApiResponseObject.extend({
 			data: z.object({

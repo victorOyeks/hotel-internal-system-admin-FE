@@ -594,6 +594,45 @@ const reservationFormSchema = z
 			(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
 			z.number().nonnegative("Daily spending cap must be 0 or greater"),
 		),
+		discountValue: z.number().nonnegative().default(0),
+		discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
+		initialPayment: z.object({
+			amount: z.number().nonnegative(),
+			currency: z.string().default("NGN"),
+			method: z.enum([
+				"CASH",
+				"CARD",
+				"CREDIT_CARD",
+				"DEBIT_CARD",
+				"BANK_TRANSFER",
+				"MOBILE_MONEY",
+				"CHEQUE",
+				"ONLINE_PAYMENT",
+				"PAYPAL",
+				"CRYPTOCURRENCY",
+				"DIRECT_DEBIT",
+				"PETTY_CASH",
+				"OTHERS",
+			]),
+			reference: z.string().min(1, "Payment reference is required"),
+			status: z.enum([
+				"SUCCESS",
+				"FAILED",
+				"PENDING",
+				"CANCELLED",
+				"REFUNDED",
+				"PARTLY_PAID",
+				"FULLY_PAID",
+			]),
+			type: z.enum([
+				"DEPOSIT",
+				"INSTALLMENT",
+				"FINAL",
+				"REFUND",
+				"OTHER",
+			]),
+			paymentDate: z.string(),
+		}),
 		checkInDate: z.string().nonempty("Check-in date is required"),
 		checkOutDate: z.string().nonempty("Check-out date is required"),
 		roomId: z.string().nonempty("Room is required"),
@@ -965,7 +1004,7 @@ export function CheckInForm({
 								<FormControl>
 									<Input
 										type="number"
-										placeholder="Auto-filled from room"
+										placeholder=""
 										min="0"
 										step="0.01"
 										value={form.watch("nightlyRate") || ""}
@@ -1271,6 +1310,17 @@ export function ReservationForm({
 			phoneNumber: "",
 			nightlyRate: 0,
 			dailySpendingCap: 0,
+			discountValue: 0,
+			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
+			initialPayment: {
+				amount: 0,
+				currency: "NGN",
+				method: "CASH" as const,
+				reference: `REF-${Date.now()}`,
+				status: "SUCCESS" as const,
+				type: "DEPOSIT" as const,
+				paymentDate: new Date().toISOString(),
+			},
 			checkInDate: "",
 			checkOutDate: "",
 			roomId: "",
@@ -1280,7 +1330,15 @@ export function ReservationForm({
 
 	const { isPending, mutate } = useMutation({
 		mutationFn: async (data: z.infer<typeof reservationFormSchema>) => {
-			const response = await makeReservation(data);
+			const { roomId, ...restData } = data;
+			const response = await makeReservation({
+				roomId,
+				...restData,
+				initialPayment: {
+					...restData.initialPayment,
+					paymentDate: new Date(restData.initialPayment.paymentDate),
+				},
+			});
 			if (!response.success) {
 				throw new Error(response.error || "An error occurred");
 			}
@@ -1421,7 +1479,7 @@ export function ReservationForm({
 									<Input
 										type="number"
 										step="0.01"
-										placeholder="Auto-filled from room"
+										placeholder=""
 										value={form.watch("nightlyRate") || ""}
 										onChange={(e) =>
 											form.setValue("nightlyRate", Number(e.target.value))
@@ -1468,6 +1526,123 @@ export function ReservationForm({
 								onSelect={setSelectedOrgId}
 								placeholder="Select organization..."
 								emptyText="No organizations found"
+							/>
+						</div>
+					</div>
+
+					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
+						<h4 className="font-medium text-sm text-muted-foreground mb-2">
+							Payment & Discount
+						</h4>
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="discountType"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Type</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select type" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="FIXED">Fixed Amount</SelectItem>
+												<SelectItem value="PERCENTAGE">Percentage</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="discountValue"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Discount Value</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+												className="w-full"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="initialPayment.amount"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Initial Payment</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												{...field}
+												onChange={(e) =>
+													field.onChange(Number.parseFloat(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="initialPayment.method"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Payment Method</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select method" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												{[
+													"CASH",
+													"CARD",
+													"CREDIT_CARD",
+													"DEBIT_CARD",
+													"BANK_TRANSFER",
+													"MOBILE_MONEY",
+													"CHEQUE",
+													"ONLINE_PAYMENT",
+													"PAYPAL",
+													"CRYPTOCURRENCY",
+													"DIRECT_DEBIT",
+													"PETTY_CASH",
+													"OTHERS",
+												].map((method) => (
+													<SelectItem key={method} value={method}>
+														{method.replace(/_/g, " ")}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
 							/>
 						</div>
 					</div>
