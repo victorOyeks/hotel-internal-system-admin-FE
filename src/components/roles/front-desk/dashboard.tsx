@@ -743,32 +743,24 @@ export function UnifiedBookingForm({
 	const { isPending, mutate } = useMutation({
 		mutationFn: async (formData: z.infer<typeof bookingFormSchema>) => {
 			const { roomId, initialPayment, ...restData } = formData;
-			const paymentData = showPayment && initialPayment.amount > 0
-				? {
-					initialPayment: {
-						...initialPayment,
-						paymentDate: new Date(initialPayment.paymentDate),
-					},
-				}
-				: {};
+			const includePayment = showPayment && initialPayment.amount > 0;
+			const payload = {
+				roomId,
+				...restData,
+				initialPayment: includePayment
+					? { ...initialPayment, paymentDate: new Date(initialPayment.paymentDate) }
+					: undefined,
+			};
 
 			if (isCheckIn) {
-				const response = await checkInGuest({
-					roomId,
-					...restData,
-					...paymentData,
-				});
+				const response = await checkInGuest(payload);
 				if (!response.success) {
 					throw new Error(response.error || "An error occurred");
 				}
 				return { data: response.data, bookingId: response.data?.data?.id };
 			}
 
-			const response = await makeReservation({
-				roomId,
-				...restData,
-				...paymentData,
-			});
+			const response = await makeReservation(payload);
 			if (!response.success) {
 				throw new Error(response.error || "An error occurred");
 			}
