@@ -4,8 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { Utensils, Coffee, DollarSign } from "lucide-react";
 
+interface RestaurantDailySummary {
+    totalRevenue?: number;
+    roomCharges?: number;
+    directPayments?: number;
+    totalOrders?: number;
+    kitchenRevenue?: number;
+    barRevenue?: number;
+    date?: string;
+}
+
 interface RestaurantSummaryProps {
-    data: any; // Replace with proper type when available from API
+    data: RestaurantDailySummary | null;
 }
 
 export function RestaurantDailySummaryCard({ data }: RestaurantSummaryProps) {

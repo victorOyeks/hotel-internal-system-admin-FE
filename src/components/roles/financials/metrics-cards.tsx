@@ -12,7 +12,7 @@ import {
     ActivityIcon,
 } from "lucide-react";
 import type { FinancialDashboardMetrics } from "@/lib/api-routes/financials";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface MetricsCardsProps {
     metrics: FinancialDashboardMetrics;
@@ -40,24 +40,24 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
                 title="Net Profit"
                 value={metrics.netProfit}
                 icon={WalletIcon}
-                trend={metrics.revenueGrowth} // Assuming profit growth follows revenue for now, or calculate generic trend
+                trend={metrics.profitGrowth}
                 format="currency"
             />
             <MetricCard
-                title="Gross Profit Margin"
-                value={metrics.grossProfitMargin}
+                title="Profit Margin"
+                value={metrics.netProfitMargin}
                 icon={PercentIcon}
                 format="percent"
             />
             <MetricCard
                 title="RevPAR"
-                value={metrics.revPAR}
+                value={metrics.revenuePerAvailableRoom}
                 icon={TrendingUpIcon}
                 format="currency"
             />
             <MetricCard
                 title="ADR"
-                value={metrics.adr}
+                value={metrics.averageDailyRate}
                 icon={ActivityIcon}
                 format="currency"
             />
@@ -73,9 +73,9 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
 
 interface MetricCardProps {
     title: string;
-    value: number;
+    value: number | null | undefined;
     icon: React.ElementType;
-    trend?: number;
+    trend?: number | null;
     trendInverse?: boolean;
     format?: "currency" | "percent" | "number";
 }
@@ -88,24 +88,19 @@ function MetricCard({
     trendInverse,
     format = "number",
 }: MetricCardProps) {
+    const safeValue = value ?? 0;
     const formattedValue =
         format === "currency"
-            ? new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-            }).format(value)
+            ? formatCurrency(safeValue)
             : format === "percent"
-                ? `${value.toFixed(1)}%`
-                : value.toLocaleString();
+                ? `${safeValue.toFixed(1)}%`
+                : safeValue.toLocaleString();
 
-    const isPositive = trend && trend > 0;
-    const isNegative = trend && trend < 0;
-
-    // validation for trendInverse: if true, positive trend is bad (red), negative is good (green)
-    // default: positive is good (green), negative is bad (red)
+    const isPositive = trend != null && trend > 0;
+    const isNegative = trend != null && trend < 0;
 
     let trendColor = "text-muted-foreground";
-    if (trend !== undefined && trend !== 0) {
+    if (trend != null && trend !== 0) {
         if (trendInverse) {
             trendColor = isPositive ? "text-red-500" : "text-emerald-500";
         } else {
@@ -121,14 +116,14 @@ function MetricCard({
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{formattedValue}</div>
-                {trend !== undefined && (
+                {trend != null && (
                     <p className={cn("text-xs flex items-center mt-1", trendColor)}>
                         {isPositive ? (
                             <ArrowUpIcon className="h-3 w-3 mr-1" />
                         ) : isNegative ? (
                             <ArrowDownIcon className="h-3 w-3 mr-1" />
                         ) : null}
-                        <span className="font-medium">{Math.abs(trend)}%</span>
+                        <span className="font-medium">{Math.abs(trend).toFixed(1)}%</span>
                         <span className="text-muted-foreground ml-1">
                             from last period
                         </span>
