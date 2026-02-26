@@ -124,6 +124,9 @@ export function useChatWebSocket(
 		});
 
 		chatWs.onTypingReceived((event: TypingIndicatorDTO) => {
+			// Ignore own typing events — don't show "you are typing" to yourself
+			if (event.userId === userIdRef.current) return;
+
 			setTypingIndicators((prev) => {
 				const convTyping = prev[event.conversationId] ?? [];
 				if (event.isTyping) {
