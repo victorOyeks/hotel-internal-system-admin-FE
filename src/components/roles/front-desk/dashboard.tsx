@@ -30,6 +30,17 @@ import {
 	PlusIcon,
 	CheckIcon,
 	ChevronsUpDownIcon,
+	LogInIcon,
+	LogOutIcon,
+	DoorOpenIcon,
+	CalendarClockIcon,
+	HotelIcon,
+	PercentIcon,
+	SearchIcon,
+	CalendarIcon,
+	UsersIcon,
+	CreditCardIcon,
+	type LucideIcon,
 } from "lucide-react";
 import {
 	useEffect,
@@ -37,6 +48,7 @@ import {
 	type PropsWithChildren,
 	type ReactNode,
 } from "react";
+import Link from "next/link";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import z from "zod";
@@ -99,31 +111,48 @@ export function FrontDeskStats({
 }: {
 	stats: APIOutput<"@get/api/front-desks/dashboard-cards">["data"];
 }) {
+	const totalRooms =
+		stats.totalCheckIns + stats.totalAvailableRooms + stats.totalReservedRooms;
+	const occupancyRate =
+		totalRooms > 0
+			? Math.round((stats.totalCheckIns / totalRooms) * 100)
+			: 0;
+
 	const data = [
 		{
 			label: "Total Check-Ins",
 			value: stats.totalCheckIns,
 			color: "text-green-500 bg-green-500/10",
+			icon: LogInIcon,
 		},
-		{
-			label: "Total Check-Outs",
-			value: stats.totalCheckOuts,
-			color: "text-red-500 bg-red-500/10",
-		},
-		{
-			label: "Total Available Rooms",
+{
+			label: "Available Rooms",
 			value: stats.totalAvailableRooms,
 			color: "text-blue-500 bg-blue-500/10",
+			icon: DoorOpenIcon,
 		},
 		{
-			label: "Total Reservations",
+			label: "Reservations",
 			value: stats.totalReservedRooms,
 			color: "text-yellow-500 bg-yellow-500/10",
+			icon: CalendarClockIcon,
+		},
+		{
+			label: "Total Rooms",
+			value: totalRooms,
+			color: "text-purple-500 bg-purple-500/10",
+			icon: HotelIcon,
+		},
+		{
+			label: "Occupancy Rate",
+			value: `${occupancyRate}%`,
+			color: "text-teal-500 bg-teal-500/10",
+			icon: PercentIcon,
 		},
 	];
 
 	return (
-		<div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+		<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
 			{data.map((stat) => (
 				<div
 					key={stat.label}
@@ -135,7 +164,7 @@ export function FrontDeskStats({
 							stat.color,
 						)}
 					>
-						<BedIcon />
+						<stat.icon className="size-5" />
 					</div>
 					<div className="space-y-2">
 						<div className="text-sm text-muted-foreground">{stat.label}</div>
@@ -1308,30 +1337,85 @@ export function UnifiedBookingForm({
 	);
 }
 
-const actions = [
+type ModalAction = {
+	type: "modal";
+	title: string;
+	heading?: string;
+	Component: React.ComponentType<{
+		setOpen: (open: boolean) => void;
+		open: boolean;
+		data: { rooms: Array<RoomType>; roomTypes: string[] };
+	}>;
+	icon: LucideIcon;
+	style: string;
+	key: string;
+	maxWidth?: string;
+};
+
+type LinkAction = {
+	type: "link";
+	title: string;
+	href: string;
+	icon: LucideIcon;
+	style: string;
+	key: string;
+};
+
+type QuickAction = ModalAction | LinkAction;
+
+const actions: QuickAction[] = [
 	{
-		title: "Create New Booking",
+		type: "modal",
+		title: "New Booking",
 		heading: "New Booking",
 		Component: CreateNewBookingForm,
 		icon: PlusIcon,
+		style: "border-emerald-200 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-100/80",
 		key: "create-new-booking",
 		maxWidth: "max-w-2xl",
 	},
 	{
-		title: "Report Maintenance",
-		icon: PlusIcon,
-		key: "report-maintenance",
+		type: "link",
+		title: "Bookings",
+		href: "/front-desk/bookings",
+		icon: CalendarIcon,
+		style: "border-blue-200 bg-blue-50/60 text-blue-700 hover:bg-blue-100/80",
+		key: "view-bookings",
 	},
 	{
-		title: "Report Lost Items",
-		icon: PlusIcon,
+		type: "link",
+		title: "Rooms",
+		href: "/front-desk/rooms",
+		icon: BedIcon,
+		style: "border-violet-200 bg-violet-50/60 text-violet-700 hover:bg-violet-100/80",
+		key: "manage-rooms",
+	},
+	{
+		type: "link",
+		title: "Guests",
+		href: "/front-desk/guests",
+		icon: UsersIcon,
+		style: "border-amber-200 bg-amber-50/60 text-amber-700 hover:bg-amber-100/80",
+		key: "view-guests",
+	},
+	{
+		type: "link",
+		title: "Payments",
+		href: "/front-desk/payments",
+		icon: CreditCardIcon,
+		style: "border-teal-200 bg-teal-50/60 text-teal-700 hover:bg-teal-100/80",
+		key: "payments",
+	},
+	{
+		type: "modal",
+		title: "Lost Item",
 		Component: ReportLostItem,
+		icon: SearchIcon,
+		style: "border-rose-200 bg-rose-50/60 text-rose-700 hover:bg-rose-100/80",
 		key: "report-lost-items",
 		maxWidth: "max-w-lg",
 	},
 ];
-
-
 
 export type RoomType = RoomDetails;
 
@@ -1347,47 +1431,47 @@ export function QuickActions({
 
 	return (
 		<>
-			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-				{actions.map(
-					({ icon: Icon, title, key, heading, Component, maxWidth }) => {
+			<div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+				{actions.map((action) => {
+					const Icon = action.icon;
+					const button = (
+						<div className={cn(
+							"flex items-center justify-center gap-x-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+							action.style,
+						)}>
+							<Icon className="size-3.5 shrink-0" />
+							<span>{action.title}</span>
+						</div>
+					);
+
+					if (action.type === "link") {
 						return (
-							<BaseModal
-								key={key}
-								open={open === key}
-								setOpen={(open) => setOpen(open ? key : false)}
-								maxWidth={maxWidth}
-								trigger={
-									<div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
-										<div className="flex items-center gap-x-2 flex-1">
-											<div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
-												<Icon className="size-5 text-green-600" />
-											</div>
-
-											<p className="text-sm font-medium">{title}</p>
-										</div>
-
-										<ChevronRightIcon className="size-4 text-muted-foreground" />
-									</div>
-								}
-							>
-								<DialogTitle>{heading || title}</DialogTitle>
-								<DialogDescription className="sr-only">
-									{title}
-								</DialogDescription>
-								{Component && (
-									<Component
-										setOpen={(open) => setOpen(open ? key : false)}
-										open={open === key}
-										data={{
-											rooms,
-											roomTypes,
-										}}
-									/>
-								)}
-							</BaseModal>
+							<Link key={action.key} href={action.href}>
+								{button}
+							</Link>
 						);
-					},
-				)}
+					}
+
+					return (
+						<BaseModal
+							key={action.key}
+							open={open === action.key}
+							setOpen={(o) => setOpen(o ? action.key : false)}
+							maxWidth={action.maxWidth}
+							trigger={button}
+						>
+							<DialogTitle>{action.heading || action.title}</DialogTitle>
+							<DialogDescription className="sr-only">
+								{action.title}
+							</DialogDescription>
+							<action.Component
+								setOpen={(o) => setOpen(o ? action.key : false)}
+								open={open === action.key}
+								data={{ rooms, roomTypes }}
+							/>
+						</BaseModal>
+					);
+				})}
 			</div>
 			<SuccessDialog
 				open={successDialogOpen.show}
@@ -1420,58 +1504,5 @@ function BaseModal({
 				{children}
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-export function PendingMaintenanceNotifications() {
-	const notifications = [
-		{
-			title: "Leaking Faucet in Room 101",
-			description:
-				"A guest reported a leaking faucet in room 101. Please send maintenance to fix it.",
-			time: "2 hours ago",
-		},
-		{
-			title: "Broken Window in Lobby",
-			description:
-				"The window near the reception desk is broken. It needs immediate attention.",
-			time: "1 day ago",
-		},
-		{
-			title: "Air Conditioning Issue in Room 202",
-			description:
-				"Guest in room 202 reported that the air conditioning is not working properly.",
-			time: "3 days ago",
-		},
-	];
-
-	return (
-		<div className="bg-yellow-50/50 border border-yellow-500/30 rounded-2xl h-full overflow-clip">
-			<div className="flex items-center justify-between p-3">
-				<h2 className="text-lg font-medium">Pending Maintenance</h2>
-				<span className="text-sm size-5 bg-red-500 text-white rounded-full text-center flex items-center justify-center px-2 leading-0">
-					{notifications.length}
-				</span>
-			</div>
-
-			<ScrollArea className="h-full max-h-[180px] px-1.5">
-				<div className="space-y-1">
-					{notifications.map((notification, index) => (
-						<div
-							key={index}
-							className="bg-white p-3 rounded-xl border border-yellow-500/20"
-						>
-							<h3 className="font-medium">{notification.title}</h3>
-							<p className="text-sm text-muted-foreground">
-								{notification.description}
-							</p>
-							<span className="text-xs text-muted-foreground">
-								{notification.time}
-							</span>
-						</div>
-					))}
-				</div>
-			</ScrollArea>
-		</div>
 	);
 }
