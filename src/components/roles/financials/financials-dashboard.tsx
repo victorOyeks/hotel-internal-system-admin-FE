@@ -3,7 +3,6 @@
 import type {
     FinancialDashboardResponse,
     FinancialDashboardGraphData,
-    FinancialDashboardTopRevenueStream,
     FinancialDashboardTopExpenseCategory,
     Expenditure,
 } from "@/lib/api-routes/financials";
@@ -21,6 +20,8 @@ import {
     ReceiptIcon,
     FileTextIcon,
     CreditCardIcon,
+    CheckCircleIcon,
+    ClockIcon,
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
@@ -78,16 +79,28 @@ interface FinancialsDashboardProps {
     graphData?: FinancialDashboardGraphData[];
     revenueBreakdown?: RevenueBreakdown;
     overdueExpenditures?: Expenditure[];
+    todayData?: FinancialDashboardResponse | null;
+    thisWeekData?: FinancialDashboardResponse | null;
 }
 
 // --- Shared Tooltip ---
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({
+    active,
+    payload,
+    label,
+    formatter,
+}: {
+    active?: boolean;
+    payload?: Array<{ name: string; value: number | string; color: string }>;
+    label?: string;
+    formatter?: (name: string, value: number | string) => string;
+}) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-3 z-50">
                 <p className="font-medium mb-2">{label}</p>
-                {payload.map((entry: any, index: number) => (
+                {payload.map((entry, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                         <div
                             className="w-2 h-2 rounded-full"
@@ -95,9 +108,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                         />
                         <span className="text-muted-foreground">{entry.name}:</span>
                         <span className="font-medium">
-                            {typeof entry.value === "number"
-                                ? formatCurrency(entry.value)
-                                : entry.value}
+                            {formatter
+                                ? formatter(entry.name, entry.value)
+                                : typeof entry.value === "number"
+                                  ? formatCurrency(entry.value)
+                                  : entry.value}
                         </span>
                     </div>
                 ))}
@@ -134,6 +149,95 @@ function FinancialAlertsBanner({
                         <p className="text-amber-700 dark:text-amber-400">{alert}</p>
                     </div>
                 ))}
+        </div>
+    );
+}
+
+// --- Today / This Week Strip ---
+
+function SnapshotStatRow({
+    label,
+    value,
+    format = "currency",
+    positive,
+}: {
+    label: string;
+    value: number | null | undefined;
+    format?: "currency" | "percent" | "number";
+    positive?: boolean;
+}) {
+    const safeValue = value ?? 0;
+    let formatted: string;
+    if (format === "percent") formatted = `${safeValue.toFixed(1)}%`;
+    else if (format === "number") formatted = safeValue.toLocaleString();
+    else formatted = formatCurrency(safeValue);
+
+    const colorClass =
+        positive === true
+            ? "text-green-600"
+            : positive === false
+              ? "text-red-500"
+              : "text-primary";
+
+    return (
+        <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">{label}</span>
+            <span className={cn("font-semibold", colorClass)}>{formatted}</span>
+        </div>
+    );
+}
+
+function SnapshotCard({
+    label,
+    data,
+}: {
+    label: string;
+    data: FinancialDashboardResponse;
+}) {
+    const profitPositive = data.netProfit >= 0;
+    return (
+        <div className="bg-white border border-primary-5/40 p-4 rounded-2xl space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                {label}
+            </p>
+            <div className="space-y-2">
+                <SnapshotStatRow
+                    label="Revenue"
+                    value={data.totalRevenue}
+                    positive={true}
+                />
+                <SnapshotStatRow
+                    label="Expenses"
+                    value={data.totalExpenses}
+                    positive={false}
+                />
+                <div className="border-t border-gray-100 pt-2">
+                    <SnapshotStatRow
+                        label="Net Profit"
+                        value={data.netProfit}
+                        positive={profitPositive}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TodayThisWeekStrip({
+    todayData,
+    thisWeekData,
+}: {
+    todayData?: FinancialDashboardResponse | null;
+    thisWeekData?: FinancialDashboardResponse | null;
+}) {
+    if (!todayData && !thisWeekData) return null;
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {todayData && <SnapshotCard label="Today" data={todayData} />}
+            {thisWeekData && (
+                <SnapshotCard label="This Week" data={thisWeekData} />
+            )}
         </div>
     );
 }
@@ -333,11 +437,21 @@ function ProfitTrendSection({
     netProfit: number;
     profitGrowth?: number | null;
 }) {
+    const { latestCashFlow, latestMargin } = useMemo(() => {
+        const last = [...graphData].reverse().find(
+            (d) => d.cashFlow != null || d.profitMargin != null,
+        );
+        return {
+            latestCashFlow: last?.cashFlow ?? null,
+            latestMargin: last?.profitMargin ?? null,
+        };
+    }, [graphData]);
+
     if (graphData.length === 0) {
         return (
             <Card className="h-full border-primary-5/40">
                 <CardHeader>
-                    <CardTitle>Net Profit Trend</CardTitle>
+                    <CardTitle>Financial Trend</CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center h-48 text-muted-foreground text-sm">
                     No trend data available for the selected period.
@@ -375,13 +489,33 @@ function ProfitTrendSection({
                         </span>
                     )}
                 </p>
+                {(latestCashFlow != null || latestMargin != null) && (
+                    <div className="flex gap-4 mt-1 text-xs text-gray-400">
+                        {latestCashFlow != null && (
+                            <span>
+                                Cash Flow:{" "}
+                                <span className="text-indigo-500 font-medium">
+                                    {formatCurrency(latestCashFlow)}
+                                </span>
+                            </span>
+                        )}
+                        {latestMargin != null && (
+                            <span>
+                                Margin:{" "}
+                                <span className="text-amber-500 font-medium">
+                                    {latestMargin.toFixed(1)}%
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="h-52 md:h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                         data={graphData}
-                        margin={{ top: 20, right: 10, left: -20, bottom: 0 }}
+                        margin={{ top: 20, right: 40, left: -20, bottom: 0 }}
                     >
                         <defs>
                             <linearGradient
@@ -402,6 +536,42 @@ function ProfitTrendSection({
                                     stopOpacity={0}
                                 />
                             </linearGradient>
+                            <linearGradient
+                                id="cashFlowGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                            >
+                                <stop
+                                    offset="5%"
+                                    stopColor="#6366f1"
+                                    stopOpacity={0.25}
+                                />
+                                <stop
+                                    offset="95%"
+                                    stopColor="#6366f1"
+                                    stopOpacity={0}
+                                />
+                            </linearGradient>
+                            <linearGradient
+                                id="profitMarginGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                            >
+                                <stop
+                                    offset="5%"
+                                    stopColor="#f59e0b"
+                                    stopOpacity={0.2}
+                                />
+                                <stop
+                                    offset="95%"
+                                    stopColor="#f59e0b"
+                                    stopOpacity={0}
+                                />
+                            </linearGradient>
                         </defs>
                         <CartesianGrid
                             strokeDasharray="3 3"
@@ -412,22 +582,47 @@ function ProfitTrendSection({
                             dataKey="periodLabel"
                             axisLine={false}
                             tickLine={false}
-                            tick={{
-                                fontSize: 12,
-                                fill: "#9ca3af",
-                            }}
+                            tick={{ fontSize: 12, fill: "#9ca3af" }}
                         />
                         <YAxis
+                            yAxisId="left"
+                            orientation="left"
                             axisLine={false}
                             tickLine={false}
-                            tick={{
-                                fontSize: 11,
-                                fill: "#9ca3af",
-                            }}
+                            tick={{ fontSize: 11, fill: "#9ca3af" }}
                             tickFormatter={(v) => formatCurrency(v, "short")}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={false} />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 11, fill: "#9ca3af" }}
+                            tickFormatter={(v) => `${v.toFixed(0)}%`}
+                            domain={[0, "auto"]}
+                        />
+                        <Tooltip
+                            content={
+                                <CustomTooltip
+                                    formatter={(name, value) =>
+                                        name === "Profit Margin %"
+                                            ? `${(value as number).toFixed(1)}%`
+                                            : formatCurrency(value as number)
+                                    }
+                                />
+                            }
+                            cursor={false}
+                        />
+                        <Legend
+                            wrapperStyle={{ paddingTop: "8px" }}
+                            formatter={(v) => (
+                                <span className="text-xs text-muted-foreground">
+                                    {v}
+                                </span>
+                            )}
+                        />
                         <Area
+                            yAxisId="left"
                             type="monotone"
                             dataKey="profit"
                             name="Net Profit"
@@ -435,6 +630,30 @@ function ProfitTrendSection({
                             strokeWidth={2.5}
                             fillOpacity={1}
                             fill="url(#profitGradient)"
+                            connectNulls
+                        />
+                        <Area
+                            yAxisId="left"
+                            type="monotone"
+                            dataKey="cashFlow"
+                            name="Cash Flow"
+                            stroke="#6366f1"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#cashFlowGradient)"
+                            connectNulls
+                        />
+                        <Area
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="profitMargin"
+                            name="Profit Margin %"
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            strokeDasharray="4 2"
+                            fillOpacity={0}
+                            fill="url(#profitMarginGradient)"
+                            connectNulls
                         />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -505,7 +724,7 @@ function ReceivablesPayablesCard({
     );
 }
 
-// --- Revenue by Source Chart ---
+// --- Chart colors (shared) ---
 
 const CHART_COLORS = [
     "#4c091e",
@@ -517,144 +736,6 @@ const CHART_COLORS = [
     "#8b5cf6",
     "#14b8a6",
 ];
-
-function RevenueBySourceChart({
-    streams,
-}: {
-    streams?: FinancialDashboardTopRevenueStream[] | null;
-}) {
-    const data = useMemo(
-        () =>
-            (streams ?? []).map((s) => ({
-                name: s.source,
-                paid: s.paidAmount ?? 0,
-                pending: s.pendingAmount ?? 0,
-                refunded: s.refundedAmount ?? 0,
-                total: s.amount,
-                percentage: s.percentage,
-            })),
-        [streams],
-    );
-
-    if (data.length === 0) {
-        return (
-            <Card className="h-full border-primary-5/40">
-                <CardHeader>
-                    <CardTitle className="text-base">Revenue by Source</CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-                    No revenue source data available.
-                </CardContent>
-            </Card>
-        );
-    }
-
-    return (
-        <Card className="h-full border-primary-5/40">
-            <CardHeader>
-                <CardTitle className="text-base">Revenue by Source</CardTitle>
-                <CardDescription>Breakdown by payment status</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={data}
-                            layout="vertical"
-                            margin={{ top: 0, right: 10, left: 0, bottom: 0 }}
-                        >
-                            <CartesianGrid
-                                strokeDasharray="3 3"
-                                horizontal={false}
-                                stroke="#e5e5e5"
-                            />
-                            <XAxis
-                                type="number"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{
-                                    fontSize: 11,
-                                    fill: "#9ca3af",
-                                }}
-                                tickFormatter={(v) => formatCurrency(v, "short")}
-                            />
-                            <YAxis
-                                type="category"
-                                dataKey="name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{
-                                    fontSize: 11,
-                                    fill: "#9ca3af",
-                                }}
-                                width={90}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={false} />
-                            <Legend
-                                wrapperStyle={{ paddingTop: "10px" }}
-                                formatter={(v) => (
-                                    <span className="text-xs text-muted-foreground">
-                                        {v}
-                                    </span>
-                                )}
-                            />
-                            <Bar
-                                dataKey="paid"
-                                name="Paid"
-                                stackId="a"
-                                fill="#22c55e"
-                            />
-                            <Bar
-                                dataKey="pending"
-                                name="Pending"
-                                stackId="a"
-                                fill="#f59e0b"
-                            />
-                            <Bar
-                                dataKey="refunded"
-                                name="Refunded"
-                                stackId="a"
-                                fill="#ef4444"
-                                radius={[0, 4, 4, 0]}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Legend with percentages */}
-                <div className="mt-3 space-y-1.5">
-                    {data.map((item, i) => (
-                        <div
-                            key={item.name}
-                            className="flex items-center justify-between text-sm"
-                        >
-                            <div className="flex items-center gap-2">
-                                <div
-                                    className="w-2.5 h-2.5 rounded-full"
-                                    style={{
-                                        backgroundColor:
-                                            CHART_COLORS[
-                                                i % CHART_COLORS.length
-                                            ],
-                                    }}
-                                />
-                                <span className="text-gray-600">
-                                    {item.name}
-                                </span>
-                                <span className="text-gray-400 text-xs">
-                                    ({item.percentage.toFixed(1)}%)
-                                </span>
-                            </div>
-                            <span className="font-medium text-primary">
-                                {formatCurrency(item.total)}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 // --- Expense by Category Chart ---
 
@@ -977,6 +1058,273 @@ function TransactionVolumeChart({
     );
 }
 
+// --- Revenue Breakdown Section ---
+
+function RevenueBreakdownSection({
+    breakdown,
+}: {
+    breakdown: RevenueBreakdown;
+}) {
+    const sourceData = useMemo(
+        () =>
+            [
+                { name: "Room Bookings", value: breakdown.roomBookingsRevenue },
+                { name: "Restaurant", value: breakdown.restaurantRevenue },
+                { name: "Laundry", value: breakdown.laundryRevenue },
+                { name: "Rentals", value: breakdown.rentalsRevenue },
+                { name: "Other Income", value: breakdown.otherIncomeRevenue },
+            ].filter((d) => d.value > 0),
+        [breakdown],
+    );
+
+    const totalRevenue = breakdown.totalRevenue;
+
+    const paidPendingData = useMemo(
+        () =>
+            (breakdown.revenueBySource ?? []).map((s) => ({
+                name: s.source,
+                paid: s.paidAmount ?? 0,
+                pending: s.pendingAmount ?? 0,
+            })),
+        [breakdown.revenueBySource],
+    );
+
+    return (
+        <div className="space-y-3">
+            {/* KPI row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <KPICard
+                    title="Received Revenue"
+                    value={breakdown.totalReceivedRevenue}
+                    icon={CheckCircleIcon}
+                    iconBg="bg-green-500/20"
+                    iconColor="text-green-600"
+                />
+                <KPICard
+                    title="Pending Revenue"
+                    value={breakdown.totalPendingRevenue}
+                    icon={ClockIcon}
+                    iconBg="bg-amber-500/20"
+                    iconColor="text-amber-500"
+                />
+                <KPICard
+                    title="Revenue Growth"
+                    value={breakdown.revenueGrowthPercentage}
+                    icon={TrendingUpIcon}
+                    format="percent"
+                    iconBg="bg-emerald-500/20"
+                    iconColor="text-emerald-600"
+                />
+                <KPICard
+                    title="Avg Daily Revenue"
+                    value={breakdown.averageDailyRevenue}
+                    icon={DollarSignIcon}
+                    iconBg="bg-blue-500/20"
+                    iconColor="text-blue-500"
+                />
+            </div>
+
+            {/* Charts row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Donut — revenue by source */}
+                <Card className="border-primary-5/40">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base">
+                            Revenue by Source
+                        </CardTitle>
+                        <CardDescription>
+                            {formatCurrency(totalRevenue)} total
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {sourceData.length === 0 ? (
+                            <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
+                                No revenue data available.
+                            </div>
+                        ) : (
+                            <>
+                                <div className="relative h-[180px] w-full">
+                                    <ResponsiveContainer
+                                        width="100%"
+                                        height="100%"
+                                    >
+                                        <RechartPieChart>
+                                            <Pie
+                                                data={sourceData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={55}
+                                                outerRadius={80}
+                                                dataKey="value"
+                                                nameKey="name"
+                                                labelLine={false}
+                                            >
+                                                {sourceData.map((_, i) => (
+                                                    <Cell
+                                                        key={i}
+                                                        fill={
+                                                            CHART_COLORS[
+                                                                i %
+                                                                    CHART_COLORS.length
+                                                            ]
+                                                        }
+                                                    />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                formatter={(
+                                                    value: number,
+                                                ) => formatCurrency(value)}
+                                            />
+                                        </RechartPieChart>
+                                    </ResponsiveContainer>
+                                    {/* Centre label */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-sm font-bold text-primary">
+                                            {formatCurrency(
+                                                totalRevenue,
+                                                "short",
+                                            )}
+                                        </span>
+                                        <span className="text-xs text-gray-400">
+                                            Total
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="mt-2 space-y-1.5">
+                                    {sourceData.map((item, i) => {
+                                        const pct = totalRevenue
+                                            ? (
+                                                  (item.value / totalRevenue) *
+                                                  100
+                                              ).toFixed(1)
+                                            : "0.0";
+                                        return (
+                                            <div
+                                                key={item.name}
+                                                className="flex items-center justify-between text-sm"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                        style={{
+                                                            backgroundColor:
+                                                                CHART_COLORS[
+                                                                    i %
+                                                                        CHART_COLORS.length
+                                                                ],
+                                                        }}
+                                                    />
+                                                    <span className="text-gray-600">
+                                                        {item.name}
+                                                    </span>
+                                                    <span className="text-gray-400 text-xs">
+                                                        ({pct}%)
+                                                    </span>
+                                                </div>
+                                                <span className="font-medium text-primary">
+                                                    {formatCurrency(item.value)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Stacked bar — paid vs pending by source */}
+                {paidPendingData.length > 0 ? (
+                    <Card className="border-primary-5/40">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base">
+                                Payment Status by Source
+                            </CardTitle>
+                            <CardDescription>
+                                Received vs pending per stream
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[280px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={paidPendingData}
+                                        layout="vertical"
+                                        margin={{
+                                            top: 0,
+                                            right: 10,
+                                            left: 0,
+                                            bottom: 0,
+                                        }}
+                                    >
+                                        <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            horizontal={false}
+                                            stroke="#e5e5e5"
+                                        />
+                                        <XAxis
+                                            type="number"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{
+                                                fontSize: 11,
+                                                fill: "#9ca3af",
+                                            }}
+                                            tickFormatter={(v) =>
+                                                formatCurrency(v, "short")
+                                            }
+                                        />
+                                        <YAxis
+                                            type="category"
+                                            dataKey="name"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{
+                                                fontSize: 11,
+                                                fill: "#9ca3af",
+                                            }}
+                                            width={95}
+                                        />
+                                        <Tooltip
+                                            content={<CustomTooltip />}
+                                            cursor={false}
+                                        />
+                                        <Legend
+                                            wrapperStyle={{ paddingTop: "10px" }}
+                                            formatter={(v) => (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {v}
+                                                </span>
+                                            )}
+                                        />
+                                        <Bar
+                                            dataKey="paid"
+                                            name="Received"
+                                            stackId="a"
+                                            fill="#22c55e"
+                                        />
+                                        <Bar
+                                            dataKey="pending"
+                                            name="Pending"
+                                            stackId="a"
+                                            fill="#f59e0b"
+                                            radius={[0, 4, 4, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    // Fallback — if no paid/pending breakdown, show nothing extra
+                    <div />
+                )}
+            </div>
+        </div>
+    );
+}
+
 // --- Quick Access Links ---
 
 function QuickAccessLinks() {
@@ -1032,6 +1380,8 @@ export function FinancialsDashboard({
     graphData = [],
     revenueBreakdown,
     overdueExpenditures = [],
+    todayData,
+    thisWeekData,
 }: FinancialsDashboardProps) {
     if (!metrics) return null;
 
@@ -1043,13 +1393,24 @@ export function FinancialsDashboard({
                 overdueExpenditures={overdueExpenditures}
             />
 
+            {/* Today / This Week snapshot strip */}
+            <TodayThisWeekStrip
+                todayData={todayData}
+                thisWeekData={thisWeekData}
+            />
+
             {/* KPI Grid (3 rows of 4 cards) */}
             <KPIMetricsGrid metrics={metrics} />
 
             {/* Quick Access Links */}
             <QuickAccessLinks />
 
-            {/* Profit Trend + Receivables */}
+            {/* Revenue breakdown section (donut + paid/pending bars + KPIs) */}
+            {revenueBreakdown && (
+                <RevenueBreakdownSection breakdown={revenueBreakdown} />
+            )}
+
+            {/* Profit / Cash Flow / Margin Trend + Receivables */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 <div className="lg:col-span-8">
                     <ProfitTrendSection
@@ -1063,13 +1424,10 @@ export function FinancialsDashboard({
                 </div>
             </div>
 
-            {/* Revenue by Source + Expense Breakdown */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <RevenueBySourceChart streams={metrics.topRevenueStreams} />
-                <ExpenseByCategoryChart
-                    categories={metrics.topExpenseCategories}
-                />
-            </div>
+            {/* Expense Breakdown (full width) */}
+            <ExpenseByCategoryChart
+                categories={metrics.topExpenseCategories}
+            />
 
             {/* Revenue vs Expenses Trend + Transaction Volume */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

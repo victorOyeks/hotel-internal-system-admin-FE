@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { Utensils, Coffee, DollarSign } from "lucide-react";
 
-interface RestaurantDailySummary {
+export interface RestaurantDailySummary {
     totalRevenue?: number;
     roomCharges?: number;
     directPayments?: number;

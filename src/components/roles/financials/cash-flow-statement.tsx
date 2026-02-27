@@ -17,7 +17,12 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type { CashFlowStatement as CashFlowStatementType } from "@/lib/api-routes/financials";
 import { useMemo } from "react";
-import { ArrowDownCircleIcon, ArrowUpCircleIcon, DollarSignIcon, WalletIcon } from "lucide-react";
+import {
+    ArrowDownCircleIcon,
+    ArrowUpCircleIcon,
+    DollarSignIcon,
+    WalletIcon,
+} from "lucide-react";
 import {
     ResponsiveContainer,
     BarChart,
@@ -26,223 +31,245 @@ import {
     YAxis,
     Tooltip,
     Cell,
+    PieChart,
+    Pie,
 } from "recharts";
 
-type CashFlowLineItem = {
-    label: string;
-    amount: number;
-};
+// ─── Shared ───────────────────────────────────────────────────────────────────
 
+type CashFlowLineItem = { label: string; amount: number };
 const columnHelper = createColumnHelper<CashFlowLineItem>();
 
-const cashFlowColumns = [
-    columnHelper.accessor("label", {
-        header: "Description",
-        cell: (info) => (
-            <span className="text-gray-600">{info.getValue()}</span>
-        ),
-    }),
-    columnHelper.accessor("amount", {
-        header: "Amount",
-        cell: (info) => (
-            <div className="font-medium">
-                {formatCurrency(info.getValue())}
-            </div>
-        ),
-    }),
-];
-
-function CashFlowTable({
-    data,
+function KPICard({
     title,
-    totalLabel,
-    totalAmount,
-    totalClassName,
+    value,
+    icon: Icon,
+    iconBgClass,
+    iconColorClass,
+    valueColorClass = "text-primary",
 }: {
-    data: CashFlowLineItem[];
     title: string;
-    totalLabel?: string;
-    totalAmount?: number;
-    totalClassName?: string;
+    value: string;
+    icon: React.ElementType;
+    iconBgClass: string;
+    iconColorClass: string;
+    valueColorClass?: string;
 }) {
-    const table = useReactTable({
-        data,
-        columns: cashFlowColumns,
-        getCoreRowModel: getCoreRowModel(),
-    });
-
     return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">{title}</p>
-                {totalLabel && totalAmount != null && (
-                    <span
-                        className={`text-sm font-semibold ${totalClassName ?? "text-primary"}`}
-                    >
-                        {formatCurrency(totalAmount)}
-                    </span>
-                )}
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
+            <div className={`size-10 shrink-0 rounded-xl flex items-center justify-center ${iconBgClass}`}>
+                <Icon className={`size-5 ${iconColorClass}`} />
             </div>
-            <div className="border border-primary-5/20 rounded-xl overflow-clip bg-card">
-                <Table>
-                    <TableHeader className="bg-gray-100">
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                    <TableHead
-                                        key={header.id}
-                                        className="text-gray-500"
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                header.column.columnDef
-                                                    .header,
-                                                header.getContext(),
-                                            )}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-
-                    <TableBody>
-                        {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={
-                                        row.getIsSelected() && "selected"
-                                    }
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell
-                                            key={cell.id}
-                                            className="text-gray-600"
-                                        >
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext(),
-                                            )}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={cashFlowColumns.length}
-                                    className="h-24 text-center"
-                                >
-                                    No items.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+            <div className="min-w-0">
+                <p className="text-xs text-gray-400 truncate">{title}</p>
+                <p className={`text-base font-bold tabular-nums leading-tight ${valueColorClass}`}>
+                    {value}
+                </p>
             </div>
         </div>
     );
 }
 
-const WaterfallTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-        const item = payload[0]?.payload;
-        if (!item) return null;
-        return (
-            <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-3 z-50">
-                <p className="font-medium mb-1">{label}</p>
-                <p className="text-sm font-medium">{formatCurrency(item.value)}</p>
-            </div>
-        );
-    }
-    return null;
+function CashFlowTable({
+    data,
+    totalLabel,
+    totalAmount,
+    totalColorClass = "text-primary",
+    amountColorClass,
+}: {
+    data: CashFlowLineItem[];
+    totalLabel?: string;
+    totalAmount?: number;
+    totalColorClass?: string;
+    amountColorClass?: string;
+}) {
+    const columns = useMemo(
+        () => [
+            columnHelper.accessor("label", {
+                header: "Description",
+                cell: (info) => (
+                    <span className="text-gray-600 text-sm">{info.getValue()}</span>
+                ),
+            }),
+            columnHelper.accessor("amount", {
+                header: () => <span className="text-right block">Amount</span>,
+                cell: (info) => (
+                    <div className={`text-sm font-medium text-right tabular-nums ${amountColorClass ?? "text-gray-800"}`}>
+                        {formatCurrency(info.getValue())}
+                    </div>
+                ),
+            }),
+        ],
+        [amountColorClass],
+    );
+
+    const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
+
+    return (
+        <Table>
+            <TableHeader>
+                {table.getHeaderGroups().map((hg) => (
+                    <TableRow key={hg.id} className="bg-gray-50 hover:bg-gray-50">
+                        {hg.headers.map((h) => (
+                            <TableHead key={h.id} className="text-xs text-gray-400 uppercase tracking-wide">
+                                {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableHeader>
+            <TableBody>
+                {table.getRowModel().rows.length ? (
+                    table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id} className="border-gray-50">
+                            {row.getVisibleCells().map((cell) => (
+                                <TableCell key={cell.id}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={2} className="h-16 text-center text-sm text-gray-400">
+                            No items
+                        </TableCell>
+                    </TableRow>
+                )}
+                {totalLabel != null && totalAmount != null && (
+                    <TableRow className="border-t-2 border-gray-200 bg-gray-50/80">
+                        <TableCell className="text-sm font-semibold text-gray-700">{totalLabel}</TableCell>
+                        <TableCell className={`text-right font-bold tabular-nums text-sm ${totalColorClass}`}>
+                            {formatCurrency(totalAmount)}
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+}
+
+// ─── Waterfall bar chart ──────────────────────────────────────────────────────
+
+const WaterfallTooltip = ({
+    active,
+    payload,
+    label,
+}: {
+    active?: boolean;
+    payload?: Array<{ payload: { value: number; fill: string } }>;
+    label?: string;
+}) => {
+    if (!active || !payload?.length) return null;
+    const item = payload[0]?.payload;
+    return (
+        <div className="bg-background/95 backdrop-blur-sm border border-gray-200 rounded-lg p-3 z-50 text-sm">
+            <p className="font-medium mb-1">{label}</p>
+            <p className="font-semibold">{formatCurrency(item?.value ?? 0)}</p>
+        </div>
+    );
 };
 
 function CashFlowWaterfallChart({ data }: { data: CashFlowStatementType }) {
     const chartData = useMemo(() => {
-        const opening = data.openingCashBalance ?? 0;
-        const inflow = data.totalCashInflow ?? 0;
-        const outflow = data.totalCashOutflow ?? 0;
         const netFlow = data.netCashFlow ?? 0;
-        const closing = data.closingCashBalance ?? 0;
-
         return [
-            { name: "Opening", value: opening, fill: "#6366f1" },
-            { name: "Inflow", value: inflow, fill: "#22c55e" },
-            { name: "Outflow", value: outflow, fill: "#ef4444" },
-            { name: "Net Flow", value: netFlow, fill: netFlow >= 0 ? "#22c55e" : "#ef4444" },
-            { name: "Closing", value: closing, fill: "#4c091e" },
+            { name: "Opening", value: data.openingCashBalance ?? 0, fill: "#6366f1" },
+            { name: "Inflow", value: data.totalCashInflow ?? 0, fill: "#22c55e" },
+            { name: "Outflow", value: data.totalCashOutflow ?? 0, fill: "#ef4444" },
+            { name: "Net", value: netFlow, fill: netFlow >= 0 ? "#22c55e" : "#ef4444" },
+            { name: "Closing", value: data.closingCashBalance ?? 0, fill: "#4c091e" },
         ];
     }, [data]);
 
     return (
-        <div className="space-y-2">
-            <p className="text-sm font-medium">Cash Flow Overview</p>
-            <div className="border border-primary-5/20 rounded-xl p-4 bg-card">
-                <div className="h-[220px] w-full">
+        <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={(v) => formatCurrency(v, "short")} />
+                    <Tooltip content={<WaterfallTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={56}>
+                        {chartData.map((entry, i) => (
+                            <Cell key={i} fill={entry.fill} />
+                        ))}
+                    </Bar>
+                </BarChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+// ─── Cash breakdown donut ─────────────────────────────────────────────────────
+
+function CashBreakdownDonut({ data }: { data: CashFlowStatementType }) {
+    const slices = useMemo(() => {
+        const items = [
+            { name: "Cash in Hand", value: data.cashInHand ?? 0, color: "#4c091e" },
+            { name: "Bank Balance", value: data.bankBalance ?? 0, color: "#6366f1" },
+            { name: "Card Payments", value: data.cardPayments ?? 0, color: "#22c55e" },
+            { name: "Mobile Money", value: data.mobileMoneyBalance ?? 0, color: "#f59e0b" },
+        ].filter((s) => s.value > 0);
+        return items;
+    }, [data]);
+
+    if (slices.length === 0) return null;
+
+    const total = slices.reduce((s, d) => s + d.value, 0);
+
+    return (
+        <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                    Cash Balance Breakdown
+                </p>
+            </div>
+            <div className="p-4 grid grid-cols-1 lg:grid-cols-[160px_1fr] gap-6 items-center">
+                <div className="h-[160px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={chartData}
-                            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                        >
-                            <XAxis
-                                dataKey="name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 11, fill: "#9ca3af" }}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 11, fill: "#9ca3af" }}
-                                tickFormatter={(v) => formatCurrency(v, "short")}
-                            />
-                            <Tooltip content={<WaterfallTooltip />} cursor={false} />
-                            <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={50}>
-                                {chartData.map((entry, i) => (
-                                    <Cell key={i} fill={entry.fill} />
+                        <PieChart>
+                            <Pie data={slices} cx="50%" cy="50%" innerRadius={44} outerRadius={68} dataKey="value" nameKey="name" labelLine={false}>
+                                {slices.map((s, i) => (
+                                    <Cell key={i} fill={s.color} />
                                 ))}
-                            </Bar>
-                        </BarChart>
+                            </Pie>
+                            <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        </PieChart>
                     </ResponsiveContainer>
+                </div>
+                <div className="space-y-2">
+                    {slices.map((s) => (
+                        <div key={s.name} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                                <span className="text-gray-500">{s.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 tabular-nums">
+                                <span className="text-gray-400 text-xs">{((s.value / total) * 100).toFixed(1)}%</span>
+                                <span className="font-medium text-gray-800 w-[88px] text-right">{formatCurrency(s.value)}</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
 }
 
-export function CashFlowStatement({
-    data,
-}: {
-    data: CashFlowStatementType | null;
-}) {
+// ─── Main export ──────────────────────────────────────────────────────────────
+
+export function CashFlowStatement({ data }: { data: CashFlowStatementType | null }) {
     const cashInflows = useMemo(
         () =>
             !data
                 ? []
                 : [
-                    {
-                        label: "Room Bookings",
-                        amount: data.cashFromRoomBookings ?? 0,
-                    },
-                    {
-                        label: "Restaurants",
-                        amount: data.cashFromRestaurants ?? 0,
-                    },
-                    {
-                        label: "Laundry",
-                        amount: data.cashFromLaundry ?? 0,
-                    },
-                    {
-                        label: "Rentals",
-                        amount: data.cashFromRentals ?? 0,
-                    },
-                    {
-                        label: "Other Income",
-                        amount: data.cashFromOtherIncome ?? 0,
-                    },
-                ].filter((item) => item.amount !== 0),
+                    { label: "Room Bookings", amount: data.cashFromRoomBookings ?? 0 },
+                    { label: "Restaurants", amount: data.cashFromRestaurants ?? 0 },
+                    { label: "Laundry", amount: data.cashFromLaundry ?? 0 },
+                    { label: "Rentals", amount: data.cashFromRentals ?? 0 },
+                    { label: "Other Income", amount: data.cashFromOtherIncome ?? 0 },
+                ].filter((i) => i.amount !== 0),
         [data],
     );
 
@@ -251,258 +278,180 @@ export function CashFlowStatement({
             !data
                 ? []
                 : [
-                    {
-                        label: "Paid to Suppliers",
-                        amount: data.cashPaidToSuppliers ?? 0,
-                    },
-                    {
-                        label: "Paid to Employees",
-                        amount: data.cashPaidToEmployees ?? 0,
-                    },
-                    {
-                        label: "Staff Costs",
-                        amount: data.cashForStaffCosts ?? 0,
-                    },
-                    {
-                        label: "Utilities",
-                        amount: data.cashForUtilities ?? 0,
-                    },
-                    {
-                        label: "Supplies",
-                        amount: data.cashForSupplies ?? 0,
-                    },
-                    {
-                        label: "Maintenance",
-                        amount: data.cashForMaintenance ?? 0,
-                    },
-                    {
-                        label: "Marketing",
-                        amount: data.cashForMarketing ?? 0,
-                    },
-                    {
-                        label: "Other Expenses",
-                        amount: data.cashForOtherExpenses ?? 0,
-                    },
-                    {
-                        label: "Operating Expenses",
-                        amount: data.cashPaidForOperatingExpenses ?? 0,
-                    },
-                ].filter((item) => item.amount !== 0),
+                    { label: "Paid to Suppliers", amount: data.cashPaidToSuppliers ?? 0 },
+                    { label: "Paid to Employees", amount: data.cashPaidToEmployees ?? 0 },
+                    { label: "Staff Costs", amount: data.cashForStaffCosts ?? 0 },
+                    { label: "Utilities", amount: data.cashForUtilities ?? 0 },
+                    { label: "Supplies", amount: data.cashForSupplies ?? 0 },
+                    { label: "Maintenance", amount: data.cashForMaintenance ?? 0 },
+                    { label: "Marketing", amount: data.cashForMarketing ?? 0 },
+                    { label: "Other Expenses", amount: data.cashForOtherExpenses ?? 0 },
+                    { label: "Operating Expenses", amount: data.cashPaidForOperatingExpenses ?? 0 },
+                ].filter((i) => i.amount !== 0),
         [data],
     );
 
     if (!data) {
         return (
-            <div className="bg-white p-4 rounded-2xl">
-                <h3 className="text-sm font-medium text-gray-600">
-                    Cash Flow Statement
-                </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                    No data available for the selected period.
-                </p>
+            <div className="bg-card border border-gray-100 rounded-xl p-6">
+                <p className="text-sm text-gray-400">No data available for the selected period.</p>
             </div>
         );
     }
 
-    const stats = [
-        {
-            title: "Total Inflow",
-            icon: ArrowDownCircleIcon,
-            value: formatCurrency(data.totalCashInflow ?? 0),
-        },
-        {
-            title: "Total Outflow",
-            icon: ArrowUpCircleIcon,
-            value: formatCurrency(data.totalCashOutflow ?? 0),
-        },
-        {
-            title: "Net Cash Flow",
-            icon: DollarSignIcon,
-            value: formatCurrency(data.netCashFlow ?? 0),
-        },
-        {
-            title: "Closing Balance",
-            icon: WalletIcon,
-            value: formatCurrency(data.closingCashBalance ?? 0),
-        },
-    ];
+    const netCashFlow = data.netCashFlow ?? 0;
+    const isPositive = netCashFlow >= 0;
 
     return (
         <div className="space-y-4">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {stats.map((stat) => (
-                    <div
-                        key={stat.title}
-                        className="col-span-1 bg-white border border-primary-5/40 p-2 rounded-2xl md:rounded-3xl flex items-center space-x-2"
-                    >
-                        <div className="size-8 md:size-12 aspect-square bg-green-500/20 rounded-full flex items-center justify-center">
-                            <stat.icon className="text-secondary size-5" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-xs md:text-sm text-gray-400">{stat.title}</p>
-                            <p className="text-lg text-primary font-semibold font-inter tracking-[0.01em]">
-                                {stat.value}
-                            </p>
-                        </div>
-                    </div>
-                ))}
+            {/* KPI strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <KPICard
+                    title="Total Inflow"
+                    value={formatCurrency(data.totalCashInflow ?? 0)}
+                    icon={ArrowDownCircleIcon}
+                    iconBgClass="bg-green-50"
+                    iconColorClass="text-green-600"
+                    valueColorClass="text-green-700"
+                />
+                <KPICard
+                    title="Total Outflow"
+                    value={formatCurrency(data.totalCashOutflow ?? 0)}
+                    icon={ArrowUpCircleIcon}
+                    iconBgClass="bg-red-50"
+                    iconColorClass="text-red-500"
+                    valueColorClass="text-red-600"
+                />
+                <KPICard
+                    title="Net Cash Flow"
+                    value={formatCurrency(netCashFlow)}
+                    icon={DollarSignIcon}
+                    iconBgClass={isPositive ? "bg-emerald-50" : "bg-red-50"}
+                    iconColorClass={isPositive ? "text-emerald-600" : "text-red-500"}
+                    valueColorClass={isPositive ? "text-emerald-700" : "text-red-600"}
+                />
+                <KPICard
+                    title="Closing Balance"
+                    value={formatCurrency(data.closingCashBalance ?? 0)}
+                    icon={WalletIcon}
+                    iconBgClass="bg-indigo-50"
+                    iconColorClass="text-indigo-600"
+                    valueColorClass="text-primary"
+                />
             </div>
 
-            {/* Cash Flow Waterfall */}
-            <CashFlowWaterfallChart data={data} />
+            {/* Chart + Cash Summary side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+                <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Cash Flow Overview
+                        </p>
+                    </div>
+                    <div className="p-4">
+                        <CashFlowWaterfallChart data={data} />
+                    </div>
+                </div>
 
-            {/* Cash Inflows */}
-            {cashInflows.length > 0 && (
-                <CashFlowTable
-                    data={cashInflows}
-                    title="Cash Inflows"
-                    totalLabel="Total Inflow"
-                    totalAmount={data.totalCashInflow ?? undefined}
-                    totalClassName="text-green-600"
-                />
-            )}
-
-            {/* Cash Outflows */}
-            {cashOutflows.length > 0 && (
-                <CashFlowTable
-                    data={cashOutflows}
-                    title="Cash Outflows"
-                    totalLabel="Total Outflow"
-                    totalAmount={data.totalCashOutflow ?? undefined}
-                    totalClassName="text-red-500"
-                />
-            )}
-
-            {/* Working Capital */}
-            {(data.accountsReceivable != null ||
-                data.accountsPayable != null) && (
-                    <div className="space-y-2">
-                        <p className="text-sm font-medium">Working Capital</p>
-                        <div className="border border-primary-5/20 rounded-xl p-4 space-y-2 text-sm bg-card">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">
-                                    Accounts Receivable
-                                </span>
-                                <span className="font-medium text-primary">
-                                    {formatCurrency(data.accountsReceivable ?? 0)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">
-                                    Accounts Payable
-                                </span>
-                                <span className="font-medium text-primary">
-                                    {formatCurrency(data.accountsPayable ?? 0)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between border-t pt-2">
-                                <span className="text-gray-700 font-medium">
-                                    Net Receivables/Payables
-                                </span>
-                                <span className="font-semibold text-primary">
-                                    {formatCurrency(
-                                        data.netReceivablesPayables ?? 0,
-                                    )}
-                                </span>
-                            </div>
+                {/* Cash summary — right column */}
+                <div className="bg-primary/[0.03] border border-primary/20 rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-primary/20">
+                        <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Cash Summary
+                        </p>
+                    </div>
+                    <div className="p-4 space-y-2.5 text-sm">
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-500">Opening Balance</span>
+                            <span className="tabular-nums font-medium text-gray-800">
+                                {formatCurrency(data.openingCashBalance ?? 0)}
+                            </span>
                         </div>
-                    </div>
-                )}
-
-            {/* Cash Summary */}
-            <div className="space-y-2">
-                <p className="text-sm font-medium">Cash Summary</p>
-                <div className="border border-primary-5/20 rounded-xl p-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">
-                            Opening Cash Balance
-                        </span>
-                        <span className="font-medium text-primary">
-                            {formatCurrency(data.openingCashBalance ?? 0)}
-                        </span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">
-                            Net Cash from Operations
-                        </span>
-                        <span className="font-medium text-primary">
-                            {formatCurrency(
-                                data.netCashFromOperatingActivities ?? 0,
-                            )}
-                        </span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Net Cash Flow</span>
-                        <span
-                            className={`font-semibold ${(data.netCashFlow ?? 0) >= 0 ? "text-green-600" : "text-red-500"}`}
-                        >
-                            {formatCurrency(data.netCashFlow ?? 0)}
-                        </span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2 mt-1">
-                        <span className="font-semibold text-gray-700">
-                            Closing Cash Balance
-                        </span>
-                        <span className="text-lg font-bold text-primary">
-                            {formatCurrency(data.closingCashBalance ?? 0)}
-                        </span>
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-500">Total Inflow</span>
+                            <span className="tabular-nums font-medium text-green-700">
+                                +{formatCurrency(data.totalCashInflow ?? 0)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-500">Total Outflow</span>
+                            <span className="tabular-nums font-medium text-red-600">
+                                -{formatCurrency(data.totalCashOutflow ?? 0)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-gray-500">Net Operations</span>
+                            <span className="tabular-nums font-medium text-gray-800">
+                                {formatCurrency(data.netCashFromOperatingActivities ?? 0)}
+                            </span>
+                        </div>
+                        {data.accountsReceivable != null && (
+                            <div className="flex justify-between items-baseline">
+                                <span className="text-gray-500">Receivables</span>
+                                <span className="tabular-nums font-medium text-gray-800">
+                                    {formatCurrency(data.accountsReceivable)}
+                                </span>
+                            </div>
+                        )}
+                        {data.accountsPayable != null && (
+                            <div className="flex justify-between items-baseline">
+                                <span className="text-gray-500">Payables</span>
+                                <span className="tabular-nums font-medium text-gray-800">
+                                    {formatCurrency(data.accountsPayable)}
+                                </span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center border-t-2 border-primary/20 pt-3 mt-1">
+                            <span className="font-bold text-sm text-primary">Closing Balance</span>
+                            <span className="text-xl font-bold tabular-nums text-primary">
+                                {formatCurrency(data.closingCashBalance ?? 0)}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Cash Breakdown */}
-            {(data.cashInHand != null ||
-                data.bankBalance != null ||
-                data.cardPayments != null) && (
-                    <div className="space-y-2">
-                        <p className="text-sm font-medium">
-                            Cash Balance Breakdown
+            {/* Inflows + Outflows tables always shown */}
+            <div className="grid grid-cols-1 gap-4">
+                <div className="bg-card border border-gray-100 border-l-4 border-l-green-500 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Cash Inflows
                         </p>
-                        <div className="border border-primary-5/20 rounded-xl p-4 space-y-2 text-sm">
-                            {data.cashInHand != null && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">
-                                        Cash in Hand
-                                    </span>
-                                    <span className="font-medium text-primary">
-                                        {formatCurrency(data.cashInHand)}
-                                    </span>
-                                </div>
-                            )}
-                            {data.bankBalance != null && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">
-                                        Bank Balance
-                                    </span>
-                                    <span className="font-medium text-primary">
-                                        {formatCurrency(data.bankBalance)}
-                                    </span>
-                                </div>
-                            )}
-                            {data.cardPayments != null && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">
-                                        Card Payments
-                                    </span>
-                                    <span className="font-medium text-primary">
-                                        {formatCurrency(data.cardPayments)}
-                                    </span>
-                                </div>
-                            )}
-                            {data.mobileMoneyBalance != null && (
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">
-                                        Mobile Money
-                                    </span>
-                                    <span className="font-medium text-primary">
-                                        {formatCurrency(data.mobileMoneyBalance)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        <span className="text-sm font-bold text-green-600 tabular-nums">
+                            {formatCurrency(data.totalCashInflow ?? 0)}
+                        </span>
                     </div>
-                )}
+                    <CashFlowTable
+                        data={cashInflows}
+                        totalLabel="Total Inflow"
+                        totalAmount={data.totalCashInflow ?? undefined}
+                        totalColorClass="text-green-600"
+                        amountColorClass="text-green-700"
+                    />
+                </div>
+
+                <div className="bg-card border border-gray-100 border-l-4 border-l-red-400 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            Cash Outflows
+                        </p>
+                        <span className="text-sm font-bold text-red-500 tabular-nums">
+                            {formatCurrency(data.totalCashOutflow ?? 0)}
+                        </span>
+                    </div>
+                    <CashFlowTable
+                        data={cashOutflows}
+                        totalLabel="Total Outflow"
+                        totalAmount={data.totalCashOutflow ?? undefined}
+                        totalColorClass="text-red-500"
+                        amountColorClass="text-red-600"
+                    />
+                </div>
+            </div>
+
+            {/* Cash breakdown donut */}
+            <CashBreakdownDonut data={data} />
         </div>
     );
 }
