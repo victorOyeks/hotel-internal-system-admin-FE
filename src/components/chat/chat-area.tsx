@@ -30,6 +30,7 @@ export function ChatArea({
 				onClose={onClose}
 			/>
 			<MessageList
+				key={conversation.id}
 				conversationId={conversation.id}
 				currentUserId={currentUserId}
 				isGroup={conversation.conversationType === "GROUP"}

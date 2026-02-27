@@ -54,12 +54,28 @@ export function MessageList({
 		return reversed.flatMap((page) => [...page.content].reverse());
 	}, [data]);
 
+	// Find the index of the first unread message (only counting messages from others)
+	const firstUnreadIdx = useMemo(() => {
+		const count = initialUnreadRef.current;
+		if (count <= 0 || allMessages.length === 0) return -1;
+		let remaining = count;
+		for (let i = allMessages.length - 1; i >= 0; i--) {
+			if (allMessages[i].senderId !== currentUserId) {
+				remaining--;
+				if (remaining === 0) return i;
+			}
+		}
+		return -1;
+	}, [allMessages, currentUserId]);
+
 	// Mark as read when conversation opens
+	const markAsReadRef = useRef(markAsRead.mutate);
+	markAsReadRef.current = markAsRead.mutate;
 	useEffect(() => {
 		if (conversationId) {
-			markAsRead.mutate(conversationId);
+			markAsReadRef.current(conversationId);
 		}
-	}, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [conversationId]);
 
 	// Auto-scroll to bottom on new messages
 	useEffect(() => {
@@ -78,13 +94,13 @@ export function MessageList({
 	useEffect(() => {
 		if (!isLoading && allMessages.length > 0 && !hasScrolledRef.current) {
 			hasScrolledRef.current = true;
-			if (initialUnreadRef.current > 0 && unreadRef.current) {
+			if (firstUnreadIdx >= 0 && unreadRef.current) {
 				unreadRef.current.scrollIntoView();
 			} else {
 				bottomRef.current?.scrollIntoView();
 			}
 		}
-	}, [isLoading, allMessages.length]);
+	}, [isLoading, allMessages.length, firstUnreadIdx]);
 
 	// Infinite scroll - load older messages
 	useEffect(() => {
@@ -160,13 +176,10 @@ export function MessageList({
 						!prevMsg || prevMsg.senderId !== msg.senderId || showDateSeparator;
 					const showName = isGroup && showAvatar;
 					const isOwn = msg.senderId === currentUserId;
-					const isFirstUnread =
-						initialUnreadRef.current > 0 &&
-						idx === allMessages.length - initialUnreadRef.current;
 
 					return (
 						<div key={msg.id}>
-							{isFirstUnread && (
+							{idx === firstUnreadIdx && (
 								<div ref={unreadRef} className="flex items-center gap-3 py-2 px-4">
 									<div className="flex-1 h-px bg-blue-400" />
 									<span className="text-[11px] text-blue-500 font-semibold select-none whitespace-nowrap">
