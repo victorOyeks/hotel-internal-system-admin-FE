@@ -239,6 +239,7 @@ export const laundryLinks = [
 
 export const financialsLinks = [
 	{ title: "Overview", icon: <ChartNoAxesCombined />, url: "/dashboard" },
+	{ title: "Compare", icon: <ArrowLeftRightIcon />, url: "/dashboard/compare" },
 	{ title: "Other Income", icon: <DollarSignIcon />, url: "/dashboard/other-income" },
 	{ title: "Expenditures", icon: <CreditCardIcon />, url: "/dashboard/expenditures" },
 	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },

@@ -1,5 +1,11 @@
 import { FinancialsDashboard } from "@/components/roles/financials/financials-dashboard";
-import { getFinancialDashboard, getRevenue, getOverdueExpenditures } from "@/lib/financials-actions";
+import {
+    getFinancialDashboard,
+    getRevenue,
+    getOverdueExpenditures,
+    getTodaySummary,
+    getThisWeekSummary,
+} from "@/lib/financials-actions";
 import { getCookieData } from "@/lib/server-fns";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
@@ -45,9 +51,21 @@ function Page({ searchParams }: PageProps) {
         queryFn: () => getOverdueExpenditures(),
     });
 
+    const todayPromise = queryClient.ensureQueryData({
+        queryKey: ["financials", "today", cookieData.userId],
+        queryFn: () => getTodaySummary(),
+    });
+
+    const thisWeekPromise = queryClient.ensureQueryData({
+        queryKey: ["financials", "this-week", cookieData.userId],
+        queryFn: () => getThisWeekSummary(),
+    });
+
     const dashboardData = use(dashboardPromise);
     const revenueData = use(revenuePromise);
     const overdueData = use(overduePromise);
+    const todayData = use(todayPromise);
+    const thisWeekData = use(thisWeekPromise);
 
     const graphData = dashboardData?.trendData ?? [];
     const overdueExpenditures = ((overdueData as any)?.content ?? overdueData ?? []) as Expenditure[];
@@ -68,6 +86,8 @@ function Page({ searchParams }: PageProps) {
                 graphData={graphData}
                 revenueBreakdown={revenueData ?? undefined}
                 overdueExpenditures={overdueExpenditures}
+                todayData={todayData}
+                thisWeekData={thisWeekData}
             />
         </div>
     );
