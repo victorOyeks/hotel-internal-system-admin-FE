@@ -237,6 +237,26 @@ function updateMessagesCache(
 			if (!firstPage) return oldData;
 			const exists = firstPage.content.some((m) => m.id === message.id);
 			if (exists) return oldData;
+
+			// Replace optimistic message from same sender with the real one
+			const optimisticIdx = firstPage.content.findIndex(
+				(m) =>
+					m.id.startsWith("optimistic-") &&
+					m.senderId === message.senderId &&
+					m.content === message.content,
+			);
+			if (optimisticIdx !== -1) {
+				const updatedContent = [...firstPage.content];
+				updatedContent[optimisticIdx] = message;
+				return {
+					...oldData,
+					pages: [
+						{ ...firstPage, content: updatedContent },
+						...oldData.pages.slice(1),
+					],
+				};
+			}
+
 			return {
 				...oldData,
 				pages: [
