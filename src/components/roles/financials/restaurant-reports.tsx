@@ -435,105 +435,97 @@ function ItemSalesDetailSection({ data }: { data: ItemSaleDetailRow[] }) {
                     Item Sales Detail
                 </p>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr]">
-                {/* Horizontal bar chart */}
-                {chartData.length > 0 ? (
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">
-                            Top Items by Revenue
-                        </p>
-                        <div className="h-[260px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={chartData}
-                                    layout="vertical"
-                                    margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
-                                >
-                                    <CartesianGrid
-                                        strokeDasharray="3 3"
-                                        horizontal={false}
-                                        stroke="#e5e5e5"
-                                    />
-                                    <XAxis
-                                        type="number"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fontSize: 11, fill: "#9ca3af" }}
-                                        tickFormatter={(v) => formatCurrency(v, "short")}
-                                    />
-                                    <YAxis
-                                        type="category"
-                                        dataKey="name"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fontSize: 11, fill: "#9ca3af" }}
-                                        width={90}
-                                    />
-                                    <Tooltip
-                                        formatter={(v: number) => formatCurrency(v)}
-                                        cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                                    />
-                                    <Bar
-                                        dataKey="revenue"
-                                        name="Revenue"
-                                        fill="#297045"
-                                        radius={[0, 4, 4, 0]}
-                                        maxBarSize={20}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
+            {/* Standalone full-width chart */}
+            {chartData.length > 0 && (
+                <div className="p-4 border-b border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-3">
+                        Top Items by Revenue
+                    </p>
+                    <div className="h-[240px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={chartData}
+                                layout="vertical"
+                                margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    horizontal={false}
+                                    stroke="#e5e5e5"
+                                />
+                                <XAxis
+                                    type="number"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                    tickFormatter={(v) => formatCurrency(v, "short")}
+                                />
+                                <YAxis
+                                    type="category"
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                    width={110}
+                                />
+                                <Tooltip
+                                    formatter={(v: number) => formatCurrency(v)}
+                                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                                />
+                                <Bar
+                                    dataKey="revenue"
+                                    name="Revenue"
+                                    fill="#297045"
+                                    radius={[0, 4, 4, 0]}
+                                    maxBarSize={22}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-                ) : (
-                    <div className="p-4 border-b lg:border-b-0 lg:border-r border-gray-100 flex items-center justify-center text-sm text-gray-400">
-                        No chart data
-                    </div>
-                )}
-                {/* Table */}
-                <div className="overflow-hidden">
-                    {data.length === 0 ? (
-                        <div className="text-sm text-gray-400 text-center py-8">
-                            No item sales data available.
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                {table.getHeaderGroups().map((hg) => (
-                                    <TableRow key={hg.id} className="bg-gray-50 hover:bg-gray-50">
-                                        {hg.headers.map((h) => (
-                                            <TableHead
-                                                key={h.id}
-                                                className="text-xs text-gray-400 uppercase tracking-wide"
-                                            >
-                                                {h.isPlaceholder
-                                                    ? null
-                                                    : flexRender(
-                                                        h.column.columnDef.header,
-                                                        h.getContext(),
-                                                    )}
-                                            </TableHead>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableHeader>
-                            <TableBody>
-                                {table.getRowModel().rows.map((row) => (
-                                    <TableRow key={row.id}>
-                                        {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id} className="text-gray-600">
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext(),
-                                                )}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
                 </div>
-            </div>
+            )}
+            {/* Full-width table */}
+            {data.length === 0 ? (
+                <div className="text-sm text-gray-400 text-center py-8">
+                    No item sales data available.
+                </div>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        {table.getHeaderGroups().map((hg) => (
+                            <TableRow key={hg.id} className="bg-gray-50 hover:bg-gray-50">
+                                {hg.headers.map((h) => (
+                                    <TableHead
+                                        key={h.id}
+                                        className="text-xs text-gray-400 uppercase tracking-wide"
+                                    >
+                                        {h.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                h.column.columnDef.header,
+                                                h.getContext(),
+                                            )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {table.getRowModel().rows.map((row) => (
+                            <TableRow key={row.id}>
+                                {row.getVisibleCells().map((cell) => (
+                                    <TableCell key={cell.id} className="text-gray-600">
+                                        {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                        )}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
         </div>
     );
 }
