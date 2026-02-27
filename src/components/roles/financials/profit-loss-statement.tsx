@@ -18,6 +18,13 @@ import { formatCurrency } from "@/lib/utils";
 import type { ProfitAndLossStatement as ProfitAndLossData } from "@/lib/api-routes/financials";
 import { useMemo } from "react";
 import { DollarSignIcon, TrendingDownIcon, TrendingUpIcon, WalletIcon } from "lucide-react";
+import {
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    Tooltip,
+} from "recharts";
 
 type LineItem = {
     label: string;
@@ -134,6 +141,92 @@ function PLTable({
                         )}
                     </TableBody>
                 </Table>
+            </div>
+        </div>
+    );
+}
+
+const DONUT_COLORS = [
+    "#4c091e",
+    "#297045",
+    "#6366f1",
+    "#f59e0b",
+    "#ec4899",
+];
+
+function RevenueDistributionChart({ data }: { data: ProfitAndLossData }) {
+    const chartData = useMemo(() => {
+        const sources = [
+            { name: "Rooms", value: data.roomRevenue ?? 0 },
+            { name: "F&B", value: data.foodAndBeverageRevenue ?? 0 },
+            { name: "Laundry", value: data.laundryRevenue ?? 0 },
+            { name: "Rentals", value: data.rentalRevenue ?? 0 },
+            { name: "Other", value: data.otherRevenue ?? 0 },
+        ];
+        return sources.filter((s) => s.value > 0);
+    }, [data]);
+
+    if (chartData.length === 0) return null;
+
+    const total = chartData.reduce((sum, d) => sum + d.value, 0);
+
+    return (
+        <div className="space-y-2">
+            <p className="text-sm font-medium">Revenue Distribution</p>
+            <div className="border border-primary-5/20 rounded-xl p-4 bg-card">
+                <div className="flex items-center gap-4">
+                    <div className="h-[150px] w-[150px] shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={65}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    labelLine={false}
+                                >
+                                    {chartData.map((_, i) => (
+                                        <Cell
+                                            key={i}
+                                            fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    formatter={(value: number) => formatCurrency(value)}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                        {chartData.map((item, i) => (
+                            <div
+                                key={item.name}
+                                className="flex items-center justify-between text-sm"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                                        style={{
+                                            backgroundColor:
+                                                DONUT_COLORS[i % DONUT_COLORS.length],
+                                        }}
+                                    />
+                                    <span className="text-gray-600">{item.name}</span>
+                                    <span className="text-gray-400 text-xs">
+                                        ({((item.value / total) * 100).toFixed(1)}%)
+                                    </span>
+                                </div>
+                                <span className="font-medium text-primary">
+                                    {formatCurrency(item.value)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -270,6 +363,9 @@ export function ProfitLossStatement({
                     </div>
                 ))}
             </div>
+
+            {/* Revenue Distribution Chart */}
+            <RevenueDistributionChart data={data} />
 
             {/* Revenue Table */}
             <PLTable

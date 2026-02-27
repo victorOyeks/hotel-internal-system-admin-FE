@@ -18,6 +18,15 @@ import { formatCurrency } from "@/lib/utils";
 import type { CashFlowStatement as CashFlowStatementType } from "@/lib/api-routes/financials";
 import { useMemo } from "react";
 import { ArrowDownCircleIcon, ArrowUpCircleIcon, DollarSignIcon, WalletIcon } from "lucide-react";
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Cell,
+} from "recharts";
 
 type CashFlowLineItem = {
     label: string;
@@ -131,6 +140,73 @@ function CashFlowTable({
                         )}
                     </TableBody>
                 </Table>
+            </div>
+        </div>
+    );
+}
+
+const WaterfallTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        const item = payload[0]?.payload;
+        if (!item) return null;
+        return (
+            <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-3 z-50">
+                <p className="font-medium mb-1">{label}</p>
+                <p className="text-sm font-medium">{formatCurrency(item.value)}</p>
+            </div>
+        );
+    }
+    return null;
+};
+
+function CashFlowWaterfallChart({ data }: { data: CashFlowStatementType }) {
+    const chartData = useMemo(() => {
+        const opening = data.openingCashBalance ?? 0;
+        const inflow = data.totalCashInflow ?? 0;
+        const outflow = data.totalCashOutflow ?? 0;
+        const netFlow = data.netCashFlow ?? 0;
+        const closing = data.closingCashBalance ?? 0;
+
+        return [
+            { name: "Opening", value: opening, fill: "#6366f1" },
+            { name: "Inflow", value: inflow, fill: "#22c55e" },
+            { name: "Outflow", value: outflow, fill: "#ef4444" },
+            { name: "Net Flow", value: netFlow, fill: netFlow >= 0 ? "#22c55e" : "#ef4444" },
+            { name: "Closing", value: closing, fill: "#4c091e" },
+        ];
+    }, [data]);
+
+    return (
+        <div className="space-y-2">
+            <p className="text-sm font-medium">Cash Flow Overview</p>
+            <div className="border border-primary-5/20 rounded-xl p-4 bg-card">
+                <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={chartData}
+                            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                        >
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                tickFormatter={(v) => formatCurrency(v, "short")}
+                            />
+                            <Tooltip content={<WaterfallTooltip />} cursor={false} />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                                {chartData.map((entry, i) => (
+                                    <Cell key={i} fill={entry.fill} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );
@@ -272,6 +348,9 @@ export function CashFlowStatement({
                     </div>
                 ))}
             </div>
+
+            {/* Cash Flow Waterfall */}
+            <CashFlowWaterfallChart data={data} />
 
             {/* Cash Inflows */}
             {cashInflows.length > 0 && (

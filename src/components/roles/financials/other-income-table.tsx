@@ -132,22 +132,22 @@ export const columns = [
     }),
 ];
 
-function Earnings() {
+function Earnings({ metrics }: { metrics?: { totalRevenue: number; netProfit: number; totalExpenses: number } }) {
     const earnings = [
         {
-            title: "Total Balance",
+            title: "Total Revenue",
             icon: DollarSignIcon,
-            value: 600_000,
+            value: metrics?.totalRevenue ?? 0,
         },
         {
-            title: "Total Profit",
+            title: "Net Profit",
             icon: DollarSignIcon,
-            value: 200_000,
+            value: metrics?.netProfit ?? 0,
         },
         {
             title: "Expenses",
             icon: DollarSignIcon,
-            value: 100_000,
+            value: metrics?.totalExpenses ?? 0,
         },
     ];
     return (
@@ -236,7 +236,7 @@ function InnerTable({ table }: { table: TableType<OtherIncome> }) {
     );
 }
 
-export function OtherIncomeTable({ data }: { data: OtherIncome[] }) {
+export function OtherIncomeTable({ data, metrics }: { data: OtherIncome[]; metrics?: { totalRevenue: number; netProfit: number; totalExpenses: number } }) {
     const table = useReactTable({
         data,
         columns,
@@ -257,7 +257,7 @@ export function OtherIncomeTable({ data }: { data: OtherIncome[] }) {
 
     return (
         <div className="space-y-4">
-            <Earnings />
+            <Earnings metrics={metrics} />
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">

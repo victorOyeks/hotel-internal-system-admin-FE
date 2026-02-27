@@ -1,5 +1,5 @@
 import { OtherIncomeTable } from "@/components/roles/financials/other-income-table";
-import { getOtherIncome } from "@/lib/financials-actions";
+import { getOtherIncome, getFinancialDashboard } from "@/lib/financials-actions";
 import { getCookieData } from "@/lib/server-fns";
 import { getQueryClient } from "@/lib/queries";
 import { use } from "react";
@@ -33,6 +33,17 @@ function OtherIncomePage({ searchParams }: PageProps) {
         })
     );
 
+    // Fetch Dashboard metrics for earnings
+    const dashboardData = use(
+        queryClient.ensureQueryData({
+            queryKey: ["financials", "dashboard", cookieData.userId, query.startDate, query.endDate],
+            queryFn: () => getFinancialDashboard({
+                startDate: query.startDate || undefined,
+                endDate: query.endDate || undefined,
+            })
+        })
+    );
+
     const data = (
         otherIncomeData && "data" in otherIncomeData && otherIncomeData.data && typeof otherIncomeData.data === "object" && "content" in otherIncomeData.data
             ? otherIncomeData.data.content
@@ -40,6 +51,10 @@ function OtherIncomePage({ searchParams }: PageProps) {
                 ? otherIncomeData.content
                 : []
     );
+
+    const metrics = dashboardData
+        ? { totalRevenue: dashboardData.totalRevenue, netProfit: dashboardData.netProfit, totalExpenses: dashboardData.totalExpenses }
+        : undefined;
 
     return (
         <BreadCrumbWrapper
@@ -52,7 +67,7 @@ function OtherIncomePage({ searchParams }: PageProps) {
             }}
         >
             <div className="p-4">
-                <OtherIncomeTable data={data} />
+                <OtherIncomeTable data={data} metrics={metrics} />
             </div>
         </BreadCrumbWrapper>
     );

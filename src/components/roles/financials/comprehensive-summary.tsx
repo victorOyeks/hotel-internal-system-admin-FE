@@ -18,6 +18,16 @@ import { formatCurrency } from "@/lib/utils";
 import type { ComprehensiveSummaryData } from "@/lib/api-routes/financials";
 import { useMemo } from "react";
 import { CalendarIcon, DollarSignIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+import {
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+} from "recharts";
 
 type RevenueStreamRow = {
     label: string;
@@ -121,6 +131,125 @@ function RevenueBySourceTable({ data }: { data: RevenueStreamRow[] }) {
     );
 }
 
+const DailyBreakdownTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-3 z-50">
+                <p className="font-medium mb-2">{label}</p>
+                {payload
+                    .filter((entry: any) => entry.value > 0)
+                    .map((entry: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2 text-sm">
+                            <div
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                            />
+                            <span className="text-muted-foreground">{entry.name}:</span>
+                            <span className="font-medium">{formatCurrency(entry.value)}</span>
+                        </div>
+                    ))}
+            </div>
+        );
+    }
+    return null;
+};
+
+function DailyBreakdownChart({ data }: { data: ComprehensiveSummaryData }) {
+    const chartData = useMemo(() => {
+        if (!data.dailyBreakdown || data.dailyBreakdown.length === 0) return [];
+        return data.dailyBreakdown.map((day) => {
+            const date = day.date ? new Date(day.date) : null;
+            return {
+                date: date
+                    ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    : "",
+                Rooms: day.roomRevenue ?? 0,
+                Kitchen: day.kitchenRevenue ?? 0,
+                Bar: day.barRevenue ?? 0,
+                Laundry: day.laundryRevenue ?? 0,
+                Rentals: day.rentalRevenue ?? 0,
+                Other: (day.otherIncomeRevenue ?? 0) + (day.manualChargeRevenue ?? 0),
+            };
+        });
+    }, [data.dailyBreakdown]);
+
+    if (chartData.length === 0) return null;
+
+    const areas = [
+        { key: "Rooms", color: "#4c091e" },
+        { key: "Kitchen", color: "#297045" },
+        { key: "Bar", color: "#6366f1" },
+        { key: "Laundry", color: "#f59e0b" },
+        { key: "Rentals", color: "#ec4899" },
+        { key: "Other", color: "#6366f1" },
+    ];
+
+    return (
+        <div className="space-y-2">
+            <p className="text-sm font-medium">Daily Revenue Breakdown</p>
+            <div className="border border-primary-5/20 rounded-xl p-4 bg-card">
+                <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                            data={chartData}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                            <defs>
+                                {areas.map((area) => (
+                                    <linearGradient
+                                        key={area.key}
+                                        id={`gradient-${area.key}`}
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop offset="5%" stopColor={area.color} stopOpacity={0.4} />
+                                        <stop offset="95%" stopColor={area.color} stopOpacity={0.05} />
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                                stroke="#e5e5e5"
+                            />
+                            <XAxis
+                                dataKey="date"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                tickFormatter={(v) => formatCurrency(v, "short")}
+                            />
+                            <Tooltip content={<DailyBreakdownTooltip />} />
+                            <Legend
+                                wrapperStyle={{ paddingTop: "10px" }}
+                                formatter={(v) => <span className="text-xs text-muted-foreground">{v}</span>}
+                            />
+                            {areas.map((area) => (
+                                <Area
+                                    key={area.key}
+                                    type="monotone"
+                                    dataKey={area.key}
+                                    stackId="1"
+                                    stroke={area.color}
+                                    fill={`url(#gradient-${area.key})`}
+                                    strokeWidth={1.5}
+                                />
+                            ))}
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 interface ComprehensiveSummaryProps {
     data: ComprehensiveSummaryData | null;
 }
@@ -219,6 +348,11 @@ export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
                     <p className="text-sm font-medium">Revenue by Source</p>
                     <RevenueBySourceTable data={revenueStreams} />
                 </div>
+            )}
+
+            {/* Daily Breakdown Chart */}
+            {data.dailyBreakdown && data.dailyBreakdown.length > 0 && (
+                <DailyBreakdownChart data={data} />
             )}
 
             {/* Narrative Summary */}

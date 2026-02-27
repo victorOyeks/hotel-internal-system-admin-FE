@@ -62,22 +62,22 @@ export function RevenueExpenseChart({ data }: ChartProps) {
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 vertical={false}
-                                stroke="hsl(var(--border))"
+                                stroke="#e5e5e5"
                             />
                             <XAxis
                                 dataKey="period"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                                tick={{ fontSize: 12, fill: "#9ca3af" }}
                                 dy={10}
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                                tick={{ fontSize: 12, fill: "#9ca3af" }}
                                 tickFormatter={(value) => formatCurrency(value, "short")}
                             />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted)/0.2)" }} />
+                            <Tooltip content={<CustomTooltip />} cursor={false} />
                             <Legend
                                 wrapperStyle={{ paddingTop: "20px" }}
                                 formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
@@ -85,14 +85,14 @@ export function RevenueExpenseChart({ data }: ChartProps) {
                             <Bar
                                 dataKey="revenue"
                                 name="Revenue"
-                                fill="hsl(var(--primary))"
+                                fill="#297045"
                                 radius={[4, 4, 0, 0]}
                                 maxBarSize={40}
                             />
                             <Bar
                                 dataKey="expenses"
                                 name="Expenses"
-                                fill="hsl(var(--destructive))"
+                                fill="#ef4444"
                                 radius={[4, 4, 0, 0]}
                                 maxBarSize={40}
                             />
@@ -124,12 +124,12 @@ export function ProfitTrendChart({ data }: ChartProps) {
                                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
                                     <stop
                                         offset="5%"
-                                        stopColor="hsl(var(--chart-2))"
+                                        stopColor="#297045"
                                         stopOpacity={0.3}
                                     />
                                     <stop
                                         offset="95%"
-                                        stopColor="hsl(var(--chart-2))"
+                                        stopColor="#297045"
                                         stopOpacity={0}
                                     />
                                 </linearGradient>
@@ -137,19 +137,19 @@ export function ProfitTrendChart({ data }: ChartProps) {
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 vertical={false}
-                                stroke="hsl(var(--border))"
+                                stroke="#e5e5e5"
                             />
                             <XAxis
                                 dataKey="period"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                                tick={{ fontSize: 12, fill: "#9ca3af" }}
                                 dy={10}
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                                tick={{ fontSize: 12, fill: "#9ca3af" }}
                                 tickFormatter={(value) => formatCurrency(value, "short")}
                             />
                             <Tooltip content={<CustomTooltip />} />
@@ -161,7 +161,7 @@ export function ProfitTrendChart({ data }: ChartProps) {
                                 type="monotone"
                                 dataKey="profit"
                                 name="Net Profit"
-                                stroke="hsl(var(--chart-2))"
+                                stroke="#297045"
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorProfit)"
