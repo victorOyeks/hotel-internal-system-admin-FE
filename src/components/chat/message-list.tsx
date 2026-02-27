@@ -18,6 +18,7 @@ interface MessageListProps {
 	conversationId: string;
 	currentUserId: string;
 	isGroup: boolean;
+	unreadCount: number;
 }
 
 function isSameDay(d1: string, d2: string): boolean {
@@ -28,6 +29,7 @@ export function MessageList({
 	conversationId,
 	currentUserId,
 	isGroup,
+	unreadCount,
 }: MessageListProps) {
 	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
 		useChatMessages(conversationId);
@@ -39,7 +41,10 @@ export function MessageList({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const topSentinelRef = useRef<HTMLDivElement>(null);
+	const unreadRef = useRef<HTMLDivElement>(null);
 	const prevMessageCountRef = useRef(0);
+	const initialUnreadRef = useRef(unreadCount);
+	const hasScrolledRef = useRef(false);
 
 	const allMessages = useMemo(() => {
 		if (!data) return [];
@@ -62,19 +67,24 @@ export function MessageList({
 		if (currentCount > prevMessageCountRef.current) {
 			const isNewMessage =
 				currentCount - prevMessageCountRef.current <= 2;
-			if (isNewMessage) {
+			if (isNewMessage && hasScrolledRef.current) {
 				bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 			}
 		}
 		prevMessageCountRef.current = currentCount;
 	}, [allMessages.length]);
 
-	// Initial scroll to bottom
+	// Initial scroll to first unread message or bottom
 	useEffect(() => {
-		if (!isLoading && allMessages.length > 0) {
-			bottomRef.current?.scrollIntoView();
+		if (!isLoading && allMessages.length > 0 && !hasScrolledRef.current) {
+			hasScrolledRef.current = true;
+			if (initialUnreadRef.current > 0 && unreadRef.current) {
+				unreadRef.current.scrollIntoView();
+			} else {
+				bottomRef.current?.scrollIntoView();
+			}
 		}
-	}, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isLoading, allMessages.length]);
 
 	// Infinite scroll - load older messages
 	useEffect(() => {
@@ -115,11 +125,12 @@ export function MessageList({
 
 	const handleDelete = useCallback(
 		(msg: ChatMessageResponse) => {
-			deleteMessage.mutate(msg.id, {
-				onError: (err) => toast.error(err.message),
-			});
+			deleteMessage.mutate(
+				{ messageId: msg.id, conversationId },
+				{ onError: (err) => toast.error(err.message) },
+			);
 		},
-		[deleteMessage],
+		[deleteMessage, conversationId],
 	);
 
 	if (isLoading) {
@@ -149,9 +160,21 @@ export function MessageList({
 						!prevMsg || prevMsg.senderId !== msg.senderId || showDateSeparator;
 					const showName = isGroup && showAvatar;
 					const isOwn = msg.senderId === currentUserId;
+					const isFirstUnread =
+						initialUnreadRef.current > 0 &&
+						idx === allMessages.length - initialUnreadRef.current;
 
 					return (
 						<div key={msg.id}>
+							{isFirstUnread && (
+								<div ref={unreadRef} className="flex items-center gap-3 py-2 px-4">
+									<div className="flex-1 h-px bg-blue-400" />
+									<span className="text-[11px] text-blue-500 font-semibold select-none whitespace-nowrap">
+										Unread Messages
+									</span>
+									<div className="flex-1 h-px bg-blue-400" />
+								</div>
+							)}
 							{showDateSeparator && (
 								<ChatDateSeparator date={msg.createdAt} />
 							)}

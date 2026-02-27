@@ -33,6 +33,7 @@ export function ChatArea({
 				conversationId={conversation.id}
 				currentUserId={currentUserId}
 				isGroup={conversation.conversationType === "GROUP"}
+				unreadCount={conversation.unreadCount}
 			/>
 			<MessageInput conversationId={conversation.id} />
 		</div>

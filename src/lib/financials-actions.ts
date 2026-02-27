@@ -121,12 +121,31 @@ export const getExpenditures = cache(
 );
 
 export const createExpenditure = async (data: {
-	description: string;
+	title: string;
+	description?: string;
 	amount: number;
 	category: string;
+	paymentMethod: string;
 	expenseDate: string;
-	vendorName: string;
+	dueDate?: string;
+	vendorName?: string;
+	vendorContact?: string;
+	vendorAddress?: string;
 	invoiceNumber?: string;
+	purchaseOrderNumber?: string;
+	departmentId?: string;
+	requestedBy?: string;
+	taxAmount?: number;
+	taxType?: string;
+	taxRate?: number;
+	recurrenceType?: string;
+	nextOccurrence?: string;
+	receiptUrl?: string;
+	attachmentUrls?: string;
+	notes?: string;
+	accountCode?: string;
+	costCenter?: string;
+	budgetId?: string;
 }) => {
 	const cookieData = await getCookieData();
 	if (!cookieData) throw new Error("Unauthorized");
@@ -398,7 +417,7 @@ export const compareFinancials = cache(
 			throw: true,
 		});
 
-		return res.data as PeriodComparisonData;
+		return res.data as unknown as PeriodComparisonData;
 	},
 );
 
@@ -412,7 +431,7 @@ export const getTodaySummary = cache(
 			throw: true,
 		});
 
-		return res.data as FinancialDashboardResponse;
+		return res.data as unknown as FinancialDashboardResponse;
 	},
 );
 
@@ -426,7 +445,7 @@ export const getThisWeekSummary = cache(
 			throw: true,
 		});
 
-		return res.data as FinancialDashboardResponse;
+		return res.data as unknown as FinancialDashboardResponse;
 	},
 );
 

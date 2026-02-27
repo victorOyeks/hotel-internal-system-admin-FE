@@ -45,7 +45,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 
 		if (editing) {
 			editMessage.mutate(
-				{ messageId: editing.id, newContent: trimmed },
+				{ messageId: editing.id, newContent: trimmed, conversationId },
 				{
 					onSuccess: () => {
 						setContent("");
@@ -56,6 +56,12 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 				},
 			);
 		} else {
+			// Clear input immediately for snappy optimistic feel
+			setContent("");
+			setReplyTo(null);
+			sendTyping(false);
+			resetHeight();
+
 			sendMessage.mutate(
 				{
 					conversationId,
@@ -63,13 +69,11 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 					replyToMessageId: replyTo?.id,
 				},
 				{
-					onSuccess: () => {
-						setContent("");
-						setReplyTo(null);
-						sendTyping(false);
-						resetHeight();
+					onError: (err) => {
+						// Restore content on failure
+						setContent(trimmed);
+						toast.error(err.message);
 					},
-					onError: (err) => toast.error(err.message),
 				},
 			);
 		}

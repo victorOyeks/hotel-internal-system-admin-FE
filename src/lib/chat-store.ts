@@ -35,6 +35,10 @@ export const mobileChatViewAtom = atom<"sidebar" | "chat">("sidebar");
 
 export const chatHotelIdAtom = atom<string>("");
 
+export const chatUserIdAtom = atom<string>("");
+
+export const chatFullNameAtom = atom<string>("");
+
 export const totalUnreadCountAtom = atom<number>(0);
 
 // Incrementing this triggers a refetch of unread conversation count
