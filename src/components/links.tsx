@@ -243,4 +243,5 @@ export const financialsLinks = [
 	{ title: "Other Income", icon: <DollarSignIcon />, url: "/dashboard/other-income" },
 	{ title: "Expenditures", icon: <CreditCardIcon />, url: "/dashboard/expenditures" },
 	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },
+	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];

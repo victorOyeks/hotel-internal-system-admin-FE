@@ -24,7 +24,7 @@ import type { OtherIncome } from "@/lib/api-routes/financials";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon } from "lucide-react";
+import { MoreHorizontal, PlusIcon, DollarSignIcon, SearchIcon, XIcon, Loader2 } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,9 +41,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { TableFilter } from "@/components/shared/table-filter";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useQueryStates, useQueryState, parseAsString } from "nuqs";
 import { CreateOtherIncomeModal } from "./create-other-income-modal";
+import { updateOtherIncomeStatus } from "@/lib/financials-actions";
+import { revalidateRoute } from "@/lib/actions";
 
 const columnHelper = createColumnHelper<OtherIncome>();
 
@@ -51,7 +55,10 @@ export const columns = [
     columnHelper.accessor("date", {
         header: "Date",
         cell: (info) => {
-            const date = new Date(info.getValue());
+            const raw = info.getValue();
+            if (!raw) return <span className="text-gray-400">—</span>;
+            const date = new Date(raw);
+            if (isNaN(date.getTime())) return <span className="text-gray-400">—</span>;
             const formattedDate = date.toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "short",
