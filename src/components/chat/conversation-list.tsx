@@ -42,7 +42,7 @@ export function ConversationList({
 	}
 
 	return (
-		<div>
+		<div className="px-2 py-1">
 			{conversations.map((conversation) => (
 				<ConversationItem
 					key={conversation.id}

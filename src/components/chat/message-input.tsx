@@ -22,6 +22,20 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const lastTypingSentRef = useRef(0);
 	const { sendTyping } = useTypingIndicator(conversationId);
+
+	const resizeTextarea = useCallback(() => {
+		const el = textareaRef.current;
+		if (!el) return;
+		el.style.height = "auto";
+		el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+	}, []);
+
+	const resetHeight = useCallback(() => {
+		const el = textareaRef.current;
+		if (!el) return;
+		el.style.height = "auto";
+	}, []);
+
 	const sendMessage = useSendMessage();
 	const editMessage = useEditMessage();
 
@@ -36,6 +50,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 					onSuccess: () => {
 						setContent("");
 						setEditing(null);
+						resetHeight();
 					},
 					onError: (err) => toast.error(err.message),
 				},
@@ -52,6 +67,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 						setContent("");
 						setReplyTo(null);
 						sendTyping(false);
+						resetHeight();
 					},
 					onError: (err) => toast.error(err.message),
 				},
@@ -67,6 +83,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 		setReplyTo,
 		setEditing,
 		sendTyping,
+		resetHeight,
 	]);
 
 	const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -75,9 +92,11 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 			handleSend();
 		}
 	};
+	
 
 	const handleChange = (value: string) => {
 		setContent(value);
+		resizeTextarea();
 		if (value.trim()) {
 			const now = Date.now();
 			if (now - lastTypingSentRef.current > 300) {
@@ -92,10 +111,11 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 	const handleCancelEdit = () => {
 		setEditing(null);
 		setContent("");
+		resetHeight();
 	};
 
 	return (
-		<div className="border-t bg-white shrink-0 pb-[env(safe-area-inset-bottom)]">
+		<div className="bg-white shrink-0 pb-[env(safe-area-inset-bottom)] border-t border-gray-100">
 			{replyTo && (
 				<ReplyPreview
 					senderName={replyTo.senderName}
@@ -117,21 +137,23 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 					</button>
 				</div>
 			)}
-			<div className="flex items-end gap-2 p-3">
-				<Textarea
-					ref={textareaRef}
-					placeholder="Type a message..."
-					value={content}
-					onChange={(e) => handleChange(e.target.value)}
-					onKeyDown={handleKeyDown}
-					className="flex-1 min-h-[40px] max-h-[120px] resize-none border-gray-200 focus-visible:ring-primary-4/30"
-					rows={1}
-				/>
+			<div className="flex items-end gap-3 px-4 py-3">
+				<div className="flex-1 relative">
+					<Textarea
+						ref={textareaRef}
+						placeholder="Write a Message"
+						value={content}
+						onChange={(e) => handleChange(e.target.value)}
+						onKeyDown={handleKeyDown}
+						className="w-full min-h-[44px] max-h-[160px] resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm placeholder:text-gray-400 focus-visible:ring-primary-4/20 focus-visible:ring-2 focus-visible:border-transparent overflow-y-auto"
+						rows={1}
+					/>
+				</div>
 				<Button
 					size="icon"
 					onClick={handleSend}
 					disabled={!content.trim() || sendMessage.isPending}
-					className="bg-primary-4 hover:bg-primary-3 text-white shrink-0 size-10 rounded-lg"
+					className="bg-primary-2 hover:bg-primary-1 text-white shrink-0 size-8.5 rounded-full"
 				>
 					<SendHorizontalIcon className="size-4" />
 				</Button>

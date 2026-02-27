@@ -87,6 +87,11 @@ export function ChatLayout({
 		setMobileView("sidebar");
 	};
 
+	const handleCloseChat = () => {
+		setActiveConversationId(null);
+		setActiveConversation(null);
+	};
+
 	const handleNavigateBack = () => {
 		document.body.style.overflow = "";
 		router.push("/dashboard");
@@ -106,6 +111,7 @@ export function ChatLayout({
 			currentUserId={userId}
 			showBackButton={!!isMobile}
 			onBack={handleBackToSidebar}
+			onClose={!isMobile ? handleCloseChat : undefined}
 		/>
 	) : (
 		<EmptyChatState onNewConversation={() => setNewConvOpen(true)} />
@@ -113,6 +119,7 @@ export function ChatLayout({
 
 	return (
 		<ChatProvider token={token} hotelId={hotelId} userId={userId}>
+			<title>{activeConversation ? `${fullName} - Chat` : "New Conversation"}</title>
 			{isMobile ? (
 				<div className="fixed inset-0 z-40 flex flex-col bg-white pt-[env(safe-area-inset-top)]">
 					{mobileView === "sidebar" ? sidebar : chatArea}

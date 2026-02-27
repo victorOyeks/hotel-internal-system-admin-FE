@@ -82,18 +82,29 @@ export function ConversationSidebar({
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden bg-white border-r border-gray-100 pb-[env(safe-area-inset-bottom)]">
-			<div className="flex items-center gap-2 p-3 border-b border-gray-100 shrink-0">
-				{onBack && (
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onBack}
-						className="size-8 shrink-0 text-primary-3 hover:text-primary-2 hover:bg-primary-6/50"
-					>
-						<ArrowLeftIcon className="size-4" />
-					</Button>
-				)}
-				<div className="flex items-center gap-1.5 shrink-0">
+			{/* Top bar */}
+			<div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
+				<div className="flex items-center gap-2">
+					{onBack && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onBack}
+							className="size-8 shrink-0 text-primary-3 hover:text-primary-2 hover:bg-primary-6/50"
+						>
+							<ArrowLeftIcon className="size-4" />
+						</Button>
+					)}
+					<div className="flex items-center gap-2">
+						<h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+						{totalUnread > 0 && (
+							<Badge className="bg-primary-4 text-white text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5 rounded-full">
+								{totalUnread > 99 ? "99+" : totalUnread}
+							</Badge>
+						)}
+					</div>
+				</div>
+				<div className="flex items-center gap-2">
 					<span
 						className={cn(
 							"size-2 rounded-full",
@@ -104,27 +115,25 @@ export function ConversationSidebar({
 									: "bg-gray-300",
 						)}
 					/>
-					{totalUnread > 0 && (
-						<Badge className="bg-primary-4 text-white text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5 rounded-full">
-							{totalUnread > 99 ? "99+" : totalUnread}
-						</Badge>
-					)}
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onNewConversation}
+						className="size-8 shrink-0 text-gray-500 hover:text-primary-2 hover:bg-gray-100 rounded-full"
+					>
+						<PenSquareIcon className="size-4" />
+					</Button>
 				</div>
-				<div className="flex-1 min-w-0">
-					<ConversationSearch
-						value={searchTerm}
-						onChange={setSearchTerm}
-					/>
-				</div>
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={onNewConversation}
-					className="size-8 shrink-0 text-primary-3 hover:text-primary-2 hover:bg-primary-6/50"
-				>
-					<PenSquareIcon className="size-4" />
-				</Button>
 			</div>
+
+			{/* Search */}
+			<div className="px-3 pb-3 shrink-0">
+				<ConversationSearch
+					value={searchTerm}
+					onChange={setSearchTerm}
+				/>
+			</div>
+
 			<ScrollArea className="flex-1 min-h-0">
 				<ConversationList
 					conversations={conversations}

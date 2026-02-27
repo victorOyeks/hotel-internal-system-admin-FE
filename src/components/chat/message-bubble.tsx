@@ -48,7 +48,7 @@ export const MessageBubble = memo(function MessageBubble({
 			)}
 		>
 			{!isOwn && (
-				<div className="w-8 shrink-0">
+				<div className="w-8 shrink-0 self-end mb-1">
 					{showAvatar && (
 						<ChatUserAvatar
 							name={message.senderName}
@@ -83,10 +83,10 @@ export const MessageBubble = memo(function MessageBubble({
 
 					<div
 						className={cn(
-							"px-3 py-2 relative",
+							"px-3.5 py-2.5 relative",
 							isOwn
-								? "bg-primary-4 text-white rounded-xl rounded-br-sm"
-								: "bg-white border border-gray-200 text-gray-900 rounded-xl rounded-bl-sm",
+								? "bg-primary-2 text-white rounded-2xl rounded-br-sm shadow-sm"
+								: "bg-white border border-gray-200 text-gray-900 rounded-2xl rounded-bl-sm shadow-sm",
 							message.isDeleted && "opacity-60",
 						)}
 					>

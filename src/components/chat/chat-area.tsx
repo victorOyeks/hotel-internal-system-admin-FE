@@ -10,6 +10,7 @@ interface ChatAreaProps {
 	currentUserId: string;
 	showBackButton: boolean;
 	onBack: () => void;
+	onClose?: () => void;
 }
 
 export function ChatArea({
@@ -17,14 +18,16 @@ export function ChatArea({
 	currentUserId,
 	showBackButton,
 	onBack,
+	onClose,
 }: ChatAreaProps) {
 	return (
-		<div className="flex flex-col h-full overflow-hidden bg-gray-50/30">
+		<div className="flex flex-col h-full overflow-hidden bg-gray-50/50">
 			<ChatHeader
 				conversation={conversation}
 				currentUserId={currentUserId}
 				showBackButton={showBackButton}
 				onBack={onBack}
+				onClose={onClose}
 			/>
 			<MessageList
 				conversationId={conversation.id}

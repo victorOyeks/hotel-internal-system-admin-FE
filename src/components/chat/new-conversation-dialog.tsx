@@ -4,17 +4,9 @@ import { useState, useMemo } from "react";
 import {
 	Dialog,
 	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { ChatUserAvatar } from "./chat-user-avatar";
 import {
 	useCreateOneOnOneConversation,
@@ -152,194 +144,172 @@ export function NewConversationDialog({
 				if (!v) resetState();
 			}}
 		>
-			<DialogContent className="sm:max-w-[460px] p-0 gap-0">
-				<DialogHeader className="p-5 pb-0">
-					<DialogTitle className="text-primary-1">
-						New Conversation
-					</DialogTitle>
-					<DialogDescription>
-						Start a direct message or create a group chat
-					</DialogDescription>
-				</DialogHeader>
+			<DialogContent className="sm:max-w-md p-0 gap-0 rounded-2xl overflow-hidden">
+				{/* Header */}
+				<div className="px-5 pt-5 pb-4">
+					<h2 className="text-base font-semibold text-gray-900">New Conversation</h2>
+					<p className="text-xs text-gray-400 mt-0.5">Start a direct message or create a group</p>
 
-				<Tabs
-					value={tab}
-					onValueChange={setTab}
-					className="mt-3"
-				>
-					<div className="px-5">
-						<TabsList className="w-full">
-							<TabsTrigger value="direct" className="flex-1">
-								<UserIcon className="size-3.5 mr-1.5" />
-								Direct
-							</TabsTrigger>
-							<TabsTrigger value="group" className="flex-1">
-								<UsersIcon className="size-3.5 mr-1.5" />
-								Group
-							</TabsTrigger>
-						</TabsList>
-					</div>
-
-					<div className="px-5 pt-3">
-						<div className="relative">
-							<SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-							<Input
-								placeholder="Search staff..."
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								className="pl-9 h-9 text-sm"
-							/>
-						</div>
-					</div>
-
-					<TabsContent value="direct" className="mt-0 pt-2">
-						<ScrollArea className="h-[min(300px,50dvh)]">
-							{staffLoading ? (
-								<div className="flex items-center justify-center py-12">
-									<Loader2Icon className="size-5 animate-spin text-primary-4" />
-								</div>
-							) : staffList.length === 0 ? (
-								<p className="text-center text-sm text-muted-foreground py-12">
-									No staff found
-								</p>
-							) : (
-								<div className="px-2">
-									{staffList.map((user: StaffMember) => (
-										<button
-											key={user.id}
-											type="button"
-											onClick={() => handleDirectMessage(user)}
-											disabled={isPending}
-											className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-										>
-											<ChatUserAvatar
-												name={user.fullName}
-												avatarUrl={user.avatar}
-												userId={user.id}
-												size="sm"
-											/>
-											<div className="flex-1 text-left min-w-0">
-												<p className="text-sm font-medium text-gray-900 truncate">
-													{user.fullName}
-												</p>
-												<p className="text-xs text-muted-foreground truncate">
-													{user.email}
-												</p>
-											</div>
-										</button>
-									))}
-								</div>
+					{/* Tab toggle */}
+					<div className="flex items-center gap-1 mt-4 p-1 bg-gray-100 rounded-full w-fit">
+						<button
+							type="button"
+							onClick={() => setTab("direct")}
+							className={cn(
+								"flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+								tab === "direct"
+									? "bg-white text-primary-2 shadow-sm"
+									: "text-gray-500 hover:text-gray-700",
 							)}
-						</ScrollArea>
-					</TabsContent>
+						>
+							<UserIcon className="size-3.5" />
+							Direct
+						</button>
+						<button
+							type="button"
+							onClick={() => setTab("group")}
+							className={cn(
+								"flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+								tab === "group"
+									? "bg-white text-primary-2 shadow-sm"
+									: "text-gray-500 hover:text-gray-700",
+							)}
+						>
+							<UsersIcon className="size-3.5" />
+							Group
+						</button>
+					</div>
+				</div>
 
-					<TabsContent value="group" className="mt-0 pt-2">
-						<div className="px-5 pb-2">
-							<Label className="text-xs text-muted-foreground">
-								Group Name
-							</Label>
-							<Input
-								placeholder="Enter group name..."
-								value={groupName}
-								onChange={(e) => setGroupName(e.target.value)}
-								className="mt-1 h-9 text-sm"
-							/>
+				{/* Group name input */}
+				{tab === "group" && (
+					<div className="px-5 pb-3">
+						<input
+							type="text"
+							placeholder="Group name..."
+							value={groupName}
+							onChange={(e) => setGroupName(e.target.value)}
+							className="w-full px-4 py-2.5 rounded-full bg-gray-100 border-none text-sm text-gray-800 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-primary-4/20"
+						/>
+					</div>
+				)}
+
+				{/* Selected users chips */}
+				{tab === "group" && selectedUsers.length > 0 && (
+					<div className="px-5 pb-3 flex flex-wrap gap-1.5">
+						{selectedUsers.map((user) => (
+							<span
+								key={user.id}
+								className="inline-flex items-center gap-1 pl-2 pr-1 py-1 bg-primary-6 text-primary-2 rounded-full text-xs font-medium"
+							>
+								{user.fullName}
+								<button
+									type="button"
+									onClick={() => toggleGroupUser(user)}
+									className="size-4 flex items-center justify-center hover:bg-primary-5/30 rounded-full"
+								>
+									<XIcon className="size-2.5" />
+								</button>
+							</span>
+						))}
+					</div>
+				)}
+
+				{/* Search */}
+				<div className="px-5 pb-3">
+					<div className="relative">
+						<SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+						<input
+							type="text"
+							placeholder="Search staff..."
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							className="w-full pl-9 pr-4 py-2.5 rounded-full bg-gray-100 border-none text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-primary-4/20"
+						/>
+					</div>
+				</div>
+
+				{/* Staff list */}
+				<ScrollArea className={tab === "group" ? "h-[min(200px,38dvh)]" : "h-[min(280px,50dvh)]"}>
+					{staffLoading ? (
+						<div className="flex items-center justify-center py-12">
+							<Loader2Icon className="size-5 animate-spin text-primary-4" />
 						</div>
-
-						{selectedUsers.length > 0 && (
-							<div className="px-5 pb-2 flex flex-wrap gap-1.5">
-								{selectedUsers.map((user) => (
-									<Badge
+					) : staffList.length === 0 ? (
+						<p className="text-center text-sm text-gray-400 py-10">
+							No staff found
+						</p>
+					) : (
+						<div className="px-3 pb-2">
+							{staffList.map((user: StaffMember) => {
+								const isSelected = selectedUsers.some((u) => u.id === user.id);
+								return (
+									<button
 										key={user.id}
-										variant="secondary"
-										className="gap-1 pr-1 bg-primary-6 text-primary-2"
+										type="button"
+										onClick={() =>
+											tab === "direct"
+												? handleDirectMessage(user)
+												: toggleGroupUser(user)
+										}
+										disabled={isPending}
+										className={cn(
+											"w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors disabled:opacity-50",
+											isSelected && tab === "group"
+												? "bg-primary-6"
+												: "hover:bg-gray-50",
+										)}
 									>
-										{user.fullName}
-										<button
-											type="button"
-											onClick={() => toggleGroupUser(user)}
-											className="hover:bg-primary-5/30 rounded-full p-0.5"
-										>
-											<XIcon className="size-3" />
-										</button>
-									</Badge>
-								))}
-							</div>
-						)}
+										<ChatUserAvatar
+											name={user.fullName}
+											avatarUrl={user.avatar}
+											userId={user.id}
+											size="sm"
+										/>
+										<div className="flex-1 text-left min-w-0">
+											<p className="text-sm font-medium text-gray-900 truncate">
+												{user.fullName}
+											</p>
+											<p className="text-xs text-gray-400 truncate">
+												{user.email}
+											</p>
+										</div>
+										{tab === "group" && isSelected && (
+											<span className="size-5 rounded-full bg-primary-4 flex items-center justify-center shrink-0">
+												<CheckIcon className="size-3 text-white" />
+											</span>
+										)}
+									</button>
+								);
+							})}
+						</div>
+					)}
+				</ScrollArea>
 
-						<ScrollArea className="h-[min(220px,40dvh)]">
-							{staffLoading ? (
-								<div className="flex items-center justify-center py-12">
-									<Loader2Icon className="size-5 animate-spin text-primary-4" />
-								</div>
-							) : (
-								<div className="px-2">
-									{staffList.map((user: StaffMember) => {
-										const isSelected = selectedUsers.some(
-											(u) => u.id === user.id,
-										);
-										return (
-											<button
-												key={user.id}
-												type="button"
-												onClick={() => toggleGroupUser(user)}
-												className={cn(
-													"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-													isSelected
-														? "bg-primary-6"
-														: "hover:bg-gray-50",
-												)}
-											>
-												<ChatUserAvatar
-													name={user.fullName}
-													avatarUrl={user.avatar}
-													userId={user.id}
-													size="sm"
-												/>
-												<div className="flex-1 text-left min-w-0">
-													<p className="text-sm font-medium text-gray-900 truncate">
-														{user.fullName}
-													</p>
-													<p className="text-xs text-muted-foreground truncate">
-														{user.email}
-													</p>
-												</div>
-												{isSelected && (
-													<CheckIcon className="size-4 text-primary-4 shrink-0" />
-												)}
-											</button>
-										);
-									})}
-								</div>
+				{/* Group footer */}
+				{tab === "group" && (
+					<div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
+						<Button
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+							className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+							size="sm"
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleCreateGroup}
+							disabled={isPending || !groupName.trim() || selectedUsers.length < 1}
+							size="sm"
+							className="rounded-full bg-primary-2 hover:bg-primary-1 text-white px-5"
+						>
+							{isPending && (
+								<Loader2Icon className="size-3.5 mr-1.5 animate-spin" />
 							)}
-						</ScrollArea>
-
-						<DialogFooter className="p-4 pt-2 border-t">
-							<Button
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-								size="sm"
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleCreateGroup}
-								disabled={
-									isPending ||
-									!groupName.trim() ||
-									selectedUsers.length < 1
-								}
-								size="sm"
-								className="bg-primary-4 hover:bg-primary-3"
-							>
-								{isPending && (
-									<Loader2Icon className="size-3.5 mr-1.5 animate-spin" />
-								)}
-								Create Group
-							</Button>
-						</DialogFooter>
-					</TabsContent>
-				</Tabs>
+							Create Group
+						</Button>
+					</div>
+				)}
 			</DialogContent>
 		</Dialog>
 	);

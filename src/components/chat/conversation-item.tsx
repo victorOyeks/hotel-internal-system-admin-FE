@@ -1,10 +1,9 @@
 "use client";
 
 import { memo } from "react";
-import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ChatUserAvatar } from "./chat-user-avatar";
-import { Badge } from "@/components/ui/badge";
 import { UsersIcon } from "lucide-react";
 import type { ChatConversationResponse } from "@/lib/chat-types";
 
@@ -59,15 +58,14 @@ export const ConversationItem = memo(function ConversationItem({
 			onClick={onClick}
 			type="button"
 			className={cn(
-				"w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
+				"w-full flex items-center gap-3 px-3 py-3 text-left transition-colors rounded-xl",
 				"hover:bg-gray-50",
-				isActive && "bg-primary-6 border-l-2 border-primary-4 hover:bg-primary-6",
-				!isActive && "border-l-2 border-transparent",
+				isActive && "bg-primary-6 hover:bg-primary-6",
 			)}
 		>
 			{isGroup ? (
 				<div className="relative shrink-0">
-					<div className="size-10 rounded-full bg-primary-4/15 flex items-center justify-center">
+					<div className="size-11 rounded-full bg-primary-4/15 flex items-center justify-center">
 						<UsersIcon className="size-5 text-primary-3" />
 					</div>
 				</div>
@@ -90,7 +88,7 @@ export const ConversationItem = memo(function ConversationItem({
 					>
 						{name}
 					</span>
-					<span className="text-[10px] text-muted-foreground shrink-0">
+					<span className="text-[11px] text-gray-400 shrink-0">
 						{formatTimestamp(conversation.lastMessageAt)}
 					</span>
 				</div>
@@ -98,19 +96,13 @@ export const ConversationItem = memo(function ConversationItem({
 					<p
 						className={cn(
 							"block w-0 flex-grow text-xs overflow-hidden text-ellipsis whitespace-nowrap",
-							hasUnread
-								? "text-gray-600 font-medium"
-								: "text-muted-foreground",
+							hasUnread ? "text-gray-600" : "text-gray-400",
 						)}
 					>
 						{conversation.lastMessagePreview || "No messages yet"}
 					</p>
 					{hasUnread && (
-						<Badge className="bg-primary-4 text-white text-[10px] h-5 min-w-5 flex items-center justify-center px-1.5 rounded-full shrink-0">
-							{conversation.unreadCount > 99
-								? "99+"
-								: conversation.unreadCount}
-						</Badge>
+						<span className="shrink-0 size-2 rounded-full bg-primary-4" />
 					)}
 				</div>
 			</div>
