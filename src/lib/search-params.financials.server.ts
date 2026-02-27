@@ -12,3 +12,10 @@ export const financialSearchParams = {
 	status: parseAsString,
 	...paginationSearchParams,
 };
+
+export const compareSearchParams = {
+	period1Start: parseAsString,
+	period1End: parseAsString,
+	period2Start: parseAsString,
+	period2End: parseAsString,
+};

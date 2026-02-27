@@ -372,3 +372,107 @@ export const getBookingFinancialDetails = cache(async (bookingId: string) => {
 
 	return res.data;
 });
+
+// --- New actions ---
+
+export type PeriodComparisonData = {
+	period1: FinancialDashboardResponse | null;
+	period2: FinancialDashboardResponse | null;
+	period1Label?: string;
+	period2Label?: string;
+};
+
+export const compareFinancials = cache(
+	async (params: {
+		period1Start: string;
+		period1End: string;
+		period2Start: string;
+		period2End: string;
+	}): Promise<PeriodComparisonData | null> => {
+		const cookieData = await getCookieData();
+		if (!cookieData) return null;
+
+		const res = await $fetch("@get/api/financials/compare", {
+			auth: { type: "Bearer" as const, token: cookieData.token },
+			query: { ...params },
+			throw: true,
+		});
+
+		return res.data as PeriodComparisonData;
+	},
+);
+
+export const getTodaySummary = cache(
+	async (): Promise<FinancialDashboardResponse | null> => {
+		const cookieData = await getCookieData();
+		if (!cookieData) return null;
+
+		const res = await $fetch("@get/api/financials/today", {
+			auth: { type: "Bearer" as const, token: cookieData.token },
+			throw: true,
+		});
+
+		return res.data as FinancialDashboardResponse;
+	},
+);
+
+export const getThisWeekSummary = cache(
+	async (): Promise<FinancialDashboardResponse | null> => {
+		const cookieData = await getCookieData();
+		if (!cookieData) return null;
+
+		const res = await $fetch("@get/api/financials/this-week", {
+			auth: { type: "Bearer" as const, token: cookieData.token },
+			throw: true,
+		});
+
+		return res.data as FinancialDashboardResponse;
+	},
+);
+
+export const getRestaurantDetailedReport = cache(
+	async (params: {
+		startDate?: string | null;
+		endDate?: string | null;
+	}) => {
+		const cookieData = await getCookieData();
+		if (!cookieData) return null;
+
+		const res = await $fetch("@get/api/financials/restaurant/detailed-report", {
+			auth: { type: "Bearer" as const, token: cookieData.token },
+			query: { ...params },
+			throw: true,
+		});
+
+		return res.data;
+	},
+);
+
+export const getRestaurantPaginatedDailySummary = cache(
+	async (params: {
+		startDate?: string | null;
+		endDate?: string | null;
+		destination?: string | null;
+		search?: string | null;
+		page?: number | null;
+		size?: number | null;
+	}) => {
+		const cookieData = await getCookieData();
+		if (!cookieData) return null;
+
+		const res = await $fetch(
+			"@get/api/financials/restaurant/daily-summary/paginated",
+			{
+				auth: { type: "Bearer" as const, token: cookieData.token },
+				query: {
+					...params,
+					page: params.page?.toString(),
+					size: params.size?.toString(),
+				},
+				throw: true,
+			},
+		);
+
+		return res.data;
+	},
+);
