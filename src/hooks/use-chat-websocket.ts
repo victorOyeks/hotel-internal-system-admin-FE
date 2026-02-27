@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtomValue } from "jotai";
 import { chatWs } from "@/lib/chat-websocket";
 import { chatKeys } from "@/lib/chat-query-keys";
 import { getOnlineUsers } from "@/lib/chat-actions";
@@ -17,6 +17,7 @@ import {
 	typingIndicatorsAtom,
 	onlineUsersAtom,
 	unreadRefetchTriggerAtom,
+	activeConversationIdAtom,
 } from "@/lib/chat-store";
 import {
 	notificationsAtom,
@@ -48,8 +49,11 @@ export function useChatWebSocket(
 	const setNotifications = useSetAtom(notificationsAtom);
 	const setNotificationUnreadCount = useSetAtom(notificationUnreadCountAtom);
 	const triggerNotifRefetch = useSetAtom(notificationRefetchTriggerAtom);
+	const activeConversationId = useAtomValue(activeConversationIdAtom);
 	const userIdRef = useRef(userId);
+	const activeConversationIdRef = useRef(activeConversationId);
 	userIdRef.current = userId;
+	activeConversationIdRef.current = activeConversationId;
 
 	useEffect(() => {
 		const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -78,12 +82,16 @@ export function useChatWebSocket(
 
 			if (message.senderId !== userIdRef.current) {
 				chatWs.sendDeliveryConfirmation(message.id, message.conversationId);
-				triggerUnreadRefetch((prev) => prev + 1);
-				playNotificationSound();
-				showMessageNotification(
-					message.senderName,
-					message.content,
-				);
+
+				// Only show notifications for messages outside the active chat
+				if (message.conversationId !== activeConversationIdRef.current) {
+					triggerUnreadRefetch((prev) => prev + 1);
+					playNotificationSound();
+					showMessageNotification(
+						message.senderName,
+						message.content,
+					);
+				}
 			}
 		});
 
