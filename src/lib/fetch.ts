@@ -5767,6 +5767,7 @@ export const schema = createSchema({
 				phoneNumber: z.string().optional(),
 				noOfAdults: z.number().optional(),
 				noOfChildren: z.number().optional(),
+				checkInDate: z.string().optional(),
 				checkOutDate: z.string().optional(),
 			})
 			.partial(),

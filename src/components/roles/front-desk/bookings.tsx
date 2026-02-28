@@ -11,7 +11,7 @@ import {
 	flexRender,
 } from "@tanstack/react-table";
 import { useSetAtom, useAtom, atom } from "jotai";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
 	EditIcon,
@@ -29,6 +29,7 @@ import {
 	MoreHorizontalIcon,
 	CreditCardIcon,
 	BuildingIcon,
+	BanknoteIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,6 +90,18 @@ import { TableFilter } from "@/components/shared/table-filter";
 import { AssignToOrgContent } from "./rooms-table-actions";
 import { Building2Icon } from "lucide-react";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { DatePicker } from "@/components/shared/date-picker";
 
 type BookingViewResponse = Prettify<
 	APIOutput<"@get/api/front-desks/bookings">["data"]["content"][number]
@@ -800,6 +813,229 @@ function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
 	);
 }
 
+const recordPaymentSchema = z.object({
+	amount: z.coerce.number().positive("Amount must be greater than 0"),
+	method: z.string().min(1, "Payment method is required"),
+	type: z.string().min(1, "Payment type is required"),
+	reference: z.string().optional(),
+});
+
+type RecordPaymentFormValues = z.infer<typeof recordPaymentSchema>;
+
+function RecordPaymentContent({
+	booking,
+	onClose,
+}: {
+	booking: BookingViewResponse;
+	onClose: () => void;
+}) {
+	const form = useForm<RecordPaymentFormValues>({
+		resolver: zodResolver(recordPaymentSchema),
+		defaultValues: {
+			amount: undefined,
+			method: "CASH",
+			type: "INSTALLMENT",
+			reference: "",
+		},
+	});
+
+	const watchAmount = form.watch("amount");
+
+	const { isPending, mutate } = useMutation({
+		mutationFn: async (data: RecordPaymentFormValues) => {
+			const response = await recordPayment({
+				bookingId: booking.id,
+				amount: data.amount,
+				currency: "NGN",
+				method: data.method,
+				type: data.type,
+				reference: data.reference || `PAY-${Date.now()}`,
+				paymentDate: new Date().toISOString(),
+			});
+			if (!response.success) {
+				throw new Error(response.error || "Failed to record payment");
+			}
+			return response.data;
+		},
+		onSuccess: () => {
+			toast.success("Payment recorded successfully");
+			onClose();
+			revalidateRoute("/front-desk/bookings");
+		},
+		onError: (e) => {
+			toast.error(e instanceof Error ? e.message : "Failed to record payment");
+		},
+	});
+
+	return (
+		<DialogContent className="p-6 rounded-2xl sm:max-w-md">
+			<DialogHeader>
+				<DialogTitle>Record Payment</DialogTitle>
+				<DialogDescription>
+					Record a payment for {booking.guestName} — {booking.customId}
+				</DialogDescription>
+			</DialogHeader>
+
+			{/* Balance summary */}
+			<div className="bg-muted/50 rounded-lg p-4 space-y-2">
+				<div className="flex justify-between text-sm">
+					<span className="text-muted-foreground">Total Due</span>
+					<span className="font-medium">{formatCurrency(booking.totalAmountDue)}</span>
+				</div>
+				<div className="flex justify-between text-sm">
+					<span className="text-muted-foreground">Amount Paid</span>
+					<span className="font-medium text-green-600">{formatCurrency(booking.amountPaid)}</span>
+				</div>
+				<div className="flex justify-between text-sm border-t pt-2">
+					<span className="font-medium">Outstanding Balance</span>
+					<span className={`font-semibold ${booking.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
+						{formatCurrency(booking.amountRemaining)}
+					</span>
+				</div>
+			</div>
+
+			<Form {...form}>
+				<form
+					className="space-y-4"
+					onSubmit={form.handleSubmit((data) => mutate(data))}
+				>
+					{/* Amount */}
+					<FormField
+						control={form.control}
+						name="amount"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>
+									Amount <span className="text-red-500">*</span>
+								</FormLabel>
+								<FormControl>
+									<Input
+										type="number"
+										step="0.01"
+										min="0"
+										placeholder={`Enter amount (Max: ${formatCurrency(booking.amountRemaining)})`}
+										{...field}
+									/>
+								</FormControl>
+								{watchAmount > 0 && watchAmount < booking.amountRemaining && (
+									<p className="text-xs text-amber-600">
+										Partial payment — {formatCurrency(booking.amountRemaining - watchAmount)} will remain outstanding.
+									</p>
+								)}
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					<div className="grid grid-cols-2 gap-4">
+						{/* Payment Method */}
+						<FormField
+							control={form.control}
+							name="method"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>
+										Method <span className="text-red-500">*</span>
+									</FormLabel>
+									<Select value={field.value} onValueChange={field.onChange}>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Select method" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="CASH">Cash</SelectItem>
+											<SelectItem value="CARD">Card</SelectItem>
+											<SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+											<SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						{/* Payment Type */}
+						<FormField
+							control={form.control}
+							name="type"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>
+										Type <span className="text-red-500">*</span>
+									</FormLabel>
+									<Select value={field.value} onValueChange={field.onChange}>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Select type" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="DEPOSIT">Deposit</SelectItem>
+											<SelectItem value="INSTALLMENT">Installment</SelectItem>
+											<SelectItem value="FINAL">Final Payment</SelectItem>
+											<SelectItem value="OTHER">Other</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+					</div>
+
+					{/* Reference */}
+					<FormField
+						control={form.control}
+						name="reference"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Reference</FormLabel>
+								<FormControl>
+									<Input
+										placeholder="e.g., Receipt number, transaction ID"
+										{...field}
+									/>
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+
+					{/* Actions */}
+					<div className="flex gap-3 pt-2">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onClose}
+							className="flex-1"
+							disabled={isPending}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							className="flex-1 font-semibold"
+							disabled={isPending}
+						>
+							{isPending ? (
+								<>
+									<Loader2Icon className="animate-spin" />
+									<span>Recording...</span>
+								</>
+							) : (
+								<>
+									<BanknoteIcon className="h-4 w-4 mr-1" />
+									Record Payment
+								</>
+							)}
+						</Button>
+					</div>
+				</form>
+			</Form>
+		</DialogContent>
+	);
+}
+
 function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 	const statusColor: Record<string, string> = {
 		RESERVED: "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -892,7 +1128,7 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 							<div className="space-y-2 text-sm">
 								<div className="flex justify-between">
 									<span className="text-muted-foreground">Room</span>
-									<span className="font-medium">{booking.roomNo}</span>
+									<span className="font-medium font-mono">{booking.roomIdentifier}</span>
 								</div>
 								<div className="flex justify-between">
 									<span className="text-muted-foreground">Room Type</span>
@@ -990,22 +1226,14 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 										{formatCurrency(booking.amountPaid)}
 									</span>
 								</div>
-							</div>
-
-							<div className="mt-auto pt-4 border-t">
-								<div className="flex flex-col gap-1">
-									<span className="text-sm text-muted-foreground">
-										Outstanding Balance
-									</span>
-									<span
-										className={`text-2xl font-bold ${booking.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}
-									>
-										{formatCurrency(booking.amountRemaining)}
-									</span>
-									{booking.amountRemaining > 0 && (
-										<span className="text-xs text-red-500 font-medium">
-											Payment Required
+								<div className="flex justify-between items-center border-t pt-2">
+									<span className="text-muted-foreground">Balance</span>
+									{booking.amountRemaining > 0 ? (
+										<span className="font-semibold text-red-600">
+											{formatCurrency(booking.amountRemaining)}
 										</span>
+									) : (
+										<span className="text-muted-foreground">—</span>
 									)}
 								</div>
 							</div>
@@ -1017,6 +1245,26 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 	);
 }
 
+const editBookingSchema = z.object({
+	guestName: z.string().min(1, "Guest name is required"),
+	guestEmail: z.string().email("Invalid email address").or(z.literal("")),
+	phoneNumber: z.string(),
+	noOfAdults: z.coerce.number().min(1, "At least 1 adult required"),
+	noOfChildren: z.coerce.number().min(0, "Cannot be negative"),
+	checkInDate: z.string().min(1, "Check-in date is required"),
+	checkOutDate: z.string().min(1, "Check-out date is required"),
+});
+
+type EditBookingFormValues = z.infer<typeof editBookingSchema>;
+
+function toDateString(date: string | Date): string {
+	const d = new Date(date);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
+}
+
 function EditBookingContent({
 	booking,
 	onClose,
@@ -1024,45 +1272,60 @@ function EditBookingContent({
 	booking: BookingViewResponse;
 	onClose: () => void;
 }) {
-	const [guestName, setGuestName] = useState(booking.guestName);
-	const [guestEmail, setGuestEmail] = useState(booking.guestEmail ?? "");
-	const [phoneNumber, setPhoneNumber] = useState(booking.guestPhoneNumber ?? "");
-	const [noOfAdults, setNoOfAdults] = useState(booking.noOfAdults ?? 1);
-	const [noOfChildren, setNoOfChildren] = useState(booking.noOfChildren ?? 0);
-	const [checkOutDate, setCheckOutDate] = useState(
-		booking.checkOutDate
-			? new Date(booking.checkOutDate).toISOString().split("T")[0]
+	const originalValues = useRef({
+		guestName: booking.guestName,
+		guestEmail: booking.guestEmail ?? "",
+		phoneNumber: booking.guestPhoneNumber ?? "",
+		noOfAdults: booking.noOfAdults ?? 1,
+		noOfChildren: booking.noOfChildren ?? 0,
+		checkInDate: booking.checkInDate ? toDateString(booking.checkInDate) : "",
+		checkOutDate: booking.checkOutDate
+			? toDateString(booking.checkOutDate)
 			: "",
-	);
+	});
 
-	const originalCheckOutDate = booking.checkOutDate
-		? new Date(booking.checkOutDate).toISOString().split("T")[0]
-		: "";
-	const checkOutChanged = checkOutDate !== originalCheckOutDate;
+	const form = useForm<EditBookingFormValues>({
+		resolver: zodResolver(editBookingSchema),
+		defaultValues: originalValues.current,
+	});
 
-	const checkInDateStr = booking.checkInDate
-		? new Date(booking.checkInDate).toISOString().split("T")[0]
-		: "";
-	const minCheckOutDate = checkInDateStr
-		? new Date(new Date(checkInDateStr).getTime() + 86400000)
-				.toISOString()
-				.split("T")[0]
-		: "";
+	const watchCheckInDate = form.watch("checkInDate");
+	const watchCheckOutDate = form.watch("checkOutDate");
+
+	const datesChanged =
+		watchCheckInDate !== originalValues.current.checkInDate ||
+		watchCheckOutDate !== originalValues.current.checkOutDate;
+
+	const nights =
+		watchCheckInDate && watchCheckOutDate
+			? Math.max(
+					1,
+					Math.ceil(
+						(new Date(watchCheckOutDate).getTime() -
+							new Date(watchCheckInDate).getTime()) /
+							(1000 * 60 * 60 * 24),
+					),
+				)
+			: 0;
 
 	const { isPending, mutate } = useMutation({
-		mutationFn: async () => {
+		mutationFn: async (data: EditBookingFormValues) => {
 			const payload: Record<string, unknown> = {};
+			const orig = originalValues.current;
 
-			if (guestName !== booking.guestName) payload.guestName = guestName;
-			if (guestEmail !== (booking.guestEmail ?? ""))
-				payload.guestEmail = guestEmail || undefined;
-			if (phoneNumber !== (booking.guestPhoneNumber ?? ""))
-				payload.phoneNumber = phoneNumber;
-			if (noOfAdults !== (booking.noOfAdults ?? 1))
-				payload.noOfAdults = noOfAdults;
-			if (noOfChildren !== (booking.noOfChildren ?? 0))
-				payload.noOfChildren = noOfChildren;
-			if (checkOutChanged) payload.checkOutDate = checkOutDate;
+			if (data.guestName !== orig.guestName) payload.guestName = data.guestName;
+			if (data.guestEmail !== orig.guestEmail)
+				payload.guestEmail = data.guestEmail || undefined;
+			if (data.phoneNumber !== orig.phoneNumber)
+				payload.phoneNumber = data.phoneNumber;
+			if (data.noOfAdults !== orig.noOfAdults)
+				payload.noOfAdults = data.noOfAdults;
+			if (data.noOfChildren !== orig.noOfChildren)
+				payload.noOfChildren = data.noOfChildren;
+			if (data.checkInDate !== orig.checkInDate)
+				payload.checkInDate = data.checkInDate;
+			if (data.checkOutDate !== orig.checkOutDate)
+				payload.checkOutDate = data.checkOutDate;
 
 			if (Object.keys(payload).length === 0) {
 				throw new Error("No changes to save");
@@ -1088,7 +1351,7 @@ function EditBookingContent({
 	});
 
 	return (
-		<DialogContent className="p-6 rounded-2xl max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden">
+		<DialogContent className="p-6 rounded-2xl">
 			<DialogHeader>
 				<DialogTitle>Edit Booking</DialogTitle>
 				<DialogDescription>
@@ -1097,123 +1360,226 @@ function EditBookingContent({
 				</DialogDescription>
 			</DialogHeader>
 
-			<div className="space-y-4">
-				<div className="space-y-2">
-					<Label htmlFor="edit-guestName">Guest Name</Label>
-					<Input
-						id="edit-guestName"
-						value={guestName}
-						onChange={(e) => setGuestName(e.target.value)}
-						placeholder="Guest name"
-					/>
-				</div>
+			<Form {...form}>
+				<form
+					className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
+					onSubmit={form.handleSubmit((data) => mutate(data))}
+				>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
+						{/* Guest Name */}
+						<FormField
+							control={form.control}
+							name="guestName"
+							render={({ field }) => (
+								<FormItem className="col-span-full">
+									<FormLabel>
+										Guest Name <span className="text-red-500">*</span>
+									</FormLabel>
+									<FormControl>
+										<Input placeholder="e.g John Doe" {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
-				<div className="grid grid-cols-2 gap-4">
-					<div className="space-y-2">
-						<Label htmlFor="edit-guestEmail">Email</Label>
-						<Input
-							id="edit-guestEmail"
-							type="email"
-							value={guestEmail}
-							onChange={(e) => setGuestEmail(e.target.value)}
-							placeholder="guest@example.com"
+						{/* Email */}
+						<FormField
+							control={form.control}
+							name="guestEmail"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Email</FormLabel>
+									<FormControl>
+										<Input
+											placeholder="e.g guest@example.com"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="edit-phoneNumber">Phone Number</Label>
-						<Input
-							id="edit-phoneNumber"
-							value={phoneNumber}
-							onChange={(e) => setPhoneNumber(e.target.value)}
-							placeholder="Phone number"
-						/>
-					</div>
-				</div>
 
-				<div className="grid grid-cols-2 gap-4">
-					<div className="space-y-2">
-						<Label htmlFor="edit-noOfAdults">No. of Adults</Label>
-						<Input
-							id="edit-noOfAdults"
-							type="number"
-							min={1}
-							value={noOfAdults}
-							onChange={(e) => setNoOfAdults(Number(e.target.value))}
+						{/* Phone */}
+						<FormField
+							control={form.control}
+							name="phoneNumber"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Phone Number</FormLabel>
+									<FormControl>
+										<Input
+											placeholder="e.g +234 801 234 5678"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="edit-noOfChildren">No. of Children</Label>
-						<Input
-							id="edit-noOfChildren"
-							type="number"
-							min={0}
-							value={noOfChildren}
-							onChange={(e) => setNoOfChildren(Number(e.target.value))}
-						/>
-					</div>
-				</div>
 
-				<div className="grid grid-cols-2 gap-4">
-					<div className="space-y-2">
-						<Label>Check-in Date</Label>
-						<Input
-							type="date"
-							value={checkInDateStr}
-							disabled
-							className="bg-gray-50"
+						{/* Adults */}
+						<FormField
+							control={form.control}
+							name="noOfAdults"
+							render={() => (
+								<FormItem>
+									<FormLabel>Number of Adults</FormLabel>
+									<FormControl>
+										<Input
+											type="number"
+											placeholder="e.g 2"
+											min="1"
+											{...form.register("noOfAdults", {
+												valueAsNumber: true,
+											})}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						{/* Children */}
+						<FormField
+							control={form.control}
+							name="noOfChildren"
+							render={() => (
+								<FormItem>
+									<FormLabel>Number of Children</FormLabel>
+									<FormControl>
+										<Input
+											type="number"
+											placeholder="e.g 0"
+											min="0"
+											{...form.register("noOfChildren", {
+												valueAsNumber: true,
+											})}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						{/* Check-in Date */}
+						<FormField
+							control={form.control}
+							name="checkInDate"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Check-in Date</FormLabel>
+									<FormControl>
+										<DatePicker
+											initialDate={field.value}
+											onChange={field.onChange}
+											placeholder="Select check-in date"
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						{/* Check-out Date */}
+						<FormField
+							control={form.control}
+							name="checkOutDate"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Check-out Date</FormLabel>
+									<FormControl>
+										<DatePicker
+											initialDate={field.value}
+											onChange={field.onChange}
+											placeholder="Select check-out date"
+											minDate={
+												watchCheckInDate
+													? new Date(
+															new Date(watchCheckInDate).getTime() +
+																24 * 60 * 60 * 1000,
+														)
+													: undefined
+											}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
 					</div>
-					<div className="space-y-2">
-						<Label htmlFor="edit-checkOutDate">Check-out Date</Label>
-						<Input
-							id="edit-checkOutDate"
-							type="date"
-							min={minCheckOutDate}
-							value={checkOutDate}
-							onChange={(e) => setCheckOutDate(e.target.value)}
-						/>
+
+					{/* Date change info */}
+					{datesChanged && (
+						<Alert variant="info">
+							<AlertCircleIcon className="h-4 w-4" />
+							<AlertDescription>
+								Changing dates will recalculate the accommodation cost and
+								total amount due.
+							</AlertDescription>
+						</Alert>
+					)}
+
+					{/* Summary */}
+					{nights > 0 && booking.nightlyRate > 0 && (
+						<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+							<h3 className="font-medium text-sm">Booking Summary</h3>
+							<div className="grid grid-cols-2 gap-2 text-sm">
+								<div>
+									<span className="text-muted-foreground">Duration:</span>
+									<span className="ml-2 font-medium">
+										{nights} {nights === 1 ? "night" : "nights"}
+									</span>
+								</div>
+								<div>
+									<span className="text-muted-foreground">
+										Nightly Rate:
+									</span>
+									<span className="ml-2 font-medium">
+										{formatCurrency(booking.nightlyRate)}
+									</span>
+								</div>
+								<div className="col-span-2">
+									<span className="text-muted-foreground">
+										Estimated Accommodation:
+									</span>
+									<span className="ml-2 font-medium text-lg">
+										{formatCurrency(nights * booking.nightlyRate)}
+									</span>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Actions */}
+					<div className="flex gap-3 pt-2">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={onClose}
+							className="flex-1"
+							disabled={isPending}
+						>
+							Cancel
+						</Button>
+						<Button
+							type="submit"
+							className="flex-1 font-semibold"
+							disabled={isPending}
+						>
+							{isPending ? (
+								<>
+									<Loader2Icon className="animate-spin" />
+									<span>Saving...</span>
+								</>
+							) : (
+								"Save Changes"
+							)}
+						</Button>
 					</div>
-				</div>
-
-				{checkOutChanged && (
-					<Alert variant="info">
-						<AlertCircleIcon className="h-4 w-4" />
-						<AlertDescription>
-							Changing the check-out date will recalculate the accommodation
-							cost and total amount due.
-						</AlertDescription>
-					</Alert>
-				)}
-
-				<div className="flex gap-3 pt-4">
-					<Button
-						variant="outline"
-						onClick={onClose}
-						className="flex-1"
-						disabled={isPending}
-					>
-						<XIcon className="w-4 h-4 mr-2" />
-						Cancel
-					</Button>
-					<Button
-						onClick={() => mutate()}
-						className="flex-1"
-						disabled={isPending}
-					>
-						{isPending ? (
-							<>
-								<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-								Saving...
-							</>
-						) : (
-							<>
-								<CheckIcon className="w-4 h-4 mr-2" />
-								Save Changes
-							</>
-						)}
-					</Button>
-				</div>
-			</div>
+				</form>
+			</Form>
 		</DialogContent>
 	);
 }
@@ -1222,12 +1588,17 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 	const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
 	const [openStatusDialog, setOpenStatusDialog] = useState(false);
 	const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
+	const [openRecordPayment, setOpenRecordPayment] = useState(false);
 	const [openAssignOrg, setOpenAssignOrg] = useState(false);
 	const [openEditDialog, setOpenEditDialog] = useState(false);
 
 	const canEdit =
 		booking.bookingStatus === "CHECKED_IN" ||
 		booking.bookingStatus === "RESERVED";
+
+	const canRecordPayment =
+		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
+		booking.amountRemaining > 0;
 
 	const canAssignOrg =
 		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
@@ -1270,6 +1641,25 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 						<EditBookingContent
 							booking={booking}
 							onClose={() => setOpenEditDialog(false)}
+						/>
+					</Dialog>
+				)}
+
+				{canRecordPayment && (
+					<Dialog open={openRecordPayment} onOpenChange={setOpenRecordPayment}>
+						<DialogTrigger asChild>
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.preventDefault();
+								}}
+							>
+								<BanknoteIcon className="mr-2 h-4 w-4" />
+								Record Payment
+							</DropdownMenuItem>
+						</DialogTrigger>
+						<RecordPaymentContent
+							booking={booking}
+							onClose={() => setOpenRecordPayment(false)}
 						/>
 					</Dialog>
 				)}
@@ -1364,6 +1754,18 @@ const columns = [
 	columnHelper.accessor("amountPaid", {
 		header: "Amount Paid",
 		cell: (info) => formatCurrency(info.getValue()),
+	}),
+
+	columnHelper.accessor("amountRemaining", {
+		header: "Balance",
+		cell: (info) => {
+			const value = info.getValue();
+			return value > 0 ? (
+				<span className="text-red-600 font-medium">{formatCurrency(value)}</span>
+			) : (
+				<span className="text-muted-foreground">—</span>
+			);
+		},
 	}),
 
 	columnHelper.accessor("bookingStatus", {
