@@ -3944,6 +3944,7 @@ export const schema = createSchema({
 							amountPaid: z.number().min(0),
 							id: z.string(),
 							customId: z.string(),
+							guestEmail: z.string().nullable().optional(),
 							noOfAdults: z.number(),
 							noOfChildren: z.number(),
 							nightlyRate: z.number().min(0),
@@ -5757,6 +5758,20 @@ export const schema = createSchema({
 		input: z.any(),
 		params: z.object({ itemId: z.string() }),
 		output: ApiResponseObject,
+	},
+	"@put/api/front-desks/bookings/:bookingId": {
+		input: z
+			.object({
+				guestName: z.string().optional(),
+				guestEmail: z.string().email().optional(),
+				phoneNumber: z.string().optional(),
+				noOfAdults: z.number().optional(),
+				noOfChildren: z.number().optional(),
+				checkOutDate: z.string().optional(),
+			})
+			.partial(),
+		params: z.object({ bookingId: z.string() }),
+		output: ApiResponseObject.extend({ data: z.string() }),
 	},
 	"@put/api/hotel-owners/hotels/:id": {
 		input: z.any(),

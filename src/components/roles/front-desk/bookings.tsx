@@ -15,6 +15,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import type { Table as TableType } from "@tanstack/react-table";
 import {
 	EditIcon,
+	EyeIcon,
+	PencilIcon,
 	PlusIcon,
 	SearchIcon,
 	CheckIcon,
@@ -25,6 +27,8 @@ import {
 	AlertCircleIcon,
 	RotateCcwIcon,
 	MoreHorizontalIcon,
+	CreditCardIcon,
+	BuildingIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +80,7 @@ import {
 	checkOutGuest,
 	getBookingPayments,
 	recordPayment,
+	updateBooking,
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { Input } from "@/components/ui/input";
@@ -795,10 +800,434 @@ function PaymentHistoryContent({ bookingId }: { bookingId: string }) {
 	);
 }
 
+function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
+	const statusColor: Record<string, string> = {
+		RESERVED: "bg-yellow-50 text-yellow-700 border-yellow-200",
+		CHECKED_IN: "bg-green-50 text-green-700 border-green-200",
+		CHECKED_OUT: "bg-blue-50 text-blue-700 border-blue-200",
+		CANCELLED: "bg-red-50 text-red-700 border-red-200",
+	};
+
+	const nights = booking.numberOfNights ?? Math.ceil(
+		(new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24),
+	);
+
+	return (
+		<DialogContent className="sm:max-w-4xl">
+			<DialogHeader>
+				<DialogTitle className="flex items-center gap-2">
+					Booking Details
+					<span className="text-muted-foreground font-normal text-base">
+						- {booking.customId}
+					</span>
+					<span
+						className={`text-xs px-2 py-0.5 rounded-full border ${statusColor[booking.bookingStatus] || "bg-gray-100 text-gray-700 border-gray-200"}`}
+					>
+						{booking.bookingStatus.toLowerCase().replace(/_/g, " ")}
+					</span>
+				</DialogTitle>
+			</DialogHeader>
+
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">
+				{/* Guest Info - Column 1 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+						Guest Information
+					</h4>
+					<div className="flex flex-col gap-4 p-4 rounded-lg border bg-card h-full">
+						<div className="flex items-center gap-4">
+							<div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+								<UserIcon className="h-6 w-6" />
+							</div>
+							<div>
+								<h3 className="font-semibold text-lg">{booking.guestName}</h3>
+								{booking.guestPhoneNumber && (
+									<div className="text-sm text-muted-foreground">
+										{booking.guestPhoneNumber}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{booking.guestEmail && (
+							<div className="text-sm text-muted-foreground bg-muted p-2 rounded truncate">
+								{booking.guestEmail}
+							</div>
+						)}
+
+						{booking.organizationName && (
+							<div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted p-2 rounded">
+								<BuildingIcon className="h-4 w-4" />
+								<span className="font-medium">Org:</span>{" "}
+								{booking.organizationName}
+							</div>
+						)}
+
+						<div className="grid grid-cols-2 gap-2 mt-auto pt-4">
+							<div className="bg-muted/50 p-2 rounded text-center">
+								<div className="text-xs text-muted-foreground">Adults</div>
+								<div className="font-semibold">{booking.noOfAdults || 0}</div>
+							</div>
+							<div className="bg-muted/50 p-2 rounded text-center">
+								<div className="text-xs text-muted-foreground">Children</div>
+								<div className="font-semibold">
+									{booking.noOfChildren || 0}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Booking Info - Column 2 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+						Booking Details
+					</h4>
+					<div className="flex flex-col gap-4 h-full">
+						<div className="p-4 rounded-lg border bg-muted/30 space-y-3 flex-1">
+							<div className="text-sm font-medium flex items-center gap-2 mb-2">
+								<CalendarIcon className="h-4 w-4 text-primary" />
+								Stay Information
+							</div>
+							<div className="space-y-2 text-sm">
+								<div className="flex justify-between">
+									<span className="text-muted-foreground">Room</span>
+									<span className="font-medium">{booking.roomNo}</span>
+								</div>
+								<div className="flex justify-between">
+									<span className="text-muted-foreground">Room Type</span>
+									<span className="font-medium text-right">
+										{booking.roomType}
+									</span>
+								</div>
+								<div className="flex justify-between">
+									<span className="text-muted-foreground">Branch</span>
+									<span className="font-medium text-right">
+										{booking.branchName}
+									</span>
+								</div>
+							</div>
+						</div>
+
+						<div className="p-4 rounded-lg border bg-muted/30 space-y-3 flex-1">
+							<div className="space-y-2 text-sm">
+								<div className="flex justify-between border-b pb-2">
+									<div>
+										<div className="text-xs text-muted-foreground">
+											Check In
+										</div>
+										<div className="font-medium">
+											{new Date(booking.checkInDate).toLocaleDateString()}
+										</div>
+									</div>
+									<div className="text-right">
+										<div className="text-xs text-muted-foreground">
+											Check Out
+										</div>
+										<div className="font-medium">
+											{new Date(booking.checkOutDate).toLocaleDateString()}
+										</div>
+									</div>
+								</div>
+								<div className="flex justify-between items-center pt-1">
+									<span className="text-muted-foreground">Duration</span>
+									<span className="font-medium">
+										{nights} Night{nights !== 1 ? "s" : ""}
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Financial Section - Column 3 */}
+				<div className="space-y-4">
+					<h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+						Financials
+					</h4>
+					<div className="p-5 rounded-lg border bg-card h-full flex flex-col">
+						<div className="flex items-center gap-2 font-medium mb-4 text-primary">
+							<CreditCardIcon className="h-5 w-5" />
+							Payment Summary
+						</div>
+
+						<div className="space-y-4 flex-1">
+							<div className="flex justify-between items-center pb-3 border-b border-dashed">
+								<span className="text-muted-foreground">Nightly Rate</span>
+								<span className="font-mono">
+									{formatCurrency(booking.nightlyRate)}
+								</span>
+							</div>
+
+							<div className="space-y-3">
+								<div className="flex justify-between items-center">
+									<span className="text-muted-foreground">
+										Accommodation
+									</span>
+									<span className="font-medium">
+										{formatCurrency(booking.accommodationCost)}
+									</span>
+								</div>
+								{booking.restaurantOrdersTotal > 0 && (
+									<div className="flex justify-between items-center">
+										<span className="text-muted-foreground">
+											Restaurant Orders
+										</span>
+										<span className="font-medium">
+											{formatCurrency(booking.restaurantOrdersTotal)}
+										</span>
+									</div>
+								)}
+								<div className="flex justify-between items-center border-t pt-2">
+									<span className="text-muted-foreground">Total Due</span>
+									<span className="font-semibold">
+										{formatCurrency(booking.totalAmountDue)}
+									</span>
+								</div>
+								<div className="flex justify-between items-center">
+									<span className="text-muted-foreground">Amount Paid</span>
+									<span className="font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+										{formatCurrency(booking.amountPaid)}
+									</span>
+								</div>
+							</div>
+
+							<div className="mt-auto pt-4 border-t">
+								<div className="flex flex-col gap-1">
+									<span className="text-sm text-muted-foreground">
+										Outstanding Balance
+									</span>
+									<span
+										className={`text-2xl font-bold ${booking.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}
+									>
+										{formatCurrency(booking.amountRemaining)}
+									</span>
+									{booking.amountRemaining > 0 && (
+										<span className="text-xs text-red-500 font-medium">
+											Payment Required
+										</span>
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</DialogContent>
+	);
+}
+
+function EditBookingContent({
+	booking,
+	onClose,
+}: {
+	booking: BookingViewResponse;
+	onClose: () => void;
+}) {
+	const [guestName, setGuestName] = useState(booking.guestName);
+	const [guestEmail, setGuestEmail] = useState(booking.guestEmail ?? "");
+	const [phoneNumber, setPhoneNumber] = useState(booking.guestPhoneNumber ?? "");
+	const [noOfAdults, setNoOfAdults] = useState(booking.noOfAdults ?? 1);
+	const [noOfChildren, setNoOfChildren] = useState(booking.noOfChildren ?? 0);
+	const [checkOutDate, setCheckOutDate] = useState(
+		booking.checkOutDate
+			? new Date(booking.checkOutDate).toISOString().split("T")[0]
+			: "",
+	);
+
+	const originalCheckOutDate = booking.checkOutDate
+		? new Date(booking.checkOutDate).toISOString().split("T")[0]
+		: "";
+	const checkOutChanged = checkOutDate !== originalCheckOutDate;
+
+	const checkInDateStr = booking.checkInDate
+		? new Date(booking.checkInDate).toISOString().split("T")[0]
+		: "";
+	const minCheckOutDate = checkInDateStr
+		? new Date(new Date(checkInDateStr).getTime() + 86400000)
+				.toISOString()
+				.split("T")[0]
+		: "";
+
+	const { isPending, mutate } = useMutation({
+		mutationFn: async () => {
+			const payload: Record<string, unknown> = {};
+
+			if (guestName !== booking.guestName) payload.guestName = guestName;
+			if (guestEmail !== (booking.guestEmail ?? ""))
+				payload.guestEmail = guestEmail || undefined;
+			if (phoneNumber !== (booking.guestPhoneNumber ?? ""))
+				payload.phoneNumber = phoneNumber;
+			if (noOfAdults !== (booking.noOfAdults ?? 1))
+				payload.noOfAdults = noOfAdults;
+			if (noOfChildren !== (booking.noOfChildren ?? 0))
+				payload.noOfChildren = noOfChildren;
+			if (checkOutChanged) payload.checkOutDate = checkOutDate;
+
+			if (Object.keys(payload).length === 0) {
+				throw new Error("No changes to save");
+			}
+
+			const response = await updateBooking({
+				bookingId: booking.id,
+				...payload,
+			});
+			if (!response.success) {
+				throw new Error(response.error || "Failed to update booking");
+			}
+			return response.data;
+		},
+		onSuccess: () => {
+			toast.success("Booking updated successfully");
+			onClose();
+			revalidateRoute("/front-desk/bookings");
+		},
+		onError: (e) => {
+			toast.error(e instanceof Error ? e.message : "Failed to update booking");
+		},
+	});
+
+	return (
+		<DialogContent className="p-6 rounded-2xl max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden">
+			<DialogHeader>
+				<DialogTitle>Edit Booking</DialogTitle>
+				<DialogDescription>
+					Update guest information and stay details for booking{" "}
+					{booking.customId}
+				</DialogDescription>
+			</DialogHeader>
+
+			<div className="space-y-4">
+				<div className="space-y-2">
+					<Label htmlFor="edit-guestName">Guest Name</Label>
+					<Input
+						id="edit-guestName"
+						value={guestName}
+						onChange={(e) => setGuestName(e.target.value)}
+						placeholder="Guest name"
+					/>
+				</div>
+
+				<div className="grid grid-cols-2 gap-4">
+					<div className="space-y-2">
+						<Label htmlFor="edit-guestEmail">Email</Label>
+						<Input
+							id="edit-guestEmail"
+							type="email"
+							value={guestEmail}
+							onChange={(e) => setGuestEmail(e.target.value)}
+							placeholder="guest@example.com"
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="edit-phoneNumber">Phone Number</Label>
+						<Input
+							id="edit-phoneNumber"
+							value={phoneNumber}
+							onChange={(e) => setPhoneNumber(e.target.value)}
+							placeholder="Phone number"
+						/>
+					</div>
+				</div>
+
+				<div className="grid grid-cols-2 gap-4">
+					<div className="space-y-2">
+						<Label htmlFor="edit-noOfAdults">No. of Adults</Label>
+						<Input
+							id="edit-noOfAdults"
+							type="number"
+							min={1}
+							value={noOfAdults}
+							onChange={(e) => setNoOfAdults(Number(e.target.value))}
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="edit-noOfChildren">No. of Children</Label>
+						<Input
+							id="edit-noOfChildren"
+							type="number"
+							min={0}
+							value={noOfChildren}
+							onChange={(e) => setNoOfChildren(Number(e.target.value))}
+						/>
+					</div>
+				</div>
+
+				<div className="grid grid-cols-2 gap-4">
+					<div className="space-y-2">
+						<Label>Check-in Date</Label>
+						<Input
+							type="date"
+							value={checkInDateStr}
+							disabled
+							className="bg-gray-50"
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor="edit-checkOutDate">Check-out Date</Label>
+						<Input
+							id="edit-checkOutDate"
+							type="date"
+							min={minCheckOutDate}
+							value={checkOutDate}
+							onChange={(e) => setCheckOutDate(e.target.value)}
+						/>
+					</div>
+				</div>
+
+				{checkOutChanged && (
+					<Alert variant="info">
+						<AlertCircleIcon className="h-4 w-4" />
+						<AlertDescription>
+							Changing the check-out date will recalculate the accommodation
+							cost and total amount due.
+						</AlertDescription>
+					</Alert>
+				)}
+
+				<div className="flex gap-3 pt-4">
+					<Button
+						variant="outline"
+						onClick={onClose}
+						className="flex-1"
+						disabled={isPending}
+					>
+						<XIcon className="w-4 h-4 mr-2" />
+						Cancel
+					</Button>
+					<Button
+						onClick={() => mutate()}
+						className="flex-1"
+						disabled={isPending}
+					>
+						{isPending ? (
+							<>
+								<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+								Saving...
+							</>
+						) : (
+							<>
+								<CheckIcon className="w-4 h-4 mr-2" />
+								Save Changes
+							</>
+						)}
+					</Button>
+				</div>
+			</div>
+		</DialogContent>
+	);
+}
+
 function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
+	const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
 	const [openStatusDialog, setOpenStatusDialog] = useState(false);
 	const [openPaymentHistory, setOpenPaymentHistory] = useState(false);
 	const [openAssignOrg, setOpenAssignOrg] = useState(false);
+	const [openEditDialog, setOpenEditDialog] = useState(false);
+
+	const canEdit =
+		booking.bookingStatus === "CHECKED_IN" ||
+		booking.bookingStatus === "RESERVED";
 
 	const canAssignOrg =
 		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
@@ -812,6 +1241,39 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
+				<Dialog open={openDetailsDialog} onOpenChange={setOpenDetailsDialog}>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<EyeIcon className="mr-2 h-4 w-4" />
+							View Details
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<BookingDetailsContent booking={booking} />
+				</Dialog>
+
+				{canEdit && (
+					<Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+						<DialogTrigger asChild>
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.preventDefault();
+								}}
+							>
+								<PencilIcon className="mr-2 h-4 w-4" />
+								Edit Booking
+							</DropdownMenuItem>
+						</DialogTrigger>
+						<EditBookingContent
+							booking={booking}
+							onClose={() => setOpenEditDialog(false)}
+						/>
+					</Dialog>
+				)}
+
 				<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
 					<DialogTrigger asChild>
 						<DropdownMenuItem
