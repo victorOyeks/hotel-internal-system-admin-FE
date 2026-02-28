@@ -22,13 +22,6 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
-import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -38,43 +31,48 @@ import {
 import type { APIOutput } from "@/lib/action-utils";
 import { revalidateRoute } from "@/lib/actions";
 import type { Pagination } from "@/lib/fetch";
-import { updateOrderStatus } from "@/lib/restaurant-actions";
+import {
+	updateOrderStatus,
+	recordRestaurantPayment,
+} from "@/lib/restaurant-actions";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMutation } from "@tanstack/react-query";
 import {
-	AlertTriangleIcon,
 	CheckCircle2Icon,
 	ChevronDownIcon,
-	ChevronRightIcon,
-	ClipboardListIcon,
-	CoffeeIcon,
-	type LucideProps,
-	PackageIcon,
+	CircleAlertIcon,
+	CreditCardIcon,
+	Loader2Icon,
 	PlusIcon,
 	SearchIcon,
 	RotateCcwIcon,
 	CalendarIcon,
-	UtensilsCrossedIcon,
-	XCircleIcon,
 } from "lucide-react";
 import {
+	createParser,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
-	parseAsIsoDate,
 	useQueryState,
 	useQueryStates,
 } from "nuqs";
-import {
-	type ForwardRefExoticComponent,
-	type RefAttributes,
-	useState,
-	useMemo,
-	useCallback,
-	type PropsWithChildren,
-	type ReactNode,
-} from "react";
+
+/** Like parseAsLocalDate but serializes using local date parts (no UTC shift) */
+const parseAsLocalDate = createParser({
+	parse: (value: string) => {
+		const [y, m, d] = value.split("-").map(Number);
+		if (!y || !m || !d) return null;
+		return new Date(y, m - 1, d);
+	},
+	serialize: (date: Date) => {
+		const y = date.getFullYear();
+		const m = String(date.getMonth() + 1).padStart(2, "0");
+		const d = String(date.getDate()).padStart(2, "0");
+		return `${y}-${m}-${d}`;
+	},
+});
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -85,8 +83,50 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ReportWastage } from "./quick-action-modals";
-import { FoodItemAddContent, BarItemAddContent } from "./item-management";
+import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+
+type OrderItem =
+	APIOutput<"@get/api/restaurants/restaurant-orders">["data"]["content"][number];
+
+type RestaurantOrdersPageProps = {
+	orders: OrderItem[];
+	paginationMeta: Pagination;
+	breadcrumbs: {
+		title: string;
+		breadcrumbs: Array<{ label: string; href: string }>;
+	};
+};
+
+export function RestaurantOrdersPage({
+	orders,
+	paginationMeta,
+	breadcrumbs,
+}: RestaurantOrdersPageProps) {
+	return (
+		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
+			<div className="space-y-4 px-4 py-4">
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-2xl font-bold tracking-tight">
+							Restaurant Orders
+						</h1>
+						<p className="text-sm text-muted-foreground mt-1">
+							Manage all restaurant orders and track their progress
+						</p>
+					</div>
+					<Link href="/dashboard/create-order">
+						<Button size="sm">
+							<PlusIcon className="w-4 h-4 mr-2" />
+							New Order
+						</Button>
+					</Link>
+				</div>
+				<KitchenToolbar />
+				<Orders orders={orders} pagination={paginationMeta} />
+			</div>
+		</BreadCrumbWrapper>
+	);
+}
 
 // Kitchen Orders Filter Component
 const KitchenOrdersFilter = ({
@@ -94,172 +134,54 @@ const KitchenOrdersFilter = ({
 	setQueryState,
 	setOpen,
 }: {
-	setOpen: (open: boolean) => void;
 	queryState: {
 		destination: string | null;
-		status: "COMPLETED" | "CANCELLED" | "PENDING" | null;
+		status: string | null;
 		searchText: string | null;
 		startDate: Date | null;
 		endDate: Date | null;
 	};
-	setQueryState: (state: Partial<typeof queryState>) => void;
+	setQueryState: (state: Record<string, unknown>) => void;
+	setOpen: (open: boolean) => void;
 }) => {
-	const [tempFilters, setTempFilters] = useState({
-		destination: queryState.destination || "",
-		status: queryState.status || null,
-		searchText: queryState.searchText || "",
-		startDate: queryState.startDate || null,
-		endDate: queryState.endDate || null,
-	});
-
-	// Memoized callback functions to prevent unnecessary re-renders
-	const applyFilters = useCallback(() => {
-		setQueryState({
-			destination: tempFilters.destination || null,
-			status: tempFilters.status,
-			searchText: tempFilters.searchText || null,
-			startDate: tempFilters.startDate,
-			endDate: tempFilters.endDate,
-		});
-		setOpen(false);
-	}, [tempFilters, setQueryState, setOpen]);
-
-	const clearFilters = useCallback(() => {
-		const clearedFilters = {
-			destination: "",
-			status: null,
-			searchText: "",
-			startDate: null,
-			endDate: null,
-		};
-		setTempFilters(clearedFilters);
-		setQueryState({
-			destination: null,
-			status: null,
-			searchText: null,
-			startDate: null,
-			endDate: null,
-		});
-	}, [setQueryState]);
-
-	// Memoize filter state computations
-	const filterStates = useMemo(() => {
-		const hasActiveFilters = !!(
-			tempFilters.destination ||
-			tempFilters.status ||
-			tempFilters.searchText ||
-			tempFilters.startDate ||
-			tempFilters.endDate
-		);
-
-		const hasAppliedFilters = !!(
-			queryState.destination ||
-			queryState.status ||
-			queryState.searchText ||
-			queryState.startDate ||
-			queryState.endDate
-		);
-
-		const appliedFiltersCount =
-			(queryState.destination ? 1 : 0) +
-			(queryState.status ? 1 : 0) +
-			(queryState.searchText ? 1 : 0) +
-			(queryState.startDate ? 1 : 0) +
-			(queryState.endDate ? 1 : 0);
-
-		return {
-			hasActiveFilters,
-			hasAppliedFilters,
-			appliedFiltersCount,
-		};
-	}, [tempFilters, queryState]);
-
-	const statusOptions = useMemo(
-		() => [
-			{ value: "PENDING", label: "Pending" },
-			{ value: "COMPLETED", label: "Completed" },
-			{ value: "CANCELLED", label: "Cancelled" },
-		],
-		[],
-	);
-
 	return (
-		<div className="space-y-4 w-96">
-			<div className="flex items-center justify-between">
-				<h4 className="font-semibold text-sm">Filter Kitchen Orders</h4>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={clearFilters}
-					className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+		<div className="space-y-4 min-w-[350px]">
+			{/* Destination Filter */}
+			<div className="space-y-2">
+				<Label className="text-sm font-medium text-gray-700">Destination</Label>
+				<Input
+					placeholder="e.g. Poolside, Restaurant..."
+					value={queryState.destination ?? ""}
+					onChange={(e) =>
+						setQueryState({ destination: e.target.value || null })
+					}
+				/>
+			</div>
+
+			{/* Status Filter */}
+			<div className="space-y-2">
+				<Label className="text-sm font-medium text-gray-700">Status</Label>
+				<Select
+					value={queryState.status ?? ""}
+					onValueChange={(value) =>
+						setQueryState({ status: value || null })
+					}
 				>
-					<RotateCcwIcon className="h-3 w-3 mr-1" />
-					Clear all
-				</Button>
+					<SelectTrigger>
+						<SelectValue placeholder="All Statuses" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="PENDING">Pending</SelectItem>
+						<SelectItem value="COMPLETED">Completed</SelectItem>
+						<SelectItem value="CANCELLED">Cancelled</SelectItem>
+					</SelectContent>
+				</Select>
 			</div>
 
-			{/* Filter Grid Layout */}
-			<div className="grid grid-cols-2 gap-4">
-				{/* Destination Filter */}
+			{/* Date Range */}
+			<div className="grid grid-cols-2 gap-2">
 				<div className="space-y-2">
-					<Label className="text-sm font-medium">Destination</Label>
-					<Input
-						placeholder="Room number or location..."
-						value={tempFilters.destination}
-						onChange={(e) =>
-							setTempFilters({
-								...tempFilters,
-								destination: e.target.value,
-							})
-						}
-					/>
-				</div>
-
-				{/* Status Filter */}
-				<div className="space-y-2">
-					<Label className="text-sm font-medium">Status</Label>
-					<Select
-						value={tempFilters.status || "all"}
-						onValueChange={(value) =>
-							setTempFilters({
-								...tempFilters,
-								status:
-									value === "all" ? null : (value as typeof tempFilters.status),
-							})
-						}
-					>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder="All Statuses" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All Statuses</SelectItem>
-							{statusOptions.map((option) => (
-								<SelectItem key={option.value} value={option.value}>
-									{option.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-
-				{/* Search Text Filter - Full Width */}
-				<div className="col-span-2 space-y-2">
-					<Label className="text-sm font-medium">Search Text</Label>
-					<Input
-						placeholder="Search orders..."
-						value={tempFilters.searchText}
-						onChange={(e) =>
-							setTempFilters({
-								...tempFilters,
-								searchText: e.target.value,
-							})
-						}
-					/>
-				</div>
-
-				{/* Start Date Filter */}
-				<div className="space-y-2">
-					<Label className="text-sm font-medium">Start Date</Label>
+					<Label className="text-sm font-medium text-gray-700">From</Label>
 					<Popover>
 						<PopoverTrigger asChild>
 							<Button
@@ -267,32 +189,25 @@ const KitchenOrdersFilter = ({
 								className="w-full justify-start text-left font-normal"
 							>
 								<CalendarIcon className="mr-2 h-4 w-4" />
-								{tempFilters.startDate ? (
-									format(tempFilters.startDate, "MMM dd")
-								) : (
-									<span>Pick start date</span>
-								)}
+								{queryState.startDate
+									? format(queryState.startDate, "MMM dd, yyyy")
+									: "Start date"}
 							</Button>
 						</PopoverTrigger>
-						<PopoverContent className="w-auto p-0">
+						<PopoverContent className="w-auto p-0" align="start">
 							<Calendar
 								mode="single"
-								selected={tempFilters.startDate || undefined}
+								selected={queryState.startDate ?? undefined}
 								onSelect={(date) =>
-									setTempFilters({
-										...tempFilters,
-										startDate: date || null,
-									})
+									setQueryState({ startDate: date ?? null })
 								}
-								initialFocus
 							/>
 						</PopoverContent>
 					</Popover>
 				</div>
 
-				{/* End Date Filter */}
 				<div className="space-y-2">
-					<Label className="text-sm font-medium">End Date</Label>
+					<Label className="text-sm font-medium text-gray-700">To</Label>
 					<Popover>
 						<PopoverTrigger asChild>
 							<Button
@@ -300,372 +215,64 @@ const KitchenOrdersFilter = ({
 								className="w-full justify-start text-left font-normal"
 							>
 								<CalendarIcon className="mr-2 h-4 w-4" />
-								{tempFilters.endDate ? (
-									format(tempFilters.endDate, "MMM dd")
-								) : (
-									<span>Pick end date</span>
-								)}
+								{queryState.endDate
+									? format(queryState.endDate, "MMM dd, yyyy")
+									: "End date"}
 							</Button>
 						</PopoverTrigger>
-						<PopoverContent className="w-auto p-0">
+						<PopoverContent className="w-auto p-0" align="start">
 							<Calendar
 								mode="single"
-								selected={tempFilters.endDate || undefined}
+								selected={queryState.endDate ?? undefined}
 								onSelect={(date) =>
-									setTempFilters({
-										...tempFilters,
-										endDate: date || null,
-									})
+									setQueryState({ endDate: date ?? null })
 								}
-								initialFocus
 							/>
 						</PopoverContent>
 					</Popover>
 				</div>
 			</div>
 
-			{/* Action Buttons */}
-			<div className="flex gap-2 pt-4">
+			{/* Actions */}
+			<div className="flex gap-2 pt-2">
 				<Button
 					variant="outline"
-					size="sm"
-					onClick={clearFilters}
 					className="flex-1"
+					onClick={() => {
+						setQueryState({
+							destination: null,
+							status: null,
+							searchText: null,
+							startDate: null,
+							endDate: null,
+						});
+						setOpen(false);
+					}}
 				>
-					Clear
+					<RotateCcwIcon className="mr-2 h-4 w-4" />
+					Reset
 				</Button>
-				<Button
-					size="sm"
-					onClick={applyFilters}
-					disabled={!filterStates.hasActiveFilters}
-					className="flex-1"
-				>
+				<Button className="flex-1" onClick={() => setOpen(false)}>
 					Apply Filters
 				</Button>
 			</div>
-
-			{/* Applied Filters Summary */}
-			{filterStates.hasAppliedFilters && (
-				<div className="pt-2 border-t">
-					<div className="flex flex-wrap gap-1">
-						{queryState.destination && (
-							<Badge
-								variant="green"
-								className="text-xs cursor-pointer"
-								onClick={() => setQueryState({ destination: null })}
-							>
-								Destination: {queryState.destination}
-								<button
-									type="button"
-									className="ml-1 hover:bg-gray-200 rounded"
-								>
-									×
-								</button>
-							</Badge>
-						)}
-						{queryState.status && (
-							<Badge
-								variant="green"
-								className="text-xs cursor-pointer"
-								onClick={() => setQueryState({ status: null })}
-							>
-								Status: {queryState.status}
-								<button
-									type="button"
-									className="ml-1 hover:bg-gray-200 rounded"
-								>
-									×
-								</button>
-							</Badge>
-						)}
-						{queryState.searchText && (
-							<Badge
-								variant="green"
-								className="text-xs cursor-pointer"
-								onClick={() => setQueryState({ searchText: null })}
-							>
-								Search: {queryState.searchText}
-								<button
-									type="button"
-									className="ml-1 hover:bg-gray-200 rounded"
-								>
-									×
-								</button>
-							</Badge>
-						)}
-						{queryState.startDate && (
-							<Badge
-								variant="green"
-								className="text-xs cursor-pointer"
-								onClick={() => setQueryState({ startDate: null })}
-							>
-								From: {format(queryState.startDate, "MMM dd")}
-								<button
-									type="button"
-									className="ml-1 hover:bg-gray-200 rounded"
-								>
-									×
-								</button>
-							</Badge>
-						)}
-						{queryState.endDate && (
-							<Badge
-								variant="green"
-								className="text-xs cursor-pointer"
-								onClick={() => setQueryState({ endDate: null })}
-							>
-								To: {format(queryState.endDate, "MMM dd")}
-								<button
-									type="button"
-									className="ml-1 hover:bg-gray-200 rounded"
-								>
-									×
-								</button>
-							</Badge>
-						)}
-					</div>
-				</div>
-			)}
 		</div>
 	);
 };
 
-type QuickAction = {
-	title: string;
-	heading?: string;
-	Component?: ({
-		setOpen,
-	}: {
-		setOpen: (open: boolean) => void;
-	}) => React.JSX.Element;
-	icon: ForwardRefExoticComponent<
-		Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
-	>;
-	wide?: boolean;
-	key: string;
-	color?: "green" | "amber" | "emerald" | "purple";
-};
-
-const actions: QuickAction[] = [
-	{
-		title: "Report Wastage",
-		icon: AlertTriangleIcon,
-		Component: ReportWastage,
-		key: "report-wastage",
-		color: "amber",
-	},
-	{
-		title: "Add Food Item",
-		heading: "Add Food Items",
-		icon: UtensilsCrossedIcon,
-		Component: FoodItemAddContent,
-		key: "add-food-item",
-		wide: true,
-		color: "emerald",
-	},
-	{
-		title: "Add Drink Item",
-		heading: "Add Bar Items",
-		icon: CoffeeIcon,
-		Component: BarItemAddContent,
-		key: "add-drink-item",
-		wide: true,
-		color: "purple",
-	},
-];
-
-const colorMap = {
-	green: {
-		bg: "bg-green-50",
-		iconBg: "bg-green-100",
-		iconText: "text-green-600",
-		border: "border-green-200",
-		hoverBorder: "hover:border-green-300",
-	},
-	amber: {
-		bg: "bg-amber-50",
-		iconBg: "bg-amber-100",
-		iconText: "text-amber-600",
-		border: "border-amber-200",
-		hoverBorder: "hover:border-amber-300",
-	},
-	emerald: {
-		bg: "bg-emerald-50",
-		iconBg: "bg-emerald-100",
-		iconText: "text-emerald-600",
-		border: "border-emerald-200",
-		hoverBorder: "hover:border-emerald-300",
-	},
-	purple: {
-		bg: "bg-purple-50",
-		iconBg: "bg-purple-100",
-		iconText: "text-purple-600",
-		border: "border-purple-200",
-		hoverBorder: "hover:border-purple-300",
-	},
-} as const;
-
-export type DashboardStats = {
-	totalOrders: number;
-	pendingOrders: number;
-	completedOrders: number;
-	inStockItems: number;
-	outOfStockItems: number;
-};
-
-export function RestaurantAnalytics({ stats }: { stats: DashboardStats }) {
-	const cards = [
-		{
-			label: "Total Orders",
-			value: stats.totalOrders,
-			icon: ClipboardListIcon,
-			color: "text-blue-600",
-			bg: "bg-blue-50",
-			iconBg: "bg-blue-100",
-		},
-		{
-			label: "Pending",
-			value: stats.pendingOrders,
-			icon: PackageIcon,
-			color: "text-amber-600",
-			bg: "bg-amber-50",
-			iconBg: "bg-amber-100",
-		},
-		{
-			label: "Completed",
-			value: stats.completedOrders,
-			icon: CheckCircle2Icon,
-			color: "text-green-600",
-			bg: "bg-green-50",
-			iconBg: "bg-green-100",
-		},
-		{
-			label: "In Stock",
-			value: stats.inStockItems,
-			icon: PackageIcon,
-			color: "text-emerald-600",
-			bg: "bg-emerald-50",
-			iconBg: "bg-emerald-100",
-		},
-		{
-			label: "Out of Stock",
-			value: stats.outOfStockItems,
-			icon: XCircleIcon,
-			color: "text-red-600",
-			bg: "bg-red-50",
-			iconBg: "bg-red-100",
-		},
-	];
-
-	return (
-		<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-			{cards.map((card) => (
-				<div
-					key={card.label}
-					className={`${card.bg} rounded-2xl p-4 border border-transparent`}
-				>
-					<div className="flex items-center gap-3">
-						<div
-							className={`${card.iconBg} size-10 rounded-xl flex items-center justify-center shrink-0`}
-						>
-							<card.icon className={`size-5 ${card.color}`} />
-						</div>
-						<div className="min-w-0">
-							<p className="text-2xl font-bold text-gray-900">{card.value}</p>
-							<p className="text-xs text-gray-500 truncate">{card.label}</p>
-						</div>
-					</div>
-				</div>
-			))}
-		</div>
-	);
-}
-
-export function QuickActions() {
-	const [open, setOpen] = useState<false | string>(false);
-	return (
-		<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-			<Link
-				className={`group flex flex-col gap-3 p-4 rounded-2xl border ${colorMap.green.border} ${colorMap.green.bg} ${colorMap.green.hoverBorder} transition-all`}
-				href={"/dashboard/create-order"}
-			>
-				<div className={`${colorMap.green.iconBg} size-10 rounded-xl flex items-center justify-center`}>
-					<PlusIcon className={`size-5 ${colorMap.green.iconText}`} />
-				</div>
-				<div className="flex items-center justify-between">
-					<p className="text-sm font-semibold text-gray-800">Create New Order</p>
-					<ChevronRightIcon className="size-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
-				</div>
-			</Link>
-			{actions.map(({ icon: Icon, title, key, heading, Component, wide, color = "green" }) => {
-				const colors = colorMap[color];
-				return (
-					<BaseModal
-						key={key}
-						open={open === key}
-						setOpen={(open) => setOpen(open ? key : false)}
-						wide={wide}
-						trigger={
-							<div className={`group flex flex-col gap-3 p-4 rounded-2xl border ${colors.border} ${colors.bg} ${colors.hoverBorder} transition-all cursor-pointer text-left`}>
-								<div className={`${colors.iconBg} size-10 rounded-xl flex items-center justify-center`}>
-									<Icon className={`size-5 ${colors.iconText}`} />
-								</div>
-								<div className="flex items-center justify-between">
-									<p className="text-sm font-semibold text-gray-800">{title}</p>
-									<ChevronRightIcon className="size-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
-								</div>
-							</div>
-						}
-					>
-						<DialogTitle>{heading || title}</DialogTitle>
-						<DialogDescription className="sr-only">{title}</DialogDescription>
-						{Component && (
-							<Component setOpen={(open) => setOpen(open ? key : false)} />
-						)}
-					</BaseModal>
-				);
-			})}
-		</div>
-	);
-}
-
-function BaseModal({
-	children,
-	open,
-	setOpen,
-	trigger,
-	wide,
-}: PropsWithChildren<{
-	trigger: ReactNode;
-	open: boolean;
-	setOpen: (open: boolean) => void;
-	wide?: boolean;
-}>) {
-	return (
-		<Dialog modal open={open} onOpenChange={setOpen}>
-			<DialogTrigger>{trigger}</DialogTrigger>
-
-			<DialogContent className={wide ? "rounded-4xl max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-y-auto" : "rounded-4xl max-w-sm"}>
-				{children}
-			</DialogContent>
-		</Dialog>
-	);
-}
-
-export function KitchenToolbar() {
+function KitchenToolbar() {
 	const [queryState, setQueryState] = useQueryStates({
 		status: parseAsStringLiteral(["COMPLETED", "CANCELLED", "PENDING"]),
 		destination: parseAsString,
 		searchText: parseAsString,
-		startDate: parseAsIsoDate,
-		endDate: parseAsIsoDate,
+		startDate: parseAsLocalDate,
+		endDate: parseAsLocalDate,
 		page: parseAsInteger.withDefault(1),
 		size: parseAsInteger.withDefault(10),
 	});
 
 	const [filterOpen, setFilterOpen] = useState(false);
 
-	// Memoize applied filters count for performance
 	const appliedFiltersCount = useMemo(() => {
 		return (
 			(queryState.destination ? 1 : 0) +
@@ -685,31 +292,29 @@ export function KitchenToolbar() {
 	return (
 		<div className="flex items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
 			<div className="flex items-center gap-x-2">
-				<Button
-					size="sm"
-					variant="outline"
-					data-active={queryState.status === null}
-					onClick={() => setQueryState({ status: null })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.status === null
-						? "bg-primary text-primary-foreground border-primary"
-						: ""
+				{(
+					[
+						{ label: "All Orders", value: null },
+						{ label: "Pending", value: "PENDING" },
+						{ label: "Completed", value: "COMPLETED" },
+						{ label: "Cancelled", value: "CANCELLED" },
+					] as const
+				).map((tab) => (
+					<Button
+						key={tab.label}
+						size="sm"
+						variant="outline"
+						data-active={queryState.status === tab.value}
+						onClick={() => setQueryState({ status: tab.value, page: 1 })}
+						className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${
+							queryState.status === tab.value
+								? "bg-primary text-primary-foreground border-primary"
+								: ""
 						}`}
-				>
-					All Orders
-				</Button>
-
-				<Button
-					size="sm"
-					variant="outline"
-					data-active={queryState.status === "COMPLETED"}
-					onClick={() => setQueryState({ status: "COMPLETED" })}
-					className={`shadow-none text-xs hover:border-transparent rounded-full transition-colors ${queryState.status === "COMPLETED"
-						? "bg-primary text-primary-foreground border-primary"
-						: ""
-						}`}
-				>
-					Order History
-				</Button>
+					>
+						{tab.label}
+					</Button>
+				))}
 			</div>
 
 			<div className="flex items-center gap-x-2">
@@ -829,16 +434,13 @@ export function KitchenToolbar() {
 					<ExportDialog
 						onSubmitAction={() => Promise.resolve()}
 						open={false}
-						setOpenAction={() => { }}
+						setOpenAction={() => {}}
 					/>
 				</div>
 			</div>
 		</div>
 	);
 }
-
-type OrderItem =
-	APIOutput<"@get/api/restaurants/restaurant-orders">["data"]["content"][number];
 
 function OrderCard({
 	order,
@@ -871,7 +473,7 @@ function OrderCard({
 			toast.success("Order status updated successfully", {
 				description: data.data,
 			});
-			revalidateRoute("/restaurant");
+			revalidateRoute("/restaurant/orders");
 		},
 		onMutate: (status) => {
 			toast.loading("Updating order status...");
@@ -1008,6 +610,20 @@ function OrderCard({
 					<p>Total: {formatCurrency(order.totalAmount)}</p>
 				</div>
 
+				<div className={`flex items-center gap-1.5 text-xs font-medium ${(order.amountRemaining ?? order.totalAmount) <= 0 ? "text-green-600" : "text-red-500"}`}>
+					{(order.amountRemaining ?? order.totalAmount) <= 0 ? (
+						<>
+							<CheckCircle2Icon className="size-3.5" />
+							<span>Paid</span>
+						</>
+					) : (
+						<>
+							<CircleAlertIcon className="size-3.5" />
+							<span>Unpaid</span>
+						</>
+					)}
+				</div>
+
 				{firstItem && (
 					<div className="flex justify-between items-center text-sm">
 						<div>
@@ -1022,7 +638,7 @@ function OrderCard({
 
 				{remainingItemsCount > 0 && (
 					<div className="text-sm text-muted-foreground font-medium pt-1">
-						+ {remainingItemsCount} more item{remainingItemsCount !== 1 ? 's' : ''}...
+						+ {remainingItemsCount} more item{remainingItemsCount !== 1 ? "s" : ""}...
 					</div>
 				)}
 			</div>
@@ -1030,12 +646,149 @@ function OrderCard({
 	);
 }
 
-function OrderDetailSheet({ order }: { order: OrderItem }) {
+const PAYMENT_METHODS = [
+	{ value: "CASH", label: "Cash" },
+	{ value: "CARD", label: "Card" },
+	{ value: "BANK_TRANSFER", label: "Bank Transfer" },
+	{ value: "MOBILE_MONEY", label: "Mobile Money" },
+	{ value: "CREDIT_CARD", label: "Credit Card" },
+	{ value: "DEBIT_CARD", label: "Debit Card" },
+	{ value: "ONLINE_PAYMENT", label: "Online Payment" },
+	{ value: "OTHERS", label: "Other" },
+] as const;
+
+function RecordPaymentForm({
+	order,
+	onSuccess,
+	onCancel,
+}: {
+	order: OrderItem;
+	onSuccess: () => void;
+	onCancel: () => void;
+}) {
+	const [amount, setAmount] = useState<string>("");
+	const [method, setMethod] = useState("CASH");
+	const [reference, setReference] = useState("");
+	const [notes, setNotes] = useState("");
+
+	const balanceDue = order.amountRemaining ?? order.totalAmount;
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async () => {
+			const res = await recordRestaurantPayment({
+				orderId: order.id,
+				amount: Number(amount),
+				method,
+				reference: reference || undefined,
+				notes: notes || undefined,
+			});
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+		onSuccess: async () => {
+			toast.success("Payment recorded successfully");
+			await revalidateRoute("/restaurant/orders");
+			onSuccess();
+		},
+		onError: (err: Error) => {
+			toast.error(err.message || "Failed to record payment");
+		},
+	});
+
+	const isValid = Number(amount) > 0 && Number(amount) <= balanceDue;
+
+	return (
+		<div className="space-y-3">
+			<div>
+				<Label className="text-xs text-gray-600">Amount (NGN) *</Label>
+				<Input
+					type="number"
+					step="0.01"
+					min="0"
+					max={balanceDue}
+					placeholder={`Max: ${formatCurrency(balanceDue)}`}
+					value={amount}
+					onChange={(e) => setAmount(e.target.value)}
+					className="mt-1 h-9"
+				/>
+			</div>
+
+			<div>
+				<Label className="text-xs text-gray-600">Payment Method *</Label>
+				<Select value={method} onValueChange={setMethod}>
+					<SelectTrigger className="mt-1 h-9">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{PAYMENT_METHODS.map((m) => (
+							<SelectItem key={m.value} value={m.value}>
+								{m.label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div>
+				<Label className="text-xs text-gray-600">Reference</Label>
+				<Input
+					placeholder="e.g. TXN20250215001"
+					value={reference}
+					onChange={(e) => setReference(e.target.value)}
+					className="mt-1 h-9"
+				/>
+			</div>
+
+			<div>
+				<Label className="text-xs text-gray-600">Notes</Label>
+				<Input
+					placeholder="Payment notes..."
+					value={notes}
+					onChange={(e) => setNotes(e.target.value)}
+					className="mt-1 h-9"
+				/>
+			</div>
+
+			<div className="flex gap-2 pt-1">
+				<Button
+					variant="outline"
+					size="sm"
+					className="flex-1"
+					onClick={onCancel}
+					disabled={isPending}
+				>
+					Cancel
+				</Button>
+				<Button
+					size="sm"
+					className="flex-1"
+					disabled={!isValid || isPending}
+					onClick={() => mutate()}
+				>
+					{isPending && <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />}
+					Record Payment
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+function OrderDetailSheet({
+	order,
+	onPaymentRecorded,
+}: {
+	order: OrderItem;
+	onPaymentRecorded?: () => void;
+}) {
+	const [showPaymentForm, setShowPaymentForm] = useState(false);
 	const statusToVariant = {
 		COMPLETED: "green",
 		CANCELLED: "red",
 		PENDING: "blue",
 	} satisfies Record<string, BadgeVariant>;
+
+	const isFullyPaid = (order.amountRemaining ?? order.totalAmount) <= 0;
+	const hasBalance = !isFullyPaid;
 
 	return (
 		<SheetContent>
@@ -1092,6 +845,73 @@ function OrderDetailSheet({ order }: { order: OrderItem }) {
 								</div>
 							)}
 						</div>
+					</div>
+
+					{/* Payment Details */}
+					<div className="bg-gray-50 rounded-lg p-4">
+						<div className="flex items-center justify-between mb-3">
+							<h3 className="text-sm font-semibold text-gray-700">
+								Payment Details
+							</h3>
+							<Badge
+								variant={isFullyPaid ? "green" : "red"}
+								className="capitalize"
+							>
+								{isFullyPaid ? "Paid" : "Unpaid"}
+							</Badge>
+						</div>
+						<div className="space-y-2 text-sm">
+							{order.paymentMethod && (
+								<div className="flex justify-between">
+									<span className="text-gray-600">Payment Method:</span>
+									<span className="font-medium capitalize">
+										{order.paymentMethod.replaceAll("_", " ").toLowerCase()}
+									</span>
+								</div>
+							)}
+							{order.paymentReference && (
+								<div className="flex justify-between">
+									<span className="text-gray-600">Reference:</span>
+									<span className="font-medium">{order.paymentReference}</span>
+								</div>
+							)}
+							<div className="flex justify-between">
+								<span className="text-gray-600">Amount Paid:</span>
+								<span className="font-medium text-green-700">
+									{formatCurrency(order.amountPaid ?? 0)}
+								</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-gray-600">Balance Due:</span>
+								<span className={`font-medium ${(order.amountRemaining ?? 0) > 0 ? "text-red-600" : "text-green-700"}`}>
+									{formatCurrency(order.amountRemaining ?? 0)}
+								</span>
+							</div>
+						</div>
+
+						{hasBalance && !showPaymentForm && (
+							<Button
+								size="sm"
+								className="w-full mt-3"
+								onClick={() => setShowPaymentForm(true)}
+							>
+								<CreditCardIcon className="h-4 w-4 mr-2" />
+								Record Payment
+							</Button>
+						)}
+
+						{showPaymentForm && (
+							<div className="mt-3 pt-3 border-t border-gray-200">
+								<RecordPaymentForm
+									order={order}
+									onSuccess={() => {
+										setShowPaymentForm(false);
+										onPaymentRecorded?.();
+									}}
+									onCancel={() => setShowPaymentForm(false)}
+								/>
+							</div>
+						)}
 					</div>
 
 					{/* Order Items */}
@@ -1162,7 +982,7 @@ function OrderDetailSheet({ order }: { order: OrderItem }) {
 	);
 }
 
-export function Orders({
+function Orders({
 	orders,
 	pagination,
 }: {
@@ -1215,7 +1035,10 @@ export function Orders({
 						if (!open) setOrderDetailState(null);
 					}}
 				>
-					<OrderDetailSheet order={orderDetailState} />
+					<OrderDetailSheet
+						order={orderDetailState}
+						onPaymentRecorded={() => setOrderDetailState(null)}
+					/>
 				</Sheet>
 			)}
 		</div>
