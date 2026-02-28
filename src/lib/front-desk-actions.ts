@@ -244,6 +244,41 @@ export async function claimLostItem({
 	};
 }
 
+export async function updateBooking({
+	bookingId,
+	...payload
+}: {
+	bookingId: string;
+} & APIInput<"@put/api/front-desks/bookings/:bookingId">): ServerActionResponseFromEndpoint<"@put/api/front-desks/bookings/:bookingId"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch(
+		"@put/api/front-desks/bookings/:bookingId",
+		{
+			params: { bookingId },
+			body: payload,
+			auth: {
+				type: "Bearer",
+				token,
+			},
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error:
+				response.error.message ||
+				"An error occurred while updating the booking.",
+		};
+	}
+
+	return {
+		success: true,
+		data: response.data,
+	};
+}
+
 export async function recordPayment({
 	bookingId,
 	...payload
