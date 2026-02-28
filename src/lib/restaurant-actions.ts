@@ -7,6 +7,39 @@ import type { HotelRole } from "./types";
 import { env } from "@/env";
 import type { BulkUploadResult } from "./bulk-upload-types";
 
+export async function recordRestaurantPayment({
+	orderId,
+	amount,
+	method,
+	reference,
+	notes,
+}: {
+	orderId: string;
+	amount: number;
+	method: string;
+	reference?: string;
+	notes?: string;
+}): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch(
+		"@post/api/restaurants/restaurant-orders/:orderId/payments",
+		{
+			params: { orderId },
+			body: { amount, method, reference, notes },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to record payment",
+		};
+	}
+
+	return { success: true, data: "Payment recorded successfully" };
+}
+
 export async function updateOrderStatus(params: {
 	orderId: string;
 	status: "PENDING" | "COMPLETED" | "CANCELLED";
@@ -201,6 +234,126 @@ export async function toggleBarItemStock({
 		success: true,
 		data: `Item marked as ${inStock ? "in stock" : "out of stock"}`,
 	};
+}
+
+export async function toggleFoodItemStock({
+	itemId,
+	inStock,
+}: {
+	itemId: string;
+	inStock: boolean;
+}): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch(
+		"@patch/api/restaurants/:id/food-item/toggle-stock",
+		{
+			params: { id: itemId },
+			query: { inStock: inStock.toString() },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to update stock status",
+		};
+	}
+
+	return {
+		success: true,
+		data: `Item marked as ${inStock ? "in stock" : "out of stock"}`,
+	};
+}
+
+export async function updateFoodItem({
+	itemId,
+	name,
+	price,
+}: {
+	itemId: string;
+	name: string;
+	price: number;
+}): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch("@put/api/restaurants/:id/food-item", {
+		params: { id: itemId },
+		body: { name, price },
+		auth: { type: "Bearer", token: sessionData.token },
+	});
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to update food item",
+		};
+	}
+
+	return { success: true, data: "Food item updated successfully" };
+}
+
+export async function updateBarItem({
+	itemId,
+	name,
+	price,
+}: {
+	itemId: string;
+	name: string;
+	price: number;
+}): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch("@put/api/restaurants/:id/bar-item", {
+		params: { id: itemId },
+		body: { name, price },
+		auth: { type: "Bearer", token: sessionData.token },
+	});
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to update bar item",
+		};
+	}
+
+	return { success: true, data: "Bar item updated successfully" };
+}
+
+export async function deleteFoodItem({
+	itemId,
+}: { itemId: string }): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch("@delete/api/restaurants/:id/food-item", {
+		params: { id: itemId },
+		auth: { type: "Bearer", token: sessionData.token },
+	});
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to delete food item",
+		};
+	}
+
+	return { success: true, data: "Food item deleted successfully" };
+}
+
+export async function deleteBarItem({
+	itemId,
+}: { itemId: string }): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch("@delete/api/restaurants/:id/bar-item", {
+		params: { id: itemId },
+		auth: { type: "Bearer", token: sessionData.token },
+	});
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to delete bar item",
+		};
+	}
+
+	return { success: true, data: "Bar item deleted successfully" };
 }
 
 export async function deleteStockItem({ itemId }: { itemId: string }) {

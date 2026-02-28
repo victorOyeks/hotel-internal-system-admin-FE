@@ -1,92 +1,57 @@
-import {
-	type DashboardStats,
-	KitchenToolbar,
-	Orders,
-	QuickActions,
-	RestaurantAnalytics,
-} from "@/components/roles/kitchen/dashboard";
-import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
+import { RestaurantDashboard } from "@/components/roles/kitchen/restaurant-dashboard";
 import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
-import type { Breadcrumb } from "@/lib/store";
-import {
-	createLoader,
-	parseAsIsoDateTime,
-	parseAsString,
-	parseAsStringLiteral,
-	type SearchParams,
-} from "nuqs/server";
 import { use } from "react";
 
-type PageProps = {
-	searchParams: Promise<SearchParams>;
+const breadcrumbs = {
+	title: "Dashboard",
+	breadcrumbs: [
+		{
+			label: "Dashboard",
+			href: "/dashboard",
+		},
+	],
 };
 
-const loadSearchParams = createLoader({
-	searchText: parseAsString,
-	startDate: parseAsIsoDateTime,
-	endDate: parseAsIsoDateTime,
-	status: parseAsStringLiteral(["PENDING", "COMPLETED", "CANCELLED"]),
-	...paginationSearchParams,
-});
+export default function RestaurantHomePage() {
+	const { token } = use(getCookieData())!;
+	const qc = getQueryClient();
 
-function Page({ searchParams }: PageProps) {
-	const cookieData = use(getCookieData())!;
-	const queryClient = getQueryClient();
-	const query = use(loadSearchParams(searchParams));
-
-	const ordersPromise = queryClient.ensureQueryData({
-		queryKey: ["restaurant", "dashboard-data", cookieData.token],
+	const statsPromise = qc.ensureQueryData({
+		queryKey: ["restaurant", "dashboard-stats"],
 		queryFn: async ({ signal }) => {
-			const res = await $fetch("@get/api/restaurants/restaurant-orders", {
-				//@ts-expect-error -- IGNORE --
-				query: {
-					...query,
-					size: 9,
-					page: query.page ? query.page - 1 : 0,
-				},
+			const res = await $fetch("@get/api/restaurants/dashboard-stats", {
+				auth: { type: "Bearer", token },
 				signal,
-				auth: { type: "Bearer", token: cookieData.token },
 				throw: true,
 			});
 			return res.data;
 		},
 	});
 
-	const statsPromise = queryClient.ensureQueryData({
-		queryKey: ["restaurant", "dashboard-stats", cookieData.token],
+	const recentOrdersPromise = qc.ensureQueryData({
+		queryKey: ["restaurant", "recent-orders"],
 		queryFn: async ({ signal }) => {
-			const res = await $fetch("@get/api/restaurants/dashboard-stats", {
+			const res = await $fetch("@get/api/restaurants/restaurant-orders", {
+				query: { page: 0, size: 5 },
 				signal,
-				auth: { type: "Bearer", token: cookieData.token },
+				auth: { type: "Bearer", token },
 				throw: true,
 			});
-			return res.data as DashboardStats;
+			return res.data.content;
 		},
 	});
 
-	const [ordersData, stats] = use(Promise.all([ordersPromise, statsPromise]));
-	const { content, ...paginationProps } = ordersData;
+	const [stats, recentOrders] = use(
+		Promise.all([statsPromise, recentOrdersPromise]),
+	);
 
 	return (
-		<BreadCrumbWrapper
-			breadcrumbs={{
-				title: "Restaurant",
-				breadcrumbs: [
-					{ label: "Dashboard", href: "/dashboard" },
-				] satisfies Breadcrumb[],
-			}}
-		>
-			<div className="space-y-4 px-4 py-4">
-				<RestaurantAnalytics stats={stats} />
-				<QuickActions />
-				<KitchenToolbar />
-				<Orders orders={content} pagination={paginationProps} />
-			</div>
-		</BreadCrumbWrapper>
+		<RestaurantDashboard
+			stats={stats}
+			recentOrders={recentOrders}
+			breadcrumbs={breadcrumbs}
+		/>
 	);
 }
-
-export default Page;

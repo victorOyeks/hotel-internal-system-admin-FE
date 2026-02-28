@@ -4167,6 +4167,11 @@ export const schema = createSchema({
 						status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
 						createdAt: z.coerce.date(),
 						note: z.string().optional(),
+						isPaid: z.boolean().optional(),
+						paymentMethod: z.string().nullable().optional(),
+						paymentReference: z.string().nullable().optional(),
+						amountPaid: z.number().nullable().optional(),
+						amountRemaining: z.number().nullable().optional(),
 						orderItems: z
 							.object({
 								itemName: z.string(),
@@ -5249,6 +5254,81 @@ export const schema = createSchema({
 		query: z.object({ inStock: z.string() }),
 		output: ApiResponseObject,
 	},
+	"@patch/api/restaurants/:id/food-item/toggle-stock": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ inStock: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/payments": {
+		query: z
+			.object({
+				page: z.number().nullable(),
+				size: z.number().nullable(),
+				search: z.string().nullable(),
+				status: z.string().nullable(),
+				startDate: z.string().nullable(),
+				endDate: z.string().nullable(),
+			})
+			.partial()
+			.optional(),
+		output: ApiResponseObject.extend({
+			data: Pagination.extend({
+				content: z
+					.object({
+						id: z.string(),
+						orderId: z.string(),
+						orderCustomId: z.string(),
+						destination: z.string().nullable(),
+						amount: z.number(),
+						currency: z.string().nullable(),
+						method: z.string(),
+						reference: z.string().nullable(),
+						status: z.string(),
+						type: z.string().nullable(),
+						paymentDate: z.coerce.date().nullable(),
+						createdAt: z.coerce.date(),
+						orderTotal: z.number(),
+						totalPaid: z.number(),
+						remainingBalance: z.number(),
+					})
+					.array(),
+			}),
+		}),
+	},
+	"@get/api/restaurants/restaurant-orders/:orderId/payments": {
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: z
+				.object({
+					id: z.string(),
+					orderId: z.string(),
+					orderCustomId: z.string(),
+					destination: z.string().nullable(),
+					amount: z.number(),
+					currency: z.string().nullable(),
+					method: z.string(),
+					reference: z.string().nullable(),
+					status: z.string(),
+					type: z.string().nullable(),
+					paymentDate: z.coerce.date().nullable(),
+					createdAt: z.coerce.date(),
+					orderTotal: z.number(),
+					totalPaid: z.number(),
+					remainingBalance: z.number(),
+				})
+				.array(),
+		}),
+	},
+	"@post/api/restaurants/restaurant-orders/:orderId/payments": {
+		params: z.object({ orderId: z.string() }),
+		input: z.object({
+			amount: z.number(),
+			method: z.string(),
+			reference: z.string().optional(),
+			notes: z.string().optional(),
+		}),
+		output: ApiResponseObject,
+	},
 	"@get/api/restaurants/dashboard-stats": {
 		output: ApiResponseObject.extend({
 			data: z.object({
@@ -5257,6 +5337,10 @@ export const schema = createSchema({
 				completedOrders: z.number(),
 				inStockItems: z.number(),
 				outOfStockItems: z.number(),
+				totalRevenue: z.number(),
+				outstandingAmount: z.number(),
+				ordersToday: z.number(),
+				revenueToday: z.number(),
 			}),
 		}),
 	},
@@ -5733,6 +5817,19 @@ export const schema = createSchema({
 	},
 	"@put/api/restaurants/:id/bar-item": {
 		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@put/api/restaurants/:id/food-item": {
+		input: z.any(),
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/restaurants/:id/food-item": {
+		params: z.object({ id: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@delete/api/restaurants/:id/bar-item": {
 		params: z.object({ id: z.string() }),
 		output: ApiResponseObject,
 	},

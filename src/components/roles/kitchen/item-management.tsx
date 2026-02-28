@@ -29,8 +29,10 @@ import {
 	createColumnHelper,
 	flexRender,
 	getCoreRowModel,
+	getPaginationRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
+import { DataTablePagination } from "@/components/shared/pagination";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState, useMemo, useRef, useCallback } from "react";
 import type { APIOutput } from "@/lib/action-utils";
@@ -80,7 +82,14 @@ import {
 	addBarItem,
 	bulkUploadFoodItems,
 	bulkUploadBarItems,
+	toggleBarItemStock,
+	toggleFoodItemStock,
+	updateFoodItem,
+	updateBarItem,
+	deleteFoodItem,
+	deleteBarItem,
 } from "@/lib/restaurant-actions";
+import { Switch } from "@/components/ui/switch";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 
 export type FoodDrinkItem =
@@ -97,9 +106,9 @@ function BulkAddFoodItemDialog({
 }) {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent className="sm:max-w-2xl">
+			<DialogContent className="rounded-4xl max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-y-auto">
 				<DialogTitle>Add Food Items</DialogTitle>
-				<DialogDescription>
+				<DialogDescription className="sr-only">
 					Add food items individually or upload a file for bulk import.
 				</DialogDescription>
 				<FoodItemAddContent setOpen={setOpen} />
@@ -297,9 +306,9 @@ function BulkAddBarItemDialog({
 }) {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent className="sm:max-w-2xl">
+			<DialogContent className="rounded-4xl max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-y-auto">
 				<DialogTitle>Add Bar Items</DialogTitle>
-				<DialogDescription>
+				<DialogDescription className="sr-only">
 					Add bar items individually or upload a file for bulk import.
 				</DialogDescription>
 				<BarItemAddContent setOpen={setOpen} />
@@ -804,16 +813,16 @@ export function FoodItemAddContent({
 	setOpen: (open: boolean) => void;
 }) {
 	return (
-		<Tabs defaultValue="upload" className="w-full">
+		<Tabs defaultValue="manual" className="w-full">
 			<TabsList className="grid w-full grid-cols-2">
-				<TabsTrigger value="upload">Upload File</TabsTrigger>
 				<TabsTrigger value="manual">Add Manually</TabsTrigger>
+				<TabsTrigger value="upload">Upload File</TabsTrigger>
 			</TabsList>
-			<TabsContent value="upload" className="mt-4">
-				<FoodItemsFileUpload setOpen={setOpen} />
-			</TabsContent>
 			<TabsContent value="manual" className="mt-4">
 				<FoodItemManualAdd setOpen={setOpen} />
+			</TabsContent>
+			<TabsContent value="upload" className="mt-4">
+				<FoodItemsFileUpload setOpen={setOpen} />
 			</TabsContent>
 		</Tabs>
 	);
@@ -825,16 +834,16 @@ export function BarItemAddContent({
 	setOpen: (open: boolean) => void;
 }) {
 	return (
-		<Tabs defaultValue="upload" className="w-full">
+		<Tabs defaultValue="manual" className="w-full">
 			<TabsList className="grid w-full grid-cols-2">
-				<TabsTrigger value="upload">Upload File</TabsTrigger>
 				<TabsTrigger value="manual">Add Manually</TabsTrigger>
+				<TabsTrigger value="upload">Upload File</TabsTrigger>
 			</TabsList>
-			<TabsContent value="upload" className="mt-4">
-				<BarItemsFileUpload setOpen={setOpen} />
-			</TabsContent>
 			<TabsContent value="manual" className="mt-4">
 				<BarItemManualAdd setOpen={setOpen} />
+			</TabsContent>
+			<TabsContent value="upload" className="mt-4">
+				<BarItemsFileUpload setOpen={setOpen} />
 			</TabsContent>
 		</Tabs>
 	);
@@ -943,23 +952,26 @@ function EditItemForm({
 	});
 
 	const { mutate, isPending } = useMutation({
-		mutationFn: async (_data: z.infer<typeof editItemSchema>) => {
-			// TODO: Implement actual API call when endpoint is available
-			// For now, just simulate success
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			return "Item updated successfully";
+		mutationFn: async (data: z.infer<typeof editItemSchema>) => {
+			const updateFn =
+				item.itemType === "FOOD" ? updateFoodItem : updateBarItem;
+			const res = await updateFn({
+				itemId: item.id,
+				name: data.name,
+				price: data.price,
+			});
+			if (!res.success) throw new Error(res.error);
+			return res.data;
 		},
-		onSuccess: async (desc) => {
+		onSuccess: async (msg) => {
 			form.reset();
 			setOpen(false);
-			toast.success("Item updated successfully", {
-				description: desc,
-			});
+			toast.success(msg);
 			await revalidateRoute("/restaurant/item-management");
 		},
-		onError: () => {
-			toast.error("Something went wrong", {
-				description: "Failed to update item",
+		onError: (err: Error) => {
+			toast.error("Failed to update item", {
+				description: err.message,
 			});
 		},
 	});
@@ -1030,21 +1042,20 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 
 	const { mutate: deleteItem, isPending: isDeleting } = useMutation({
 		mutationFn: async () => {
-			// TODO: Implement actual API call when endpoint is available
-			// For now, just simulate success
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			return "Item deleted successfully";
+			const deleteFn =
+				item.itemType === "FOOD" ? deleteFoodItem : deleteBarItem;
+			const res = await deleteFn({ itemId: item.id });
+			if (!res.success) throw new Error(res.error);
+			return res.data;
 		},
-		onSuccess: async (desc) => {
+		onSuccess: async (msg) => {
 			setDeleteOpen(false);
-			toast.success("Item deleted successfully", {
-				description: desc,
-			});
+			toast.success(msg);
 			await revalidateRoute("/restaurant/item-management");
 		},
-		onError: () => {
-			toast.error("Something went wrong", {
-				description: "Failed to delete item",
+		onError: (err: Error) => {
+			toast.error("Failed to delete item", {
+				description: err.message,
 			});
 		},
 	});
@@ -1062,13 +1073,6 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 						<DialogTrigger asChild>
 							<DropdownMenuItem>Edit Item</DropdownMenuItem>
 						</DialogTrigger>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => setDeleteOpen(true)}
-						>
-							Delete Item
-						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 
@@ -1114,7 +1118,49 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 	);
 }
 
-// ==================== TABLE COLUMNS (UNCHANGED) ====================
+// ==================== STOCK TOGGLE CELL ====================
+
+function StockToggleCell({ item }: { item: FoodDrinkItem }) {
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (newInStock: boolean) => {
+			const toggleFn =
+				item.itemType === "FOOD" ? toggleFoodItemStock : toggleBarItemStock;
+			const res = await toggleFn({ itemId: item.id, inStock: newInStock });
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+		onSuccess: async (msg) => {
+			toast.success(msg);
+			await revalidateRoute("/restaurant/item-management");
+		},
+		onError: (err: Error) => {
+			toast.error("Failed to update stock status", {
+				description: err.message,
+			});
+		},
+	});
+
+	return (
+		<div className="flex items-center gap-2">
+			<Switch
+				checked={item.inStock}
+				onCheckedChange={(checked) => mutate(checked)}
+				disabled={isPending}
+				className="data-[state=checked]:bg-green-600"
+			/>
+			<span
+				className={cn(
+					"text-xs font-medium",
+					item.inStock ? "text-green-600" : "text-red-500",
+				)}
+			>
+				{isPending ? "..." : item.inStock ? "In Stock" : "Out of Stock"}
+			</span>
+		</div>
+	);
+}
+
+// ==================== TABLE COLUMNS ====================
 
 const columnHelper = createColumnHelper<FoodDrinkItem>();
 
@@ -1147,14 +1193,7 @@ const columns = [
 	}),
 	columnHelper.accessor("inStock", {
 		header: "Status",
-		cell: (info) => {
-			const inStock = info.getValue();
-			return inStock ? (
-				<Badge variant="green" className="text-xs">In Stock</Badge>
-			) : (
-				<Badge variant="destructive" className="text-xs">Out of Stock</Badge>
-			);
-		},
+		cell: (info) => <StockToggleCell item={info.row.original} />,
 	}),
 	columnHelper.accessor("createdAt", {
 		header: "Created At",
@@ -1206,6 +1245,10 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 		data: filteredItems,
 		columns,
 		getCoreRowModel: getCoreRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		initialState: {
+			pagination: { pageSize: 20 },
+		},
 	});
 
 	return (
@@ -1324,6 +1367,8 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 					</TableBody>
 				</Table>
 			</div>
+
+			{filteredItems.length > 0 && <DataTablePagination table={table} />}
 
 			{/* Bulk Add Dialogs */}
 			<BulkAddFoodItemDialog open={addFoodOpen} setOpen={setAddFoodOpen} />

@@ -28,6 +28,7 @@ import {
 	WrenchIcon,
 	ShirtIcon,
 	CreditCardIcon,
+	UtensilsIcon,
 } from "lucide-react";
 
 export const hotelOwnerLinks = [
@@ -201,6 +202,13 @@ export const restaurantLinks = [
 		url: "/dashboard",
 	},
 	{ title: "New Order", icon: <PlusIcon />, url: "/dashboard/create-order" },
+	{ title: "Orders", icon: <ClipboardListIcon />, url: "/dashboard/orders" },
+	{
+		title: "Item Management",
+		icon: <UtensilsIcon />,
+		url: "/dashboard/item-management",
+	},
+	{ title: "Payments", icon: <CreditCardIcon />, url: "/dashboard/payments" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 
