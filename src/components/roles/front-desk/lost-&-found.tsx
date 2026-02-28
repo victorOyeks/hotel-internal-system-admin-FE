@@ -8,6 +8,7 @@ import {
 	BedIcon,
 	Loader2Icon,
 	PenIcon,
+	PlusIcon,
 } from "lucide-react";
 import {
 	useState,
@@ -78,20 +79,383 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { atom, useSetAtom } from "jotai";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { revalidateRoute } from "@/lib/actions";
+import { revalidateRoute, uploadImage } from "@/lib/actions";
 import z from "zod";
-import { claimLostItem, deleteLostItem } from "@/lib/front-desk-actions";
+import {
+	claimLostItem,
+	deleteLostItem,
+	reportLostItem,
+} from "@/lib/front-desk-actions";
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 
 const successDialogAtom = atom({
 	show: false,
 	message: "",
 });
+
+const reportLostItemSchema = z.object({
+	itemName: z.string().nonempty("Item name is required"),
+	description: z.string().nonempty("Description is required"),
+	imageUrl: z.url("Please enter a valid URL").optional().or(z.literal("")),
+	location: z.string().nonempty("Location is required for the lost item"),
+	dateFound: z.string().nonempty("Date found is required"),
+});
+
+function ReportLostItemDialog() {
+	const [open, setOpen] = useState(false);
+	const [showSummary, setShowSummary] = useState(false);
+	const [selectedImage, setSelectedImage] = useState<File | null>(null);
+	const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+	const form = useForm({
+		resolver: zodResolver(reportLostItemSchema),
+		defaultValues: {
+			itemName: "",
+			description: "",
+			imageUrl: "",
+			location: "",
+			dateFound: new Date().toISOString().split("T")[0],
+		},
+	});
+
+	const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		if (file) {
+			setSelectedImage(file);
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				setImagePreview(e.target?.result as string);
+			};
+			reader.readAsDataURL(file);
+		}
+	};
+
+	const { isPending, mutate } = useMutation({
+		mutationFn: async (data: z.infer<typeof reportLostItemSchema>) => {
+			const finalData = { ...data };
+			if (selectedImage) {
+				const imgResult = await uploadImage({ file: selectedImage });
+				if (imgResult.error) {
+					throw new Error(imgResult.error);
+				}
+				finalData.imageUrl = imgResult.data?.url!;
+			}
+			const response = await reportLostItem(finalData);
+			if (!response.success) {
+				throw new Error(response.error || "Failed to report lost item");
+			}
+			return { message: "Lost item reported successfully" };
+		},
+		onError: (e) => {
+			toast.error("Something went wrong while reporting the lost item.", {
+				description: e.message,
+			});
+		},
+		onSuccess: async (data) => {
+			toast.success(data.message);
+			await revalidateRoute("/front-desk/lost-and-found");
+			form.reset();
+			setSelectedImage(null);
+			setImagePreview(null);
+			setShowSummary(false);
+			setOpen(false);
+		},
+	});
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={(v) => {
+				setOpen(v);
+				if (!v) {
+					form.reset();
+					setSelectedImage(null);
+					setImagePreview(null);
+					setShowSummary(false);
+				}
+			}}
+		>
+			<DialogTrigger asChild>
+				<Button size="sm">
+					<PlusIcon className="h-4 w-4 mr-1" />
+					Report Item
+				</Button>
+			</DialogTrigger>
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Lost Item</DialogTitle>
+					<DialogDescription>
+						Log a found item to the lost and found registry.
+					</DialogDescription>
+				</DialogHeader>
+
+				<Form {...form}>
+					<form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name="itemName"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Item Name</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="e.g. Wallet, Keys, Phone..."
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="location"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Location Found</FormLabel>
+										<FormControl>
+											<Input placeholder="e.g. 101, Lobby..." {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<FormField
+							control={form.control}
+							name="dateFound"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Date Found</FormLabel>
+									<FormControl>
+										<DatePicker
+											initialDate={field.value}
+											onChange={field.onChange}
+											placeholder="Select date found"
+											minDate={
+												new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+											}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label>Image (Optional)</Label>
+								{!imagePreview ? (
+									<div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+										<Input
+											type="file"
+											accept="image/*"
+											onChange={handleImageUpload}
+											className="hidden"
+											id="lost-item-image-upload"
+										/>
+										<label
+											htmlFor="lost-item-image-upload"
+											className="cursor-pointer flex flex-col items-center gap-2"
+										>
+											<div className="text-gray-500">
+												<svg
+													className="w-8 h-8 mx-auto"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+													aria-label="Upload image"
+												>
+													<title>Upload image</title>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth="2"
+														d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+													/>
+												</svg>
+											</div>
+											<div className="text-sm">
+												<span className="text-primary font-medium">
+													Click to upload
+												</span>
+												<span className="text-gray-500">
+													{" "}
+													or drag and drop
+												</span>
+											</div>
+											<div className="text-xs text-gray-400">
+												PNG, JPG, GIF up to 10MB
+											</div>
+										</label>
+									</div>
+								) : (
+									<div className="relative w-full h-40 rounded-lg border overflow-hidden">
+										<div
+											className="w-full h-full bg-cover bg-center"
+											style={{ backgroundImage: `url(${imagePreview})` }}
+										/>
+										<Button
+											type="button"
+											variant="destructive"
+											size="sm"
+											className="absolute top-2 right-2 h-8 w-8 p-0"
+											onClick={() => {
+												setSelectedImage(null);
+												setImagePreview(null);
+											}}
+										>
+											<XIcon className="h-4 w-4" />
+										</Button>
+									</div>
+								)}
+							</div>
+							<FormField
+								control={form.control}
+								name="description"
+								render={({ field }) => (
+									<FormItem className="flex flex-col">
+										<FormLabel className="leading-none">Description</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Provide detailed description of the item, including color, size, brand, condition, and where exactly it was found..."
+												className="resize-none h-full"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<Button
+							type="button"
+							className="w-full font-semibold"
+							onClick={() => {
+								form.trigger().then((isValid) => {
+									if (isValid) setShowSummary(true);
+								});
+							}}
+							disabled={isPending}
+						>
+							Review & Submit
+						</Button>
+
+						<Dialog open={showSummary} onOpenChange={setShowSummary}>
+							<DialogContent className="max-w-lg">
+								<DialogTitle>Confirm Lost Item Report</DialogTitle>
+								<DialogDescription>
+									Please review the details before submitting the report.
+								</DialogDescription>
+
+								<div className="space-y-4">
+									<div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+										<h3 className="text-sm font-medium text-orange-900 mb-3">
+											Lost Item Summary
+										</h3>
+										<div className="space-y-3 text-sm">
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<span className="text-orange-700 font-medium block">
+														Item:
+													</span>
+													<span className="text-orange-800">
+														{form.watch("itemName")}
+													</span>
+												</div>
+												<div>
+													<span className="text-orange-700 font-medium block">
+														Location:
+													</span>
+													<span className="text-orange-800">
+														{form.watch("location")}
+													</span>
+												</div>
+											</div>
+
+											<div>
+												<span className="text-orange-700 font-medium block">
+													Date Found:
+												</span>
+												<span className="text-orange-800">
+													{form.watch("dateFound") &&
+														formatDate(
+															new Date(form.watch("dateFound")),
+															"MMMM d, yyyy",
+														)}
+												</span>
+											</div>
+
+											{form.watch("description") && (
+												<div className="pt-2 border-t border-orange-200">
+													<span className="text-orange-700 font-medium block mb-2">
+														Description:
+													</span>
+													<p className="text-orange-800 text-sm leading-relaxed bg-white rounded p-2 border border-orange-100">
+														{form.watch("description")}
+													</p>
+												</div>
+											)}
+
+											{selectedImage && imagePreview && (
+												<div className="pt-2 border-t border-orange-200">
+													<span className="text-orange-700 font-medium block mb-2">
+														Image:
+													</span>
+													<div className="w-20 h-20 rounded-lg border overflow-hidden">
+														<div
+															className="w-full h-full bg-cover bg-center"
+															style={{
+																backgroundImage: `url(${imagePreview})`,
+															}}
+														/>
+													</div>
+												</div>
+											)}
+										</div>
+									</div>
+
+									<div className="flex gap-3 pt-2">
+										<Button
+											variant="outline"
+											onClick={() => setShowSummary(false)}
+											className="flex-1"
+										>
+											Edit Details
+										</Button>
+										<Button
+											onClick={() => mutate(form.getValues())}
+											disabled={isPending}
+											className="flex-1"
+										>
+											{isPending ? (
+												<>
+													<Loader2Icon className="animate-spin mr-2 h-4 w-4" />
+													Submitting...
+												</>
+											) : (
+												"Confirm & Submit"
+											)}
+										</Button>
+									</div>
+								</div>
+							</DialogContent>
+						</Dialog>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
 function LostItemFilter({
 	queryState,
@@ -336,6 +700,7 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
 			</div>
 
 			<div className="flex items-center gap-x-2">
+				<ReportLostItemDialog />
 				<div className="flex items-center gap-2">
 					<TableFilter open={open} setOpen={setOpen}>
 						<LostItemFilter

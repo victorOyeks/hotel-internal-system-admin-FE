@@ -40,20 +40,26 @@ async function notifFetch<T>(
 	}
 }
 
-export async function getMyNotifications(page = 0, size = 20) {
+export async function getMyNotifications(
+	hotelId: string,
+	page = 0,
+	size = 20,
+) {
 	return notifFetch<NotificationPageResponse>(
-		`/my-notifications?page=${page}&size=${size}`,
+		`/my-notifications?hotelId=${hotelId}&page=${page}&size=${size}`,
 	);
 }
 
-export async function getUnreadNotificationCount() {
-	return notifFetch<number>("/unread/count");
+export async function getUnreadNotificationCount(hotelId: string) {
+	return notifFetch<number>(`/unread/count?hotelId=${hotelId}`);
 }
 
 export async function markNotificationRead(notificationId: string) {
 	return notifFetch<void>(`/${notificationId}/read`, { method: "PUT" });
 }
 
-export async function markAllNotificationsRead() {
-	return notifFetch<void>("/mark-all-read", { method: "PUT" });
+export async function markAllNotificationsRead(hotelId: string) {
+	return notifFetch<void>(`/mark-all-read?hotelId=${hotelId}`, {
+		method: "PUT",
+	});
 }

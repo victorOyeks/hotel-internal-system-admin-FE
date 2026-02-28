@@ -233,18 +233,6 @@ export function GRNDetails({ grn }: GRNDetailsProps) {
 														<div className="text-xs text-muted-foreground">
 															SKU: {item.productSku}
 														</div>
-														{(item.batchNumber || item.serialNumber) && (
-															<div className="text-xs text-muted-foreground mt-1">
-																{item.batchNumber && (
-																	<span className="mr-2">
-																		Batch: {item.batchNumber}
-																	</span>
-																)}
-																{item.serialNumber && (
-																	<span>SN: {item.serialNumber}</span>
-																)}
-															</div>
-														)}
 													</TableCell>
 													<TableCell className="text-center">
 														{item.quantityReceived} {item.unit}

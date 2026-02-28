@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { DataTablePagination } from "@/components/shared/pagination";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -78,13 +79,20 @@ import {
 	PlusIcon,
 	SearchIcon,
 	TrashIcon,
+	UploadIcon,
+	DownloadIcon,
+	FileSpreadsheetIcon,
+	XIcon,
+	CheckCircle2Icon,
+	XCircleIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 import z from "zod";
 import { useMutation } from "@tanstack/react-query";
 import {
-	addSupplier,
+	bulkUploadSuppliers,
 	deleteSupplier,
 	editSupplier,
 	exportSuppliers,
@@ -102,8 +110,215 @@ const addSupplierFormSchema = z.object({
 	productIds: z.string().array(),
 });
 
-function AddSupplier({ products }: { products: InventoryProduct[] }) {
+// --- File Upload ---
+
+function SupplierFileUploadTab({ onDone }: { onDone: () => void }) {
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [uploadState, setUploadState] = useState<"idle" | "uploading" | "complete">("idle");
+	const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(null);
+
+	function downloadExcelTemplate() {
+		import("xlsx").then((XLSX) => {
+			const data = [
+				["Name", "Email", "Phone"],
+				["ABC Suppliers", "abc@email.com", "08012345678"],
+				["XYZ Distributors", "xyz@email.com", "08098765432"],
+				["Global Supplies Ltd", "info@globalsupplies.com", "07011223344"],
+			];
+			const ws = XLSX.utils.aoa_to_sheet(data);
+			ws["!cols"] = [{ wch: 24 }, { wch: 28 }, { wch: 16 }];
+			const wb = XLSX.utils.book_new();
+			XLSX.utils.book_append_sheet(wb, ws, "Suppliers");
+			XLSX.writeFile(wb, "supplier_upload_template.xlsx");
+		});
+	}
+
+	async function handleUpload() {
+		if (!selectedFile) return;
+
+		setUploadState("uploading");
+
+		const formData = new FormData();
+		formData.append("file", selectedFile);
+
+		const res = await bulkUploadSuppliers(formData);
+
+		if (!res.success) {
+			toast.error("Upload failed", { description: res.error });
+			setUploadState("idle");
+			return;
+		}
+
+		setUploadResult(res.data ?? null);
+		setUploadState("complete");
+		revalidateRoute("/dashboard/supplies");
+	}
+
+	function handleReset() {
+		setSelectedFile(null);
+		setUploadState("idle");
+		setUploadResult(null);
+		if (fileInputRef.current) fileInputRef.current.value = "";
+	}
+
+	if (uploadState === "uploading") {
+		return (
+			<div className="flex flex-col items-center justify-center gap-6 py-12">
+				<Loader2Icon className="size-12 animate-spin text-primary" />
+				<p className="text-sm text-muted-foreground">Uploading and processing file...</p>
+			</div>
+		);
+	}
+
+	if (uploadState === "complete" && uploadResult) {
+		const { summary, results } = uploadResult;
+		return (
+			<div className="flex flex-col min-h-0 flex-1 py-4">
+				<div className="px-1 pb-3 border-b shrink-0">
+					<div className="flex items-center gap-3">
+						{summary.failedCount === 0 ? (
+							<div className="size-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+								<CheckCircle2Icon className="size-5 text-green-600" />
+							</div>
+						) : (
+							<div className="size-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+								<XCircleIcon className="size-5 text-yellow-600" />
+							</div>
+						)}
+						<div>
+							<p className="font-semibold text-sm">
+								{summary.failedCount === 0
+									? `All ${summary.totalRows} suppliers uploaded successfully!`
+									: `${summary.successCount} of ${summary.totalRows} suppliers uploaded`}
+							</p>
+							{summary.failedCount > 0 && (
+								<p className="text-xs text-muted-foreground">
+									{summary.failedCount} row{summary.failedCount !== 1 ? "s" : ""} failed
+								</p>
+							)}
+						</div>
+					</div>
+				</div>
+
+				<div className="flex-1 min-h-0 overflow-auto">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Row</TableHead>
+								<TableHead>Item</TableHead>
+								<TableHead className="text-right">Status</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{results.map((result) => (
+								<TableRow key={result.rowNumber}>
+									<TableCell>{result.rowNumber}</TableCell>
+									<TableCell className="font-medium">{result.itemIdentifier ?? "-"}</TableCell>
+									<TableCell className="text-right">
+										{result.success ? (
+											<Badge variant="green" className="gap-1">
+												<CheckCircle2Icon className="size-3" />
+												Created
+											</Badge>
+										) : (
+											<span className="text-sm text-destructive">{result.errorMessage}</span>
+										)}
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
+
+				<div className="pt-4 border-t flex gap-2 shrink-0">
+					<Button variant="outline" className="flex-1" onClick={handleReset}>
+						Upload Another
+					</Button>
+					<Button className="flex-1" onClick={onDone}>
+						Done
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-4 py-4">
+			<div className="flex items-center justify-between border rounded-lg px-3 py-2.5 bg-muted/30">
+				<p className="text-xs text-muted-foreground">
+					Download the template, fill in your data, then upload.
+				</p>
+				<Button variant="outline" size="sm" className="gap-1.5 shrink-0 ml-3" onClick={downloadExcelTemplate}>
+					<DownloadIcon className="size-3.5" />
+					Download Template
+				</Button>
+			</div>
+
+			<div>
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept=".csv,.xlsx,.xls"
+					className="hidden"
+					onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+				/>
+
+				{selectedFile ? (
+					<div
+						className="flex flex-col items-center justify-center gap-2 border rounded-lg h-30 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+						onClick={() => fileInputRef.current?.click()}
+					>
+						<div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md border shadow-sm">
+							<FileSpreadsheetIcon className="size-4 text-primary" />
+							<span className="text-sm font-medium truncate max-w-[200px]">{selectedFile.name}</span>
+							<button
+								type="button"
+								className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+								onClick={(e) => {
+									e.stopPropagation();
+									setSelectedFile(null);
+									if (fileInputRef.current) fileInputRef.current.value = "";
+								}}
+							>
+								<XIcon className="size-3.5" />
+							</button>
+						</div>
+						<span className="text-[11px] text-muted-foreground">Click to change file</span>
+					</div>
+				) : (
+					<button
+						type="button"
+						className="w-full flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-lg h-30 text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+						onClick={() => fileInputRef.current?.click()}
+					>
+						<UploadIcon className="size-5" />
+						<span className="text-sm font-medium">Click to select a file</span>
+						<span className="text-[11px]">.csv, .xlsx, .xls</span>
+					</button>
+				)}
+			</div>
+
+			<Button
+				className="w-full font-semibold"
+				disabled={!selectedFile}
+				onClick={handleUpload}
+			>
+				<UploadIcon className="size-4 mr-2" />
+				Upload & Add Suppliers
+			</Button>
+		</div>
+	);
+}
+
+// --- Add Supplier Dialog ---
+
+function AddSupplierDialog() {
 	const [open, setOpen] = useState(false);
+
+	function handleDone() {
+		setOpen(false);
+	}
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -118,11 +333,14 @@ function AddSupplier({ products }: { products: InventoryProduct[] }) {
 				</Button>
 			</DialogTrigger>
 
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Add Supplier</DialogTitle>
+			<DialogContent className="min-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+				<DialogHeader className="px-6 pt-6 pb-0">
+					<DialogTitle className="text-lg">Add Suppliers</DialogTitle>
 				</DialogHeader>
-				<AddSupplierForm onSuccess={() => setOpen(false)} products={products} />
+
+				<div className="flex-1 flex flex-col min-h-0 px-6 pb-6">
+					<SupplierFileUploadTab onDone={handleDone} />
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
@@ -294,7 +512,7 @@ function AddSupplierForm({
 	);
 }
 
-function SuppliersListToolbar({ products }: { products: InventoryProduct[] }) {
+function SuppliersListToolbar() {
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 	const [search, setSearch] = useQueryState(
 		"search",
@@ -355,7 +573,7 @@ function SuppliersListToolbar({ products }: { products: InventoryProduct[] }) {
 			</div>
 
 			<div className="flex items-center gap-x-2 ">
-				<AddSupplier products={products} />
+				<AddSupplierDialog />
 
 				<ExportDialog
 					open={exportDialogOpen}
@@ -665,7 +883,7 @@ export function SuppliesPage({
 	}, [breadcrumb, setBreadcrumb]);
 	return (
 		<div className="space-y-4 px-4 py-4">
-			<SuppliersListToolbar products={productsList} />
+			<SuppliersListToolbar />
 
 			<SuppliesTable data={data} paginationMeta={paginationMeta} />
 		</div>

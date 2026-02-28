@@ -703,10 +703,6 @@ export function CreateGRNForm({
 										Qty Acc
 									</TableHead>
 									<TableHead className="h-8 text-xs w-[80px]">Price</TableHead>
-									<TableHead className="h-8 text-xs w-[100px]">Batch</TableHead>
-									<TableHead className="h-8 text-xs w-[100px]">
-										Expiry
-									</TableHead>
 									<TableHead className="h-8 text-xs w-[50px]"></TableHead>
 								</TableRow>
 							</TableHeader>
@@ -778,51 +774,6 @@ export function CreateGRNForm({
 														})}
 														className="h-7 text-xs"
 													/>
-												)}
-											/>
-										</TableCell>
-										<TableCell className="p-2">
-											<FormField
-												control={form.control}
-												name={`items.${index}.batchNumber`}
-												render={({ field }) => (
-													<Input {...field} className="h-7 text-xs" />
-												)}
-											/>
-										</TableCell>
-										<TableCell className="p-2">
-											<FormField
-												control={form.control}
-												name={`items.${index}.expiryDate`}
-												render={({ field }) => (
-													<Popover>
-														<PopoverTrigger asChild>
-															<Button
-																variant={"outline"}
-																className={cn(
-																	"h-7 w-full text-xs px-2 text-left font-normal",
-																	!field.value && "text-muted-foreground",
-																)}
-															>
-																{field.value ? (
-																	format(field.value, "MM/dd/yy")
-																) : (
-																	<span>Pick</span>
-																)}
-															</Button>
-														</PopoverTrigger>
-														<PopoverContent
-															className="w-auto p-0"
-															align="start"
-														>
-															<Calendar
-																mode="single"
-																selected={field.value}
-																onSelect={field.onChange}
-																initialFocus
-															/>
-														</PopoverContent>
-													</Popover>
 												)}
 											/>
 										</TableCell>

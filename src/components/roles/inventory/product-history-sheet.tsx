@@ -197,14 +197,6 @@ export function ProductHistorySheet({
 
                         {/* Additional Details */}
                         <div className="grid grid-cols-2 gap-4 text-sm">
-                            {movement.batchNumber && (
-                                <div>
-                                    <span className="font-medium text-muted-foreground">
-                                        Batch Number:
-                                    </span>{" "}
-                                    {movement.batchNumber}
-                                </div>
-                            )}
                             {movement.referenceNumber && (
                                 <div>
                                     <span className="font-medium text-muted-foreground">

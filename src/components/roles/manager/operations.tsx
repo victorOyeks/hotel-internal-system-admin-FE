@@ -358,7 +358,6 @@ function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarDa
 					<div className="space-y-3">
 						{[
 							{ label: "Available", value: barData.availableItems, color: "#22c55e" },
-							{ label: "Low Stock", value: barData.lowStockItems, color: "#f59e0b" },
 							{ label: "Out of Stock", value: barData.outOfStockItems, color: "#ef4444" },
 						].map((item) => (
 							<div key={item.label} className="flex items-center gap-3">

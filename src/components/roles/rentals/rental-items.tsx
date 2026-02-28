@@ -174,7 +174,9 @@ export function RentalItemsPage({ items, breadcrumbs }: RentalItemsPageProps) {
 							Manage your rental inventory and pricing
 						</p>
 					</div>
-					<RentalItemDialog />
+					<div className="flex items-center gap-2">
+						<RentalItemDialog />
+					</div>
 				</div>
 
 				{/* Summary Stats */}

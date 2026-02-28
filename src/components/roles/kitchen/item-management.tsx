@@ -17,6 +17,13 @@ import {
 	Loader2Icon,
 	PlusIcon,
 	SearchIcon,
+	UploadIcon,
+	DownloadIcon,
+	FileSpreadsheetIcon,
+	XIcon,
+	CheckCircle2Icon,
+	XCircleIcon,
+	Trash2Icon,
 } from "lucide-react";
 import {
 	createColumnHelper,
@@ -25,9 +32,9 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import type { APIOutput } from "@/lib/action-utils";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
@@ -65,48 +72,477 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { revalidateRoute } from "@/lib/actions";
-import { addFoodItem, addBarItem } from "@/lib/restaurant-actions";
+import {
+	addFoodItem,
+	addBarItem,
+	bulkUploadFoodItems,
+	bulkUploadBarItems,
+} from "@/lib/restaurant-actions";
+import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 
 export type FoodDrinkItem =
 	APIOutput<"@get/api/restaurants/items/all">["data"][number];
 
-// Add Food Item Form
-const addFoodItemSchema = z.object({
-	name: z.string().nonempty("Food item name is required"),
-	price: z.number().positive("Price must be greater than 0"),
-});
+// ==================== BULK ADD FOOD ITEMS DIALOG ====================
 
-function AddFoodItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-	const form = useForm({
-		resolver: zodResolver(addFoodItemSchema),
-		defaultValues: {
-			name: "",
-			price: 0,
-		},
-		progressive: true,
-		reValidateMode: "onBlur",
-	});
+function BulkAddFoodItemDialog({
+	open,
+	setOpen,
+}: {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent className="sm:max-w-2xl">
+				<DialogTitle>Add Food Items</DialogTitle>
+				<DialogDescription>
+					Add food items individually or upload a file for bulk import.
+				</DialogDescription>
+				<FoodItemAddContent setOpen={setOpen} />
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+export function FoodItemsFileUpload({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
+	const [file, setFile] = useState<File | null>(null);
+	const [dragActive, setDragActive] = useState(false);
+	const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(
+		null,
+	);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof addFoodItemSchema>) => {
-			const res = await addFoodItem(data);
+		mutationFn: async (selectedFile: File) => {
+			const formData = new FormData();
+			formData.append("file", selectedFile);
+			const res = await bulkUploadFoodItems(formData);
 			if (!res.success) {
-				throw new Error(res.error || "Failed to add food item");
+				throw new Error(res.error || "Bulk upload failed");
 			}
 			return res.data;
 		},
 		onSuccess: async (data) => {
+			setUploadResult(data);
+			toast.success(
+				`Uploaded: ${data.summary.successCount} succeeded, ${data.summary.failedCount} failed`,
+			);
+			await revalidateRoute("/restaurant/item-management");
+		},
+		onError: (error: Error) => {
+			toast.error("Upload failed", { description: error.message });
+		},
+	});
+
+	const handleDrop = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		setDragActive(false);
+		const droppedFile = e.dataTransfer.files[0];
+		if (droppedFile) setFile(droppedFile);
+	}, []);
+
+	const handleDragOver = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		setDragActive(true);
+	}, []);
+
+	const handleDragLeave = useCallback(() => {
+		setDragActive(false);
+	}, []);
+
+	const downloadTemplate = () => {
+		const headers = ["Name", "Price"];
+		const rows = [
+			["Jollof Rice", "5000"],
+			["Fried Rice", "4500"],
+		];
+		const csvContent = [headers, ...rows]
+			.map((row) => row.map((cell) => `"${cell}"`).join(","))
+			.join("\n");
+
+		const blob = new Blob([csvContent], { type: "text/csv" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = "food_items_template.csv";
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
+	if (uploadResult) {
+		return (
+			<BulkResultsDisplay
+				results={uploadResult.results}
+				summary={uploadResult.summary}
+				onClose={() => setOpen(false)}
+				onReset={() => {
+					setUploadResult(null);
+					setFile(null);
+				}}
+			/>
+		);
+	}
+
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between p-3 bg-muted/50 border rounded-md">
+				<div className="flex items-center gap-3">
+					<FileSpreadsheetIcon className="w-5 h-5 text-green-600 shrink-0" />
+					<p className="text-sm text-muted-foreground">
+						Download the template, fill it in, and upload it below
+					</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="shrink-0 ml-3"
+					onClick={downloadTemplate}
+				>
+					<DownloadIcon className="h-4 w-4 mr-2" />
+					Download Template
+				</Button>
+			</div>
+
+			<div
+				className={cn(
+					"border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+					dragActive
+						? "border-primary bg-primary/5"
+						: "border-muted-foreground/25 hover:border-primary/50",
+				)}
+				onDrop={handleDrop}
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onClick={() => fileInputRef.current?.click()}
+			>
+				<input
+					ref={fileInputRef}
+					type="file"
+					className="hidden"
+					accept=".csv,.xlsx,.xls"
+					onChange={(e) => {
+						const selectedFile = e.target.files?.[0];
+						if (selectedFile) setFile(selectedFile);
+					}}
+				/>
+				<FileSpreadsheetIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+				<p className="text-sm font-medium">
+					{file ? file.name : "Drag and drop your file here"}
+				</p>
+				<p className="text-xs text-muted-foreground mt-1">
+					{file
+						? `${(file.size / 1024).toFixed(1)} KB`
+						: "Supports CSV, XLS, XLSX"}
+				</p>
+			</div>
+
+			{file && (
+				<div className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
+					<div className="flex items-center gap-2">
+						<FileSpreadsheetIcon className="h-4 w-4 text-green-600" />
+						<span className="text-sm truncate max-w-[250px]">{file.name}</span>
+					</div>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="h-6 w-6"
+						onClick={() => {
+							setFile(null);
+							if (fileInputRef.current) fileInputRef.current.value = "";
+						}}
+					>
+						<XIcon className="h-4 w-4" />
+					</Button>
+				</div>
+			)}
+
+			<div className="flex gap-2 justify-end">
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => setOpen(false)}
+					disabled={isPending}
+				>
+					Cancel
+				</Button>
+				<Button
+					disabled={!file || isPending}
+					onClick={() => file && mutate(file)}
+				>
+					{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+					Upload File
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+// ==================== BULK ADD BAR ITEMS DIALOG ====================
+
+function BulkAddBarItemDialog({
+	open,
+	setOpen,
+}: {
+	open: boolean;
+	setOpen: (open: boolean) => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent className="sm:max-w-2xl">
+				<DialogTitle>Add Bar Items</DialogTitle>
+				<DialogDescription>
+					Add bar items individually or upload a file for bulk import.
+				</DialogDescription>
+				<BarItemAddContent setOpen={setOpen} />
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+export function BarItemsFileUpload({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
+	const [file, setFile] = useState<File | null>(null);
+	const [dragActive, setDragActive] = useState(false);
+	const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(
+		null,
+	);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (selectedFile: File) => {
+			const formData = new FormData();
+			formData.append("file", selectedFile);
+			const res = await bulkUploadBarItems(formData);
+			if (!res.success) {
+				throw new Error(res.error || "Bulk upload failed");
+			}
+			return res.data;
+		},
+		onSuccess: async (data) => {
+			setUploadResult(data);
+			toast.success(
+				`Uploaded: ${data.summary.successCount} succeeded, ${data.summary.failedCount} failed`,
+			);
+			await revalidateRoute("/restaurant/item-management");
+		},
+		onError: (error: Error) => {
+			toast.error("Upload failed", { description: error.message });
+		},
+	});
+
+	const handleDrop = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		setDragActive(false);
+		const droppedFile = e.dataTransfer.files[0];
+		if (droppedFile) setFile(droppedFile);
+	}, []);
+
+	const handleDragOver = useCallback((e: React.DragEvent) => {
+		e.preventDefault();
+		setDragActive(true);
+	}, []);
+
+	const handleDragLeave = useCallback(() => {
+		setDragActive(false);
+	}, []);
+
+	const downloadTemplate = () => {
+		const headers = ["Name", "Price"];
+		const rows = [
+			["Heineken", "2000"],
+			["Chapman", "1500"],
+		];
+		const csvContent = [headers, ...rows]
+			.map((row) => row.map((cell) => `"${cell}"`).join(","))
+			.join("\n");
+
+		const blob = new Blob([csvContent], { type: "text/csv" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = "bar_items_template.csv";
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
+	if (uploadResult) {
+		return (
+			<BulkResultsDisplay
+				results={uploadResult.results}
+				summary={uploadResult.summary}
+				onClose={() => setOpen(false)}
+				onReset={() => {
+					setUploadResult(null);
+					setFile(null);
+				}}
+			/>
+		);
+	}
+
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between p-3 bg-muted/50 border rounded-md">
+				<div className="flex items-center gap-3">
+					<FileSpreadsheetIcon className="w-5 h-5 text-green-600 shrink-0" />
+					<p className="text-sm text-muted-foreground">
+						Download the template, fill it in, and upload it below
+					</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="shrink-0 ml-3"
+					onClick={downloadTemplate}
+				>
+					<DownloadIcon className="h-4 w-4 mr-2" />
+					Download Template
+				</Button>
+			</div>
+
+			<div
+				className={cn(
+					"border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+					dragActive
+						? "border-primary bg-primary/5"
+						: "border-muted-foreground/25 hover:border-primary/50",
+				)}
+				onDrop={handleDrop}
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onClick={() => fileInputRef.current?.click()}
+			>
+				<input
+					ref={fileInputRef}
+					type="file"
+					className="hidden"
+					accept=".csv,.xlsx,.xls"
+					onChange={(e) => {
+						const selectedFile = e.target.files?.[0];
+						if (selectedFile) setFile(selectedFile);
+					}}
+				/>
+				<FileSpreadsheetIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+				<p className="text-sm font-medium">
+					{file ? file.name : "Drag and drop your file here"}
+				</p>
+				<p className="text-xs text-muted-foreground mt-1">
+					{file
+						? `${(file.size / 1024).toFixed(1)} KB`
+						: "Supports CSV, XLS, XLSX"}
+				</p>
+			</div>
+
+			{file && (
+				<div className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
+					<div className="flex items-center gap-2">
+						<FileSpreadsheetIcon className="h-4 w-4 text-green-600" />
+						<span className="text-sm truncate max-w-[250px]">{file.name}</span>
+					</div>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="h-6 w-6"
+						onClick={() => {
+							setFile(null);
+							if (fileInputRef.current) fileInputRef.current.value = "";
+						}}
+					>
+						<XIcon className="h-4 w-4" />
+					</Button>
+				</div>
+			)}
+
+			<div className="flex gap-2 justify-end">
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => setOpen(false)}
+					disabled={isPending}
+				>
+					Cancel
+				</Button>
+				<Button
+					disabled={!file || isPending}
+					onClick={() => file && mutate(file)}
+				>
+					{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+					Upload File
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+// ==================== MANUAL ADD FORMS (MULTI-ROW) ====================
+
+const foodItemListSchema = z.object({
+	items: z
+		.array(
+			z.object({
+				name: z.string().min(1, "Name is required"),
+				price: z.number().positive("Price must be greater than 0"),
+			}),
+		)
+		.min(1, "At least one item is required"),
+});
+
+function FoodItemManualAdd({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
+	const form = useForm({
+		resolver: zodResolver(foodItemListSchema),
+		defaultValues: {
+			items: [{ name: "", price: 0 }],
+		},
+		reValidateMode: "onBlur",
+	});
+
+	const { fields, append, remove } = useFieldArray({
+		control: form.control,
+		name: "items",
+	});
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof foodItemListSchema>) => {
+			let successCount = 0;
+			let failedCount = 0;
+			for (const item of data.items) {
+				const res = await addFoodItem(item);
+				if (res.success) successCount++;
+				else failedCount++;
+			}
+			return { successCount, failedCount, total: data.items.length };
+		},
+		onSuccess: async ({ successCount, failedCount }) => {
+			if (failedCount === 0) {
+				toast.success(`All ${successCount} food items added successfully`);
+			} else {
+				toast.warning(
+					`${successCount} succeeded, ${failedCount} failed`,
+				);
+			}
 			form.reset();
 			setOpen(false);
-			toast.success("Food item added successfully", {
-				description: data,
-			});
 			await revalidateRoute("/restaurant/item-management");
 		},
 		onError: () => {
 			toast.error("Something went wrong", {
-				description: "Failed to add food item",
+				description: "Failed to add food items",
 			});
 		},
 	});
@@ -117,38 +553,75 @@ function AddFoodItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 				className="space-y-4"
 				onSubmit={form.handleSubmit((data) => mutate(data))}
 			>
-				<FormField
-					name="name"
-					control={form.control}
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Food Item Name</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g Chicken Curry" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+				<div className="max-h-[280px] overflow-y-auto space-y-3 pr-1">
+					{fields.map((field, index) => (
+						<div
+							key={field.id}
+							className="flex items-end gap-2 p-3 border rounded-lg"
+						>
+							<FormField
+								control={form.control}
+								name={`items.${index}.name`}
+								render={({ field }) => (
+									<FormItem className="flex-1">
+										<FormLabel className="text-xs">Name</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="e.g Jollof Rice"
+												{...field}
+												className="h-9"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={`items.${index}.price`}
+								render={() => (
+									<FormItem className="w-28">
+										<FormLabel className="text-xs">Price</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												step="0.01"
+												placeholder="0"
+												className="h-9"
+												{...form.register(`items.${index}.price`, {
+													valueAsNumber: true,
+												})}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							{fields.length > 1 && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="h-9 w-9 shrink-0 text-red-500 hover:text-red-600"
+									onClick={() => remove(index)}
+								>
+									<Trash2Icon className="h-4 w-4" />
+								</Button>
+							)}
+						</div>
+					))}
+				</div>
 
-				<FormField
-					control={form.control}
-					name="price"
-					render={() => (
-						<FormItem>
-							<FormLabel>Price</FormLabel>
-							<FormControl>
-								<Input
-									type="number"
-									step="0.01"
-									placeholder="e.g 15.99"
-									{...form.register("price", { valueAsNumber: true })}
-								/>
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="w-full"
+					onClick={() => append({ name: "", price: 0 })}
+				>
+					<PlusIcon className="h-4 w-4 mr-2" />
+					Add Another Item
+				</Button>
 
 				<div className="flex gap-2 justify-end">
 					<Button
@@ -161,7 +634,7 @@ function AddFoodItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 					</Button>
 					<Button type="submit" disabled={isPending}>
 						{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
-						Add Food Item
+						Add {fields.length} {fields.length === 1 ? "Item" : "Items"}
 					</Button>
 				</div>
 			</form>
@@ -169,44 +642,61 @@ function AddFoodItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 	);
 }
 
-// Add Bar Item Form
-const addBarItemSchema = z.object({
-	name: z.string().nonempty("Bar item name is required"),
-	quantity: z.number().nonnegative("Quantity must be 0 or greater"),
-	price: z.number().positive("Price must be greater than 0"),
+const barItemListSchema = z.object({
+	items: z
+		.array(
+			z.object({
+				name: z.string().min(1, "Name is required"),
+				price: z.number().positive("Price must be greater than 0"),
+			}),
+		)
+		.min(1, "At least one item is required"),
 });
 
-function AddBarItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+function BarItemManualAdd({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
 	const form = useForm({
-		resolver: zodResolver(addBarItemSchema),
+		resolver: zodResolver(barItemListSchema),
 		defaultValues: {
-			name: "",
-			quantity: 0,
-			price: 0,
+			items: [{ name: "", price: 0 }],
 		},
-		progressive: true,
 		reValidateMode: "onBlur",
 	});
 
+	const { fields, append, remove } = useFieldArray({
+		control: form.control,
+		name: "items",
+	});
+
 	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof addBarItemSchema>) => {
-			const res = await addBarItem(data);
-			if (!res.success) {
-				throw new Error(res.error || "Failed to add bar item");
+		mutationFn: async (data: z.infer<typeof barItemListSchema>) => {
+			let successCount = 0;
+			let failedCount = 0;
+			for (const item of data.items) {
+				const res = await addBarItem(item);
+				if (res.success) successCount++;
+				else failedCount++;
 			}
-			return res.data;
+			return { successCount, failedCount, total: data.items.length };
 		},
-		onSuccess: async (data) => {
+		onSuccess: async ({ successCount, failedCount }) => {
+			if (failedCount === 0) {
+				toast.success(`All ${successCount} bar items added successfully`);
+			} else {
+				toast.warning(
+					`${successCount} succeeded, ${failedCount} failed`,
+				);
+			}
 			form.reset();
 			setOpen(false);
-			toast.success("Bar item added successfully", {
-				description: data,
-			});
 			await revalidateRoute("/restaurant/item-management");
 		},
 		onError: () => {
 			toast.error("Something went wrong", {
-				description: "Failed to add bar item",
+				description: "Failed to add bar items",
 			});
 		},
 	});
@@ -217,58 +707,75 @@ function AddBarItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 				className="space-y-4"
 				onSubmit={form.handleSubmit((data) => mutate(data))}
 			>
-				<FormField
-					name="name"
-					control={form.control}
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Bar Item Name</FormLabel>
-							<FormControl>
-								<Input placeholder="e.g Mojito" {...field} />
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-
-				<div className="grid grid-cols-2 gap-4">
-					<FormField
-						control={form.control}
-						name="quantity"
-						render={() => (
-							<FormItem>
-								<FormLabel>Quantity</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 50"
-										{...form.register("quantity", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="price"
-						render={() => (
-							<FormItem>
-								<FormLabel>Price</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										step="0.01"
-										placeholder="e.g 12.50"
-										{...form.register("price", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+				<div className="max-h-[280px] overflow-y-auto space-y-3 pr-1">
+					{fields.map((field, index) => (
+						<div
+							key={field.id}
+							className="flex items-end gap-2 p-3 border rounded-lg"
+						>
+							<FormField
+								control={form.control}
+								name={`items.${index}.name`}
+								render={({ field }) => (
+									<FormItem className="flex-1">
+										<FormLabel className="text-xs">Name</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="e.g Heineken"
+												{...field}
+												className="h-9"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={`items.${index}.price`}
+								render={() => (
+									<FormItem className="w-28">
+										<FormLabel className="text-xs">Price</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												step="0.01"
+												placeholder="0"
+												className="h-9"
+												{...form.register(`items.${index}.price`, {
+													valueAsNumber: true,
+												})}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							{fields.length > 1 && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									className="h-9 w-9 shrink-0 text-red-500 hover:text-red-600"
+									onClick={() => remove(index)}
+								>
+									<Trash2Icon className="h-4 w-4" />
+								</Button>
+							)}
+						</div>
+					))}
 				</div>
+
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="w-full"
+					onClick={() => append({ name: "", price: 0 })}
+				>
+					<PlusIcon className="h-4 w-4 mr-2" />
+					Add Another Item
+				</Button>
 
 				<div className="flex gap-2 justify-end">
 					<Button
@@ -281,18 +788,141 @@ function AddBarItemForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 					</Button>
 					<Button type="submit" disabled={isPending}>
 						{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
-						Add Bar Item
+						Add {fields.length} {fields.length === 1 ? "Item" : "Items"}
 					</Button>
 				</div>
 			</form>
 		</Form>
 	);
 }
+
+// ==================== COMBINED CONTENT (TABS: UPLOAD + MANUAL ADD) ====================
+
+export function FoodItemAddContent({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
+	return (
+		<Tabs defaultValue="upload" className="w-full">
+			<TabsList className="grid w-full grid-cols-2">
+				<TabsTrigger value="upload">Upload File</TabsTrigger>
+				<TabsTrigger value="manual">Add Manually</TabsTrigger>
+			</TabsList>
+			<TabsContent value="upload" className="mt-4">
+				<FoodItemsFileUpload setOpen={setOpen} />
+			</TabsContent>
+			<TabsContent value="manual" className="mt-4">
+				<FoodItemManualAdd setOpen={setOpen} />
+			</TabsContent>
+		</Tabs>
+	);
+}
+
+export function BarItemAddContent({
+	setOpen,
+}: {
+	setOpen: (open: boolean) => void;
+}) {
+	return (
+		<Tabs defaultValue="upload" className="w-full">
+			<TabsList className="grid w-full grid-cols-2">
+				<TabsTrigger value="upload">Upload File</TabsTrigger>
+				<TabsTrigger value="manual">Add Manually</TabsTrigger>
+			</TabsList>
+			<TabsContent value="upload" className="mt-4">
+				<BarItemsFileUpload setOpen={setOpen} />
+			</TabsContent>
+			<TabsContent value="manual" className="mt-4">
+				<BarItemManualAdd setOpen={setOpen} />
+			</TabsContent>
+		</Tabs>
+	);
+}
+
+// ==================== SHARED RESULTS DISPLAY ====================
+
+function BulkResultsDisplay({
+	results,
+	summary,
+	onClose,
+	onReset,
+}: {
+	results: Array<{
+		rowNumber: number;
+		success: boolean;
+		itemIdentifier: string | null;
+		errorMessage: string | null;
+	}>;
+	summary?: BulkUploadResult["summary"];
+	onClose: () => void;
+	onReset: () => void;
+}) {
+	const successCount = summary?.successCount ?? results.filter((r) => r.success).length;
+	const failedCount = summary?.failedCount ?? results.filter((r) => !r.success).length;
+	const total = summary?.totalRows ?? results.length;
+
+	return (
+		<div className="space-y-4">
+			<div className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
+				<p className="text-sm text-muted-foreground">
+					{total} {total === 1 ? "item" : "items"} processed
+				</p>
+				<div className="flex items-center gap-3 text-xs">
+					<span className="flex items-center gap-1 text-green-600">
+						<CheckCircle2Icon className="h-3.5 w-3.5" />
+						{successCount} succeeded
+					</span>
+					{failedCount > 0 && (
+						<span className="flex items-center gap-1 text-destructive">
+							<XCircleIcon className="h-3.5 w-3.5" />
+							{failedCount} failed
+						</span>
+					)}
+				</div>
+			</div>
+
+			<div className="max-h-[280px] overflow-y-auto border rounded-md divide-y">
+				{results.map((result) => (
+					<div
+						key={result.rowNumber}
+						className="flex items-center gap-3 px-3 py-2 text-sm"
+					>
+						<span className="text-xs text-muted-foreground tabular-nums w-6 shrink-0">
+							{result.rowNumber}
+						</span>
+						{result.success ? (
+							<CheckCircle2Icon className="h-3.5 w-3.5 text-green-600 shrink-0" />
+						) : (
+							<XCircleIcon className="h-3.5 w-3.5 text-destructive shrink-0" />
+						)}
+						<span className="truncate text-sm">
+							{result.itemIdentifier || "Unknown"}
+						</span>
+						{result.errorMessage && (
+							<span className="text-xs text-muted-foreground ml-auto truncate max-w-[180px]">
+								{result.errorMessage}
+							</span>
+						)}
+					</div>
+				))}
+			</div>
+
+			<div className="flex gap-2 justify-end">
+				<Button type="button" variant="outline" size="sm" onClick={onReset}>
+					Add More
+				</Button>
+				<Button size="sm" onClick={onClose}>Done</Button>
+			</div>
+		</div>
+	);
+}
+
+// ==================== EDIT ITEM FORM (UNCHANGED) ====================
 
 const editItemSchema = z.object({
 	name: z.string().min(1, "Item name is required"),
 	price: z.number().positive("Price must be greater than 0"),
-	quantity: z.number().nonnegative("Quantity must be 0 or greater").optional(),
 });
 
 function EditItemForm({
@@ -307,7 +937,6 @@ function EditItemForm({
 		defaultValues: {
 			name: item.name,
 			price: item.price,
-			quantity: item.quantity || undefined,
 		},
 		progressive: true,
 		reValidateMode: "onBlur",
@@ -374,26 +1003,6 @@ function EditItemForm({
 					)}
 				/>
 
-				{item.itemType === "DRINK" && (
-					<FormField
-						control={form.control}
-						name="quantity"
-						render={() => (
-							<FormItem>
-								<FormLabel>Quantity</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 50"
-										{...form.register("quantity", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				)}
-
 				<div className="flex gap-2 justify-end">
 					<Button
 						type="button"
@@ -412,6 +1021,8 @@ function EditItemForm({
 		</Form>
 	);
 }
+
+// ==================== ITEM ACTIONS CELL (UNCHANGED) ====================
 
 function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 	const [editOpen, setEditOpen] = useState(false);
@@ -503,6 +1114,8 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 	);
 }
 
+// ==================== TABLE COLUMNS (UNCHANGED) ====================
+
 const columnHelper = createColumnHelper<FoodDrinkItem>();
 
 const columns = [
@@ -529,17 +1142,17 @@ const columns = [
 	columnHelper.accessor("price", {
 		header: "Price",
 		cell: (info) => (
-			<span className="font-medium">₦{info.getValue().toLocaleString()}</span>
+			<span className="font-medium">{info.getValue().toLocaleString()}</span>
 		),
 	}),
-	columnHelper.accessor("quantity", {
-		header: "Quantity",
+	columnHelper.accessor("inStock", {
+		header: "Status",
 		cell: (info) => {
-			const value = info.getValue();
-			return (
-				<span className={cn(value === 0 && "text-destructive font-medium")}>
-					{value ?? "N/A"}
-				</span>
+			const inStock = info.getValue();
+			return inStock ? (
+				<Badge variant="green" className="text-xs">In Stock</Badge>
+			) : (
+				<Badge variant="destructive" className="text-xs">Out of Stock</Badge>
 			);
 		},
 	}),
@@ -562,6 +1175,8 @@ const columns = [
 	}),
 ];
 
+// ==================== MAIN COMPONENT (UPDATED) ====================
+
 type FoodItemsManagementProps = {
 	items: FoodDrinkItem[];
 };
@@ -573,7 +1188,8 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 	);
 	const [search, setSearch] = useQueryState("search");
 	const [filterOpen, setFilterOpen] = useState(false);
-	const [addItemOpen, setAddItemOpen] = useState(false);
+	const [addFoodOpen, setAddFoodOpen] = useState(false);
+	const [addBarOpen, setAddBarOpen] = useState(false);
 
 	// Client-side filtering based on search
 	const filteredItems = useMemo(() => {
@@ -648,28 +1264,18 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 						</div>
 					</TableFilter>
 
-					<Dialog open={addItemOpen} onOpenChange={setAddItemOpen}>
-						<DialogTrigger asChild>
-							<Button size="sm" className="rounded-md md:rounded-xl">
-								<PlusIcon className="h-4 w-4 mr-2" />
-								Add {itemType === "FOOD" ? "Food" : "Drink"}
-							</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogTitle>
-								Add {itemType === "FOOD" ? "Food" : "Drink"} Item
-							</DialogTitle>
-							<DialogDescription>
-								Create a new {itemType === "FOOD" ? "food" : "drink"} item in
-								the system.
-							</DialogDescription>
-							{itemType === "FOOD" ? (
-								<AddFoodItemForm setOpen={setAddItemOpen} />
-							) : (
-								<AddBarItemForm setOpen={setAddItemOpen} />
-							)}
-						</DialogContent>
-					</Dialog>
+					<Button
+						size="sm"
+						className="rounded-md md:rounded-xl"
+						onClick={() =>
+							itemType === "FOOD"
+								? setAddFoodOpen(true)
+								: setAddBarOpen(true)
+						}
+					>
+						<PlusIcon className="h-4 w-4 mr-2" />
+						Add {itemType === "FOOD" ? "Food" : "Drink"}
+					</Button>
 				</div>
 			</div>
 
@@ -718,6 +1324,10 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 					</TableBody>
 				</Table>
 			</div>
+
+			{/* Bulk Add Dialogs */}
+			<BulkAddFoodItemDialog open={addFoodOpen} setOpen={setAddFoodOpen} />
+			<BulkAddBarItemDialog open={addBarOpen} setOpen={setAddBarOpen} />
 		</div>
 	);
 }

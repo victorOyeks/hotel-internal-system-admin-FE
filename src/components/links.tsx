@@ -201,11 +201,6 @@ export const restaurantLinks = [
 		url: "/dashboard",
 	},
 	{ title: "New Order", icon: <PlusIcon />, url: "/dashboard/create-order" },
-	{
-		title: "Inventory",
-		icon: <ToolCaseIcon />,
-		url: "/dashboard/inventory",
-	},
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
 

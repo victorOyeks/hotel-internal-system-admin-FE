@@ -208,8 +208,7 @@ function MenuItemCard({
 	item: MenuItem;
 	onAddToCart: (item: MenuItem) => void;
 }) {
-	const isOutOfStock = item.quantity === 0;
-	const isLowStock = item.quantity > 0 && item.quantity <= 5;
+	const isOutOfStock = !item.inStock;
 
 	return (
 		<div
@@ -244,16 +243,9 @@ function MenuItemCard({
 							<Badge variant="destructive" className="text-xs">
 								Out of Stock
 							</Badge>
-						) : isLowStock ? (
-							<Badge
-								variant="outline"
-								className="text-xs text-orange-600 border-orange-600"
-							>
-								Low Stock ({item.quantity})
-							</Badge>
 						) : (
-							<Badge variant="outline" className="text-xs">
-								{item.quantity} in stock
+							<Badge variant="green" className="text-xs">
+								In Stock
 							</Badge>
 						)}
 					</div>
@@ -769,8 +761,7 @@ export function OrderPage({
 
 	// Add item to cart
 	const addToCart = (item: MenuItem) => {
-		// Check if item is out of stock
-		if (item.quantity === 0) {
+		if (!item.inStock) {
 			toast.error(`${item.name} is out of stock`);
 			return;
 		}
@@ -779,12 +770,6 @@ export function OrderPage({
 			const existingItem = prev.find((cartItem) => cartItem.id === item.id);
 
 			if (existingItem) {
-				// Check if adding more would exceed available stock
-				if (existingItem.quantity + 1 > item.quantity) {
-					toast.error(`Only ${item.quantity} ${item.name} available in stock`);
-					return prev;
-				}
-
 				return prev.map((cartItem) =>
 					cartItem.id === item.id
 						? { ...cartItem, quantity: cartItem.quantity + 1 }
@@ -920,13 +905,13 @@ export function OrderPage({
 						</div>
 						<div className="text-sm text-gray-600">
 							<span className="font-medium">
-								{foodItems.filter((item) => item.quantity > 0).length}
+								{foodItems.filter((item) => item.inStock).length}
 							</span>{" "}
 							in stock
 						</div>
 						<div className="text-sm text-gray-600">
 							<span className="font-medium">
-								{foodItems.filter((item) => item.quantity === 0).length}
+								{foodItems.filter((item) => !item.inStock).length}
 							</span>{" "}
 							out of stock
 						</div>

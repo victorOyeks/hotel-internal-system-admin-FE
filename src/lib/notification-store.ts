@@ -17,3 +17,6 @@ export const notificationPageAtom = atom<number>(0);
 
 /** Whether there are more pages to load. */
 export const notificationHasNextAtom = atom<boolean>(false);
+
+/** Current hotel ID for notification API calls. */
+export const notificationHotelIdAtom = atom<string>("");
