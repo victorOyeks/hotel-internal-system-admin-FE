@@ -754,7 +754,6 @@ export function AddFoodItem({ setOpen }: { setOpen: (open: boolean) => void }) {
 
 const addBarItemSchema = z.object({
 	name: z.string().nonempty("Bar item name is required"),
-	quantity: z.number().nonnegative("Quantity must be 0 or greater"),
 	price: z.number().positive("Price must be greater than 0"),
 });
 
@@ -763,7 +762,6 @@ export function AddBarItem({ setOpen }: { setOpen: (open: boolean) => void }) {
 		resolver: zodResolver(addBarItemSchema),
 		defaultValues: {
 			name: "",
-			quantity: 0,
 			price: 0,
 		},
 		progressive: true,
@@ -813,44 +811,24 @@ export function AddBarItem({ setOpen }: { setOpen: (open: boolean) => void }) {
 					)}
 				/>
 
-				<div className="grid grid-cols-2 gap-4">
-					<FormField
-						control={form.control}
-						name="quantity"
-						render={() => (
-							<FormItem>
-								<FormLabel>Quantity</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 50"
-										{...form.register("quantity", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="price"
-						render={() => (
-							<FormItem>
-								<FormLabel>Price</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										step="0.01"
-										placeholder="e.g 12.50"
-										{...form.register("price", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
+				<FormField
+					control={form.control}
+					name="price"
+					render={() => (
+						<FormItem>
+							<FormLabel>Price</FormLabel>
+							<FormControl>
+								<Input
+									type="number"
+									step="0.01"
+									placeholder="e.g 12.50"
+									{...form.register("price", { valueAsNumber: true })}
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 
 				<Button
 					type="submit"

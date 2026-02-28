@@ -35,9 +35,10 @@ import {
 	PlusIcon,
 	PackageIcon,
 	BarChart3Icon,
-	CalendarIcon,
+	AlertTriangleIcon,
 	MoreVerticalIcon,
 	EditIcon,
+	XCircleIcon,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { ProductsToolbar } from "./products";
@@ -177,10 +178,6 @@ const columns = [
 		header: "Brand",
 		cell: (info) => <span className="font-medium">{info.getValue()}</span>,
 	}),
-	columnHelper.accessor("shelfLifeDays", {
-		header: "Shelf life",
-		cell: (info) => Intl.NumberFormat().format(info.getValue()),
-	}),
 	columnHelper.accessor("status", {
 		header: "Status",
 		cell: (info) => {
@@ -248,7 +245,7 @@ export function ProductCatalogPage({
 						Product Catalog
 					</h1>
 					<p className="text-muted-foreground mt-1">
-						Manage your product inventory and track batches
+						Manage your product inventory
 					</p>
 				</div>
 				<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -291,21 +288,21 @@ export function ProductCatalogPage({
 				/>
 
 				<StatCard
-					title="Batch tracked"
+					title="Inactive products"
 					bgClass="bg-yellow-600/10"
-					icon={<CalendarIcon />}
+					icon={<AlertTriangleIcon />}
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(productsStats.batchTrackedProducts)}
+					}).format(productsStats.inactiveProducts)}
 				/>
 
 				<StatCard
-					title="Expiry tracked"
-					bgClass="bg-purple-600/10"
-					icon={<CalendarIcon />}
+					title="Low stock"
+					bgClass="bg-red-600/10"
+					icon={<XCircleIcon />}
 					value={Intl.NumberFormat("en-US", {
 						compactDisplay: "short",
-					}).format(productsStats.expiryTrackedProducts)}
+					}).format(productsStats.lowStockProducts)}
 				/>
 			</div>
 
@@ -857,85 +854,26 @@ export function AddProductForm({
 							</div>
 						</div>
 
-						{/* Tracking & Storage */}
+						{/* Storage */}
 						<div className="space-y-4">
-							<h3 className="text-lg font-medium">Tracking & Storage</h3>
-							<div className="grid grid-cols-2 gap-4">
-								<FormField
-									control={form.control}
-									name="trackBatches"
-									render={({ field }) => (
-										<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-											<FormControl>
-												<Checkbox
-													checked={field.value}
-													onCheckedChange={field.onChange}
-												/>
-											</FormControl>
-											<div className="space-y-1 leading-none">
-												<FormLabel>Track Batches</FormLabel>
-											</div>
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="trackExpiry"
-									render={({ field }) => (
-										<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-											<FormControl>
-												<Checkbox
-													checked={field.value}
-													onCheckedChange={field.onChange}
-												/>
-											</FormControl>
-											<div className="space-y-1 leading-none">
-												<FormLabel>Track Expiry</FormLabel>
-											</div>
-										</FormItem>
-									)}
-								/>
-							</div>
-							<div className="grid grid-cols-2 gap-4">
-								<FormField
-									control={form.control}
-									name="storageRequirements"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Storage Reqs</FormLabel>
-											<FormControl>
-												<Input
-													placeholder="e.g. Dry place"
-													{...field}
-													value={field.value || ""}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="shelfLifeDays"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Shelf Life (Days)</FormLabel>
-											<FormControl>
-												<Input
-													type="number"
-													placeholder="0"
-													{...field}
-													onChange={(e) =>
-														field.onChange(Number.parseFloat(e.target.value))
-													}
-													value={field.value || ""}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
+							<h3 className="text-lg font-medium">Storage</h3>
+							<FormField
+								control={form.control}
+								name="storageRequirements"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Storage Requirements</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="e.g. Dry place"
+												{...field}
+												value={field.value || ""}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 						</div>
 					</div>
 				</ScrollArea>
@@ -1005,21 +943,6 @@ function ProductDetailsView({
 				<div>
 					<p className="text-sm text-muted-foreground">Maximum Stock</p>
 					<p className="font-semibold">{product.maxStockLevel}</p>
-				</div>
-			</div>
-
-			<div className="grid grid-cols-2 gap-4">
-				<div>
-					<p className="text-sm text-muted-foreground">Batch Tracking</p>
-					<Badge variant={product.trackBatches ? "green" : "red"}>
-						{product.trackBatches ? "Enabled" : "Disabled"}
-					</Badge>
-				</div>
-				<div>
-					<p className="text-sm text-muted-foreground">Expiry Tracking</p>
-					<Badge variant={product.trackExpiry ? "green" : "red"}>
-						{product.trackExpiry ? "Enabled" : "Disabled"}
-					</Badge>
 				</div>
 			</div>
 

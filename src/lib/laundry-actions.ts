@@ -3,6 +3,9 @@
 import { verifySession } from "./dal";
 import { $fetch } from "./fetch";
 import { parseError } from "./action-utils";
+import type { ServerActionResponse } from "./action-utils";
+import { env } from "@/env";
+import type { BulkUploadResult } from "./bulk-upload-types";
 
 // ─── Dashboard ───────────────────────────────────────────────
 
@@ -209,5 +212,40 @@ export async function getLaundryPaymentSummary(orderId: string) {
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };
+	}
+}
+
+// ==================== BULK LAUNDRY ITEM UPLOAD ====================
+
+export async function bulkUploadLaundryItems(
+	formData: FormData,
+): ServerActionResponse<BulkUploadResult> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/hotels/laundry/items/bulk-upload`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+				body: formData,
+			},
+		);
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: data.message || "Bulk upload failed",
+			};
+		}
+
+		return { success: true, data: data.data };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Bulk upload failed",
+		};
 	}
 }

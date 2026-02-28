@@ -9,6 +9,7 @@ import {
 	notificationRefetchTriggerAtom,
 	notificationPageAtom,
 	notificationHasNextAtom,
+	notificationHotelIdAtom,
 } from "@/lib/notification-store";
 import { getTotalUnreadCount, getSessionInfo } from "@/lib/chat-actions";
 import {
@@ -68,8 +69,14 @@ function ChatGlobalInner({
 	const setNotifUnreadCount = useSetAtom(notificationUnreadCountAtom);
 	const setNotifPage = useSetAtom(notificationPageAtom);
 	const setNotifHasNext = useSetAtom(notificationHasNextAtom);
+	const setNotifHotelId = useSetAtom(notificationHotelIdAtom);
 	const notifRefetchTrigger = useAtomValue(notificationRefetchTriggerAtom);
 	const notifInitialMount = useRef(true);
+
+	// Sync hotelId to notification store so popover can use it
+	useEffect(() => {
+		setNotifHotelId(hotelId);
+	}, [hotelId, setNotifHotelId]);
 
 	// Global WebSocket connection — enables sound + desktop notifications on all pages
 	useChatWebSocket(token, hotelId, userId, role);
@@ -101,8 +108,8 @@ function ChatGlobalInner({
 
 	const fetchNotificationData = useCallback(async () => {
 		const [notifResult, countResult] = await Promise.all([
-			getMyNotifications(0, 20),
-			getUnreadNotificationCount(),
+			getMyNotifications(hotelId, 0, 20),
+			getUnreadNotificationCount(hotelId),
 		]);
 
 		if (notifResult.success) {
@@ -113,7 +120,7 @@ function ChatGlobalInner({
 		if (countResult.success && countResult.data !== undefined) {
 			setNotifUnreadCount(countResult.data as number);
 		}
-	}, [setNotifications, setNotifUnreadCount, setNotifHasNext, setNotifPage]);
+	}, [hotelId, setNotifications, setNotifUnreadCount, setNotifHasNext, setNotifPage]);
 
 	useEffect(() => {
 		fetchNotificationData();

@@ -4,6 +4,8 @@ import type { ServerActionResponse } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch } from "./fetch";
 import type { HotelRole } from "./types";
+import { env } from "@/env";
+import type { BulkUploadResult } from "./bulk-upload-types";
 
 export async function updateOrderStatus(params: {
 	orderId: string;
@@ -145,18 +147,15 @@ export async function addFoodItem({
 export async function addBarItem({
 	name,
 	price,
-	quantity,
 }: {
 	name: string;
 	price: number;
-	quantity: number;
 }) {
 	const sessionData = await verifySession("RESTAURANT");
 	const response = await $fetch("@post/api/restaurants/bar-item", {
 		body: {
 			name,
 			price,
-			quantity,
 		},
 		auth: { type: "Bearer", token: sessionData.token },
 	});
@@ -171,6 +170,36 @@ export async function addBarItem({
 	return {
 		success: true,
 		data: "Bar item added successfully",
+	};
+}
+
+export async function toggleBarItemStock({
+	itemId,
+	inStock,
+}: {
+	itemId: string;
+	inStock: boolean;
+}): ServerActionResponse<string> {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch(
+		"@patch/api/restaurants/:id/bar-item/toggle-stock",
+		{
+			params: { id: itemId },
+			query: { inStock: inStock.toString() },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to update stock status",
+		};
+	}
+
+	return {
+		success: true,
+		data: `Item marked as ${inStock ? "in stock" : "out of stock"}`,
 	};
 }
 
@@ -273,4 +302,74 @@ export async function createDestination({ name }: { name: string }) {
 		success: true,
 		data: response.data.data,
 	};
+}
+
+// ==================== BULK FOOD ITEM UPLOAD ====================
+
+export async function bulkUploadFoodItems(
+	formData: FormData,
+): ServerActionResponse<BulkUploadResult> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/restaurants/food-items/bulk-upload`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+				body: formData,
+			},
+		);
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: data.message || "Bulk upload failed",
+			};
+		}
+
+		return { success: true, data: data.data };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Bulk upload failed",
+		};
+	}
+}
+
+// ==================== BULK BAR ITEM UPLOAD ====================
+
+export async function bulkUploadBarItems(
+	formData: FormData,
+): ServerActionResponse<BulkUploadResult> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/restaurants/bar-items/bulk-upload`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+				body: formData,
+			},
+		);
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: data.message || "Bulk upload failed",
+			};
+		}
+
+		return { success: true, data: data.data };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Bulk upload failed",
+		};
+	}
 }

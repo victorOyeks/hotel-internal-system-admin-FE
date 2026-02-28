@@ -14,6 +14,7 @@ import {
 	notificationUnreadCountAtom,
 	notificationPageAtom,
 	notificationHasNextAtom,
+	notificationHotelIdAtom,
 } from "@/lib/notification-store";
 import {
 	markNotificationRead,
@@ -88,22 +89,23 @@ export function NotificationsPopover() {
 	const setPage = useSetAtom(notificationPageAtom);
 	const hasNext = useAtomValue(notificationHasNextAtom);
 	const setHasNext = useSetAtom(notificationHasNextAtom);
+	const hotelId = useAtomValue(notificationHotelIdAtom);
 	const [isPending, startTransition] = useTransition();
 	const [loadingMore, setLoadingMore] = useState(false);
 	const [open, setOpen] = useState(false);
 
 	const loadMore = useCallback(async () => {
-		if (loadingMore || !hasNext) return;
+		if (loadingMore || !hasNext || !hotelId) return;
 		setLoadingMore(true);
 		const nextPage = page + 1;
-		const result = await getMyNotifications(nextPage, 20);
+		const result = await getMyNotifications(hotelId, nextPage, 20);
 		if (result.success) {
 			setNotifications((prev) => [...prev, ...result.data.notifications]);
 			setPage(nextPage);
 			setHasNext(result.data.hasNext);
 		}
 		setLoadingMore(false);
-	}, [loadingMore, hasNext, page, setNotifications, setPage, setHasNext]);
+	}, [loadingMore, hasNext, hotelId, page, setNotifications, setPage, setHasNext]);
 
 	const handleMarkRead = (id: string) => {
 		setNotifications((prev) =>
@@ -117,11 +119,12 @@ export function NotificationsPopover() {
 	};
 
 	const handleMarkAllRead = () => {
+		if (!hotelId) return;
 		setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
 		setUnreadCount(0);
 
 		startTransition(async () => {
-			await markAllNotificationsRead();
+			await markAllNotificationsRead(hotelId);
 		});
 	};
 

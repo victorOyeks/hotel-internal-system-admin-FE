@@ -16,6 +16,7 @@ import {
 import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LaundryItemDialog } from "./laundry-item-dialog";
+import { LaundryBulkUploadDialog } from "./laundry-bulk-upload-dialog";
 import { LaundryItemDetailsDialog } from "./laundry-item-details-dialog";
 
 type LaundryItem = {
@@ -143,7 +144,10 @@ export function LaundryItemsPage({
 							Manage laundry service items and pricing
 						</p>
 					</div>
-					<LaundryItemDialog />
+					<div className="flex items-center gap-2">
+						<LaundryBulkUploadDialog />
+						<LaundryItemDialog />
+					</div>
 				</div>
 
 				{/* Summary Stats */}

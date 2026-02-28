@@ -560,8 +560,10 @@ export async function markAllNotificationsRead(): ServerActionResponse<{
 	message: string;
 }> {
 	const sessionData = await verifySession();
+	const { hotelId } = await getManagerContext();
 
 	const { error } = await $fetch("@put/api/notifications/mark-all-read", {
+		query: { hotelId },
 		auth: { type: "Bearer", token: sessionData.token },
 	});
 

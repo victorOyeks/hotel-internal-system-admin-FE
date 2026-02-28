@@ -1391,7 +1391,7 @@ const InventoryProductsStatistics = z.object({
 	totalProducts: z.number(),
 	activeProducts: z.number(),
 	inactiveProducts: z.number(),
-	discontinuedProducts: z.number(),
+	lowStockProducts: z.number(),
 	batchTrackedProducts: z.number(),
 	expiryTrackedProducts: z.number(),
 	serialTrackedProducts: z.number(),
@@ -3240,7 +3240,6 @@ export const schema = createSchema({
 				totalRevenue: z.number(),
 				totalItems: z.number(),
 				availableItems: z.number(),
-				lowStockItems: z.number(),
 				outOfStockItems: z.number(),
 				averageOrderValue: z.number(),
 				recentSales: z.array(z.object({
@@ -4188,7 +4187,6 @@ export const schema = createSchema({
 			data: z.object({
 				totalItems: z.number(),
 				availableItems: z.number(),
-				lowInStockItems: z.number(),
 				outOfStockItems: z.number(),
 			}),
 		}),
@@ -4295,7 +4293,7 @@ export const schema = createSchema({
 					name: z.string(),
 					price: z.number(),
 					itemType: z.enum(["DRINK", "FOOD"]),
-					quantity: z.number(),
+					inStock: z.boolean(),
 					createdAt: z.coerce.date(),
 					updatedAt: z.coerce.date(),
 				})
@@ -5083,6 +5081,7 @@ export const schema = createSchema({
 	"@get/api/notifications/my-notifications": {
 		query: z
 			.object({
+				hotelId: z.string().optional().nullable(),
 				page: z.string().optional().nullable(),
 				size: z.string().optional().nullable(),
 			})
@@ -5090,9 +5089,11 @@ export const schema = createSchema({
 		output: ApiResponseObject,
 	},
 	"@get/api/notifications/unread": {
+		query: z.object({ hotelId: z.string().optional().nullable() }),
 		output: ApiResponseObject,
 	},
 	"@get/api/notifications/unread/count": {
+		query: z.object({ hotelId: z.string().optional().nullable() }),
 		output: ApiResponseObject,
 	},
 	"@get/api/payment-links": {
@@ -5242,6 +5243,22 @@ export const schema = createSchema({
 	},
 	"@get/api/restaurants/items/statistics": {
 		output: ApiResponseObject,
+	},
+	"@patch/api/restaurants/:id/bar-item/toggle-stock": {
+		params: z.object({ id: z.string() }),
+		query: z.object({ inStock: z.string() }),
+		output: ApiResponseObject,
+	},
+	"@get/api/restaurants/dashboard-stats": {
+		output: ApiResponseObject.extend({
+			data: z.object({
+				totalOrders: z.number(),
+				pendingOrders: z.number(),
+				completedOrders: z.number(),
+				inStockItems: z.number(),
+				outOfStockItems: z.number(),
+			}),
+		}),
 	},
 	"@get/api/restaurants/restaurant-orders/export": {
 		query: z
@@ -5702,6 +5719,7 @@ export const schema = createSchema({
 		output: ApiResponseObject,
 	},
 	"@put/api/notifications/mark-all-read": {
+		query: z.object({ hotelId: z.string().optional().nullable() }),
 		output: ApiResponseObject,
 	},
 	"@put/api/notifications/:notificationId/read": {
@@ -6305,7 +6323,6 @@ export const schema = createSchema({
 				totalRevenue: z.number(),
 				totalItems: z.number(),
 				availableItems: z.number(),
-				lowStockItems: z.number(),
 				outOfStockItems: z.number(),
 				averageOrderValue: z.number(),
 				recentSales: z.array(z.object({

@@ -6,12 +6,15 @@ import { revalidatePath } from "next/cache";
 
 import type z from "zod";
 import type {
+	ServerActionResponse,
 	ServerActionResponseFromEndpoint,
 } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch, type ApiInputInventoryProduct } from "./fetch";
 import type { ExportData } from "@/components/shared/shared-dialogs";
 import { getCookieData } from "./server-fns";
+import { env } from "@/env";
+import type { BulkUploadResult } from "./bulk-upload-types";
 
 // Helper function to parse error messages
 function parseError(error: any): string {
@@ -1417,6 +1420,41 @@ export async function getStockLevel(stockLevelId: string) {
 			success: false,
 			error:
 				error instanceof Error ? error.message : "Unable to fetch stock level",
+		};
+	}
+}
+
+// ==================== BULK SUPPLIER UPLOAD ====================
+
+export async function bulkUploadSuppliers(
+	formData: FormData,
+): ServerActionResponse<BulkUploadResult> {
+	const sessionData = await verifySession();
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/inventories/suppliers/bulk-upload`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+				body: formData,
+			},
+		);
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: data.message || "Bulk upload failed",
+			};
+		}
+
+		return { success: true, data: data.data };
+	} catch (e) {
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Bulk upload failed",
 		};
 	}
 }

@@ -43,16 +43,20 @@ import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMutation } from "@tanstack/react-query";
 import {
+	AlertTriangleIcon,
+	CheckCircle2Icon,
 	ChevronDownIcon,
 	ChevronRightIcon,
-	FolderInputIcon,
+	ClipboardListIcon,
+	CoffeeIcon,
 	type LucideProps,
-	PackageCheckIcon,
+	PackageIcon,
 	PlusIcon,
 	SearchIcon,
-	TruckIcon,
 	RotateCcwIcon,
 	CalendarIcon,
+	UtensilsCrossedIcon,
+	XCircleIcon,
 } from "lucide-react";
 import {
 	parseAsInteger,
@@ -81,11 +85,8 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	ReceiveStockItem,
-	ReportWastage,
-	RequestRestock,
-} from "./quick-action-modals";
+import { ReportWastage } from "./quick-action-modals";
+import { FoodItemAddContent, BarItemAddContent } from "./item-management";
 
 // Kitchen Orders Filter Component
 const KitchenOrdersFilter = ({
@@ -440,65 +441,179 @@ type QuickAction = {
 	icon: ForwardRefExoticComponent<
 		Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
 	>;
+	wide?: boolean;
 	key: string;
+	color?: "green" | "amber" | "emerald" | "purple";
 };
 
 const actions: QuickAction[] = [
 	{
-		title: "Receive Stock Item",
-		icon: FolderInputIcon,
-		Component: ReceiveStockItem,
-		key: "receive-stock-item",
-	},
-	{
-		title: "Report wastage",
-		icon: PackageCheckIcon,
+		title: "Report Wastage",
+		icon: AlertTriangleIcon,
 		Component: ReportWastage,
 		key: "report-wastage",
+		color: "amber",
 	},
 	{
-		title: "Request Restock",
-		icon: TruckIcon,
-		Component: RequestRestock,
-		key: "request-restock",
+		title: "Add Food Item",
+		heading: "Add Food Items",
+		icon: UtensilsCrossedIcon,
+		Component: FoodItemAddContent,
+		key: "add-food-item",
+		wide: true,
+		color: "emerald",
+	},
+	{
+		title: "Add Drink Item",
+		heading: "Add Bar Items",
+		icon: CoffeeIcon,
+		Component: BarItemAddContent,
+		key: "add-drink-item",
+		wide: true,
+		color: "purple",
 	},
 ];
+
+const colorMap = {
+	green: {
+		bg: "bg-green-50",
+		iconBg: "bg-green-100",
+		iconText: "text-green-600",
+		border: "border-green-200",
+		hoverBorder: "hover:border-green-300",
+	},
+	amber: {
+		bg: "bg-amber-50",
+		iconBg: "bg-amber-100",
+		iconText: "text-amber-600",
+		border: "border-amber-200",
+		hoverBorder: "hover:border-amber-300",
+	},
+	emerald: {
+		bg: "bg-emerald-50",
+		iconBg: "bg-emerald-100",
+		iconText: "text-emerald-600",
+		border: "border-emerald-200",
+		hoverBorder: "hover:border-emerald-300",
+	},
+	purple: {
+		bg: "bg-purple-50",
+		iconBg: "bg-purple-100",
+		iconText: "text-purple-600",
+		border: "border-purple-200",
+		hoverBorder: "hover:border-purple-300",
+	},
+} as const;
+
+export type DashboardStats = {
+	totalOrders: number;
+	pendingOrders: number;
+	completedOrders: number;
+	inStockItems: number;
+	outOfStockItems: number;
+};
+
+export function RestaurantAnalytics({ stats }: { stats: DashboardStats }) {
+	const cards = [
+		{
+			label: "Total Orders",
+			value: stats.totalOrders,
+			icon: ClipboardListIcon,
+			color: "text-blue-600",
+			bg: "bg-blue-50",
+			iconBg: "bg-blue-100",
+		},
+		{
+			label: "Pending",
+			value: stats.pendingOrders,
+			icon: PackageIcon,
+			color: "text-amber-600",
+			bg: "bg-amber-50",
+			iconBg: "bg-amber-100",
+		},
+		{
+			label: "Completed",
+			value: stats.completedOrders,
+			icon: CheckCircle2Icon,
+			color: "text-green-600",
+			bg: "bg-green-50",
+			iconBg: "bg-green-100",
+		},
+		{
+			label: "In Stock",
+			value: stats.inStockItems,
+			icon: PackageIcon,
+			color: "text-emerald-600",
+			bg: "bg-emerald-50",
+			iconBg: "bg-emerald-100",
+		},
+		{
+			label: "Out of Stock",
+			value: stats.outOfStockItems,
+			icon: XCircleIcon,
+			color: "text-red-600",
+			bg: "bg-red-50",
+			iconBg: "bg-red-100",
+		},
+	];
+
+	return (
+		<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+			{cards.map((card) => (
+				<div
+					key={card.label}
+					className={`${card.bg} rounded-2xl p-4 border border-transparent`}
+				>
+					<div className="flex items-center gap-3">
+						<div
+							className={`${card.iconBg} size-10 rounded-xl flex items-center justify-center shrink-0`}
+						>
+							<card.icon className={`size-5 ${card.color}`} />
+						</div>
+						<div className="min-w-0">
+							<p className="text-2xl font-bold text-gray-900">{card.value}</p>
+							<p className="text-xs text-gray-500 truncate">{card.label}</p>
+						</div>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
 
 export function QuickActions() {
 	const [open, setOpen] = useState<false | string>(false);
 	return (
-		<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+		<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 			<Link
-				className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50"
+				className={`group flex flex-col gap-3 p-4 rounded-2xl border ${colorMap.green.border} ${colorMap.green.bg} ${colorMap.green.hoverBorder} transition-all`}
 				href={"/dashboard/create-order"}
 			>
-				<div className="flex items-center gap-x-2 flex-1">
-					<div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
-						<PlusIcon className="size-5 text-green-600" />
-					</div>
-
-					<p className="text-sm font-medium">Create New Order</p>
+				<div className={`${colorMap.green.iconBg} size-10 rounded-xl flex items-center justify-center`}>
+					<PlusIcon className={`size-5 ${colorMap.green.iconText}`} />
 				</div>
-
-				<ChevronRightIcon className="size-4 text-muted-foreground" />
+				<div className="flex items-center justify-between">
+					<p className="text-sm font-semibold text-gray-800">Create New Order</p>
+					<ChevronRightIcon className="size-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+				</div>
 			</Link>
-			{actions.map(({ icon: Icon, title, key, heading, Component }) => {
+			{actions.map(({ icon: Icon, title, key, heading, Component, wide, color = "green" }) => {
+				const colors = colorMap[color];
 				return (
 					<BaseModal
 						key={key}
 						open={open === key}
 						setOpen={(open) => setOpen(open ? key : false)}
+						wide={wide}
 						trigger={
-							<div className="flex flex-row items-center gap-x-2 bg-white p-2 rounded-4xl border border-primary-5/50">
-								<div className="flex items-center gap-x-2 flex-1">
-									<div className="size-8 aspect-square bg-green-600/10 rounded-full flex items-center justify-center">
-										<Icon className="size-5 text-green-600" />
-									</div>
-
-									<p className="text-sm font-medium">{title}</p>
+							<div className={`group flex flex-col gap-3 p-4 rounded-2xl border ${colors.border} ${colors.bg} ${colors.hoverBorder} transition-all cursor-pointer text-left`}>
+								<div className={`${colors.iconBg} size-10 rounded-xl flex items-center justify-center`}>
+									<Icon className={`size-5 ${colors.iconText}`} />
 								</div>
-
-								<ChevronRightIcon className="size-4 text-muted-foreground" />
+								<div className="flex items-center justify-between">
+									<p className="text-sm font-semibold text-gray-800">{title}</p>
+									<ChevronRightIcon className="size-4 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+								</div>
 							</div>
 						}
 					>
@@ -519,16 +634,20 @@ function BaseModal({
 	open,
 	setOpen,
 	trigger,
+	wide,
 }: PropsWithChildren<{
 	trigger: ReactNode;
 	open: boolean;
 	setOpen: (open: boolean) => void;
+	wide?: boolean;
 }>) {
 	return (
 		<Dialog modal open={open} onOpenChange={setOpen}>
 			<DialogTrigger>{trigger}</DialogTrigger>
 
-			<DialogContent className="rounded-4xl max-w-sm">{children}</DialogContent>
+			<DialogContent className={wide ? "rounded-4xl max-w-2xl max-h-[90vh] flex flex-col p-6 overflow-y-auto" : "rounded-4xl max-w-sm"}>
+				{children}
+			</DialogContent>
 		</Dialog>
 	);
 }

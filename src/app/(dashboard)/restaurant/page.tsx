@@ -1,7 +1,9 @@
 import {
+	type DashboardStats,
 	KitchenToolbar,
 	Orders,
 	QuickActions,
+	RestaurantAnalytics,
 } from "@/components/roles/kitchen/dashboard";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
@@ -35,25 +37,38 @@ function Page({ searchParams }: PageProps) {
 	const queryClient = getQueryClient();
 	const query = use(loadSearchParams(searchParams));
 
-	const { content, ...paginationProps } = use(
-		queryClient.ensureQueryData({
-			queryKey: ["restaurant", "dashboard-data", cookieData.token],
-			queryFn: async ({ signal }) => {
-				const res = await $fetch("@get/api/restaurants/restaurant-orders", {
-					//@ts-expect-error -- IGNORE --
-					query: {
-						...query,
-						size: 9,
-						page: query.page ? query.page - 1 : 0,
-					},
-					signal,
-					auth: { type: "Bearer", token: cookieData.token },
-					throw: true,
-				});
-				return res.data;
-			},
-		}),
-	);
+	const ordersPromise = queryClient.ensureQueryData({
+		queryKey: ["restaurant", "dashboard-data", cookieData.token],
+		queryFn: async ({ signal }) => {
+			const res = await $fetch("@get/api/restaurants/restaurant-orders", {
+				//@ts-expect-error -- IGNORE --
+				query: {
+					...query,
+					size: 9,
+					page: query.page ? query.page - 1 : 0,
+				},
+				signal,
+				auth: { type: "Bearer", token: cookieData.token },
+				throw: true,
+			});
+			return res.data;
+		},
+	});
+
+	const statsPromise = queryClient.ensureQueryData({
+		queryKey: ["restaurant", "dashboard-stats", cookieData.token],
+		queryFn: async ({ signal }) => {
+			const res = await $fetch("@get/api/restaurants/dashboard-stats", {
+				signal,
+				auth: { type: "Bearer", token: cookieData.token },
+				throw: true,
+			});
+			return res.data as DashboardStats;
+		},
+	});
+
+	const [ordersData, stats] = use(Promise.all([ordersPromise, statsPromise]));
+	const { content, ...paginationProps } = ordersData;
 
 	return (
 		<BreadCrumbWrapper
@@ -65,6 +80,7 @@ function Page({ searchParams }: PageProps) {
 			}}
 		>
 			<div className="space-y-4 px-4 py-4">
+				<RestaurantAnalytics stats={stats} />
 				<QuickActions />
 				<KitchenToolbar />
 				<Orders orders={content} pagination={paginationProps} />
