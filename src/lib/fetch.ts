@@ -121,11 +121,22 @@ const RoomResponse = z.object({
 			checkInDate: z.string(),
 			checkOutDate: z.string(),
 			nightlyRate: z.number(),
+			numberOfNights: z.number(),
+			accommodationCost: z.number(),
+			totalAmountDue: z.number(),
 			amountPaid: z.number(),
-			amountDue: z.number(),
 			amountRemaining: z.number(),
 			isCurrentGuest: z.boolean(),
 			organizationName: z.string().nullable(),
+			payments: z.array(z.object({
+				amount: z.number(),
+				currency: z.string(),
+				method: z.string(),
+				reference: z.string(),
+				status: z.string(),
+				type: z.string(),
+				paymentDate: z.coerce.date(),
+			})).optional(),
 		})
 		.optional(),
 });

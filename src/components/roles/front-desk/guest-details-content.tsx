@@ -108,7 +108,7 @@ export function GuestDetailsContent({
                                 </div>
                                 <div className="flex justify-between items-center pt-1">
                                     <span className="text-muted-foreground">Duration</span>
-                                    <span className="font-medium">{Math.ceil((new Date(guestDetails.checkOutDate).getTime() - new Date(guestDetails.checkInDate).getTime()) / (1000 * 60 * 60 * 24))} Nights</span>
+                                    <span className="font-medium">{guestDetails.numberOfNights} Night{guestDetails.numberOfNights !== 1 ? "s" : ""}</span>
                                 </div>
                             </div>
                         </div>
@@ -132,8 +132,12 @@ export function GuestDetailsContent({
 
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Total Bill</span>
-                                    <span className="font-semibold">{formatCurrency(guestDetails.amountPaid + guestDetails.amountRemaining)}</span>
+                                    <span className="text-muted-foreground">Accommodation</span>
+                                    <span className="font-semibold">{formatCurrency(guestDetails.accommodationCost)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground">Total Due</span>
+                                    <span className="font-semibold">{formatCurrency(guestDetails.totalAmountDue)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Amount Paid</span>
@@ -143,7 +147,7 @@ export function GuestDetailsContent({
 
                             <div className="mt-auto pt-4 border-t">
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-sm text-muted-foreground">Outstanding Balance</span>
+                                    <span className="text-sm text-muted-foreground">Balance</span>
                                     <span className={`text-2xl font-bold ${guestDetails.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
                                         {formatCurrency(guestDetails.amountRemaining)}
                                     </span>

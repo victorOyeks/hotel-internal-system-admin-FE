@@ -202,7 +202,7 @@ export function RoomDetailsContent({ room }: RoomDetailsContentProps) {
                                         <Badge variant="outline">{room.guestDetails.bookingStatus}</Badge>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-sm text-muted-foreground">Amount Due</span>
+                                        <span className="text-sm text-muted-foreground">Balance</span>
                                         <span className={`font-bold ${room.guestDetails.amountRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
                                             {formatCurrency(room.guestDetails.amountRemaining)}
                                         </span>
