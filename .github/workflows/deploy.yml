@@ -22,6 +22,7 @@ jobs:
         run: bun run build
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           DOMAIN_URL: ${{ secrets.DOMAIN_URL }}
 
       - name: Prepare standalone bundle
