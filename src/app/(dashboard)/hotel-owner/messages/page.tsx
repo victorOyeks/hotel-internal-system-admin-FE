@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { use } from "react";
 import { verifySession, getUser, getOwnerCurrentHotel } from "@/lib/dal";
-import { ChatLayout } from "@/components/chat/chat-layout";
+import { DynamicChatLayout } from "@/components/chat/chat-layout-dynamic";
 
 export default function HotelOwnerMessagesPage() {
 	const session = use(verifySession("HOTEL_OWNER"));
@@ -16,7 +16,7 @@ export default function HotelOwnerMessagesPage() {
 
 	return (
 		<div className="h-[calc(100dvh-60px)]">
-			<ChatLayout
+			<DynamicChatLayout
 				token={session.token}
 				userId={session.userId}
 				hotelId={hotelId}
