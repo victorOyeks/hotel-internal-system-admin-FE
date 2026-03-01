@@ -20,7 +20,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { SearchIcon, RotateCcwIcon, CalendarIcon } from "lucide-react";
+import { SearchIcon, RotateCcwIcon, CalendarIcon, BarChart3Icon } from "lucide-react";
 import { parseAsString, parseAsIsoDate, useQueryStates } from "nuqs";
 import type { APIOutput } from "@/lib/action-utils";
 import { formatCurrency } from "@/lib/utils";
@@ -652,9 +652,15 @@ function InventoryTable({
 						<TableRow>
 							<TableCell
 								colSpan={allSupplyColumns.length}
-								className="h-24 text-center"
+								className="h-48 text-center"
 							>
-								No results.
+								<div className="flex flex-col items-center justify-center text-muted-foreground">
+									<BarChart3Icon className="size-10 mb-3 opacity-40" />
+									<p className="font-medium text-gray-900">No sales data found</p>
+									<p className="text-sm mt-1">
+										Sales records will appear here once orders are completed.
+									</p>
+								</div>
 							</TableCell>
 						</TableRow>
 					)}
