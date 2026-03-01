@@ -488,7 +488,8 @@ function RoomTableActions({ row }: { row: RoomEntry }) {
 						roomIdentifier={row.roomIdentifier}
 					/>
 				</Dialog>
-			</DropdownMenuContent>
+
+				</DropdownMenuContent>
 		</DropdownMenu>
 	);
 }

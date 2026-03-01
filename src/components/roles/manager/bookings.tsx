@@ -23,6 +23,7 @@ import {
 	Bed,
 	Phone,
 	Hash,
+	ReceiptIcon,
 } from "lucide-react";
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,8 @@ import {
 } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { formatCurrency } from "@/lib/utils";
+import { FolioContent } from "@/components/roles/front-desk/folio-content";
+import { getManagerBookingFolio, exportManagerFolioPdf } from "@/lib/manager-actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -335,7 +338,7 @@ function BookingDetailsContent({ booking }: { booking: ManagerBookingViewRespons
 										</div>
 									</div>
 									<div className="text-right">
-										<div className="text-xs text-muted-foreground">Check Out</div>
+										<div className="text-xs text-muted-foreground">{booking.bookingStatus === "CHECKED_OUT" ? "Check Out" : "Expected Check Out"}</div>
 										<div className="font-medium">
 											{new Date(booking.checkOutDate).toLocaleDateString("en-US", {
 												month: "short", day: "2-digit", year: "numeric",
@@ -503,20 +506,42 @@ const columns = [
 		id: "actions",
 		cell: (info) => {
 			const [open, setOpen] = useState(false);
+			const [openFolio, setOpenFolio] = useState(false);
 
 			return (
-				<Dialog open={open} onOpenChange={setOpen}>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="gap-1.5"
-						onClick={() => setOpen(true)}
-					>
-						<EyeIcon className="h-4 w-4" />
-						View Details
-					</Button>
-					{open && <BookingDetailsContent booking={info.row.original} />}
-				</Dialog>
+				<div className="flex gap-1">
+					<Dialog open={open} onOpenChange={setOpen}>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="gap-1.5"
+							onClick={() => setOpen(true)}
+						>
+							<EyeIcon className="h-4 w-4" />
+							View Details
+						</Button>
+						{open && <BookingDetailsContent booking={info.row.original} />}
+					</Dialog>
+					<Dialog open={openFolio} onOpenChange={setOpenFolio}>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="gap-1.5"
+							onClick={() => setOpenFolio(true)}
+						>
+							<ReceiptIcon className="h-4 w-4" />
+							Folio
+						</Button>
+						{openFolio && (
+							<FolioContent
+								bookingId={info.row.original.id}
+								readOnly
+								fetchAction={getManagerBookingFolio}
+								exportAction={exportManagerFolioPdf}
+							/>
+						)}
+					</Dialog>
+				</div>
 			);
 		},
 	}),

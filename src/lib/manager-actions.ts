@@ -579,3 +579,63 @@ export async function markAllNotificationsRead(): ServerActionResponse<{
 		data: { message: "All notifications marked as read" },
 	};
 }
+
+export async function getManagerBookingFolio({
+	bookingId,
+}: {
+	bookingId: string;
+}): ServerActionResponseFromEndpoint<"@get/api/managers/bookings/:bookingId/folio"> {
+	const { sessionData } = await getManagerContext();
+
+	const response = await $fetch(
+		"@get/api/managers/bookings/:bookingId/folio",
+		{
+			params: { bookingId },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to fetch folio",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
+export async function exportManagerFolioPdf({
+	bookingId,
+}: {
+	bookingId: string;
+}): ServerActionResponse<{ base64: string; filename: string }> {
+	const { sessionData } = await getManagerContext();
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/managers/bookings/${bookingId}/folio/export`,
+			{
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+			},
+		);
+
+		if (!response.ok) {
+			return { success: false, error: "Failed to export folio PDF" };
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		const base64 = Buffer.from(arrayBuffer).toString("base64");
+		const disposition = response.headers.get("content-disposition");
+		const filename =
+			disposition?.match(/filename="?(.+?)"?$/)?.[1] ?? "folio.pdf";
+
+		return { success: true, data: { base64, filename } };
+	} catch (e) {
+		return {
+			success: false,
+			error:
+				e instanceof Error ? e.message : "Failed to export folio PDF",
+		};
+	}
+}

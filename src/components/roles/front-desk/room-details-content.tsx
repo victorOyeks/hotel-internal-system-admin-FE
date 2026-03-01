@@ -188,7 +188,7 @@ export function RoomDetailsContent({ room }: RoomDetailsContentProps) {
                                     </div>
                                     <div className="p-3 bg-muted/20 rounded border space-y-1">
                                         <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Calendar className="h-3 w-3" /> Check Out
+                                            <Calendar className="h-3 w-3" /> {room.guestDetails.bookingStatus === "CHECKED_OUT" ? "Check Out" : "Expected Check Out"}
                                         </div>
                                         <div className="font-medium text-sm">
                                             {new Date(room.guestDetails.checkOutDate).toLocaleDateString()}

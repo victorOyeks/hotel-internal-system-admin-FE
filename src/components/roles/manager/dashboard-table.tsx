@@ -115,12 +115,14 @@ const columns = [
 		header: "Check Out",
 		cell: (info) => {
 			const date = new Date(info.getValue());
+			const status = info.row.original.bookingStatus;
 			const dateString = date.toLocaleDateString("en-US", {
 				month: "short",
 				day: "2-digit",
 				year: "numeric",
 			});
-			return <span>{dateString}</span>;
+			const label = status !== "CHECKED_OUT" ? "Expected: " : "";
+			return <span>{label}{dateString}</span>;
 		},
 	}),
 

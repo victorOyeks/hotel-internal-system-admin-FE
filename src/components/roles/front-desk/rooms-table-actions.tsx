@@ -209,6 +209,7 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
 					/>
 				</Dialog>
 
+	
 				{isCheckedIn && hasGuest && !alreadyAssigned && (
 					<>
 						<DropdownMenuSeparator />

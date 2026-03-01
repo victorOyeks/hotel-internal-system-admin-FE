@@ -102,7 +102,7 @@ export function GuestDetailsContent({
                                         <div className="font-medium">{new Date(guestDetails.checkInDate).toLocaleDateString()}</div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-xs text-muted-foreground">Check Out</div>
+                                        <div className="text-xs text-muted-foreground">{guestDetails.bookingStatus === "CHECKED_OUT" ? "Check Out" : "Expected Check Out"}</div>
                                         <div className="font-medium">{new Date(guestDetails.checkOutDate).toLocaleDateString()}</div>
                                     </div>
                                 </div>
@@ -125,23 +125,23 @@ export function GuestDetailsContent({
                         </div>
 
                         <div className="space-y-4 flex-1">
-                            <div className="flex justify-between items-center pb-3 border-b border-dashed">
-                                <span className="text-muted-foreground">Nightly Rate</span>
-                                <span className="font-mono">{formatCurrency(guestDetails.nightlyRate)}</span>
+                            <div className="flex justify-between items-center gap-2 pb-3 border-b border-dashed">
+                                <span className="text-muted-foreground text-sm">Nightly Rate</span>
+                                <span className="font-mono whitespace-nowrap">{formatCurrency(guestDetails.nightlyRate)}</span>
                             </div>
 
                             <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Accommodation</span>
-                                    <span className="font-semibold">{formatCurrency(guestDetails.accommodationCost)}</span>
+                                <div className="flex justify-between items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Accommodation</span>
+                                    <span className="font-semibold whitespace-nowrap">{formatCurrency(guestDetails.accommodationCost)}</span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Total Due</span>
-                                    <span className="font-semibold">{formatCurrency(guestDetails.totalAmountDue)}</span>
+                                <div className="flex justify-between items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Total Due</span>
+                                    <span className="font-semibold whitespace-nowrap">{formatCurrency(guestDetails.totalAmountDue)}</span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Amount Paid</span>
-                                    <span className="font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">{formatCurrency(guestDetails.amountPaid)}</span>
+                                <div className="flex justify-between items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Amount Paid</span>
+                                    <span className="font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded whitespace-nowrap">{formatCurrency(guestDetails.amountPaid)}</span>
                                 </div>
                             </div>
 

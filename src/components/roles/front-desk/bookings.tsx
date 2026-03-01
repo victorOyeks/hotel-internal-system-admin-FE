@@ -88,7 +88,8 @@ import { Input } from "@/components/ui/input";
 import { UnifiedBookingForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
 import { AssignToOrgContent } from "./rooms-table-actions";
-import { Building2Icon } from "lucide-react";
+import { Building2Icon, ReceiptIcon } from "lucide-react";
+import { FolioContent } from "./folio-content";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1158,7 +1159,7 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 									</div>
 									<div className="text-right">
 										<div className="text-xs text-muted-foreground">
-											Check Out
+											{booking.bookingStatus === "CHECKED_OUT" ? "Check Out" : "Expected Check Out"}
 										</div>
 										<div className="font-medium">
 											{new Date(booking.checkOutDate).toLocaleDateString()}
@@ -1591,14 +1592,14 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 	const [openRecordPayment, setOpenRecordPayment] = useState(false);
 	const [openAssignOrg, setOpenAssignOrg] = useState(false);
 	const [openEditDialog, setOpenEditDialog] = useState(false);
+	const [openFolio, setOpenFolio] = useState(false);
 
 	const canEdit =
 		booking.bookingStatus === "CHECKED_IN" ||
 		booking.bookingStatus === "RESERVED";
 
 	const canRecordPayment =
-		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
-		booking.amountRemaining > 0;
+		booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED";
 
 	const canAssignOrg =
 		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&
@@ -1696,6 +1697,20 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 						</DropdownMenuItem>
 					</DialogTrigger>
 					<PaymentHistoryContent bookingId={booking.id} />
+				</Dialog>
+
+				<Dialog open={openFolio} onOpenChange={setOpenFolio}>
+					<DialogTrigger asChild>
+						<DropdownMenuItem
+							onSelect={(e) => {
+								e.preventDefault();
+							}}
+						>
+							<ReceiptIcon className="mr-2 h-4 w-4" />
+							View Folio
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<FolioContent bookingId={booking.id} />
 				</Dialog>
 
 				{canAssignOrg && (

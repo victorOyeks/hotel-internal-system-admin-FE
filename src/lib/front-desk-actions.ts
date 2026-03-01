@@ -442,3 +442,96 @@ export async function toggleRoomActive(
 		};
 	}
 }
+
+export async function getBookingFolio({
+	bookingId,
+}: {
+	bookingId: string;
+}): ServerActionResponseFromEndpoint<"@get/api/front-desks/bookings/:bookingId/folio"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch(
+		"@get/api/front-desks/bookings/:bookingId/folio",
+		{
+			params: { bookingId },
+			auth: { type: "Bearer", token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to fetch folio",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
+export async function voidFolioEntry({
+	bookingId,
+	entryId,
+	reason,
+}: {
+	bookingId: string;
+	entryId: string;
+	reason: string;
+}): ServerActionResponseFromEndpoint<"@post/api/front-desks/bookings/:bookingId/folio/void/:entryId"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch(
+		"@post/api/front-desks/bookings/:bookingId/folio/void/:entryId",
+		{
+			params: { bookingId, entryId },
+			body: { reason },
+			auth: { type: "Bearer", token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to void folio entry",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
+export async function exportFolioPdf({
+	bookingId,
+}: {
+	bookingId: string;
+}): ServerActionResponse<{ base64: string; filename: string }> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	try {
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/front-desks/bookings/${bookingId}/folio/export`,
+			{
+				headers: { Authorization: `Bearer ${token}` },
+			},
+		);
+
+		if (!response.ok) {
+			return {
+				success: false,
+				error: "Failed to export folio PDF",
+			};
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		const base64 = Buffer.from(arrayBuffer).toString("base64");
+		const disposition = response.headers.get("content-disposition");
+		const filename =
+			disposition?.match(/filename="?(.+?)"?$/)?.[1] ?? "folio.pdf";
+
+		return { success: true, data: { base64, filename } };
+	} catch (e) {
+		return {
+			success: false,
+			error:
+				e instanceof Error ? e.message : "Failed to export folio PDF",
+		};
+	}
+}

@@ -345,9 +345,9 @@ const columns = [
 		header: "Check-Out Date",
 		cell: (info) => {
 			const value = info.getValue();
+			const status = info.row.original.bookingStatus;
 			if (!value) return "N/A";
 			const date = new Date(value);
-			// Sep 03, 2025 | 09:30 am
 			const dteString = date.toLocaleDateString("en-US", {
 				year: "numeric",
 				month: "short",
@@ -358,7 +358,8 @@ const columns = [
 				minute: "2-digit",
 				hour12: true,
 			});
-			return `${dteString} | ${timeString}`;
+			const label = status !== "CHECKED_OUT" ? "Expected: " : "";
+			return `${label}${dteString} | ${timeString}`;
 		},
 	}),
 ];
