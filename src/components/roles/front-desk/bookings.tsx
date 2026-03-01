@@ -212,7 +212,7 @@ function ChangeBookingStatus({
 			switch (selectedStatus) {
 				case "CANCELLED": {
 					const response = await cancelReservation({
-						roomId: booking?.roomIdentifier!,
+						roomId: booking?.roomId!,
 					});
 					if (!response.success) {
 						throw new Error(response.error || "Failed to create reservation.");
@@ -221,7 +221,7 @@ function ChangeBookingStatus({
 				}
 				case "CHECKED_IN": {
 					const response = await checkInGuest({
-						roomId: booking?.roomIdentifier!,
+						roomId: booking?.roomId!,
 						guestName: booking?.guestName!,
 						title: "Mr", // Default title as it's not in booking
 						guestEmail: `${booking?.guestName?.toLowerCase()?.replace(/\s/g, ".")}@example.com`, // Generate placeholder email
@@ -283,7 +283,7 @@ function ChangeBookingStatus({
 						booking?.amountRemaining === 0
 					) {
 						const response = await checkOutGuest({
-							roomId: booking?.roomIdentifier!,
+							roomId: booking?.roomId!,
 							finalAmountPaid:
 								(booking?.amountPaid ?? 0) +
 								(optionalFields.finalAmountPaid ?? 0),
