@@ -41,11 +41,11 @@ export function MessageContextMenu({
 				{!isDeleted && (
 					<>
 						<ContextMenuItem onClick={onReply}>
-							<ReplyIcon className="size-4 mr-2" />
+							<ReplyIcon />
 							Reply
 						</ContextMenuItem>
 						<ContextMenuItem onClick={handleCopy}>
-							<CopyIcon className="size-4 mr-2" />
+							<CopyIcon />
 							Copy
 						</ContextMenuItem>
 					</>
@@ -54,14 +54,14 @@ export function MessageContextMenu({
 					<>
 						<ContextMenuSeparator />
 						<ContextMenuItem onClick={onEdit}>
-							<PencilIcon className="size-4 mr-2" />
+							<PencilIcon />
 							Edit
 						</ContextMenuItem>
 						<ContextMenuItem
 							onClick={onDelete}
-							className="text-destructive focus:text-destructive"
+							variant="destructive"
 						>
-							<Trash2Icon className="size-4 mr-2" />
+							<Trash2Icon />
 							Delete
 						</ContextMenuItem>
 					</>
