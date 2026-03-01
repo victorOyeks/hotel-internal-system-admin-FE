@@ -20,6 +20,7 @@ import {
 	UploadIcon,
 	DownloadIcon,
 	FileSpreadsheetIcon,
+	UtensilsIcon,
 	XIcon,
 	CheckCircle2Icon,
 	XCircleIcon,
@@ -1358,9 +1359,15 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 							<TableRow>
 								<TableCell
 									colSpan={columns.length}
-									className="h-24 text-center"
+									className="h-48 text-center"
 								>
-									No items found.
+									<div className="flex flex-col items-center justify-center text-muted-foreground">
+										<UtensilsIcon className="size-10 mb-3 opacity-40" />
+										<p className="font-medium text-gray-900">No menu items found</p>
+										<p className="text-sm mt-1">
+											Add food or bar items to get started with your menu.
+										</p>
+									</div>
 								</TableCell>
 							</TableRow>
 						)}

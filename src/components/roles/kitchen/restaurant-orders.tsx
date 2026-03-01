@@ -42,6 +42,7 @@ import {
 	CheckCircle2Icon,
 	ChevronDownIcon,
 	CircleAlertIcon,
+	ClipboardListIcon,
 	CreditCardIcon,
 	Loader2Icon,
 	PlusIcon,
@@ -998,16 +999,26 @@ function Orders({
 	);
 	return (
 		<div className="space-y-4">
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				{orders.map((order) => (
-					<div key={order.id} className="col-span-1">
-						<OrderCard
-							order={order}
-							onClick={() => setOrderDetailState(order)}
-						/>
-					</div>
-				))}
-			</div>
+			{orders.length > 0 ? (
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					{orders.map((order) => (
+						<div key={order.id} className="col-span-1">
+							<OrderCard
+								order={order}
+								onClick={() => setOrderDetailState(order)}
+							/>
+						</div>
+					))}
+				</div>
+			) : (
+				<div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+					<ClipboardListIcon className="size-10 mb-3 opacity-40" />
+					<p className="font-medium text-gray-900">No orders found</p>
+					<p className="text-sm mt-1">
+						Orders will appear here once they are placed.
+					</p>
+				</div>
+			)}
 			<div className="w-full flex items-center justify-between">
 				<span className="text-sm text-gray-500">
 					Page {pagination.pageNumber} of {pagination.totalPages}

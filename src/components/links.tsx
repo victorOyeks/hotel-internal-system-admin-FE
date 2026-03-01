@@ -137,7 +137,7 @@ export const inventoryOfficerLinks = [
 		icon: <TruckIcon />,
 		url: "/dashboard/supplies",
 	},
-	{ title: "Reports", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
+	// { title: "Reports", icon: <FolderClosedIcon />, url: "/dashboard/reports" },
 	{
 		title: "GRN",
 		icon: <FileIcon />,

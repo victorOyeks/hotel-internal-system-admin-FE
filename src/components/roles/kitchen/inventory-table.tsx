@@ -24,7 +24,7 @@ import {
 	SelectItem,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MoreVerticalIcon, RotateCcwIcon, Loader2Icon } from "lucide-react";
+import { MoreVerticalIcon, PackageIcon, RotateCcwIcon, Loader2Icon, HistoryIcon } from "lucide-react";
 import {
 	createColumnHelper,
 	flexRender,
@@ -712,9 +712,15 @@ function InventoryTable({ table }: { table: TableType<InventoryResponse> }) {
 						<TableRow>
 							<TableCell
 								colSpan={allSupplyColumns.length}
-								className="h-24 text-center"
+								className="h-48 text-center"
 							>
-								No results.
+								<div className="flex flex-col items-center justify-center text-muted-foreground">
+									<PackageIcon className="size-10 mb-3 opacity-40" />
+									<p className="font-medium text-gray-900">No supply items found</p>
+									<p className="text-sm mt-1">
+										Inventory supply records will appear here.
+									</p>
+								</div>
 							</TableCell>
 						</TableRow>
 					)}
@@ -856,9 +862,15 @@ function InventoryHistoryTable({
 						<TableRow>
 							<TableCell
 								colSpan={inventoryHistoryColumns.length}
-								className="h-24 text-center"
+								className="h-48 text-center"
 							>
-								No results.
+								<div className="flex flex-col items-center justify-center text-muted-foreground">
+									<HistoryIcon className="size-10 mb-3 opacity-40" />
+									<p className="font-medium text-gray-900">No history records</p>
+									<p className="text-sm mt-1">
+										Inventory movement history will appear here.
+									</p>
+								</div>
 							</TableCell>
 						</TableRow>
 					)}

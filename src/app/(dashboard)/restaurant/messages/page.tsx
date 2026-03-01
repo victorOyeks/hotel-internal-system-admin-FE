@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { use } from "react";
 import { verifySession, getUser } from "@/lib/dal";
-import { ChatLayout } from "@/components/chat/chat-layout";
+import { DynamicChatLayout } from "@/components/chat/chat-layout-dynamic";
 
 export default function RestaurantMessagesPage() {
 	const session = use(verifySession("RESTAURANT"));
@@ -15,7 +15,7 @@ export default function RestaurantMessagesPage() {
 
 	return (
 		<div className="h-[calc(100dvh-60px)]">
-			<ChatLayout
+			<DynamicChatLayout
 				token={session.token}
 				userId={session.userId}
 				hotelId={hotelId}
