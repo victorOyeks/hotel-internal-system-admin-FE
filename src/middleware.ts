@@ -58,6 +58,24 @@ export async function middleware(request: NextRequest) {
 	const userRole = request.cookies.get(activeRoleKey)?.value;
 
 	if (!userRole && !isPublicRoute && !isProtectedRoleIndependentRoute) {
+		// Before showing role selection, check if user needs to change password first
+		const resetPasswordUrl = new URL("/reset-password", request.url);
+		try {
+			const res = await fetch(
+				`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`,
+				{
+					headers: { Authorization: `Bearer ${accessToken}` },
+				},
+			);
+			if (res.ok) {
+				const { data } = await res.json();
+				if (!data.changedPassword) {
+					return NextResponse.redirect(resetPasswordUrl);
+				}
+			}
+		} catch {
+			// If fetch fails, fall through to role selection
+		}
 		return NextResponse.redirect(selectRoleUrl);
 	}
 

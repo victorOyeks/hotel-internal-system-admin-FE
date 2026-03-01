@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
 	const ownerHotel = use(getOwnerCurrentHotel());
 	const activeRole = use(getActiveRole());
 	const activeHotel = activeRole === "HOTEL_OWNER" ? ownerHotel : managerHotel;
-	const hotelId = activeHotel?.id ?? user.hotels[0]?.id;
+	const hotelId = activeHotel?.id ?? user.hotels?.[0]?.id;
 	return (
 		<NuqsAdapter
 			defaultOptions={{
