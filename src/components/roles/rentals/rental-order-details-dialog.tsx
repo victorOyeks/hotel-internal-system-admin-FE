@@ -7,6 +7,8 @@ import {
 	getOrderDetails,
 	getOrderPaymentSummary,
 	updateOrderStatus,
+	updateRentalBooking,
+	getCheckedInBookingsForRentals,
 } from "@/lib/rental-actions";
 import {
 	Dialog,
@@ -48,6 +50,7 @@ import {
 	ShieldCheckIcon,
 	RefreshCwIcon,
 	EditIcon,
+	LinkIcon,
 } from "lucide-react";
 
 type RentalOrderDetailsDialogProps = {
@@ -179,6 +182,34 @@ export function RentalOrderDetailsDialog({
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "Failed to update status");
+		},
+	});
+
+	const { data: checkedInBookings } = useQuery({
+		queryKey: ["rentals", "checked-in-bookings"],
+		queryFn: async () => {
+			const result = await getCheckedInBookingsForRentals();
+			if (!result.success) throw new Error(result.error);
+			const data = result.data;
+			return (Array.isArray(data) ? data : []) as { bookingId: string; customId: string; guestName: string; guestPhoneNumber?: string; roomIdentifier?: string }[];
+		},
+		enabled: !!orderId && open && !!order,
+	});
+
+	const bookingMutation = useMutation({
+		mutationFn: async (bookingId: string) => {
+			const result = await updateRentalBooking(orderId!, bookingId);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		onSuccess: () => {
+			toast.success("Booking updated successfully");
+			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
+			queryClient.invalidateQueries({ queryKey: ["rentals", "dashboard-stats"] });
+			router.refresh();
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to update booking");
 		},
 	});
 
@@ -456,6 +487,54 @@ export function RentalOrderDetailsDialog({
 												</p>
 											</div>
 										</div>
+									)}
+								</div>
+							</div>
+
+							<Separator />
+
+							{/* Booking Assignment */}
+							<div>
+								<div className="flex items-center gap-2 mb-3">
+									<LinkIcon className="w-5 h-5 text-blue-600" />
+									<h3 className="text-lg font-semibold">Booking</h3>
+								</div>
+								<div className="flex items-center gap-3">
+									<Select
+										value={order.bookingId || "__NONE__"}
+										onValueChange={(value) => {
+											bookingMutation.mutate(value === "__NONE__" ? "" : value);
+										}}
+										disabled={
+											TERMINAL_STATUSES.has(order.status) ||
+											order.paymentStatus === "PAID" ||
+											bookingMutation.isPending
+										}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select booking..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="__NONE__">
+												No booking (walk-in)
+											</SelectItem>
+											{checkedInBookings?.map(
+												(booking: { bookingId: string; customId: string; guestName: string; roomIdentifier?: string }) => (
+													<SelectItem
+														key={booking.bookingId}
+														value={booking.bookingId}
+													>
+														{booking.customId} - {booking.guestName}
+														{booking.roomIdentifier
+															? ` (Room ${booking.roomIdentifier})`
+															: ""}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+									{bookingMutation.isPending && (
+										<Loader2Icon className="w-4 h-4 animate-spin text-muted-foreground" />
 									)}
 								</div>
 							</div>

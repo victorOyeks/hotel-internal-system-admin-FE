@@ -73,7 +73,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
 	cancelReservation,
@@ -120,6 +120,7 @@ function ChangeBookingStatus({
 	booking?: BookingViewResponse;
 	onClose?: () => void;
 }) {
+	const queryClient = useQueryClient();
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const [selectedStatus, setSelectedStatus] = useState<BookingStatus | "">("");
 	const [notes, setNotes] = useState("");
@@ -314,6 +315,10 @@ function ChangeBookingStatus({
 				show: true,
 				message: "Booking status updated successfully.",
 			});
+			if (booking?.id) {
+				queryClient.invalidateQueries({ queryKey: ["folio", booking.id] });
+				queryClient.invalidateQueries({ queryKey: ["booking-payments", booking.id] });
+			}
 			onClose?.();
 			revalidateRoute("/front-desk/bookings");
 		},
@@ -833,6 +838,7 @@ function RecordPaymentContent({
 	booking: BookingViewResponse;
 	onClose: () => void;
 }) {
+	const queryClient = useQueryClient();
 	const form = useForm<RecordPaymentFormValues>({
 		resolver: zodResolver(recordPaymentSchema),
 		defaultValues: {
@@ -863,6 +869,8 @@ function RecordPaymentContent({
 		},
 		onSuccess: () => {
 			toast.success("Payment recorded successfully");
+			queryClient.invalidateQueries({ queryKey: ["folio", booking.id] });
+			queryClient.invalidateQueries({ queryKey: ["booking-payments", booking.id] });
 			onClose();
 			revalidateRoute("/front-desk/bookings");
 		},

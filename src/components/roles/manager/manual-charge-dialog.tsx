@@ -67,6 +67,7 @@ export function ManualChargeDialog({
 			setOpen(false);
 			form.reset();
 			toast.success("Manual charge added successfully");
+			queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
 			queryClient.invalidateQueries({ queryKey: ["organization-guests"] });
 			queryClient.invalidateQueries({ queryKey: ["organization-transactions"] });
 		},

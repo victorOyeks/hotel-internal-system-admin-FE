@@ -1,6 +1,6 @@
 "use server";
 
-import type { ServerActionResponse } from "./action-utils";
+import { parseError, type ServerActionResponse } from "./action-utils";
 import { verifySession } from "./dal";
 import { $fetch } from "./fetch";
 import type { HotelRole } from "./types";
@@ -455,6 +455,50 @@ export async function createDestination({ name }: { name: string }) {
 		success: true,
 		data: response.data.data,
 	};
+}
+
+// ==================== ORDER UPDATE ====================
+
+export async function updateKitchenOrder(
+	orderId: string,
+	payload: { bookingId?: string | null },
+) {
+	const sessionData = await verifySession("RESTAURANT");
+	const response = await $fetch(
+		"@put/api/restaurants/restaurant-orders/:orderId",
+		{
+			params: { orderId },
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to update order",
+		};
+	}
+
+	return { success: true, data: response.data.data };
+}
+
+// ==================== BOOKINGS ====================
+
+export async function getCheckedInBookingsForRestaurant() {
+	try {
+		const sessionData = await verifySession("RESTAURANT");
+		const response = await $fetch(
+			"@get/api/front-desks/bookings/checked-in",
+			{
+				auth: { type: "Bearer", token: sessionData.token },
+				throw: true,
+			},
+		);
+		return { success: true as const, data: response.data ?? [] };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
 }
 
 // ==================== BULK FOOD ITEM UPLOAD ====================

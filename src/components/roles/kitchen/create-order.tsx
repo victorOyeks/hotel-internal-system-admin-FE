@@ -51,7 +51,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type OrderRequest, placeOrder } from "@/lib/restaurant-actions";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { Badge } from "@/components/ui/badge";
@@ -679,6 +679,7 @@ export function OrderPage({
 	currentBookings: CurrentBooking[];
 	destinations: Destination[];
 }) {
+	const queryClient = useQueryClient();
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useQueryState(
@@ -741,10 +742,12 @@ export function OrderPage({
 			return response.data;
 		},
 		onSuccess: (message) => {
-			// Simulate order placement
 			toast.success(message, {
 				description: `Total Amount: ${formatCurrency(cartSummary.total)}`,
 			});
+			if (orderDetails.bookingId) {
+				queryClient.invalidateQueries({ queryKey: ["folio", orderDetails.bookingId] });
+			}
 			setCart([]);
 			setOrderDetails({
 				destinationId: "",

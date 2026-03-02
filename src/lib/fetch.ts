@@ -3946,6 +3946,19 @@ export const schema = createSchema({
 			}),
 		}),
 	},
+	"@get/api/front-desks/bookings/checked-in": {
+		output: ApiResponseObject.extend({
+			data: z.array(
+				z.object({
+					bookingId: z.string(),
+					customId: z.string(),
+					guestName: z.string(),
+					guestPhoneNumber: z.string(),
+					roomIdentifier: z.string(),
+				}),
+			),
+		}),
+	},
 	"@get/api/front-desks/bookings": {
 		output: ApiResponseListBookingViewResponse.and(
 			z.object({
@@ -4184,6 +4197,7 @@ export const schema = createSchema({
 						paymentReference: z.string().nullable().optional(),
 						amountPaid: z.number().nullable().optional(),
 						amountRemaining: z.number().nullable().optional(),
+						bookingId: z.string().nullable().optional(),
 						orderItems: z
 							.object({
 								itemName: z.string(),
@@ -5400,6 +5414,10 @@ export const schema = createSchema({
 	},
 	"@patch/api/hotels/rentals/orders/:orderId/status": {
 		input: z.any(),
+		params: z.object({ orderId: z.string() }),
+		output: ApiResponseObject.extend({ data: z.any() }),
+	},
+	"@patch/api/hotels/rentals/orders/:orderId/booking": {
 		params: z.object({ orderId: z.string() }),
 		output: ApiResponseObject.extend({ data: z.any() }),
 	},

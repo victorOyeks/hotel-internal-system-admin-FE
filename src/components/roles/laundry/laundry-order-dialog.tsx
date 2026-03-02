@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -120,11 +121,10 @@ const laundryOrderSchema = z.object({
 type LaundryOrderFormData = z.infer<typeof laundryOrderSchema>;
 
 type CheckedInBooking = {
-	id: string;
-	customId?: string;
+	bookingId: string;
+	customId: string;
 	guestName: string;
 	guestPhoneNumber?: string;
-	guestEmail?: string;
 	roomIdentifier?: string;
 };
 
@@ -172,6 +172,7 @@ export function LaundryOrderDialog({
 	const isEditMode = !!editOrder;
 	const isPickedUp = editOrder?.status === "PICKED_UP";
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	const defaultItem = {
 		laundryItemId: "",
@@ -263,7 +264,8 @@ export function LaundryOrderDialog({
 		queryFn: async () => {
 			const result = await getCheckedInBookingsForLaundry();
 			if (!result.success) throw new Error(result.error);
-			return result.data as CheckedInBooking[];
+			const data = result.data;
+			return (Array.isArray(data) ? data : []) as CheckedInBooking[];
 		},
 		enabled: open,
 	});
@@ -276,13 +278,12 @@ export function LaundryOrderDialog({
 	useEffect(() => {
 		if (!selectedBookingId || !checkedInBookings?.length) return;
 		const selected = checkedInBookings.find(
-			(b) => b.id === selectedBookingId,
+			(b) => b.bookingId === selectedBookingId,
 		);
 		if (!selected) return;
 
 		form.setValue("customerName", selected.guestName || "");
 		form.setValue("customerPhone", selected.guestPhoneNumber || "");
-		form.setValue("customerEmail", selected.guestEmail || "");
 		form.setValue("roomIdentifier", selected.roomIdentifier || "");
 	}, [selectedBookingId, checkedInBookings, form]);
 
@@ -303,7 +304,7 @@ export function LaundryOrderDialog({
 					conditionNotes: item.conditionNotes || undefined,
 					specialInstructions: item.specialInstructions || undefined,
 				})),
-				...(!isEditMode && { bookingId: data.bookingId || undefined }),
+				bookingId: data.bookingId || "",
 			};
 
 			if (isEditMode) {
@@ -345,6 +346,10 @@ export function LaundryOrderDialog({
 					: "Laundry order created successfully",
 				{ description: `Order #${response.orderNumber}` },
 			);
+			const bookingId = response.bookingId || selectedBookingId;
+			if (bookingId) {
+				queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+			}
 			queryClient.invalidateQueries({ queryKey: ["laundry", "orders"] });
 			queryClient.invalidateQueries({
 				queryKey: ["laundry", "dashboard-stats"],
@@ -354,6 +359,7 @@ export function LaundryOrderDialog({
 					queryKey: ["laundry", "orders", editOrder!.id],
 				});
 			}
+			router.refresh();
 			setOpen(false);
 			if (!isEditMode) form.reset();
 			onSuccess?.();
@@ -444,53 +450,53 @@ export function LaundryOrderDialog({
 							</h3>
 
 							{/* Booking Selector */}
-							{!isEditMode && (
-								<FormField
-									control={form.control}
-									name="bookingId"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Link to Booking</FormLabel>
-											<Select
-												value={field.value || "__WALK_IN__"}
-												onValueChange={(value) => {
-													field.onChange(
-														value === "__WALK_IN__" ? "" : value,
-													);
-												}}
-											>
-												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select checked-in guest" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value="__WALK_IN__">
-														Walk-in customer (no booking)
+							<FormField
+								control={form.control}
+								name="bookingId"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Link to Booking</FormLabel>
+										<Select
+											value={field.value || "__WALK_IN__"}
+											onValueChange={(value) => {
+												field.onChange(
+													value === "__WALK_IN__" ? "" : value,
+												);
+											}}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select checked-in guest" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="__WALK_IN__">
+													Walk-in customer (no booking)
+												</SelectItem>
+												{checkedInBookings?.map((booking) => (
+													<SelectItem
+														key={booking.bookingId}
+														value={booking.bookingId}
+													>
+														{booking.customId} - {booking.guestName}
+														{booking.roomIdentifier
+															? ` (Room ${booking.roomIdentifier})`
+															: ""}
 													</SelectItem>
-													{checkedInBookings?.map((booking) => (
-														<SelectItem
-															key={booking.id}
-															value={booking.id}
-														>
-															{booking.guestName}
-															{booking.roomIdentifier
-																? ` — Room ${booking.roomIdentifier}`
-																: ""}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											<FormDescription>
-												{isLoadingBookings
-													? "Loading checked-in guests..."
+												))}
+											</SelectContent>
+										</Select>
+										<FormDescription>
+											{isLoadingBookings
+												? "Loading checked-in guests..."
+												: isEditMode
+													? "Change or remove the linked booking"
 													: "Select a checked-in guest to auto-fill details, or leave as walk-in"}
-											</FormDescription>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							)}
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 
 							<div className="grid grid-cols-2 gap-x-4 gap-y-3">
 								<FormField

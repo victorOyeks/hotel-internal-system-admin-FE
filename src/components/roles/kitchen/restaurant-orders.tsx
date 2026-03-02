@@ -34,10 +34,12 @@ import type { Pagination } from "@/lib/fetch";
 import {
 	updateOrderStatus,
 	recordRestaurantPayment,
+	updateKitchenOrder,
+	getCheckedInBookingsForRestaurant,
 } from "@/lib/restaurant-actions";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	CheckCircle2Icon,
 	ChevronDownIcon,
@@ -49,6 +51,7 @@ import {
 	SearchIcon,
 	RotateCcwIcon,
 	CalendarIcon,
+	LinkIcon,
 } from "lucide-react";
 import {
 	createParser,
@@ -76,6 +79,7 @@ const parseAsLocalDate = createParser({
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
 	Sheet,
 	SheetContent,
@@ -777,11 +781,14 @@ function RecordPaymentForm({
 function OrderDetailSheet({
 	order,
 	onPaymentRecorded,
+	onOrderUpdated,
 }: {
 	order: OrderItem;
 	onPaymentRecorded?: () => void;
+	onOrderUpdated?: (updated: OrderItem) => void;
 }) {
 	const [showPaymentForm, setShowPaymentForm] = useState(false);
+	const router = useRouter();
 	const statusToVariant = {
 		COMPLETED: "green",
 		CANCELLED: "red",
@@ -790,6 +797,35 @@ function OrderDetailSheet({
 
 	const isFullyPaid = (order.amountRemaining ?? order.totalAmount) <= 0;
 	const hasBalance = !isFullyPaid;
+
+	// Fetch checked-in bookings for booking selector
+	const { data: checkedInBookings, isLoading: isLoadingBookings } = useQuery({
+		queryKey: ["restaurant", "checked-in-bookings"],
+		queryFn: async () => {
+			const result = await getCheckedInBookingsForRestaurant();
+			if (!result.success) return [];
+			const data = result.data;
+			return (Array.isArray(data) ? data : []) as Array<{ bookingId: string; customId: string; guestName: string; guestPhoneNumber: string; roomIdentifier: string }>;
+		},
+	});
+
+	const { mutate: updateBooking, isPending: isUpdatingBooking } = useMutation({
+		mutationKey: ["update-order-booking", order.id],
+		mutationFn: async (bookingId: string) => {
+			const response = await updateKitchenOrder(order.id, { bookingId });
+			if (!response.success) throw new Error(response.error);
+			return response.data;
+		},
+		onSuccess: (updatedOrder) => {
+			toast.success("Booking updated successfully");
+			onOrderUpdated?.(updatedOrder as OrderItem);
+			revalidateRoute("/restaurant/orders");
+			router.refresh();
+		},
+		onError: (error) => {
+			toast.error("Failed to update booking", { description: error.message });
+		},
+	});
 
 	return (
 		<SheetContent>
@@ -847,6 +883,51 @@ function OrderDetailSheet({
 							)}
 						</div>
 					</div>
+
+					{/* Booking Assignment */}
+					{order.status !== "CANCELLED" && (
+						<div className="bg-gray-50 rounded-lg p-4">
+							<div className="flex items-center gap-2 mb-3">
+								<LinkIcon className="h-4 w-4 text-gray-500" />
+								<h3 className="text-sm font-semibold text-gray-700">
+									Linked Booking
+								</h3>
+							</div>
+							<Select
+								value={order.bookingId || "__NONE__"}
+								onValueChange={(value) => {
+									updateBooking(value === "__NONE__" ? "" : value);
+								}}
+								disabled={isUpdatingBooking || isFullyPaid}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder={isLoadingBookings ? "Loading..." : "No booking linked"} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__NONE__">
+										No booking (walk-in)
+									</SelectItem>
+									{checkedInBookings?.map((booking) => (
+										<SelectItem key={booking.bookingId} value={booking.bookingId}>
+											{booking.customId} - {booking.guestName}
+											{booking.roomIdentifier ? ` (Room ${booking.roomIdentifier})` : ""}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{isFullyPaid && (
+								<p className="text-xs text-muted-foreground mt-2">
+									Cannot change booking for fully paid orders
+								</p>
+							)}
+							{isUpdatingBooking && (
+								<p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+									<Loader2Icon className="h-3 w-3 animate-spin" />
+									Updating...
+								</p>
+							)}
+						</div>
+					)}
 
 					{/* Payment Details */}
 					<div className="bg-gray-50 rounded-lg p-4">
@@ -1049,6 +1130,7 @@ function Orders({
 					<OrderDetailSheet
 						order={orderDetailState}
 						onPaymentRecorded={() => setOrderDetailState(null)}
+						onOrderUpdated={(updated) => setOrderDetailState(updated)}
 					/>
 				</Sheet>
 			)}

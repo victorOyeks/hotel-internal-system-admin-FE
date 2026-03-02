@@ -97,6 +97,7 @@ type RentalOrderDialogProps = {
 
 type CheckedInBooking = {
 	bookingId: string;
+	customId: string;
 	guestName: string;
 	guestPhoneNumber?: string;
 	roomIdentifier?: string;
@@ -150,7 +151,8 @@ export function RentalOrderDialog({
 			queryFn: async () => {
 				const result = await getCheckedInBookingsForRentals();
 				if (!result.success) throw new Error(result.error);
-				return result.data as CheckedInBooking[];
+				const data = result.data;
+				return (Array.isArray(data) ? data : []) as CheckedInBooking[];
 			},
 			enabled: open,
 		});
@@ -172,6 +174,10 @@ export function RentalOrderDialog({
 			toast.success("Rental order created successfully", {
 				description: `Order #${response.orderNumber}`,
 			});
+			const bookingId = response.bookingId || selectedBookingId;
+			if (bookingId) {
+				queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+			}
 			queryClient.invalidateQueries({ queryKey: ["rentals", "orders"] });
 			queryClient.invalidateQueries({
 				queryKey: ["rentals", "dashboard-stats"],
@@ -386,7 +392,7 @@ export function RentalOrderDialog({
 															key={booking.bookingId}
 															value={booking.bookingId}
 														>
-															{booking.bookingId} - {booking.guestName}
+															{booking.customId} - {booking.guestName}
 															{booking.roomIdentifier
 																? ` (Room ${booking.roomIdentifier})`
 																: ""}
