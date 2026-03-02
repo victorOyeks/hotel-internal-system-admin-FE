@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/table";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -84,6 +83,7 @@ export function FolioContent({
 }: FolioContentProps) {
 	const queryClient = useQueryClient();
 	const [voidReason, setVoidReason] = useState("");
+	const [voidingEntryId, setVoidingEntryId] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 
 	const action = fetchAction ?? getBookingFolio;
@@ -134,13 +134,15 @@ export function FolioContent({
 			if (!res.success) throw new Error(res.error);
 			return res;
 		},
-		onSuccess: () => {
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
 			toast.success("Folio entry voided successfully");
 			setVoidReason("");
-			queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+			setVoidingEntryId(null);
 		},
 		onError: (e) => {
 			toast.error("Failed to void entry", { description: e.message });
+			setVoidingEntryId(null);
 		},
 	});
 
@@ -339,7 +341,15 @@ export function FolioContent({
 												{!isVoided &&
 													entry.entryType !==
 														"ADJUSTMENT" && (
-														<AlertDialog>
+														<AlertDialog
+															open={voidingEntryId === entry.id}
+															onOpenChange={(open) => {
+																if (!open && !isVoiding) {
+																	setVoidingEntryId(null);
+																	setVoidReason("");
+																}
+															}}
+														>
 															<AlertDialogTrigger
 																asChild
 															>
@@ -347,6 +357,7 @@ export function FolioContent({
 																	variant="ghost"
 																	size="sm"
 																	className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+																	onClick={() => setVoidingEntryId(entry.id)}
 																>
 																	<XCircle className="h-4 w-4" />
 																</Button>
@@ -354,70 +365,41 @@ export function FolioContent({
 															<AlertDialogContent>
 																<AlertDialogHeader>
 																	<AlertDialogTitle>
-																		Void
-																		Folio
-																		Entry
+																		Void Folio Entry
 																	</AlertDialogTitle>
 																	<AlertDialogDescription>
-																		This
-																		will
-																		void
-																		the
-																		entry &quot;
-																		{
-																			entry.description
-																		}
-																		&quot;
-																		and
-																		create a
-																		reversal
-																		adjustment.
+																		This will void the entry &quot;{entry.description}&quot; and create a reversal adjustment.
 																	</AlertDialogDescription>
 																</AlertDialogHeader>
 																<Input
 																	placeholder="Reason for voiding..."
-																	value={
-																		voidReason
-																	}
-																	onChange={(
-																		e,
-																	) =>
-																		setVoidReason(
-																			e
-																				.target
-																				.value,
-																		)
-																	}
+																	value={voidReason}
+																	onChange={(e) => setVoidReason(e.target.value)}
+																	disabled={isVoiding}
 																/>
 																<AlertDialogFooter>
 																	<AlertDialogCancel
-																		onClick={() =>
-																			setVoidReason(
-																				"",
-																			)
-																		}
+																		disabled={isVoiding}
+																		onClick={() => {
+																			setVoidReason("");
+																			setVoidingEntryId(null);
+																		}}
 																	>
 																		Cancel
 																	</AlertDialogCancel>
-																	<AlertDialogAction
-																		disabled={
-																			!voidReason.trim() ||
-																			isVoiding
-																		}
+																	<Button
+																		variant="destructive"
+																		disabled={!voidReason.trim() || isVoiding}
 																		onClick={() =>
-																			doVoid(
-																				{
-																					entryId:
-																						entry.id,
-																					reason: voidReason,
-																				},
-																			)
+																			doVoid({
+																				entryId: entry.id,
+																				reason: voidReason,
+																			})
 																		}
 																	>
-																		{isVoiding
-																			? "Voiding..."
-																			: "Void Entry"}
-																	</AlertDialogAction>
+																		{isVoiding && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+																		{isVoiding ? "Voiding..." : "Void Entry"}
+																	</Button>
 																</AlertDialogFooter>
 															</AlertDialogContent>
 														</AlertDialog>
