@@ -86,19 +86,17 @@ const paymentStatusColors: Record<string, string> = {
 	REFUNDED: "bg-violet-100 text-violet-800 border-violet-200",
 };
 
-const validTransitions: Record<string, string[]> = {
-	PENDING: ["PICKED_UP", "CANCELLED", "ON_HOLD"],
-	PICKED_UP: ["IN_PROGRESS", "CANCELLED", "ON_HOLD"],
-	IN_PROGRESS: ["WASHING", "DRYING", "IRONING", "QUALITY_CHECK", "READY", "ON_HOLD"],
-	WASHING: ["DRYING", "IRONING", "IN_PROGRESS", "ON_HOLD"],
-	DRYING: ["IRONING", "QUALITY_CHECK", "IN_PROGRESS", "ON_HOLD"],
-	IRONING: ["QUALITY_CHECK", "READY", "IN_PROGRESS", "ON_HOLD"],
-	QUALITY_CHECK: ["READY", "IN_PROGRESS", "ON_HOLD"],
-	READY: ["OUT_FOR_DELIVERY", "DELIVERED", "ON_HOLD"],
-	OUT_FOR_DELIVERY: ["DELIVERED", "ON_HOLD"],
-	ON_HOLD: ["PENDING", "PICKED_UP", "IN_PROGRESS", "CANCELLED"],
-	DELIVERED: [],
-	CANCELLED: [],
+const ALL_STATUSES = [
+	"PENDING", "PICKED_UP", "IN_PROGRESS", "WASHING", "DRYING",
+	"IRONING", "QUALITY_CHECK", "READY", "OUT_FOR_DELIVERY",
+	"DELIVERED", "CANCELLED", "ON_HOLD",
+] as const;
+
+const TERMINAL_STATUSES = new Set(["DELIVERED", "CANCELLED"]);
+
+const getValidTransitions = (currentStatus: string): string[] => {
+	if (TERMINAL_STATUSES.has(currentStatus)) return [];
+	return ALL_STATUSES.filter((s) => s !== currentStatus);
 };
 
 const transitionLabels: Record<string, string> = {
@@ -276,7 +274,7 @@ export function LaundryOrderDetailsDialog({
 										variant="outline"
 										size="sm"
 										disabled={
-											!(validTransitions[order.status]?.length > 0)
+											!(getValidTransitions(order.status).length > 0)
 										}
 										onClick={() => {
 											setSelectedStatus("");
@@ -306,7 +304,7 @@ export function LaundryOrderDetailsDialog({
 													<SelectValue placeholder="Select status" />
 												</SelectTrigger>
 												<SelectContent>
-													{(validTransitions[order.status] || []).map(
+													{getValidTransitions(order.status).map(
 														(status) => (
 															<SelectItem key={status} value={status}>
 																{transitionLabels[status] || status}

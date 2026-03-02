@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryState, parseAsIndex } from "nuqs";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,20 +15,26 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { LaundryOrderDetailsDialog } from "./laundry-order-details-dialog";
 import { LaundryOrderDialog } from "./laundry-order-dialog";
 import { LaundryPaymentDialog } from "./laundry-payment-dialog";
+import { DataTablePagination } from "@/components/shared/pagination";
 import {
 	SearchIcon,
 	CreditCardIcon,
 	AlertCircleIcon,
+	PencilIcon,
+	MoreHorizontalIcon,
+	EyeIcon,
 } from "lucide-react";
+import { getLaundryOrderDetails } from "@/lib/laundry-actions";
+import { toast } from "sonner";
 import type { Pagination } from "@/lib/fetch";
 
 type LaundryOrderSummary = {
@@ -104,6 +111,54 @@ export function LaundryOrdersPage({
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const [pageIndex, setPageIndex] = useQueryState("page", parseAsIndex.withDefault(0));
+	const [editOrderData, setEditOrderData] = useState<any>(null);
+	const [isEditOpen, setIsEditOpen] = useState(false);
+	const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
+	const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+
+	const canEdit = (status: string) =>
+		status === "PENDING" || status === "PICKED_UP";
+
+	const handleEditClick = async (orderId: string) => {
+		setLoadingEditId(orderId);
+		try {
+			const result = await getLaundryOrderDetails(orderId);
+			if (!result.success) {
+				toast.error(result.error || "Failed to load order details");
+				return;
+			}
+			const order = result.data;
+			setEditOrderData({
+				id: order.id,
+				orderNumber: order.orderNumber,
+				status: order.status,
+				bookingId: order.bookingId || undefined,
+				customerName: order.customerName,
+				customerPhone: order.customerPhone || undefined,
+				customerEmail: order.customerEmail || undefined,
+				roomIdentifier: order.roomIdentifier || undefined,
+				urgency: order.urgency,
+				specialInstructions: order.specialInstructions || undefined,
+				customerNotes: order.customerNotes || undefined,
+				items: order.items?.map((item: any) => ({
+					laundryItemId: item.laundryItemId,
+					quantity: item.quantity,
+					serviceType: item.serviceType,
+					itemColor: item.itemColor || undefined,
+					brandOrLabel: item.brandOrLabel || undefined,
+					conditionNotes: item.conditionNotes || undefined,
+					specialInstructions: item.specialInstructions || undefined,
+				})) ?? [],
+			});
+			setIsEditOpen(true);
+		} catch {
+			toast.error("Failed to load order for editing");
+		} finally {
+			setLoadingEditId(null);
+		}
+	};
 
 	const filtered = orders.filter(
 		(o) =>
@@ -269,41 +324,46 @@ export function LaundryOrdersPage({
 												</TableCell>
 												<TableCell className="text-center">
 													<div
-														className="flex items-center justify-center gap-1"
 														onClick={(e) => e.stopPropagation()}
 													>
-														<TooltipProvider delayDuration={300}>
-															<Tooltip>
-																<TooltipTrigger asChild>
-																	<div>
-																		{order.balanceDue > 0 ? (
-																			<LaundryPaymentDialog
-																				orderId={order.id}
-																				trigger={
-																					<Button
-																						variant="ghost"
-																						size="icon"
-																						className="h-8 w-8 text-muted-foreground hover:text-purple-600"
-																					>
-																						<CreditCardIcon className="w-4 h-4" />
-																					</Button>
-																				}
-																			/>
-																		) : (
-																			<Button
-																				variant="ghost"
-																				size="icon"
-																				className="h-8 w-8 text-muted-foreground/25"
-																				disabled
-																			>
-																				<CreditCardIcon className="w-4 h-4" />
-																			</Button>
-																		)}
-																	</div>
-																</TooltipTrigger>
-																<TooltipContent>Record Payment</TooltipContent>
-															</Tooltip>
-														</TooltipProvider>
+														<DropdownMenu modal={false}>
+															<DropdownMenuTrigger asChild>
+																<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																	<MoreHorizontalIcon className="h-4 w-4" />
+																</Button>
+															</DropdownMenuTrigger>
+															<DropdownMenuContent align="end">
+																<DropdownMenuItem
+																	onClick={() => {
+																		setSelectedOrderId(order.id);
+																		setIsDetailsOpen(true);
+																	}}
+																>
+																	<EyeIcon className="mr-2 h-4 w-4" />
+																	View Details
+																</DropdownMenuItem>
+																{canEdit(order.status) && (
+																	<DropdownMenuItem
+																		disabled={loadingEditId === order.id}
+																		onClick={() => handleEditClick(order.id)}
+																	>
+																		<PencilIcon className="mr-2 h-4 w-4" />
+																		Edit Order
+																	</DropdownMenuItem>
+																)}
+																{order.balanceDue > 0 && (
+																	<DropdownMenuItem
+																		onClick={() => {
+																			setPaymentOrderId(order.id);
+																			setIsPaymentOpen(true);
+																		}}
+																	>
+																		<CreditCardIcon className="mr-2 h-4 w-4" />
+																		Record Payment
+																	</DropdownMenuItem>
+																)}
+															</DropdownMenuContent>
+														</DropdownMenu>
 													</div>
 												</TableCell>
 											</TableRow>
@@ -312,6 +372,22 @@ export function LaundryOrdersPage({
 								</TableBody>
 							</Table>
 						</div>
+						{paginationMeta.totalPages > 1 && (
+							<div className="flex items-center justify-between pt-4 border-t mt-4">
+								<span className="text-sm text-muted-foreground">
+									Page {pageIndex + 1} of {paginationMeta.totalPages} ({paginationMeta.totalElements} total)
+								</span>
+								<DataTablePagination
+									pageIndex={pageIndex}
+									pageCount={paginationMeta.totalPages}
+									canPreviousPage={!paginationMeta.first}
+									canNextPage={!paginationMeta.last}
+									previousPage={() => setPageIndex(pageIndex - 1)}
+									nextPage={() => setPageIndex(pageIndex + 1)}
+									setPageIndex={setPageIndex}
+								/>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -321,6 +397,22 @@ export function LaundryOrdersPage({
 				open={isDetailsOpen}
 				onOpenChange={setIsDetailsOpen}
 			/>
+
+			{editOrderData && (
+				<LaundryOrderDialog
+					editOrder={editOrderData}
+					open={isEditOpen}
+					onOpenChange={setIsEditOpen}
+				/>
+			)}
+
+			{paymentOrderId && (
+				<LaundryPaymentDialog
+					orderId={paymentOrderId}
+					open={isPaymentOpen}
+					onOpenChange={setIsPaymentOpen}
+				/>
+			)}
 		</BreadCrumbWrapper>
 	);
 }

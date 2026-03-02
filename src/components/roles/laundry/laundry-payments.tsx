@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryState, parseAsIndex } from "nuqs";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { SearchIcon, CreditCardIcon, DollarSignIcon, CheckCircle2Icon, ClockIcon } from "lucide-react";
 import { LaundryOrderDetailsDialog } from "./laundry-order-details-dialog";
+import { DataTablePagination } from "@/components/shared/pagination";
 import type { Pagination } from "@/lib/fetch";
 
 type LaundryOrderSummary = {
@@ -69,6 +71,7 @@ export function LaundryPaymentsPage({
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [search, setSearch] = useState("");
+	const [pageIndex, setPageIndex] = useQueryState("page", parseAsIndex.withDefault(0));
 
 	const filtered = orders.filter(
 		(o) =>
@@ -226,6 +229,22 @@ export function LaundryPaymentsPage({
 								</TableBody>
 							</Table>
 						</div>
+						{paginationMeta.totalPages > 1 && (
+							<div className="flex items-center justify-between pt-4 border-t mt-4">
+								<span className="text-sm text-muted-foreground">
+									Page {pageIndex + 1} of {paginationMeta.totalPages} ({paginationMeta.totalElements} total)
+								</span>
+								<DataTablePagination
+									pageIndex={pageIndex}
+									pageCount={paginationMeta.totalPages}
+									canPreviousPage={!paginationMeta.first}
+									canNextPage={!paginationMeta.last}
+									previousPage={() => setPageIndex(pageIndex - 1)}
+									nextPage={() => setPageIndex(pageIndex + 1)}
+									setPageIndex={setPageIndex}
+								/>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>

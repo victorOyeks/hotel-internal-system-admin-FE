@@ -66,14 +66,20 @@ type LaundryPaymentDialogProps = {
 	orderId: string;
 	trigger?: React.ReactNode;
 	onSuccess?: () => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 };
 
 export function LaundryPaymentDialog({
 	orderId,
 	trigger,
 	onSuccess,
+	open: controlledOpen,
+	onOpenChange: controlledOnOpenChange,
 }: LaundryPaymentDialogProps) {
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = controlledOnOpenChange ?? setInternalOpen;
 	const queryClient = useQueryClient();
 
 	const form = useForm<PaymentFormData>({
@@ -117,16 +123,20 @@ export function LaundryPaymentDialog({
 		},
 	});
 
+	const isControlled = controlledOpen !== undefined;
+
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				{trigger || (
-					<Button variant="outline" size="sm">
-						<CreditCardIcon className="w-4 h-4 mr-2" />
-						Record Payment
-					</Button>
-				)}
-			</DialogTrigger>
+			{!isControlled && (
+				<DialogTrigger asChild>
+					{trigger || (
+						<Button variant="outline" size="sm">
+							<CreditCardIcon className="w-4 h-4 mr-2" />
+							Record Payment
+						</Button>
+					)}
+				</DialogTrigger>
+			)}
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Record Payment</DialogTitle>

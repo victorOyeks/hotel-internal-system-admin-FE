@@ -77,6 +77,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
 import { revalidateRoute } from "@/lib/actions";
 import {
 	addFoodItem,
@@ -189,14 +190,15 @@ export function FoodItemsFileUpload({
 
 	if (uploadResult) {
 		return (
-			<BulkResultsDisplay
-				results={uploadResult.results}
-				summary={uploadResult.summary}
+			<BulkUploadResultDisplay
+				result={uploadResult}
+				entityName="items"
 				onClose={() => setOpen(false)}
 				onReset={() => {
 					setUploadResult(null);
 					setFile(null);
 				}}
+				resetLabel="Add More"
 			/>
 		);
 	}
@@ -389,14 +391,15 @@ export function BarItemsFileUpload({
 
 	if (uploadResult) {
 		return (
-			<BulkResultsDisplay
-				results={uploadResult.results}
-				summary={uploadResult.summary}
+			<BulkUploadResultDisplay
+				result={uploadResult}
+				entityName="items"
 				onClose={() => setOpen(false)}
 				onReset={() => {
 					setUploadResult(null);
 					setFile(null);
 				}}
+				resetLabel="Add More"
 			/>
 		);
 	}
@@ -847,84 +850,6 @@ export function BarItemAddContent({
 				<BarItemsFileUpload setOpen={setOpen} />
 			</TabsContent>
 		</Tabs>
-	);
-}
-
-// ==================== SHARED RESULTS DISPLAY ====================
-
-function BulkResultsDisplay({
-	results,
-	summary,
-	onClose,
-	onReset,
-}: {
-	results: Array<{
-		rowNumber: number;
-		success: boolean;
-		itemIdentifier: string | null;
-		errorMessage: string | null;
-	}>;
-	summary?: BulkUploadResult["summary"];
-	onClose: () => void;
-	onReset: () => void;
-}) {
-	const successCount = summary?.successCount ?? results.filter((r) => r.success).length;
-	const failedCount = summary?.failedCount ?? results.filter((r) => !r.success).length;
-	const total = summary?.totalRows ?? results.length;
-
-	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
-				<p className="text-sm text-muted-foreground">
-					{total} {total === 1 ? "item" : "items"} processed
-				</p>
-				<div className="flex items-center gap-3 text-xs">
-					<span className="flex items-center gap-1 text-green-600">
-						<CheckCircle2Icon className="h-3.5 w-3.5" />
-						{successCount} succeeded
-					</span>
-					{failedCount > 0 && (
-						<span className="flex items-center gap-1 text-destructive">
-							<XCircleIcon className="h-3.5 w-3.5" />
-							{failedCount} failed
-						</span>
-					)}
-				</div>
-			</div>
-
-			<div className="max-h-[280px] overflow-y-auto border rounded-md divide-y">
-				{results.map((result) => (
-					<div
-						key={result.rowNumber}
-						className="flex items-center gap-3 px-3 py-2 text-sm"
-					>
-						<span className="text-xs text-muted-foreground tabular-nums w-6 shrink-0">
-							{result.rowNumber}
-						</span>
-						{result.success ? (
-							<CheckCircle2Icon className="h-3.5 w-3.5 text-green-600 shrink-0" />
-						) : (
-							<XCircleIcon className="h-3.5 w-3.5 text-destructive shrink-0" />
-						)}
-						<span className="truncate text-sm">
-							{result.itemIdentifier || "Unknown"}
-						</span>
-						{result.errorMessage && (
-							<span className="text-xs text-muted-foreground ml-auto truncate max-w-[180px]">
-								{result.errorMessage}
-							</span>
-						)}
-					</div>
-				))}
-			</div>
-
-			<div className="flex gap-2 justify-end">
-				<Button type="button" variant="outline" size="sm" onClick={onReset}>
-					Add More
-				</Button>
-				<Button size="sm" onClick={onClose}>Done</Button>
-			</div>
-		</div>
 	);
 }
 

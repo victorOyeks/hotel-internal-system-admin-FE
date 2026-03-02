@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getLaundryItems } from "@/lib/laundry-actions";
 import { LaundryItemDialog } from "./laundry-item-dialog";
 import { LaundryBulkUploadDialog } from "./laundry-bulk-upload-dialog";
 import { LaundryItemDetailsDialog } from "./laundry-item-details-dialog";
@@ -101,13 +103,23 @@ function getServiceCount(item: LaundryItem): number {
 }
 
 export function LaundryItemsPage({
-	items,
+	items: initialItems,
 	breadcrumbs,
 }: LaundryItemsPageProps) {
 	const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+	const { data: items = initialItems } = useQuery({
+		queryKey: ["laundry", "items"],
+		queryFn: async () => {
+			const result = await getLaundryItems();
+			if (!result.success) throw new Error(result.error);
+			return result.data as LaundryItem[];
+		},
+		initialData: initialItems,
+	});
 
 	const stats = useMemo(() => {
 		const totalItems = items.length;

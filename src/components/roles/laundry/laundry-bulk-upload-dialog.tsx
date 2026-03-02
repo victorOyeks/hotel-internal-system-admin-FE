@@ -1,37 +1,25 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Dialog,
 	DialogContent,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
 import {
 	UploadIcon,
 	DownloadIcon,
 	FileSpreadsheetIcon,
 	XIcon,
-	CheckCircle2Icon,
-	XCircleIcon,
 	Loader2Icon,
 	PlusCircleIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { bulkUploadLaundryItems } from "@/lib/laundry-actions";
-import { revalidateRoute } from "@/lib/actions";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 
 // ─── Constants ─────────────────────────────────────────────────
@@ -55,14 +43,24 @@ const CSV_HEADERS = [
 	"Special Instructions",
 ];
 
-const CSV_EXAMPLE_ROW =
-	"T-Shirt,CLOTHING,Regular cotton t-shirt,500,800,600,1500,300,500,400,700,1000,1.5,1.3,2.0,Handle with care";
+const CSV_EXAMPLE_ROWS = [
+	"T-Shirt,CLOTHING,Regular cotton t-shirt,500,800,600,1500,300,500,400,700,1000,1.5,1.3,2.0,Handle with care",
+	"Bedsheet (Single),BEDDING,Single size bedsheet,800,1200,900,2000,500,600,700,1000,1500,1.5,1.3,2.0,",
+	"Bedsheet (Double),BEDDING,Double size bedsheet,1000,1500,1200,2500,600,800,900,1200,1800,1.5,1.3,2.0,",
+	"Bath Towel,TOWELS,Large bath towel,400,600,,800,300,,,500,700,1.5,1.3,2.0,",
+	"Curtain (Per Panel),CURTAINS,Standard curtain panel,,,,2500,,,,,,1.5,1.3,2.0,Dry clean recommended",
+	"Chef Uniform,UNIFORMS,Full chef outfit,600,1000,800,1800,400,500,,800,1200,1.5,1.3,2.0,",
+	"Table Cloth,TABLE_LINEN,Standard table cloth,500,800,600,1500,,400,600,,1000,1.5,1.3,2.0,",
+	"Silk Blouse,DELICATES,Delicate silk blouse,,,,,,,,,2000,1.5,1.3,2.0,Hand wash only",
+	"Blanket,BEDDING,Standard blanket,1000,1500,1200,3000,,,800,,1800,1.5,1.3,2.0,",
+];
 
 // ─── Component ─────────────────────────────────────────────────
 
 export function LaundryBulkUploadDialog() {
 	const [open, setOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const queryClient = useQueryClient();
 
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(
@@ -87,7 +85,8 @@ export function LaundryBulkUploadDialog() {
 					`${successCount} succeeded, ${failedCount} failed`,
 				);
 			}
-			revalidateRoute("/");
+			queryClient.invalidateQueries({ queryKey: ["laundry", "items"] });
+			queryClient.invalidateQueries({ queryKey: ["laundry", "dashboard-stats"] });
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "File upload failed");
@@ -95,7 +94,7 @@ export function LaundryBulkUploadDialog() {
 	});
 
 	function handleDownloadTemplate() {
-		const csvContent = [CSV_HEADERS.join(","), CSV_EXAMPLE_ROW].join("\n");
+		const csvContent = [CSV_HEADERS.join(","), ...CSV_EXAMPLE_ROWS].join("\n");
 		const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement("a");
@@ -145,12 +144,12 @@ export function LaundryBulkUploadDialog() {
 					Bulk Add Items
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-				<DialogTitle className="text-2xl">
+			<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+				<DialogTitle className="text-2xl shrink-0">
 					Bulk Add Laundry Items
 				</DialogTitle>
 
-				<div className="flex flex-col gap-4">
+				<div className="flex flex-col gap-4 overflow-y-auto min-h-0 flex-1 pr-1">
 					{/* Template download */}
 					<div className="flex items-center justify-between p-3 bg-muted/50 border rounded-md">
 						<div className="flex items-center gap-3">
@@ -216,94 +215,38 @@ export function LaundryBulkUploadDialog() {
 
 					{/* Upload results */}
 					{uploadResult && (
-						<div className="border rounded-md">
-							<div className="p-3 border-b bg-muted/50">
-								<div className="flex items-center justify-between">
-									<h4 className="text-sm font-semibold">Upload Results</h4>
-									<div className="flex gap-2">
-										<Badge
-											variant="outline"
-											className="bg-green-50 text-green-700 border-green-200"
-										>
-											<CheckCircle2Icon className="w-3 h-3 mr-1" />
-											{uploadResult.summary.successCount} succeeded
-										</Badge>
-										{uploadResult.summary.failedCount > 0 && (
-											<Badge
-												variant="outline"
-												className="bg-red-50 text-red-700 border-red-200"
-											>
-												<XCircleIcon className="w-3 h-3 mr-1" />
-												{uploadResult.summary.failedCount} failed
-											</Badge>
-										)}
-									</div>
-								</div>
-							</div>
-							<ScrollArea className="max-h-[200px]">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead className="w-12">Row</TableHead>
-											<TableHead>Item</TableHead>
-											<TableHead className="w-24 text-center">
-												Status
-											</TableHead>
-											<TableHead>Error</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{uploadResult.results.map((row) => (
-											<TableRow key={row.rowNumber}>
-												<TableCell className="text-xs font-mono">
-													{row.rowNumber}
-												</TableCell>
-												<TableCell className="text-sm">
-													{row.itemIdentifier || "-"}
-												</TableCell>
-												<TableCell className="text-center">
-													{row.success ? (
-														<CheckCircle2Icon className="w-4 h-4 text-green-600 mx-auto" />
-													) : (
-														<XCircleIcon className="w-4 h-4 text-red-600 mx-auto" />
-													)}
-												</TableCell>
-												<TableCell className="text-xs text-red-600">
-													{row.errorMessage || ""}
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							</ScrollArea>
-						</div>
+						<BulkUploadResultDisplay
+							result={uploadResult}
+							entityName="items"
+						/>
 					)}
 
-					<div className="flex justify-end gap-3 pt-2">
-						<Button
-							variant="outline"
-							onClick={() => handleOpenChange(false)}
-							disabled={fileUploadMutation.isPending}
-						>
-							Close
-						</Button>
-						<Button
-							onClick={handleFileUpload}
-							disabled={!selectedFile || fileUploadMutation.isPending}
-						>
-							{fileUploadMutation.isPending ? (
-								<>
-									<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-									Uploading...
-								</>
-							) : (
-								<>
-									<UploadIcon className="w-4 h-4 mr-2" />
-									Upload File
-								</>
-							)}
-						</Button>
-					</div>
+				</div>
+
+				<div className="flex justify-end gap-3 pt-3 border-t shrink-0">
+					<Button
+						variant="outline"
+						onClick={() => handleOpenChange(false)}
+						disabled={fileUploadMutation.isPending}
+					>
+						Close
+					</Button>
+					<Button
+						onClick={handleFileUpload}
+						disabled={!selectedFile || fileUploadMutation.isPending}
+					>
+						{fileUploadMutation.isPending ? (
+							<>
+								<Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+								Uploading...
+							</>
+						) : (
+							<>
+								<UploadIcon className="w-4 h-4 mr-2" />
+								Upload File
+							</>
+						)}
+					</Button>
 				</div>
 			</DialogContent>
 		</Dialog>

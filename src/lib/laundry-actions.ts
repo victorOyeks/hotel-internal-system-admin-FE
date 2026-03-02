@@ -7,6 +7,26 @@ import type { ServerActionResponse } from "./action-utils";
 import { env } from "@/env";
 import type { BulkUploadResult } from "./bulk-upload-types";
 
+// ─── Bookings (for linking orders) ───────────────────────────
+
+export async function getCheckedInBookingsForLaundry() {
+	try {
+		const session = await verifySession();
+		const response = await $fetch("@get/api/front-desks/bookings", {
+			query: {
+				bookingStatus: "CHECKED_IN",
+				page: 0,
+				size: 200,
+			},
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
+		return { success: true as const, data: response.data?.content ?? [] };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
+}
+
 // ─── Dashboard ───────────────────────────────────────────────
 
 export async function getLaundryDashboardStats() {
@@ -124,6 +144,24 @@ export async function createLaundryOrder(payload: any) {
 			auth: { type: "Bearer", token: session.token },
 			throw: true,
 		});
+		return { success: true as const, data: response.data };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
+}
+
+export async function updateLaundryOrder(orderId: string, payload: any) {
+	try {
+		const session = await verifySession();
+		const response = await $fetch(
+			"@put/api/hotels/laundry/orders/:orderId",
+			{
+				params: { orderId },
+				body: payload,
+				auth: { type: "Bearer", token: session.token },
+				throw: true,
+			},
+		);
 		return { success: true as const, data: response.data };
 	} catch (error) {
 		return { success: false as const, error: parseError(error) };

@@ -237,15 +237,18 @@ function ChangeBookingStatus({
 							: new Date(Date.now() + 86400000).toISOString().split("T")[0], // Default to tomorrow if missing
 						discountValue: 0,
 						discountType: "FIXED",
-						initialPayment: {
-							amount: booking?.amountPaid || 0,
-							currency: "NGN",
-							method: "CASH",
-							status: "SUCCESS",
-							type: "DEPOSIT",
-							paymentDate: new Date(),
-							reference: `INIT-${Date.now()}`,
-						},
+						initialPayment:
+							booking?.amountPaid && booking.amountPaid > 0
+								? {
+										amount: booking.amountPaid,
+										currency: "NGN",
+										method: "CASH",
+										status: "SUCCESS",
+										type: "DEPOSIT",
+										paymentDate: new Date(),
+										reference: `INIT-${Date.now()}`,
+									}
+								: undefined,
 					});
 
 					if (!response.success) {

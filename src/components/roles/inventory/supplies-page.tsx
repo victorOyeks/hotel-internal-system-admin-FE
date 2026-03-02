@@ -89,6 +89,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
+import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
 import z from "zod";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -172,73 +173,14 @@ function SupplierFileUploadTab({ onDone }: { onDone: () => void }) {
 	}
 
 	if (uploadState === "complete" && uploadResult) {
-		const { summary, results } = uploadResult;
 		return (
-			<div className="flex flex-col min-h-0 flex-1 py-4">
-				<div className="px-1 pb-3 border-b shrink-0">
-					<div className="flex items-center gap-3">
-						{summary.failedCount === 0 ? (
-							<div className="size-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-								<CheckCircle2Icon className="size-5 text-green-600" />
-							</div>
-						) : (
-							<div className="size-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
-								<XCircleIcon className="size-5 text-yellow-600" />
-							</div>
-						)}
-						<div>
-							<p className="font-semibold text-sm">
-								{summary.failedCount === 0
-									? `All ${summary.totalRows} suppliers uploaded successfully!`
-									: `${summary.successCount} of ${summary.totalRows} suppliers uploaded`}
-							</p>
-							{summary.failedCount > 0 && (
-								<p className="text-xs text-muted-foreground">
-									{summary.failedCount} row{summary.failedCount !== 1 ? "s" : ""} failed
-								</p>
-							)}
-						</div>
-					</div>
-				</div>
-
-				<div className="flex-1 min-h-0 overflow-auto">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Row</TableHead>
-								<TableHead>Item</TableHead>
-								<TableHead className="text-right">Status</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{results.map((result) => (
-								<TableRow key={result.rowNumber}>
-									<TableCell>{result.rowNumber}</TableCell>
-									<TableCell className="font-medium">{result.itemIdentifier ?? "-"}</TableCell>
-									<TableCell className="text-right">
-										{result.success ? (
-											<Badge variant="green" className="gap-1">
-												<CheckCircle2Icon className="size-3" />
-												Created
-											</Badge>
-										) : (
-											<span className="text-sm text-destructive">{result.errorMessage}</span>
-										)}
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
-
-				<div className="pt-4 border-t flex gap-2 shrink-0">
-					<Button variant="outline" className="flex-1" onClick={handleReset}>
-						Upload Another
-					</Button>
-					<Button className="flex-1" onClick={onDone}>
-						Done
-					</Button>
-				</div>
+			<div className="py-4">
+				<BulkUploadResultDisplay
+					result={uploadResult}
+					entityName="suppliers"
+					onClose={onDone}
+					onReset={handleReset}
+				/>
 			</div>
 		);
 	}
