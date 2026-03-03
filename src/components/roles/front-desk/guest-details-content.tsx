@@ -125,10 +125,40 @@ export function GuestDetailsContent({
                         </div>
 
                         <div className="space-y-4 flex-1">
-                            <div className="flex justify-between items-center gap-2 pb-3 border-b border-dashed">
-                                <span className="text-muted-foreground text-sm">Nightly Rate</span>
-                                <span className="font-mono whitespace-nowrap">{formatCurrency(guestDetails.nightlyRate)}</span>
-                            </div>
+                            {(() => {
+                                const hasDiscount = (guestDetails.discountValue != null && guestDetails.discountValue > 0) ||
+                                    (guestDetails.effectiveNightlyRate != null && guestDetails.effectiveNightlyRate < guestDetails.nightlyRate);
+                                return (
+                                    <div className="space-y-2 pb-3 border-b border-dashed">
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Nightly Rate</span>
+                                            <span className={`font-mono whitespace-nowrap ${hasDiscount ? "line-through text-muted-foreground text-xs" : ""}`}>
+                                                {formatCurrency(guestDetails.nightlyRate)}
+                                            </span>
+                                        </div>
+                                        {hasDiscount && (
+                                            <>
+                                                {guestDetails.discountValue != null && guestDetails.discountValue > 0 && (
+                                                    <div className="flex justify-between items-center gap-2">
+                                                        <span className="text-muted-foreground text-sm">Discount</span>
+                                                        <span className="text-green-600 font-medium whitespace-nowrap text-sm">
+                                                            -{guestDetails.discountType === "PERCENTAGE"
+                                                                ? `${guestDetails.discountValue}%`
+                                                                : formatCurrency(guestDetails.discountValue)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between items-center gap-2">
+                                                    <span className="text-muted-foreground text-sm">Effective Rate</span>
+                                                    <span className="font-mono whitespace-nowrap">
+                                                        {formatCurrency(guestDetails.effectiveNightlyRate ?? guestDetails.nightlyRate)}
+                                                    </span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center gap-2">

@@ -78,10 +78,12 @@ export function ExportDialog({
 	onSubmitAction: onSubmit,
 	open,
 	setOpenAction: setOpen,
+	showDates = true,
 }: {
 	onSubmitAction: (data: ExportData) => void | Promise<void>;
 	open: boolean;
 	setOpenAction: (open: boolean) => void;
+	showDates?: boolean;
 }) {
 	const [pending, setPending] = useState(false);
 	const form = useForm({
@@ -126,7 +128,7 @@ export function ExportDialog({
 						onSubmit={form.handleSubmit(handleSubmit)}
 						className="space-y-4"
 					>
-						<div className="grid grid-cols-2 gap-x-2">
+						{showDates && <div className="grid grid-cols-2 gap-x-2">
 							<FormField
 								control={form.control}
 								name="from_date"
@@ -218,7 +220,7 @@ export function ExportDialog({
 									</FormItem>
 								)}
 							/>
-						</div>
+						</div>}
 
 						<FormField
 							control={form.control}

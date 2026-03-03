@@ -121,6 +121,9 @@ const RoomResponse = z.object({
 			checkInDate: z.string(),
 			checkOutDate: z.string(),
 			nightlyRate: z.number(),
+			effectiveNightlyRate: z.number().nullable().optional(),
+			discountValue: z.number().nullable().optional(),
+			discountType: z.string().nullable().optional(),
 			numberOfNights: z.number(),
 			accommodationCost: z.number(),
 			totalAmountDue: z.number(),
@@ -555,6 +558,9 @@ const ManagerBookingViewResponse = BookingViewResponse.extend({
 	noOfAdults: z.number().nullable().optional(),
 	noOfChildren: z.number().nullable().optional(),
 	nightlyRate: z.number().nullable().optional(),
+	effectiveNightlyRate: z.number().nullable().optional(),
+	discountValue: z.number().nullable().optional(),
+	discountType: z.string().nullable().optional(),
 	numberOfNights: z.number().nullable().optional(),
 	accommodationCost: z.number().nullable().optional(),
 	restaurantOrdersTotal: z.number().nullable().optional(),
@@ -2675,6 +2681,18 @@ export const schema = createSchema({
 			.partial(),
 		output: ApiResponseListRoomResponse,
 	},
+	"@get/api/hotel-owners/hotels/:hotelId/rooms/export": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
 	"@get/api/hotel-owners/hotels/bookings": {
 		output: ApiResponseListBookingViewResponse,
 	},
@@ -3587,6 +3605,18 @@ export const schema = createSchema({
 		output: ApiResponseListRoomResponse,
 		query: ListRoomsQuery,
 	},
+	"@get/api/managers/hotels/:hotelId/rooms/export": {
+		params: z.object({ hotelId: z.string() }),
+		query: z
+			.object({
+				format: z.string().optional().nullable(),
+				search: z.string().optional().nullable(),
+				roomType: z.string().optional().nullable(),
+				status: z.string().optional().nullable(),
+			})
+			.partial(),
+		output: ApiResponseObject,
+	},
 	"@post/api/managers/hotels/:hotelId/rooms": {
 		params: z.object({ hotelId: z.string() }),
 		input: CreateRoomRequest,
@@ -3981,6 +4011,9 @@ export const schema = createSchema({
 							noOfAdults: z.number(),
 							noOfChildren: z.number(),
 							nightlyRate: z.number().min(0),
+							effectiveNightlyRate: z.number().nullable().optional(),
+							discountValue: z.number().nullable().optional(),
+							discountType: z.string().nullable().optional(),
 							numberOfNights: z.number().min(0),
 							accommodationCost: z.number().min(0),
 							restaurantOrdersTotal: z.number().min(0),

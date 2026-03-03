@@ -728,7 +728,7 @@ export function UnifiedBookingForm({
 			noOfAdults: 1,
 			noOfChildren: 0,
 			nightlyRate: 0,
-			dailySpendingCap: 0,
+			dailySpendingCap: undefined,
 			checkInDate: initialMode === "check-in" ? toLocalDateString(new Date()) : "",
 			checkOutDate: initialMode === "check-in" ? toLocalDateString(new Date(Date.now() + 86400000)) : "",
 			discountValue: 0,
@@ -843,286 +843,159 @@ export function UnifiedBookingForm({
 	return (
 		<Form {...form}>
 			<form
-				className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
+				className="space-y-0 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
 				onSubmit={form.handleSubmit((formData) => {
 					mutate(formData);
 				})}
 			>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
-					<FormField
-						control={form.control}
-						name="bookingType"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Booking Type <span className="text-red-500">*</span></FormLabel>
-								<Select
-									onValueChange={(value) => {
-										field.onChange(value);
-										if (value === "check-in") {
-											form.setValue("checkInDate", toLocalDateString(new Date()));
-											form.setValue("checkOutDate", toLocalDateString(new Date(Date.now() + 86400000)));
-										} else {
-											form.setValue("checkInDate", "");
-											form.setValue("checkOutDate", "");
-										}
-									}}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select booking type" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="check-in">Check-In</SelectItem>
-										<SelectItem value="reservation">Reservation</SelectItem>
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
-
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-2">
-					<FormField
-						control={form.control}
-						name="title"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Title</FormLabel>
-								<Select onValueChange={field.onChange} defaultValue={field.value}>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select title" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										{["Mr", "Mrs", "Ms", "Dr", "Prof", "Chief", "Alhaji", "Hajia"].map((title) => (
-											<SelectItem key={title} value={title}>
-												{title}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="guestName"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Guest Name</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g John Doe" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="guestEmail"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Email</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g guest@example.com" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="phoneNumber"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Phone Number</FormLabel>
-								<FormControl>
-									<Input placeholder="e.g +234 801 234 5678" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<div className="grid gap-2">
-						<Label>Room Type</Label>
-						<Combobox
-							options={data.roomTypes.map((type) => ({
-								label: type,
-								value: type,
-							}))}
-							value={roomQuery["room:type"]}
-							onSelect={(value) => setRoomQuery({ "room:type": value })}
-							placeholder="Select room type..."
-							emptyText="No room types found"
-						/>
-					</div>
-
-					<FormField
-						control={form.control}
-						name="roomId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Room</FormLabel>
-								<FormControl>
-									<RoomListCombobox
-										rooms={data.rooms}
-										value={field.value}
-										onSelect={(value) => {
-											field.onChange(value);
-											const room = data.rooms.find((r) => r.id === value);
-											if (room) {
-												form.setValue("nightlyRate", room.roomPrice);
-											}
-										}}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="noOfAdults"
-						render={() => (
-							<FormItem>
-								<FormLabel>Number of Adults</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 2"
-										min="1"
-										{...form.register("noOfAdults", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="noOfChildren"
-						render={() => (
-							<FormItem>
-								<FormLabel>Number of Children</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder="e.g 0"
-										min="0"
-										{...form.register("noOfChildren", { valueAsNumber: true })}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="nightlyRate"
-						render={() => (
-							<FormItem>
-								<FormLabel>Nightly Rate</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										placeholder=""
-										min="0"
-										step="0.01"
-										value={form.watch("nightlyRate") || ""}
-										onChange={(e) =>
-											form.setValue("nightlyRate", Number(e.target.value))
-										}
-										readOnly
-										className="bg-muted/50"
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="dailySpendingCap"
-						render={() => (
-							<FormItem>
-								<FormLabel>Daily Spending Cap</FormLabel>
-								<FormControl>
-									<Input
-										type="number"
-										min="0"
-										step="0.01"
-										placeholder="e.g 10000"
-										{...form.register("dailySpendingCap", {
-											valueAsNumber: true,
-										})}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<div className="col-span-full flex items-center space-x-2">
-						<Checkbox
-							id="linkOrganization"
-							checked={showOrganization}
-							onCheckedChange={(checked) => {
-								setShowOrganization(checked === true);
-								if (!checked) setSelectedOrgId("");
-							}}
-						/>
-						<Label htmlFor="linkOrganization" className="cursor-pointer">Link to organization</Label>
-					</div>
-
-					{showOrganization && (
-						<div className="col-span-full">
-							<Combobox
-								options={organizations.map((org: { id: string; name: string }) => ({
-									label: org.name,
-									value: org.id,
-								}))}
-								value={selectedOrgId}
-								onSelect={setSelectedOrgId}
-								placeholder="Select organization..."
-								emptyText="No organizations found"
-							/>
+				<div className="space-y-6">
+					{/* ── Booking Setup ── */}
+					<div className="space-y-3">
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Booking Setup</p>
+							<div className="h-px bg-border flex-1" />
 						</div>
-					)}
-
-
-					<div className="grid gap-4 p-2 border rounded-lg bg-muted/20 col-span-full">
-						<h4 className="font-medium text-sm text-muted-foreground mb-2">
-							Payment & Discount
-						</h4>
-						<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-2 gap-x-3 gap-y-4">
 							<FormField
 								control={form.control}
-								name="discountType"
+								name="bookingType"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Discount Type</FormLabel>
+										<FormLabel>Booking Type <span className="text-red-500">*</span></FormLabel>
 										<Select
-											onValueChange={field.onChange}
+											onValueChange={(value) => {
+												field.onChange(value);
+												if (value === "check-in") {
+													form.setValue("checkInDate", toLocalDateString(new Date()));
+													form.setValue("checkOutDate", toLocalDateString(new Date(Date.now() + 86400000)));
+												} else {
+													form.setValue("checkInDate", "");
+													form.setValue("checkOutDate", "");
+												}
+											}}
 											defaultValue={field.value}
 										>
 											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select type" />
+												<SelectTrigger>
+													<SelectValue placeholder="Select booking type" />
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												<SelectItem value="FIXED">Fixed Amount</SelectItem>
-												<SelectItem value="PERCENTAGE">Percentage</SelectItem>
+												<SelectItem value="check-in">Check-In</SelectItem>
+												<SelectItem value="reservation">Reservation</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<div className="grid gap-2">
+								<Label>Room Type</Label>
+								<Combobox
+									options={data.roomTypes.map((type) => ({
+										label: type,
+										value: type,
+									}))}
+									value={roomQuery["room:type"]}
+									onSelect={(value) => setRoomQuery({ "room:type": value })}
+									placeholder="Select room type..."
+									emptyText="No room types found"
+								/>
+							</div>
+							<FormField
+								control={form.control}
+								name="checkInDate"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Check-in Date</FormLabel>
+										<FormControl>
+											<DatePicker
+												initialDate={field.value}
+												onChange={field.onChange}
+												placeholder="Select check-in date"
+												minDate={new Date()}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="checkOutDate"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Check-out Date</FormLabel>
+										<FormControl>
+											<DatePicker
+												initialDate={field.value}
+												onChange={field.onChange}
+												placeholder="Select check-out date"
+												minDate={
+													form.watch("checkInDate")
+														? new Date(
+															new Date(form.watch("checkInDate")).getTime() +
+															24 * 60 * 60 * 1000,
+														)
+														: new Date()
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="roomId"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Room <span className="text-red-500">*</span></FormLabel>
+										<FormControl>
+											<RoomListCombobox
+												rooms={data.rooms}
+												value={field.value}
+												onSelect={(value) => {
+													field.onChange(value);
+													const room = data.rooms.find((r) => r.id === value);
+													if (room) {
+														form.setValue("nightlyRate", room.roomPrice);
+													}
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
+
+					{/* ── Guest Information ── */}
+					<div className="space-y-3">
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Guest Information</p>
+							<div className="h-px bg-border flex-1" />
+						</div>
+						<div className="grid grid-cols-4 gap-x-3 gap-y-4">
+							<FormField
+								control={form.control}
+								name="title"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Title</FormLabel>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Title" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												{["Mr", "Mrs", "Ms", "Dr", "Prof", "Chief", "Alhaji", "Hajia"].map((title) => (
+													<SelectItem key={title} value={title}>
+														{title}
+													</SelectItem>
+												))}
 											</SelectContent>
 										</Select>
 										<FormMessage />
@@ -1131,19 +1004,73 @@ export function UnifiedBookingForm({
 							/>
 							<FormField
 								control={form.control}
-								name="discountValue"
+								name="guestName"
 								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Discount Value</FormLabel>
+									<FormItem className="col-span-3">
+										<FormLabel>Full Name <span className="text-red-500">*</span></FormLabel>
+										<FormControl>
+											<Input placeholder="e.g John Doe" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="guestEmail"
+								render={({ field }) => (
+									<FormItem className="col-span-2">
+										<FormLabel>Email</FormLabel>
+										<FormControl>
+											<Input placeholder="e.g guest@example.com" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="phoneNumber"
+								render={({ field }) => (
+									<FormItem className="col-span-2">
+										<FormLabel>Phone Number</FormLabel>
+										<FormControl>
+											<Input placeholder="e.g +234 801 234 5678" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="noOfAdults"
+								render={() => (
+									<FormItem className="col-span-2">
+										<FormLabel>Adults</FormLabel>
 										<FormControl>
 											<Input
 												type="number"
+												placeholder="1"
+												min="1"
+												{...form.register("noOfAdults", { valueAsNumber: true })}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="noOfChildren"
+								render={() => (
+									<FormItem className="col-span-2">
+										<FormLabel>Children</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												placeholder="0"
 												min="0"
-												{...field}
-												onChange={(e) =>
-													field.onChange(Number.parseFloat(e.target.value))
-												}
-												className="w-full"
+												{...form.register("noOfChildren", { valueAsNumber: true })}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -1151,215 +1078,279 @@ export function UnifiedBookingForm({
 								)}
 							/>
 						</div>
+					</div>
 
-						<div className="flex items-center space-x-2">
-							<Checkbox
-								id="includePayment"
-								checked={showPayment}
-								onCheckedChange={(checked) => setShowPayment(checked === true)}
-							/>
-							<Label htmlFor="includePayment" className="cursor-pointer">Include initial payment</Label>
+					{/* ── Rate & Financials ── */}
+					<div className="space-y-3">
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Rate & Financials</p>
+							<div className="h-px bg-border flex-1" />
 						</div>
-
-						{showPayment && (
-							<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-2 gap-x-3 gap-y-4">
+							<FormField
+								control={form.control}
+								name="nightlyRate"
+								render={() => (
+									<FormItem>
+										<FormLabel>Nightly Rate</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												step="0.01"
+												value={form.watch("nightlyRate") || ""}
+												onChange={(e) => form.setValue("nightlyRate", Number(e.target.value))}
+												readOnly
+												className="bg-muted/50"
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="dailySpendingCap"
+								render={() => (
+									<FormItem>
+										<FormLabel>Daily Spending Cap</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min="0"
+												step="0.01"
+												placeholder="e.g 10000"
+												{...form.register("dailySpendingCap", { valueAsNumber: true })}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+						<div className="grid gap-4 p-4 border rounded-lg bg-muted/20">
+							<div className="grid grid-cols-2 gap-3">
 								<FormField
 									control={form.control}
-									name="initialPayment.amount"
+									name="discountType"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Payment Amount</FormLabel>
-											<FormControl>
-												<Input
-													type="number"
-													min="0"
-													{...field}
-													onChange={(e) =>
-														field.onChange(Number.parseFloat(e.target.value))
-													}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="initialPayment.method"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Payment Method</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
+											<FormLabel>Discount Type</FormLabel>
+											<Select onValueChange={field.onChange} defaultValue={field.value}>
 												<FormControl>
 													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select method" />
+														<SelectValue placeholder="Select type" />
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													{[
-														"CASH",
-														"CARD",
-														"CREDIT_CARD",
-														"DEBIT_CARD",
-														"BANK_TRANSFER",
-														"MOBILE_MONEY",
-														"CHEQUE",
-														"ONLINE_PAYMENT",
-														"PAYPAL",
-														"CRYPTOCURRENCY",
-														"DIRECT_DEBIT",
-														"PETTY_CASH",
-														"OTHERS",
-													].map((method) => (
-														<SelectItem key={method} value={method}>
-															{method.replace(/_/g, " ")}
-														</SelectItem>
-													))}
+													<SelectItem value="FIXED">Fixed Amount</SelectItem>
+													<SelectItem value="PERCENTAGE">Percentage</SelectItem>
 												</SelectContent>
 											</Select>
 											<FormMessage />
 										</FormItem>
 									)}
 								/>
+								<FormField
+									control={form.control}
+									name="discountValue"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Discount Value</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min="0"
+													{...field}
+													onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
+													className="w-full"
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 							</div>
-						)}
+							<div className="flex items-center space-x-2">
+								<Checkbox
+									id="includePayment"
+									checked={showPayment}
+									onCheckedChange={(checked) => setShowPayment(checked === true)}
+								/>
+								<Label htmlFor="includePayment" className="cursor-pointer">Include initial payment</Label>
+							</div>
+							{showPayment && (
+								<div className="grid grid-cols-2 gap-3">
+									<FormField
+										control={form.control}
+										name="initialPayment.amount"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Payment Amount</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														{...field}
+														onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="initialPayment.method"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Payment Method</FormLabel>
+												<Select onValueChange={field.onChange} defaultValue={field.value}>
+													<FormControl>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select method" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{[
+															"CASH", "CARD", "CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER",
+															"MOBILE_MONEY", "CHEQUE", "ONLINE_PAYMENT", "PAYPAL",
+															"CRYPTOCURRENCY", "DIRECT_DEBIT", "PETTY_CASH", "OTHERS",
+														].map((method) => (
+															<SelectItem key={method} value={method}>
+																{method.replace(/_/g, " ")}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+							)}
+						</div>
 					</div>
 
-					<FormField
-						control={form.control}
-						name="checkInDate"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Check-in Date</FormLabel>
-								<FormControl>
-									<DatePicker
-										initialDate={field.value}
-										onChange={field.onChange}
-										placeholder="Select check-in date"
-										minDate={new Date()}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="checkOutDate"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Check-out Date</FormLabel>
-								<FormControl>
-									<DatePicker
-										initialDate={field.value}
-										onChange={field.onChange}
-										placeholder="Select check-out date"
-										minDate={
-											form.watch("checkInDate")
-												? new Date(
-													new Date(form.watch("checkInDate")).getTime() +
-													24 * 60 * 60 * 1000,
-												)
-												: new Date()
-										}
-									/>
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-				</div>
-
-				{/* Booking Summary */}
-				{form.watch("checkInDate") &&
-					form.watch("checkOutDate") &&
-					form.watch("nightlyRate") > 0 &&
-					(() => {
-						const nights = Math.ceil(
-							(new Date(form.watch("checkOutDate")).getTime() -
-								new Date(form.watch("checkInDate")).getTime()) /
-							(1000 * 60 * 60 * 24),
-						);
-						const rate = form.watch("nightlyRate");
-						const discountVal = form.watch("discountValue") || 0;
-						const discountType = form.watch("discountType");
-						const effectiveRate =
-							discountVal > 0
-								? discountType === "PERCENTAGE"
-									? rate * (1 - discountVal / 100)
-									: Math.max(0, rate - discountVal)
-								: rate;
-						const total = nights * effectiveRate;
-						return (
-							<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-								<h3 className="font-medium text-sm">
-									{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
-								</h3>
-								<div className="grid grid-cols-2 gap-2 text-sm">
-									<div>
-										<span className="text-muted-foreground">Duration:</span>
-										<span className="ml-2 font-medium">
-											{nights} {nights === 1 ? "night" : "nights"}
-										</span>
-									</div>
-									<div>
-										<span className="text-muted-foreground">Nightly Rate:</span>
-										<span className="ml-2 font-medium">
-											{formatCurrency(rate)}
-										</span>
-									</div>
-									{discountVal > 0 && (
-										<>
-											<div>
-												<span className="text-muted-foreground">Discount:</span>
-												<span className="ml-2 font-medium text-green-600">
-													{discountType === "PERCENTAGE"
-														? `${discountVal}%`
-														: formatCurrency(discountVal)}
-												</span>
-											</div>
-											<div>
-												<span className="text-muted-foreground">Effective Rate:</span>
-												<span className="ml-2 font-medium">
-													{formatCurrency(effectiveRate)}
-												</span>
-											</div>
-										</>
-									)}
-									<div className="col-span-2">
-										<span className="text-muted-foreground">Total Cost:</span>
-										<span className="ml-2 font-medium text-lg">
-											{formatCurrency(total)}
-										</span>
+					{/* ── Booking Summary ── */}
+					{form.watch("checkInDate") &&
+						form.watch("checkOutDate") &&
+						form.watch("nightlyRate") > 0 &&
+						(() => {
+							const nights = Math.ceil(
+								(new Date(form.watch("checkOutDate")).getTime() -
+									new Date(form.watch("checkInDate")).getTime()) /
+								(1000 * 60 * 60 * 24),
+							);
+							const rate = form.watch("nightlyRate");
+							const discountVal = form.watch("discountValue") || 0;
+							const discountType = form.watch("discountType");
+							const effectiveRate =
+								discountVal > 0
+									? discountType === "PERCENTAGE"
+										? rate * (1 - discountVal / 100)
+										: Math.max(0, rate - discountVal)
+									: rate;
+							const total = nights * effectiveRate;
+							return (
+								<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
+									<h3 className="font-medium text-sm">
+										{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
+									</h3>
+									<div className="grid grid-cols-2 gap-2 text-sm">
+										<div>
+											<span className="text-muted-foreground">Duration:</span>
+											<span className="ml-2 font-medium">
+												{nights} {nights === 1 ? "night" : "nights"}
+											</span>
+										</div>
+										<div>
+											<span className="text-muted-foreground">Nightly Rate:</span>
+											<span className="ml-2 font-medium">
+												{formatCurrency(rate)}
+											</span>
+										</div>
+										{discountVal > 0 && (
+											<>
+												<div>
+													<span className="text-muted-foreground">Discount:</span>
+													<span className="ml-2 font-medium text-green-600">
+														{discountType === "PERCENTAGE"
+															? `${discountVal}%`
+															: formatCurrency(discountVal)}
+													</span>
+												</div>
+												<div>
+													<span className="text-muted-foreground">Effective Rate:</span>
+													<span className="ml-2 font-medium">
+														{formatCurrency(effectiveRate)}
+													</span>
+												</div>
+											</>
+										)}
+										<div className="col-span-2">
+											<span className="text-muted-foreground">Total Cost:</span>
+											<span className="ml-2 font-medium text-lg">
+												{formatCurrency(total)}
+											</span>
+										</div>
 									</div>
 								</div>
-							</div>
-						);
-					})()}
+							);
+						})()
+					}
 
-				<FormField
-					control={form.control}
-					name="notes"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Notes (Optional)</FormLabel>
-							<FormControl>
-								<Textarea
-									placeholder="Add any special requests or notes..."
-									className="resize-none"
-									rows={3}
-									{...field}
+					{/* ── Additional ── */}
+					<div className="space-y-3">
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Additional</p>
+							<div className="h-px bg-border flex-1" />
+						</div>
+						<div className="space-y-4">
+							<div className="flex items-center space-x-2">
+								<Checkbox
+									id="linkOrganization"
+									checked={showOrganization}
+									onCheckedChange={(checked) => {
+										setShowOrganization(checked === true);
+										if (!checked) setSelectedOrgId("");
+									}}
 								/>
-							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-
+								<Label htmlFor="linkOrganization" className="cursor-pointer">Link to organization</Label>
+							</div>
+							{showOrganization && (
+								<Combobox
+									options={organizations.map((org: { id: string; name: string }) => ({
+										label: org.name,
+										value: org.id,
+									}))}
+									value={selectedOrgId}
+									onSelect={setSelectedOrgId}
+									placeholder="Select organization..."
+									emptyText="No organizations found"
+								/>
+							)}
+							<FormField
+								control={form.control}
+								name="notes"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Notes <span className="text-muted-foreground font-normal text-xs">(Optional)</span></FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="Special requests, preferences, or notes..."
+												className="resize-none"
+												rows={3}
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
+				</div>
 				<Button
 					type="submit"
 					className="mt-4 w-full font-semibold"

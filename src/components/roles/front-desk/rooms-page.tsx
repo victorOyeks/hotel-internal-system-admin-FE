@@ -226,7 +226,7 @@ function RoomsFilter({
 	);
 }
 
-function Export({ roomQuery }: { roomQuery: { roomStatus: "AVAILABLE" | null; search: string | null; roomType: string | null } }) {
+function Export({ roomQuery }: { roomQuery: { roomStatus: string | null; search: string | null; roomType: string | null } }) {
 	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
 	const onExport = async (data: ExportData) => {
@@ -274,6 +274,7 @@ function Export({ roomQuery }: { roomQuery: { roomStatus: "AVAILABLE" | null; se
 			open={isExportDialogOpen}
 			setOpenAction={setIsExportDialogOpen}
 			onSubmitAction={onExport}
+			showDates={false}
 		/>
 	);
 }

@@ -1200,17 +1200,46 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 						</div>
 
 						<div className="space-y-4 flex-1">
-							<div className="flex justify-between items-center pb-3 border-b border-dashed">
-								<span className="text-muted-foreground">Nightly Rate</span>
-								<span className="font-mono">
-									{formatCurrency(booking.nightlyRate)}
-								</span>
-							</div>
+							{(() => {
+								const hasDiscount = (booking.discountValue != null && booking.discountValue > 0) ||
+									(booking.effectiveNightlyRate != null && booking.nightlyRate != null &&
+										booking.effectiveNightlyRate < booking.nightlyRate);
+								return (
+									<div className="space-y-2 pb-3 border-b border-dashed">
+										<div className="flex justify-between items-center">
+											<span className="text-muted-foreground">Nightly Rate</span>
+											<span className={`font-mono ${hasDiscount ? "line-through text-muted-foreground text-xs" : ""}`}>
+												{formatCurrency(booking.nightlyRate)}
+											</span>
+										</div>
+										{hasDiscount && (
+											<>
+												{booking.discountValue != null && booking.discountValue > 0 && (
+													<div className="flex justify-between items-center">
+														<span className="text-muted-foreground">Discount</span>
+														<span className="text-green-600 font-medium text-sm">
+															-{booking.discountType === "PERCENTAGE"
+																? `${booking.discountValue}%`
+																: formatCurrency(booking.discountValue)}
+														</span>
+													</div>
+												)}
+												<div className="flex justify-between items-center">
+													<span className="text-muted-foreground">Effective Rate</span>
+													<span className="font-mono">
+														{formatCurrency(booking.effectiveNightlyRate ?? booking.nightlyRate)}
+													</span>
+												</div>
+											</>
+										)}
+									</div>
+								);
+							})()}
 
 							<div className="space-y-3">
 								<div className="flex justify-between items-center">
 									<span className="text-muted-foreground">
-										Accommodation
+										Accomm.
 									</span>
 									<span className="font-medium">
 										{formatCurrency(booking.accommodationCost)}
@@ -1610,7 +1639,9 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 		booking.bookingStatus === "RESERVED";
 
 	const canRecordPayment =
-		booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED";
+		booking.bookingStatus === "CHECKED_IN" ||
+		booking.bookingStatus === "RESERVED" ||
+		booking.bookingStatus === "CHECKED_OUT";
 
 	const canAssignOrg =
 		(booking.bookingStatus === "CHECKED_IN" || booking.bookingStatus === "RESERVED") &&

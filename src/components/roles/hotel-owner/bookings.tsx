@@ -220,24 +220,53 @@ function BookingDetailsContent({ booking }: { booking: ManagerBookingViewRespons
 									<Bed className="h-4 w-4 text-primary" />
 									Accommodation
 								</div>
-								<div className="space-y-2 text-sm">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Nightly Rate</span>
-										<span className="font-medium">{formatCurrency(booking.nightlyRate)}</span>
-									</div>
-									{booking.accommodationCost != null && (
-										<div className="flex justify-between">
-											<span className="text-muted-foreground">Accommodation Total</span>
-											<span className="font-medium">{formatCurrency(booking.accommodationCost)}</span>
+								{(() => {
+									const hasDiscount = (booking.discountValue != null && booking.discountValue > 0) ||
+										(booking.effectiveNightlyRate != null && booking.nightlyRate != null &&
+											booking.effectiveNightlyRate < booking.nightlyRate);
+									return (
+										<div className="space-y-2 text-sm">
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Nightly Rate</span>
+												<span className={`font-medium ${hasDiscount ? "line-through text-muted-foreground text-xs" : ""}`}>
+													{formatCurrency(booking.nightlyRate)}
+												</span>
+											</div>
+											{hasDiscount && (
+												<>
+													{booking.discountValue != null && booking.discountValue > 0 && (
+														<div className="flex justify-between">
+															<span className="text-muted-foreground">Discount</span>
+															<span className="text-green-600 font-medium text-sm">
+																-{booking.discountType === "PERCENTAGE"
+																	? `${booking.discountValue}%`
+																	: formatCurrency(booking.discountValue)}
+															</span>
+														</div>
+													)}
+													<div className="flex justify-between">
+														<span className="text-muted-foreground">Effective Rate</span>
+														<span className="font-medium">
+															{formatCurrency(booking.effectiveNightlyRate ?? booking.nightlyRate)}
+														</span>
+													</div>
+												</>
+											)}
+											{booking.accommodationCost != null && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Accommodation Total</span>
+													<span className="font-medium">{formatCurrency(booking.accommodationCost)}</span>
+												</div>
+											)}
+											{booking.restaurantOrdersTotal != null && booking.restaurantOrdersTotal > 0 && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Restaurant Orders</span>
+													<span className="font-medium">{formatCurrency(booking.restaurantOrdersTotal)}</span>
+												</div>
+											)}
 										</div>
-									)}
-									{booking.restaurantOrdersTotal != null && booking.restaurantOrdersTotal > 0 && (
-										<div className="flex justify-between">
-											<span className="text-muted-foreground">Restaurant Orders</span>
-											<span className="font-medium">{formatCurrency(booking.restaurantOrdersTotal)}</span>
-										</div>
-									)}
-								</div>
+									);
+								})()}
 							</div>
 						)}
 					</div>

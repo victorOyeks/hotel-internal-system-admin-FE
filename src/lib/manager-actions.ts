@@ -639,3 +639,45 @@ export async function exportManagerFolioPdf({
 		};
 	}
 }
+
+export async function exportRooms(filters: {
+	search?: string;
+	roomType?: string;
+	status?: string;
+	format: "CSV" | "PDF" | "EXCEL";
+}): Promise<{ success: boolean; data?: string; error?: string }> {
+	const { sessionData, hotelId } = await getManagerContext();
+
+	try {
+		const response = await $fetch(
+			"@get/api/managers/hotels/:hotelId/rooms/export",
+			{
+				params: { hotelId },
+				query: {
+					search: filters.search,
+					roomType: filters.roomType,
+					status: filters.status,
+					format: filters.format,
+				},
+				auth: { type: "Bearer", token: sessionData.token },
+			},
+		);
+
+		if (response.error) {
+			return {
+				success: false,
+				error: response.error.message || "Failed to export rooms",
+			};
+		}
+
+		return { success: true, data: response.data as unknown as string };
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "An error occurred during export",
+		};
+	}
+}

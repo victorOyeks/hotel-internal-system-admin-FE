@@ -35,8 +35,10 @@ import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { addNewRoomToHotelOwner } from "@/lib/hotel-owner-actions";
+import { addNewRoomToHotelOwner, exportRooms } from "@/lib/hotel-owner-actions";
 import { toast } from "sonner";
+import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
+import { format } from "date-fns";
 import type { APIOutput } from "@/lib/action-utils";
 import type { Pagination } from "@/lib/fetch";
 import { formatCurrency } from "@/lib/utils";
@@ -340,6 +342,60 @@ function RoomsFilter({
 	);
 }
 
+// --- Export ---
+
+function Export({ roomQuery }: { roomQuery: { roomStatus: string | null; search: string | null; roomType: string | null } }) {
+	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+
+	const onExport = async (data: ExportData) => {
+		try {
+			const filters = {
+				search: roomQuery.search || undefined,
+				roomType: roomQuery.roomType || undefined,
+				status: roomQuery.roomStatus || undefined,
+				format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+			};
+
+			const response = await exportRooms(filters);
+
+			if (response.success && response.data) {
+				const blob = new Blob([response.data as unknown as BlobPart], {
+					type:
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				const extension = data.export_type === "excel" ? "xlsx" : data.export_type;
+				a.download = `rooms-export-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+				toast.success("Export downloaded successfully");
+				setIsExportDialogOpen(false);
+			} else {
+				toast.error(response.error || "Failed to export rooms");
+			}
+		} catch {
+			toast.error("An error occurred during export");
+		}
+	};
+
+	return (
+		<ExportDialog
+			open={isExportDialogOpen}
+			setOpenAction={setIsExportDialogOpen}
+			onSubmitAction={onExport}
+			showDates={false}
+		/>
+	);
+}
+
 // --- Toolbar ---
 
 function RoomListToolbar({
@@ -414,6 +470,8 @@ function RoomListToolbar({
 							setQueryState={setQueryState}
 						/>
 					</TableFilter>
+
+					<Export roomQuery={queryState} />
 
 					{queryState.roomType && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
