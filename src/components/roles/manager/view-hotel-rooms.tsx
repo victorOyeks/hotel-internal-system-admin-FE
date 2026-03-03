@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { atom, useAtom, useSetAtom } from "jotai";
@@ -157,6 +157,7 @@ function MultiRoomFormTab({ onDone }: { onDone: () => void }) {
 				const res = await addNewRoomToHotel({
 					roomIdentifier: room.roomIdentifier,
 					roomType: room.roomType,
+					roomPrice: Number(room.roomPrice),
 					roomFacility: facilities,
 					roomStatus: "AVAILABLE",
 				});
