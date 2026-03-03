@@ -60,12 +60,8 @@ function ForgotPassword() {
 			});
 		},
 		onSuccess: (data) => {
-			// TODO: Remove OTP from toast when email notification is implemented
 			toast.success("OTP Sent!", {
-				description: data.otp
-					? `Your OTP is: ${data.otp} (Testing only - will be sent via email in production)`
-					: "Please check your email for the verification code.",
-				duration: 10000, // Show longer for testing
+				description: data.message || "Please check your email for the verification code.",
 			});
 			// Navigate to OTP verification with email in query params
 			router.push(
