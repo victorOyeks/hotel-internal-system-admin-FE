@@ -814,6 +814,17 @@ const columns = [
 		header: "Expenses",
 		cell: (info) => formatCurrency(parseFloat(info.getValue())),
 	}),
+	columnHelper.accessor("manager", {
+		header: "Manager",
+		cell: (info) => {
+			const manager = info.getValue();
+			return manager?.fullName ? (
+				<span className="font-medium">{manager.fullName}</span>
+			) : (
+				<span className="text-gray-400 italic">Unassigned</span>
+			);
+		},
+	}),
 	columnHelper.display({
 		id: "actions",
 		cell: (info) => {
