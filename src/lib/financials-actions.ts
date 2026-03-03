@@ -60,9 +60,35 @@ export const getOtherIncome = cache(
 	},
 );
 
-export const createOtherIncome = async (
-	data: Omit<OtherIncome, "id" | "status" | "recordedBy">,
-) => {
+export const createOtherIncome = async (data: {
+	title: string;
+	description?: string;
+	amount: number;
+	category: string;
+	paymentMethod: string;
+	incomeDate: string;
+	receivedDate?: string;
+	customerName?: string;
+	customerContact?: string;
+	customerAddress?: string;
+	invoiceNumber?: string;
+	receiptNumber?: string;
+	taxAmount?: number;
+	taxType?: string;
+	taxRate?: number;
+	commissionAmount?: number;
+	commissionRate?: number;
+	commissionPayee?: string;
+	recurrenceType?: string;
+	nextOccurrence?: string;
+	departmentId?: string;
+	servedBy?: string;
+	invoiceUrl?: string;
+	attachmentUrls?: string;
+	notes?: string;
+	accountCode?: string;
+	revenueCenter?: string;
+}) => {
 	const cookieData = await getCookieData();
 	if (!cookieData) throw new Error("Unauthorized");
 	const res = await $fetch("@post/api/financials/other-income", {
@@ -84,9 +110,7 @@ export const updateOtherIncomeStatus = async (
 	const res = await $fetch("@patch/api/financials/other-income/:id/status", {
 		params: { id },
 		auth: { type: "Bearer", token: cookieData.token },
-		body: {
-			status,
-		},
+		query: { status },
 		throw: true,
 	});
 

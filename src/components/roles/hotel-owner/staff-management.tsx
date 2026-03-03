@@ -470,12 +470,9 @@ const newManagerFormSchema = z.object({
 	fullName: z.string().nonempty("Manager name is required"),
 	email: z.email("Invalid email address"),
 	phoneNumber: z.string().nonempty("Phone number is required"),
-	password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 function AddManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
-	const [showPassword, setShowPassword] = useState(false);
-
 	const queryClient = useQueryClient();
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const { mutate, isPending } = useMutation({
@@ -508,7 +505,6 @@ function AddManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 			fullName: "",
 			email: "",
 			phoneNumber: "",
-			password: "",
 		},
 		progressive: true,
 		mode: "onBlur",
@@ -566,41 +562,6 @@ function AddManagerForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 									{...field}
 								/>
 							</FormControl>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-
-				<FormField
-					control={form.control}
-					name="password"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Password</FormLabel>
-							<div className="relative">
-								<FormControl>
-									<Input
-										type={showPassword ? "text" : "password"}
-										placeholder="Enter a password"
-										autoComplete="new-password"
-										data-form-type="other"
-										{...field}
-									/>
-								</FormControl>
-								<Button
-									type="button"
-									variant={"ghost"}
-									size={"icon"}
-									className="absolute right-0 top-1/2 -translate-y-1/2"
-									onClick={() => setShowPassword((prev) => !prev)}
-								>
-									{showPassword ? (
-										<EyeOffIcon className="h-4 w-4" />
-									) : (
-										<EyeIcon className="h-4 w-4" />
-									)}
-								</Button>
-							</div>
 							<FormMessage />
 						</FormItem>
 					)}
@@ -1382,6 +1343,17 @@ const columns = [
 			);
 		},
 	}),
+	columnHelper.accessor("roles", {
+		header: "Role",
+		cell: (info) => {
+			const isManager = (info.getValue() ?? []).includes("MANAGER");
+			return (
+				<Badge variant={isManager ? "default" : "outline"}>
+					{isManager ? "Manager" : "Staff"}
+				</Badge>
+			);
+		},
+	}),
 	columnHelper.accessor("email", {
 		header: "Email",
 		cell: (info) => <span>{info.getValue()}</span>,
@@ -1458,11 +1430,16 @@ function StaffDetailSheet() {
 	const status = (staff.userStatus ?? "INACTIVE") as keyof typeof statusVariantMap;
 	const roles = staff.roles ?? [];
 
+	const isManager = roles.includes("MANAGER");
+
 	const details = [
 		{ label: "Staff ID", value: staff.staffId || staff.customId },
 		{ label: "Full Name", value: staff.fullName },
 		{ label: "Email", value: staff.email },
 		{ label: "Phone Number", value: staff.phoneNumber ?? "-" },
+		...(isManager
+			? [{ label: "Assigned Hotel", value: staff.assignedHotelName ? "Yes" : "No" }]
+			: []),
 		{ label: "Verified", value: staff.verified ? "Yes" : "No" },
 		{ label: "Last Login", value: formatDate(staff.lastLogin) },
 	];

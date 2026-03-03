@@ -365,6 +365,8 @@ const StaffDetails = z.object({
 	roles: z.array(z.string()),
 	verified: z.boolean().optional().nullable(),
 	lastLogin: z.string().optional().nullable(),
+	assignedToHotel: z.boolean().optional().nullable(),
+	assignedHotelName: z.string().optional().nullable(),
 });
 
 export type StaffDetails = z.infer<typeof StaffDetails>;
@@ -646,7 +648,7 @@ const OnboardStaffRequest = z.object({
 	phoneNumber: z.string(),
 	staffId: z.string(),
 	roles: z.array(Role),
-	password: z.string().min(8, "Password must be at least 8 characters"),
+	password: z.string().min(8, "Password must be at least 8 characters").optional(),
 });
 
 export type OnboardStaffRequest = z.infer<typeof OnboardStaffRequest>;
