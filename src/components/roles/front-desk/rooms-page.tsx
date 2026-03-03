@@ -13,7 +13,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { parseAsStringLiteral, parseAsString, parseAsBoolean, useQueryStates } from "nuqs";
+import { parseAsString, parseAsBoolean, useQueryStates } from "nuqs";
 
 import {
 	createColumnHelper,
@@ -53,11 +53,11 @@ function RoomsFilter({
 }: {
 	rooms: RoomDetails[];
 	queryState: {
-		roomStatus: "AVAILABLE" | null;
+		roomStatus: string | null;
 		search: string | null;
 		roomType: string | null;
 	};
-	setQueryState: (state: Partial<typeof queryState>) => void;
+	setQueryState: (state: { roomStatus?: string | null; search?: string | null; roomType?: string | null }) => void;
 }) {
 	const [tempFilters, setTempFilters] = useState({
 		roomType: queryState.roomType,
@@ -119,8 +119,7 @@ function RoomsFilter({
 		{ value: "RESERVED", label: "Reserved" },
 		{ value: "CHECKED_IN", label: "Checked In" },
 		{ value: "CHECKED_OUT", label: "Checked Out" },
-		{ value: "BLOCKED", label: "Blocked" },
-		{ value: "DIRTY", label: "Dirty" },
+		{ value: "CANCELLED", label: "Cancelled" },
 	];
 
 	return (
@@ -146,7 +145,7 @@ function RoomsFilter({
 					onValueChange={(value) =>
 						setTempFilters({
 							...tempFilters,
-							status: value === "all" ? null : (value as "AVAILABLE"),
+							status: value === "all" ? null : value,
 						})
 					}
 				>
@@ -289,7 +288,7 @@ function RoomListToolbar({
 	isDeactivatedView: boolean;
 }) {
 	const [queryState, setQueryState] = useQueryStates({
-		roomStatus: parseAsStringLiteral(["AVAILABLE"]),
+		roomStatus: parseAsString,
 		search: parseAsString,
 		roomType: parseAsString,
 		active: parseAsBoolean,

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { TableFilter } from "@/components/shared/table-filter";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +93,8 @@ import {
 } from "@/lib/restaurant-actions";
 import { Switch } from "@/components/ui/switch";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
+import { FileUploadLoader } from "@/components/shared/file-upload-loader";
+import { ListSubmitLoader } from "@/components/shared/list-submit-loader";
 
 export type FoodDrinkItem =
 	APIOutput<"@get/api/restaurants/items/all">["data"][number];
@@ -187,6 +189,10 @@ export function FoodItemsFileUpload({
 		a.click();
 		URL.revokeObjectURL(url);
 	};
+
+	if (isPending) {
+		return <FileUploadLoader selectedFile={file} steps={["Reading file data", "Validating items", "Creating records"]} />;
+	}
 
 	if (uploadResult) {
 		return (
@@ -389,6 +395,10 @@ export function BarItemsFileUpload({
 		URL.revokeObjectURL(url);
 	};
 
+	if (isPending) {
+		return <FileUploadLoader selectedFile={file} steps={["Reading file data", "Validating items", "Creating records"]} />;
+	}
+
 	if (uploadResult) {
 		return (
 			<BulkUploadResultDisplay
@@ -530,41 +540,70 @@ function FoodItemManualAdd({
 		name: "items",
 	});
 
-	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof foodItemListSchema>) => {
-			let successCount = 0;
-			let failedCount = 0;
-			for (const item of data.items) {
-				const res = await addFoodItem(item);
-				if (res.success) successCount++;
-				else failedCount++;
-			}
-			return { successCount, failedCount, total: data.items.length };
-		},
-		onSuccess: async ({ successCount, failedCount }) => {
-			if (failedCount === 0) {
-				toast.success(`All ${successCount} food items added successfully`);
+	const [submissionState, setSubmissionState] = useState<"idle" | "submitting" | "done">("idle");
+	const [progress, setProgress] = useState({ current: 0, total: 0 });
+	const [submitResults, setSubmitResults] = useState<BulkUploadResult | null>(null);
+
+	async function onSubmit(data: z.infer<typeof foodItemListSchema>) {
+		setSubmissionState("submitting");
+		setProgress({ current: 0, total: data.items.length });
+		const results: BulkUploadResult["results"] = [];
+		let successCount = 0;
+		let failedCount = 0;
+		for (let i = 0; i < data.items.length; i++) {
+			const item = data.items[i];
+			setProgress({ current: i + 1, total: data.items.length });
+			const res = await addFoodItem(item);
+			if (res.success) {
+				successCount++;
+				results.push({ rowNumber: i + 1, success: true, itemIdentifier: item.name, errorMessage: null });
 			} else {
-				toast.warning(
-					`${successCount} succeeded, ${failedCount} failed`,
-				);
+				failedCount++;
+				results.push({ rowNumber: i + 1, success: false, itemIdentifier: item.name, errorMessage: res.error ?? "Failed" });
 			}
-			form.reset();
-			setOpen(false);
-			await revalidateRoute("/restaurant/item-management");
-		},
-		onError: () => {
-			toast.error("Something went wrong", {
-				description: "Failed to add food items",
-			});
-		},
-	});
+		}
+		setSubmitResults({
+			summary: {
+				totalRows: data.items.length,
+				successCount,
+				failedCount,
+				processingTimeMs: 0,
+				fileName: "",
+				uploadedBy: "",
+				uploadedAt: new Date().toISOString(),
+			},
+			results,
+		});
+		setSubmissionState("done");
+		if (successCount > 0) await revalidateRoute("/restaurant/item-management");
+	}
+
+	if (submissionState === "submitting") {
+		return <ListSubmitLoader current={progress.current} total={progress.total} label="item" />;
+	}
+
+	if (submissionState === "done" && submitResults) {
+		return (
+			<BulkUploadResultDisplay
+				result={submitResults}
+				entityName="items"
+				onClose={() => setOpen(false)}
+				onReset={() => {
+					setSubmissionState("idle");
+					setSubmitResults(null);
+					setProgress({ current: 0, total: 0 });
+					form.reset();
+				}}
+				resetLabel="Add More"
+			/>
+		);
+	}
 
 	return (
 		<Form {...form}>
 			<form
 				className="space-y-4"
-				onSubmit={form.handleSubmit((data) => mutate(data))}
+				onSubmit={form.handleSubmit(onSubmit)}
 			>
 				<div className="max-h-[280px] overflow-y-auto space-y-3 pr-1">
 					{fields.map((field, index) => (
@@ -641,12 +680,10 @@ function FoodItemManualAdd({
 						type="button"
 						variant="outline"
 						onClick={() => setOpen(false)}
-						disabled={isPending}
 					>
 						Cancel
 					</Button>
-					<Button type="submit" disabled={isPending}>
-						{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+					<Button type="submit">
 						Add {fields.length} {fields.length === 1 ? "Item" : "Items"}
 					</Button>
 				</div>
@@ -684,41 +721,70 @@ function BarItemManualAdd({
 		name: "items",
 	});
 
-	const { mutate, isPending } = useMutation({
-		mutationFn: async (data: z.infer<typeof barItemListSchema>) => {
-			let successCount = 0;
-			let failedCount = 0;
-			for (const item of data.items) {
-				const res = await addBarItem(item);
-				if (res.success) successCount++;
-				else failedCount++;
-			}
-			return { successCount, failedCount, total: data.items.length };
-		},
-		onSuccess: async ({ successCount, failedCount }) => {
-			if (failedCount === 0) {
-				toast.success(`All ${successCount} bar items added successfully`);
+	const [submissionState, setSubmissionState] = useState<"idle" | "submitting" | "done">("idle");
+	const [progress, setProgress] = useState({ current: 0, total: 0 });
+	const [submitResults, setSubmitResults] = useState<BulkUploadResult | null>(null);
+
+	async function onSubmit(data: z.infer<typeof barItemListSchema>) {
+		setSubmissionState("submitting");
+		setProgress({ current: 0, total: data.items.length });
+		const results: BulkUploadResult["results"] = [];
+		let successCount = 0;
+		let failedCount = 0;
+		for (let i = 0; i < data.items.length; i++) {
+			const item = data.items[i];
+			setProgress({ current: i + 1, total: data.items.length });
+			const res = await addBarItem(item);
+			if (res.success) {
+				successCount++;
+				results.push({ rowNumber: i + 1, success: true, itemIdentifier: item.name, errorMessage: null });
 			} else {
-				toast.warning(
-					`${successCount} succeeded, ${failedCount} failed`,
-				);
+				failedCount++;
+				results.push({ rowNumber: i + 1, success: false, itemIdentifier: item.name, errorMessage: res.error ?? "Failed" });
 			}
-			form.reset();
-			setOpen(false);
-			await revalidateRoute("/restaurant/item-management");
-		},
-		onError: () => {
-			toast.error("Something went wrong", {
-				description: "Failed to add bar items",
-			});
-		},
-	});
+		}
+		setSubmitResults({
+			summary: {
+				totalRows: data.items.length,
+				successCount,
+				failedCount,
+				processingTimeMs: 0,
+				fileName: "",
+				uploadedBy: "",
+				uploadedAt: new Date().toISOString(),
+			},
+			results,
+		});
+		setSubmissionState("done");
+		if (successCount > 0) await revalidateRoute("/restaurant/item-management");
+	}
+
+	if (submissionState === "submitting") {
+		return <ListSubmitLoader current={progress.current} total={progress.total} label="item" />;
+	}
+
+	if (submissionState === "done" && submitResults) {
+		return (
+			<BulkUploadResultDisplay
+				result={submitResults}
+				entityName="items"
+				onClose={() => setOpen(false)}
+				onReset={() => {
+					setSubmissionState("idle");
+					setSubmitResults(null);
+					setProgress({ current: 0, total: 0 });
+					form.reset();
+				}}
+				resetLabel="Add More"
+			/>
+		);
+	}
 
 	return (
 		<Form {...form}>
 			<form
 				className="space-y-4"
-				onSubmit={form.handleSubmit((data) => mutate(data))}
+				onSubmit={form.handleSubmit(onSubmit)}
 			>
 				<div className="max-h-[280px] overflow-y-auto space-y-3 pr-1">
 					{fields.map((field, index) => (
@@ -795,12 +861,10 @@ function BarItemManualAdd({
 						type="button"
 						variant="outline"
 						onClick={() => setOpen(false)}
-						disabled={isPending}
 					>
 						Cancel
 					</Button>
-					<Button type="submit" disabled={isPending}>
-						{isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+					<Button type="submit">
 						Add {fields.length} {fields.length === 1 ? "Item" : "Items"}
 					</Button>
 				</div>

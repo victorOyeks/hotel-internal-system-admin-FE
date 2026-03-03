@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { bulkUploadLaundryItems } from "@/lib/laundry-actions";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
+import { FileUploadLoader } from "@/components/shared/file-upload-loader";
 
 // ─── Constants ─────────────────────────────────────────────────
 
@@ -150,7 +151,11 @@ export function LaundryBulkUploadDialog() {
 				</DialogTitle>
 
 				<div className="flex flex-col gap-4 overflow-y-auto min-h-0 flex-1 pr-1">
-					{/* Template download */}
+					{fileUploadMutation.isPending ? (
+					<FileUploadLoader selectedFile={selectedFile} steps={["Reading file data", "Validating items", "Creating catalog entries"]} />
+				) : (
+				<>
+				{/* Template download */}
 					<div className="flex items-center justify-between p-3 bg-muted/50 border rounded-md">
 						<div className="flex items-center gap-3">
 							<FileSpreadsheetIcon className="w-5 h-5 text-green-600" />
@@ -220,6 +225,8 @@ export function LaundryBulkUploadDialog() {
 							entityName="items"
 						/>
 					)}
+				</>
+				)}
 
 				</div>
 

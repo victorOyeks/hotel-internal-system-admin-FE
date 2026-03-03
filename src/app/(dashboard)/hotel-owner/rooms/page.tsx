@@ -23,11 +23,9 @@ const loadSearchParams = createLoader({
 	roomStatus: parseAsStringLiteral([
 		"AVAILABLE",
 		"RESERVED",
-		"BOOKED",
 		"CHECKED_IN",
 		"CHECKED_OUT",
-		"BLOCKED",
-		"DIRTY",
+		"CANCELLED",
 	]),
 	active: parseAsBoolean,
 });

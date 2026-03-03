@@ -3,7 +3,7 @@
 import { useLayoutEffect, useState, useTransition, useMemo, useCallback } from "react";
 import { useSetAtom } from "jotai";
 import { PlusIcon, SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon } from "lucide-react";
-import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -197,7 +197,7 @@ function RoomsFilter({
 		search: string | null;
 		roomType: string | null;
 	};
-	setQueryState: (state: Partial<typeof queryState>) => void;
+	setQueryState: (state: { roomStatus?: string | null; search?: string | null; roomType?: string | null }) => void;
 }) {
 	const [tempFilters, setTempFilters] = useState({
 		roomType: queryState.roomType,
@@ -237,8 +237,7 @@ function RoomsFilter({
 		{ value: "RESERVED", label: "Reserved" },
 		{ value: "CHECKED_IN", label: "Checked In" },
 		{ value: "CHECKED_OUT", label: "Checked Out" },
-		{ value: "BLOCKED", label: "Blocked" },
-		{ value: "DIRTY", label: "Dirty" },
+		{ value: "CANCELLED", label: "Cancelled" },
 	];
 
 	return (
@@ -357,7 +356,7 @@ function RoomListToolbar({
 	isDeactivatedView: boolean;
 }) {
 	const [queryState, setQueryState] = useQueryStates({
-		roomStatus: parseAsStringLiteral(["AVAILABLE"]),
+		roomStatus: parseAsString,
 		search: parseAsString,
 		roomType: parseAsString,
 		active: parseAsBoolean,

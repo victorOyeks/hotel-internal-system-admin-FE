@@ -1,5 +1,5 @@
 import { RoomPage } from "@/components/roles/front-desk/rooms-page";
-import { $fetch } from "@/lib/fetch";
+import { $fetch, type ListRoomsQuery } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
@@ -33,9 +33,12 @@ function Page({ searchParams }: PageProps) {
 			queryFn: async ({ signal }) => {
 				const response = await $fetch("@get/api/front-desks/rooms", {
 					query: {
-						...query,
+						search: query.search,
+						roomType: query.roomType,
+						status: query.roomStatus as ListRoomsQuery["status"],
 						active: activeParam,
 						page: query.page ? query.page - 1 : 0,
+						size: query.size,
 					},
 					signal,
 					throw: true,

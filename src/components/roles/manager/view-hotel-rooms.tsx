@@ -12,8 +12,6 @@ import {
 	UploadIcon,
 	DownloadIcon,
 	FileSpreadsheetIcon,
-	CheckCircle2Icon,
-	XCircleIcon,
 	MoreVertical,
 	PencilIcon,
 	PowerIcon,
@@ -44,7 +42,7 @@ import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import type { Pagination, RoomDetails } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import {
 	Dialog,
 	DialogContent,
@@ -62,7 +60,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import z from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -80,6 +78,8 @@ import { SuccessDialog } from "@/components/shared/shared-dialogs";
 import { addNewRoomToHotel, bulkUploadRooms, updateRoom, toggleRoomActive } from "@/lib/manager-actions";
 import { revalidateRoute } from "@/lib/actions";
 import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
+import { ListSubmitLoader } from "@/components/shared/list-submit-loader";
+import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -200,92 +200,35 @@ function MultiRoomFormTab({ onDone }: { onDone: () => void }) {
 	const failCount = results.filter((r) => !r.success).length;
 
 	if (submissionState === "submitting") {
-		return (
-			<div className="flex flex-col items-center justify-center gap-6 py-12">
-				<Loader2Icon className="size-12 animate-spin text-primary" />
-				<div className="text-center space-y-2">
-					<p className="text-lg font-semibold">
-						Creating room {progress.current} of {progress.total}...
-					</p>
-				</div>
-				<div className="w-full max-w-xs bg-muted rounded-full h-2 overflow-hidden">
-					<div
-						className="bg-primary h-full rounded-full transition-all duration-300"
-						style={{ width: `${(progress.current / progress.total) * 100}%` }}
-					/>
-				</div>
-			</div>
-		);
+		return <ListSubmitLoader current={progress.current} total={progress.total} label="room" />;
 	}
 
 	if (submissionState === "complete") {
+		const bulkResult: BulkUploadResult = {
+			summary: {
+				totalRows: results.length,
+				successCount,
+				failedCount: failCount,
+				processingTimeMs: 0,
+				fileName: "",
+				uploadedBy: "",
+				uploadedAt: new Date().toISOString(),
+			},
+			results: results.map((r, i) => ({
+				rowNumber: i + 1,
+				success: r.success,
+				itemIdentifier: r.roomIdentifier,
+				errorMessage: r.error ?? null,
+			})),
+		};
 		return (
-			<div className="flex flex-col min-h-0 flex-1">
-				<div className="px-1 py-4 border-b">
-					<div className="flex items-center gap-3">
-						{failCount === 0 ? (
-							<div className="size-10 rounded-full bg-green-100 flex items-center justify-center">
-								<CheckCircle2Icon className="size-5 text-green-600" />
-							</div>
-						) : (
-							<div className="size-10 rounded-full bg-yellow-100 flex items-center justify-center">
-								<XCircleIcon className="size-5 text-yellow-600" />
-							</div>
-						)}
-						<div>
-							<p className="font-semibold">
-								{failCount === 0
-									? "All rooms created successfully!"
-									: `${successCount} of ${results.length} rooms created`}
-							</p>
-							{failCount > 0 && (
-								<p className="text-sm text-muted-foreground">
-									{failCount} room{failCount !== 1 ? "s" : ""} failed
-								</p>
-							)}
-						</div>
-					</div>
-				</div>
-
-				<ScrollArea className="flex-1 max-h-[300px]">
-					<div className="py-4">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Room</TableHead>
-									<TableHead className="text-right">Status</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{results.map((result, i) => (
-									<TableRow key={i}>
-										<TableCell className="font-medium">{result.roomIdentifier}</TableCell>
-										<TableCell className="text-right">
-											{result.success ? (
-												<Badge variant="green" className="gap-1">
-													<CheckCircle2Icon className="size-3" />
-													Created
-												</Badge>
-											) : (
-												<span className="text-sm text-destructive">{result.error}</span>
-											)}
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-				</ScrollArea>
-
-				<div className="pt-4 border-t flex gap-2">
-					<Button variant="outline" className="flex-1" onClick={handleReset}>
-						Add More Rooms
-					</Button>
-					<Button className="flex-1" onClick={onDone}>
-						Done
-					</Button>
-				</div>
-			</div>
+			<BulkUploadResultDisplay
+				result={bulkResult}
+				entityName="rooms"
+				onClose={onDone}
+				onReset={handleReset}
+				resetLabel="Add More Rooms"
+			/>
 		);
 	}
 
@@ -471,9 +414,42 @@ function FileUploadTab({ onDone }: { onDone: () => void }) {
 
 	if (uploadState === "uploading") {
 		return (
-			<div className="flex flex-col items-center justify-center gap-6 py-12">
-				<Loader2Icon className="size-12 animate-spin text-primary" />
-				<p className="text-sm text-muted-foreground">Uploading and processing file...</p>
+			<div className="flex flex-col items-center justify-center gap-8 py-10">
+				{/* Spinning ring with file icon */}
+				<div className="relative size-24">
+					<svg className="absolute inset-0 size-24 animate-spin" style={{ animationDuration: "1.2s" }} viewBox="0 0 96 96" fill="none">
+						<circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="5" className="text-muted-foreground/10" />
+						<path d="M 48 8 A 40 40 0 0 1 88 48" stroke="currentColor" strokeWidth="5" strokeLinecap="round" className="text-primary" />
+					</svg>
+					<div className="absolute inset-0 flex items-center justify-center">
+						<div className="size-14 rounded-full bg-primary/10 flex items-center justify-center">
+							<FileSpreadsheetIcon className="size-7 text-primary" />
+						</div>
+					</div>
+				</div>
+
+				{/* Title + filename */}
+				<div className="text-center space-y-1">
+					<p className="font-semibold text-foreground">Processing your file</p>
+					{selectedFile && (
+						<p className="text-xs text-muted-foreground max-w-[200px] truncate mx-auto">
+							{selectedFile.name}
+						</p>
+					)}
+				</div>
+
+				{/* Staggered pulsing steps */}
+				<div className="flex flex-col gap-3 w-full max-w-[200px]">
+					{["Reading file data", "Validating rooms", "Creating records"].map((step, i) => (
+						<div key={step} className="flex items-center gap-3">
+							<span
+								className="size-2 shrink-0 rounded-full bg-primary animate-pulse"
+								style={{ animationDelay: `${i * 350}ms` }}
+							/>
+							<span className="text-xs text-muted-foreground">{step}</span>
+						</div>
+					))}
+				</div>
 			</div>
 		);
 	}
@@ -669,8 +645,7 @@ function RoomsFilter({
 		{ value: "RESERVED", label: "Reserved" },
 		{ value: "CHECKED_IN", label: "Checked In" },
 		{ value: "CHECKED_OUT", label: "Checked Out" },
-		{ value: "BLOCKED", label: "Blocked" },
-		{ value: "DIRTY", label: "Dirty" },
+		{ value: "CANCELLED", label: "Cancelled" },
 	];
 
 	return (
@@ -785,7 +760,7 @@ function RoomListToolbar({
 	isDeactivatedView: boolean;
 }) {
 	const [queryState, setQueryState] = useQueryStates({
-		roomStatus: parseAsStringLiteral(["AVAILABLE"]),
+		roomStatus: parseAsString,
 		search: parseAsString,
 		roomType: parseAsString,
 		active: parseAsBoolean,

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
 	AlertDialog,
@@ -90,6 +90,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
+import { FileUploadLoader } from "@/components/shared/file-upload-loader";
 import z from "zod";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -164,12 +165,7 @@ function SupplierFileUploadTab({ onDone }: { onDone: () => void }) {
 	}
 
 	if (uploadState === "uploading") {
-		return (
-			<div className="flex flex-col items-center justify-center gap-6 py-12">
-				<Loader2Icon className="size-12 animate-spin text-primary" />
-				<p className="text-sm text-muted-foreground">Uploading and processing file...</p>
-			</div>
-		);
+		return <FileUploadLoader selectedFile={selectedFile} steps={["Reading file data", "Validating suppliers", "Creating records"]} />;
 	}
 
 	if (uploadState === "complete" && uploadResult) {
