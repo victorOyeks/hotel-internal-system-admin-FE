@@ -18,26 +18,23 @@ function ComparePage({ searchParams }: PageProps) {
     const queryClient = getQueryClient();
     const query = use(loadSearchParams(searchParams));
 
-    // Default date ranges: P1 = last 30 days, P2 = prior 30 days
+    // Default: last complete month (P1) vs the month before (P2) — industry-standard MoM
     const today = new Date();
-    const p1End =
-        query.period1End ??
-        today.toISOString().split("T")[0];
+    const toISO = (d: Date) => d.toISOString().split("T")[0];
+    // P1 = last complete calendar month
     const p1Start =
         query.period1Start ??
-        new Date(today.getTime() - 30 * 86_400_000)
-            .toISOString()
-            .split("T")[0];
-    const p2End =
-        query.period2End ??
-        new Date(new Date(p1Start).getTime() - 86_400_000)
-            .toISOString()
-            .split("T")[0];
+        toISO(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+    const p1End =
+        query.period1End ??
+        toISO(new Date(today.getFullYear(), today.getMonth(), 0));
+    // P2 = the month before that
     const p2Start =
         query.period2Start ??
-        new Date(new Date(p1Start).getTime() - 30 * 86_400_000)
-            .toISOString()
-            .split("T")[0];
+        toISO(new Date(today.getFullYear(), today.getMonth() - 2, 1));
+    const p2End =
+        query.period2End ??
+        toISO(new Date(today.getFullYear(), today.getMonth() - 1, 0));
 
     const comparisonPromise = queryClient.ensureQueryData({
         queryKey: [
@@ -60,8 +57,16 @@ function ComparePage({ searchParams }: PageProps) {
 
     const comparisonData = use(comparisonPromise);
 
-    const p1Label = `${p1Start} → ${p1End}`;
-    const p2Label = `${p2Start} → ${p2End}`;
+    const fmtLabel = (start: string, end: string) => {
+        const s = new Date(`${start}T00:00:00`);
+        const e = new Date(`${end}T00:00:00`);
+        const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" });
+        return s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()
+            ? monthFmt.format(s)
+            : `${start} → ${end}`;
+    };
+    const p1Label = query.period1Start ? `${p1Start} → ${p1End}` : fmtLabel(p1Start, p1End);
+    const p2Label = query.period2Start ? `${p2Start} → ${p2End}` : fmtLabel(p2Start, p2End);
 
     return (
         <BreadCrumbWrapper

@@ -419,8 +419,8 @@ export const getBookingFinancialDetails = cache(async (bookingId: string) => {
 // --- New actions ---
 
 export type PeriodComparisonData = {
-	period1: FinancialDashboardResponse | null;
-	period2: FinancialDashboardResponse | null;
+	period1: ProfitAndLossStatement | null;
+	period2: ProfitAndLossStatement | null;
 	period1Label?: string;
 	period2Label?: string;
 };

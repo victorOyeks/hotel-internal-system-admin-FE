@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/card";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { PeriodComparisonData } from "@/lib/financials-actions";
-import type { FinancialDashboardResponse } from "@/lib/api-routes/financials";
+import type { ProfitAndLossStatement } from "@/lib/api-routes/financials";
 
 // ─── Shared palette ───────────────────────────────────────────────────────────
 
@@ -177,16 +177,16 @@ function KPIGrid({
     p1Label,
     p2Label,
 }: {
-    p1: FinancialDashboardResponse;
-    p2: FinancialDashboardResponse;
+    p1: ProfitAndLossStatement;
+    p2: ProfitAndLossStatement;
     p1Label: string;
     p2Label: string;
 }) {
     const metrics: KPICardProps[] = [
         {
             title: "Total Revenue",
-            value1: p1.totalRevenue,
-            value2: p2.totalRevenue,
+            value1: p1.grossRevenue,
+            value2: p2.grossRevenue,
             p1Label,
             p2Label,
             format: "currency",
@@ -194,8 +194,8 @@ function KPIGrid({
         },
         {
             title: "Total Expenses",
-            value1: p1.totalExpenses,
-            value2: p2.totalExpenses,
+            value1: p1.totalOperatingExpenses,
+            value2: p2.totalOperatingExpenses,
             p1Label,
             p2Label,
             format: "currency",
@@ -220,27 +220,27 @@ function KPIGrid({
             higherIsBetter: true,
         },
         {
-            title: "Cash Balance",
-            value1: p1.cashBalance,
-            value2: p2.cashBalance,
+            title: "Gross Profit",
+            value1: p1.grossProfit,
+            value2: p2.grossProfit,
             p1Label,
             p2Label,
             format: "currency",
             higherIsBetter: true,
         },
         {
-            title: "Occupancy Rate",
-            value1: p1.occupancyRate,
-            value2: p2.occupancyRate,
+            title: "Operating Profit",
+            value1: p1.operatingProfit,
+            value2: p2.operatingProfit,
             p1Label,
             p2Label,
-            format: "percent",
+            format: "currency",
             higherIsBetter: true,
         },
         {
-            title: "Avg Daily Rate",
-            value1: p1.averageDailyRate,
-            value2: p2.averageDailyRate,
+            title: "Room Revenue",
+            value1: p1.roomRevenue,
+            value2: p2.roomRevenue,
             p1Label,
             p2Label,
             format: "currency",
@@ -274,20 +274,16 @@ function GroupedBarChart({
     p1Label,
     p2Label,
 }: {
-    p1: FinancialDashboardResponse;
-    p2: FinancialDashboardResponse;
+    p1: ProfitAndLossStatement;
+    p2: ProfitAndLossStatement;
     p1Label: string;
     p2Label: string;
 }) {
     const data = [
-        { metric: "Revenue", p1: p1.totalRevenue, p2: p2.totalRevenue },
-        { metric: "Expenses", p1: p1.totalExpenses, p2: p2.totalExpenses },
-        { metric: "Net Profit", p1: p1.netProfit, p2: p2.netProfit },
-        {
-            metric: "Cash Balance",
-            p1: p1.cashBalance ?? 0,
-            p2: p2.cashBalance ?? 0,
-        },
+        { metric: "Revenue", p1: p1.grossRevenue ?? 0, p2: p2.grossRevenue ?? 0 },
+        { metric: "Expenses", p1: p1.totalOperatingExpenses ?? 0, p2: p2.totalOperatingExpenses ?? 0 },
+        { metric: "Net Profit", p1: p1.netProfit ?? 0, p2: p2.netProfit ?? 0 },
+        { metric: "Gross Profit", p1: p1.grossProfit ?? 0, p2: p2.grossProfit ?? 0 },
     ];
 
     return (
@@ -364,18 +360,14 @@ function RevenueRadarChart({
     p1Label,
     p2Label,
 }: {
-    p1: FinancialDashboardResponse;
-    p2: FinancialDashboardResponse;
+    p1: ProfitAndLossStatement;
+    p2: ProfitAndLossStatement;
     p1Label: string;
     p2Label: string;
 }) {
     const radarData = useMemo(() => {
-        const p1Map = new Map(
-            (p1.topRevenueStreams ?? []).map((s) => [s.source, s.amount]),
-        );
-        const p2Map = new Map(
-            (p2.topRevenueStreams ?? []).map((s) => [s.source, s.amount]),
-        );
+        const p1Map = new Map<string, number>();
+        const p2Map = new Map<string, number>();
         const sources = Array.from(
             new Set([...p1Map.keys(), ...p2Map.keys()]),
         );
@@ -457,14 +449,14 @@ function TrendOverlayChart({
     p1Label,
     p2Label,
 }: {
-    p1: FinancialDashboardResponse;
-    p2: FinancialDashboardResponse;
+    p1: ProfitAndLossStatement;
+    p2: ProfitAndLossStatement;
     p1Label: string;
     p2Label: string;
 }) {
     const trendData = useMemo(() => {
-        const t1 = p1.trendData ?? [];
-        const t2 = p2.trendData ?? [];
+        const t1: Array<{ revenue?: number; profit?: number }> = [];
+        const t2: Array<{ revenue?: number; profit?: number }> = [];
         const len = Math.max(t1.length, t2.length);
         if (len === 0) return [];
         return Array.from({ length: len }, (_, i) => ({
@@ -612,24 +604,14 @@ function ExpenseCategoryChart({
     p1Label,
     p2Label,
 }: {
-    p1: FinancialDashboardResponse;
-    p2: FinancialDashboardResponse;
+    p1: ProfitAndLossStatement;
+    p2: ProfitAndLossStatement;
     p1Label: string;
     p2Label: string;
 }) {
     const data = useMemo(() => {
-        const p1Map = new Map(
-            (p1.topExpenseCategories ?? []).map((c) => [
-                c.categoryDisplay ?? c.category,
-                c.amount,
-            ]),
-        );
-        const p2Map = new Map(
-            (p2.topExpenseCategories ?? []).map((c) => [
-                c.categoryDisplay ?? c.category,
-                c.amount,
-            ]),
-        );
+        const p1Map = new Map<string, number>();
+        const p2Map = new Map<string, number>();
         const categories = Array.from(
             new Set([...p1Map.keys(), ...p2Map.keys()]),
         )
@@ -809,20 +791,15 @@ export function PeriodComparison({
 
     const hasData = !!(data?.period1 && data.period2);
     const { period1: p1, period2: p2 } = hasData
-        ? (data as { period1: FinancialDashboardResponse; period2: FinancialDashboardResponse })
+        ? (data as { period1: ProfitAndLossStatement; period2: ProfitAndLossStatement })
         : { period1: null, period2: null };
 
     const p1Label = data?.period1Label ?? period1Label;
     const p2Label = data?.period2Label ?? period2Label;
 
-    const hasRadar =
-        (p1?.topRevenueStreams?.length ?? 0) > 0 ||
-        (p2?.topRevenueStreams?.length ?? 0) > 0;
-    const hasTrend =
-        (p1?.trendData?.length ?? 0) > 0 || (p2?.trendData?.length ?? 0) > 0;
-    const hasExpenses =
-        (p1?.topExpenseCategories?.length ?? 0) > 0 ||
-        (p2?.topExpenseCategories?.length ?? 0) > 0;
+    const hasRadar = false;
+    const hasTrend = false;
+    const hasExpenses = false;
 
     return (
         <div className="space-y-4">
