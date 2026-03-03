@@ -7,15 +7,8 @@ import { useForm } from "react-hook-form";
 import z from "zod";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
 	Form,
+	FormControl,
 	FormField,
 	FormItem,
 	FormLabel,
@@ -41,7 +34,7 @@ const formSchema = z
 		path: ["confirmPassword"],
 	});
 
-export function ChangePassword() {
+export function ChangePassword({ onClose }: { onClose?: () => void } = {}) {
 	const form = useForm({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
@@ -80,122 +73,106 @@ export function ChangePassword() {
 				description: data?.message || "Your password has been updated.",
 			});
 			form.reset();
+			onClose?.();
 		},
 	});
 
 	return (
-		<Card className="w-full h-full md:h-auto md:max-w-[450px]">
-			<CardHeader>
-				<CardTitle>
-					<h1 className="text-2xl font-bold font-inter leading-tight">
-						Change Password
-					</h1>
-				</CardTitle>
-				<CardDescription>
-					Enter a safe and secure password you will remember.
-				</CardDescription>
-			</CardHeader>
-
-			<CardContent className="space-y-3">
-				<Form {...form}>
-					<form
-						id="change-password-form"
-						onSubmit={form.handleSubmit((data) => mutate(data))}
-						className="space-y-4"
-					>
-						<FormField
-							name="currentPassword"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Current Password</FormLabel>
-									<div className="relative">
-										<Input
-											type={showCurrentPassword ? "text" : "password"}
-											{...field}
-											className="w-full"
-											placeholder="Enter current password"
-										/>
-										<Button
-											type="button"
-											variant="link"
-											size={"icon"}
-											className="absolute right-1 top-1/2 -translate-y-1/2"
-											onClick={() =>
-												setShowCurrentPassword(!showCurrentPassword)
-											}
-										>
-											{showCurrentPassword ? <EyeOffIcon /> : <EyeIcon />}
-										</Button>
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							name="newPassword"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>New Password</FormLabel>
-									<div className="relative">
-										<Input
-											type={showNewPassword ? "text" : "password"}
-											{...field}
-											className="w-full"
-											placeholder="Enter new password"
-										/>
-										<Button
-											type="button"
-											variant="link"
-											size={"icon"}
-											className="absolute right-1 top-1/2 -translate-y-1/2"
-											onClick={() => setShowNewPassword(!showNewPassword)}
-										>
-											{showNewPassword ? <EyeOffIcon /> : <EyeIcon />}
-										</Button>
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							name="confirmPassword"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Confirm Password</FormLabel>
-									<div className="relative">
-										<Input
-											type={showConfirmPassword ? "text" : "password"}
-											{...field}
-											className="w-full"
-											placeholder="Confirm new password"
-										/>
-										<Button
-											type="button"
-											variant="link"
-											size={"icon"}
-											className="absolute right-1 top-1/2 -translate-y-1/2"
-											onClick={() =>
-												setShowConfirmPassword(!showConfirmPassword)
-											}
-										>
-											{showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-										</Button>
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</form>
-				</Form>
-			</CardContent>
-
-			<CardFooter>
+		<Form {...form}>
+			<form
+				id="change-password-form"
+				onSubmit={form.handleSubmit((data) => mutate(data))}
+				className="space-y-4"
+			>
+				<FormField
+					name="currentPassword"
+					control={form.control}
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Current Password</FormLabel>
+							<div className="relative">
+								<FormControl>
+									<Input
+										type={showCurrentPassword ? "text" : "password"}
+										{...field}
+										className="w-full"
+										placeholder="Enter current password"
+									/>
+								</FormControl>
+								<Button
+									type="button"
+									variant="link"
+									size={"icon"}
+									className="absolute right-1 top-1/2 -translate-y-1/2"
+									onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+								>
+									{showCurrentPassword ? <EyeOffIcon /> : <EyeIcon />}
+								</Button>
+							</div>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					name="newPassword"
+					control={form.control}
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>New Password</FormLabel>
+							<div className="relative">
+								<FormControl>
+									<Input
+										type={showNewPassword ? "text" : "password"}
+										{...field}
+										className="w-full"
+										placeholder="Enter new password"
+									/>
+								</FormControl>
+								<Button
+									type="button"
+									variant="link"
+									size={"icon"}
+									className="absolute right-1 top-1/2 -translate-y-1/2"
+									onClick={() => setShowNewPassword(!showNewPassword)}
+								>
+									{showNewPassword ? <EyeOffIcon /> : <EyeIcon />}
+								</Button>
+							</div>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				<FormField
+					name="confirmPassword"
+					control={form.control}
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Confirm Password</FormLabel>
+							<div className="relative">
+								<FormControl>
+									<Input
+										type={showConfirmPassword ? "text" : "password"}
+										{...field}
+										className="w-full"
+										placeholder="Confirm new password"
+									/>
+								</FormControl>
+								<Button
+									type="button"
+									variant="link"
+									size={"icon"}
+									className="absolute right-1 top-1/2 -translate-y-1/2"
+									onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+								>
+									{showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+								</Button>
+							</div>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
 				<Button
 					type="submit"
-					form="change-password-form"
 					className="w-full font-bold"
 					disabled={isPending}
 				>
@@ -208,7 +185,7 @@ export function ChangePassword() {
 						"Change Password"
 					)}
 				</Button>
-			</CardFooter>
-		</Card>
+			</form>
+		</Form>
 	);
 }

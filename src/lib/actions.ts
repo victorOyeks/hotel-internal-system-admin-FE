@@ -136,6 +136,23 @@ export async function setNewPassword(payload: {
 	}
 }
 
+export async function updateProfile(payload: {
+	fullName: string;
+	phoneNumber?: string;
+}): ServerActionResponse<{ message: string }> {
+	try {
+		const sessionData = await verifySession();
+		await $fetch("@patch/api/users/me", {
+			body: payload,
+			auth: { type: "Bearer", token: sessionData.token },
+			throw: true,
+		});
+		return { success: true, data: { message: "Profile updated successfully" } };
+	} catch (error) {
+		return { success: false, error: parseError(error) };
+	}
+}
+
 export async function changePassword(payload: {
 	oldPassword: string;
 	newPassword: string;

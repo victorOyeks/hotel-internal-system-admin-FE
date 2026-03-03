@@ -2614,6 +2614,13 @@ export const schema = createSchema({
 	"@get/api/users/me": {
 		output: ApiResponseUserInfoResponse,
 	},
+	"@patch/api/users/me": {
+		input: z.object({
+			fullName: z.string(),
+			phoneNumber: z.string().optional(),
+		}),
+		output: ApiResponseUserInfoResponse,
+	},
 
 	// Platform Owner APIs
 	"@post/api/platform-owner/onboard-hotel-biz": {
