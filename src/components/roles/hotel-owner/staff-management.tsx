@@ -795,9 +795,6 @@ function UpdateHotelStaffForm({
 											<MultiSelectItem value="RESTAURANT">
 												Restaurant
 											</MultiSelectItem>
-											<MultiSelectItem value="MARKETER">
-												Marketer
-											</MultiSelectItem>
 											<MultiSelectItem value="RENTALS">
 												Rentals
 											</MultiSelectItem>

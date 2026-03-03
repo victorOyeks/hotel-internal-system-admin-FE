@@ -594,7 +594,6 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 										<MultiSelectItem value="FRONT_DESK">Front Desk</MultiSelectItem>
 										<MultiSelectItem value="INVENTORY">Inventory</MultiSelectItem>
 										<MultiSelectItem value="RESTAURANT">Restaurant</MultiSelectItem>
-										<MultiSelectItem value="MARKETER">Marketer</MultiSelectItem>
 										<MultiSelectItem value="RENTALS">Rentals</MultiSelectItem>
 										<MultiSelectItem value="LAUNDRY">Laundry</MultiSelectItem>
 										<MultiSelectItem value="FINANCIALS">Financials</MultiSelectItem>
@@ -848,9 +847,6 @@ function UpdateHotelStaffForm({
 											</MultiSelectItem>
 											<MultiSelectItem value="RESTAURANT">
 												Restaurant
-											</MultiSelectItem>
-											<MultiSelectItem value="MARKETER">
-												Marketer
 											</MultiSelectItem>
 											<MultiSelectItem value="RENTALS">
 												Rentals
