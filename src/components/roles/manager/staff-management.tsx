@@ -1045,12 +1045,15 @@ function ResetPasswordForm({
 
 const suspendStaffSchema = z.object({
 	reason: z.string().nonempty(),
-	fromDate: z.date().refine((date) => date <= new Date(), {
+	fromDate: z.date().refine((date) => date >= new Date(new Date().setHours(0, 0, 0, 0)), {
 		message: "From date cannot be in the past",
 	}),
-	toDate: z.date().refine((date) => date >= new Date(), {
+	toDate: z.date().refine((date) => date >= new Date(new Date().setHours(0, 0, 0, 0)), {
 		message: "To date cannot be in the past",
 	}),
+}).refine((data) => data.toDate >= data.fromDate, {
+	message: "To date must be on or after the from date",
+	path: ["toDate"],
 });
 
 function SuspendStaffDialog({
