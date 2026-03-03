@@ -54,7 +54,7 @@ function ProfilePopover({ user }: { user: UserInfoResponse }) {
 				<Button size="icon" variant="ghost" className="rounded-full p-2">
 					<Avatar>
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">{getInitials(user.fullName)}</span>
+							<span className="text-xs">{getInitials(user.fullName!!)}</span>
 						</AvatarFallback>
 					</Avatar>
 				</Button>
@@ -77,12 +77,12 @@ function ProfilePopover({ user }: { user: UserInfoResponse }) {
 				<div className="max-w-[content] mx-auto flex items-center space-x-3">
 					<Avatar className="size-12 rounded-full">
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">{getInitials(user.fullName)}</span>
+							<span className="text-2xl">{getInitials(user.fullName!)}</span>
 						</AvatarFallback>
 					</Avatar>
 
 					<div className="">
-						<p className="text-lg font-medium leading-tight">{user.fullName}</p>
+						<p className="text-lg font-medium leading-tight">{user.fullName!}</p>
 						<p className="text-sm text-gray-600">{user.email}</p>
 					</div>
 				</div>
@@ -127,7 +127,7 @@ export function ChatProfilePopover({ user }: { user: UserInfoResponse }) {
 				<Button size="icon" variant="ghost" className="rounded-full p-2">
 					<Avatar>
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">{getInitials(user.fullName)}</span>
+							<span className="text-xs">{getInitials(user.fullName!)}</span>
 						</AvatarFallback>
 					</Avatar>
 				</Button>
@@ -150,13 +150,13 @@ export function ChatProfilePopover({ user }: { user: UserInfoResponse }) {
 				<div className="max-w-[content] mx-auto flex flex-col items-center justify-center space-y-3">
 					<Avatar className="size-21 rounded-full">
 						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">{getInitials(user.fullName)}</span>
+							<span className="text-2xl">{getInitials(user.fullName!)}</span>
 						</AvatarFallback>
 					</Avatar>
 
 					<div className="text-center space-y-0.5">
 						<p className="text-2xl font-medium leading-tight">
-							{user.fullName}
+							{user.fullName!}
 						</p>
 						<p className="text-sm text-gray-600">{user.email}</p>
 					</div>

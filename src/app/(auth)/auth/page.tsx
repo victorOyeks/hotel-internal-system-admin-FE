@@ -213,7 +213,7 @@ function AuthPage() {
 				</div>
 			</CardContent>
 
-			<CardFooter>
+			<CardFooter className="flex flex-col gap-3">
 				<Button
 					type="submit"
 					form="auth-form"
@@ -229,6 +229,12 @@ function AuthPage() {
 						"Login"
 					)}
 				</Button>
+				<p className="text-sm text-center text-muted-foreground">
+					New to H.M.S?{" "}
+					<Button variant="link" className="p-0 h-auto text-info" asChild>
+						<Link href="/signup">Register your business</Link>
+					</Button>
+				</p>
 			</CardFooter>
 		</Card>
 	);

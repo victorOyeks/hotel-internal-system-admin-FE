@@ -17,7 +17,7 @@ const roleToPath: Record<HotelRole, string> = {
 	FINANCIALS: "/financials",
 };
 
-const publicPaths = ["/auth", "/forgot-password", "/reset-password"];
+const publicPaths = ["/auth", "/signup", "/forgot-password", "/reset-password"];
 
 const protectedRoleIndependentRoute = ["/select-role"];
 
