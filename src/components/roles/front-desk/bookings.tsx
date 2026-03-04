@@ -300,7 +300,7 @@ function ChangeBookingStatus({
 					} else {
 						// For non-final payments, just show success message without checkout
 						toast.success(
-							"Payment recorded successfully. Guest can be checked out when final payment is made.",
+							"Payment recorded successfully. Guest remains checked in.",
 						);
 					}
 					return;
@@ -510,17 +510,17 @@ function ChangeBookingStatus({
 							</div>
 						</div>
 
-						{/* Payment Required Alert */}
+						{/* Outstanding Balance Alert */}
 						{booking.amountRemaining > 0 && (
 							<Alert variant="warning">
 								<AlertCircleIcon className="h-4 w-4" />
 								<AlertDescription>
 									<p>
-										Guest must pay the remaining balance of{" "}
+										Guest has an outstanding balance of{" "}
 										<span className="font-medium">
 											{formatCurrency(booking.amountRemaining)}
-										</span>{" "}
-										before checkout.
+										</span>
+										. You can record a payment now or check out and collect later.
 									</p>
 								</AlertDescription>
 							</Alert>
@@ -534,7 +534,7 @@ function ChangeBookingStatus({
 										htmlFor="finalAmountPaid"
 										className="text-sm font-medium"
 									>
-										Payment Amount <span className="text-red-500">*</span>
+										Payment Amount
 									</Label>
 									<Input
 										id="finalAmountPaid"
@@ -570,7 +570,7 @@ function ChangeBookingStatus({
 										htmlFor="paymentMethod"
 										className="text-sm font-medium"
 									>
-										Payment Method <span className="text-red-500">*</span>
+										Payment Method
 									</Label>
 									<Select
 										value={optionalFields.paymentMethod}
@@ -597,7 +597,7 @@ function ChangeBookingStatus({
 
 								<div className="space-y-2">
 									<Label htmlFor="paymentType" className="text-sm font-medium">
-										Payment Type <span className="text-red-500">*</span>
+										Payment Type
 									</Label>
 									<Select
 										value={optionalFields.paymentType}
@@ -696,13 +696,7 @@ function ChangeBookingStatus({
 							disabled={
 								!selectedStatus ||
 								selectedStatus === currentStatus ||
-								isPending ||
-								// Disable if trying to checkout and there's a remaining balance without payment
-								(selectedStatus === "CHECKED_OUT" &&
-									booking &&
-									booking.amountRemaining > 0 &&
-									(!optionalFields.finalAmountPaid ||
-										optionalFields.finalAmountPaid <= 0))
+								isPending
 							}
 							className="flex-1"
 						>
@@ -714,12 +708,12 @@ function ChangeBookingStatus({
 							) : (
 								<>
 									<CheckIcon className="w-4 h-4 mr-2" />
-									{selectedStatus === "CHECKED_OUT" &&
-										booking &&
-										booking.amountRemaining > 0
-										? optionalFields.paymentType === "FINAL"
-											? "Record Payment & Check Out"
-											: "Record Payment"
+									{selectedStatus === "CHECKED_OUT"
+										? optionalFields.finalAmountPaid && optionalFields.finalAmountPaid > 0
+											? optionalFields.paymentType === "FINAL"
+												? "Record Payment & Check Out"
+												: "Record Payment"
+											: "Check Out"
 										: "Update Status"}
 								</>
 							)}
