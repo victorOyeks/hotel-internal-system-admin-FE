@@ -16,7 +16,10 @@
       "Bash(powershell -c \"Get-ChildItem -Path ''C:\\Users\\Admin\\IdeaProjects\\Hotel-System-Management\\src'' -Directory | Select-Object Name\")",
       "Bash(powershell:*)",
       "Bash(ls -la /home/apex/Workspace/hms/src/app/\\\\\\(dashboard\\\\\\)/financials/)",
-      "Bash(ls /home/apex/Workspace/hms/src/app/\\\\\\(dashboard\\\\\\)/financials/)"
+      "Bash(ls /home/apex/Workspace/hms/src/app/\\\\\\(dashboard\\\\\\)/financials/)",
+      "Bash(git pull --rebase origin2 dev)",
+      "Bash(git stash)",
+      "Bash(git stash pop)"
     ],
     "deny": [],
     "ask": []

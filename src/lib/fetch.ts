@@ -2598,6 +2598,37 @@ export const schema = createSchema({
 			}),
 		}),
 	},
+	"@post/api/auth/hotel-signup": {
+		input: z.object({
+			businessName: z.string().min(2).max(200),
+			businessRegistrationNumber: z.string().regex(/^[A-Z0-9-]{5,50}$/),
+			businessType: z.string().min(1),
+			businessDescription: z.string().max(1000).optional(),
+			ownerFullName: z.string().min(2).max(100),
+			ownerPosition: z.string().max(100).optional(),
+			email: z.string(),
+			phoneNumber: z.string(),
+			alternativePhone: z.string().max(20).optional(),
+			streetAddress: z.string().max(255).optional(),
+			city: z.string().max(100).optional(),
+			stateProvince: z.string().max(100).optional(),
+			country: z.string().max(100).optional(),
+			postalCode: z.string().max(20).optional(),
+			timezone: z.string().max(50).optional(),
+			currency: z.string().regex(/^[A-Z]{3}$/),
+			websiteUrl: z.string().max(255).optional(),
+			taxId: z.string().max(50).optional(),
+			vatNumber: z.string().max(50).optional(),
+			password: z.string().min(8).max(128),
+			confirmPassword: z.string(),
+			acceptedTerms: z.boolean(),
+			acceptedPrivacyPolicy: z.boolean(),
+			subscribedToMarketing: z.boolean().optional(),
+			referralCode: z.string().max(100).optional(),
+			referralSource: z.string().max(255).optional(),
+		}),
+		output: ApiResponseUserModelResponse,
+	},
 
 	// User APIs
 	"@post/api/users/force-reset-password": {
@@ -5263,15 +5294,15 @@ export const schema = createSchema({
 		query: z.object({ hoursAgo: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},
-	"@get/api/public/business-types": {
+	"@get/api/business-types": {
 		output: ApiResponseObject,
 	},
-	"@get/api/public/health": {
+	"@get/api/health": {
 		output: ApiResponseObject,
 	},
-	"@get/api/public/verify-email": {
-		query: z.object({ token: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
+	"@get/api/auth/verify-email": {
+		query: z.object({ token: z.string() }),
+		output: ApiResponseObject.extend({ data: z.unknown() }),
 	},
 	"@get/api/restaurants/bar-items": {
 		query: z
@@ -5734,11 +5765,11 @@ export const schema = createSchema({
 		input: z.any(),
 		output: ApiResponseObject,
 	},
-	"@post/api/public/hotel-signup": {
+	"@post/api/hotel-signup": {
 		input: z.any(),
 		output: ApiResponseObject,
 	},
-	"@post/api/public/resend-verification": {
+	"@post/api/resend-verification": {
 		query: z.object({ email: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},

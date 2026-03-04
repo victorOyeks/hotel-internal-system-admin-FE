@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import {
 	$fetch,
 	type OnboardStaffRequest,
@@ -29,7 +28,6 @@ export async function login(payload: {
 	message: string;
 	referenceId?: string;
 }> {
-	try {
 		const existingUser = await getUser();
 		if (existingUser) {
 			return {
@@ -38,28 +36,30 @@ export async function login(payload: {
 			};
 		}
 
-		const { data, message, referenceId } = await $fetch(
+		const { data: response, error } = await $fetch(
 			"@post/api/auth/sign-in",
 			{
 				body: payload,
-				throw: true,
 			},
 		);
+
+		if (error) {
+			return {
+				success: false,
+				error: parseError(error)
+			}
+		}
+
+
+		const { data, message, referenceId } = response;
 
 		await createSession(data.accessToken);
 
 		return { success: true, data: { message, referenceId } };
-	} catch (error) {
-		console.error(error);
-		return { success: false, error: parseError(error) };
-	}
 }
 
 export async function logout(): Promise<void> {
 	await deleteSession();
-	// Note: redirect() throws a NEXT_REDIRECT error, which Next.js handles.
-	// We don't wrap this in try/catch as we want that behavior.
-	redirect("/auth");
 }
 
 export async function forceResetPassword(payload: {
@@ -77,6 +77,45 @@ export async function forceResetPassword(payload: {
 			success: true,
 			data: response as { message: string; data: string },
 		};
+	} catch (error) {
+		return { success: false, error: parseError(error) };
+	}
+}
+
+export async function hotelSignup(payload: {
+	businessName: string;
+	businessRegistrationNumber: string;
+	businessType: string;
+	businessDescription?: string;
+	ownerFullName: string;
+	ownerPosition: string;
+	email: string;
+	phoneNumber: string;
+	alternativePhone?: string;
+	streetAddress: string;
+	city: string;
+	stateProvince: string;
+	country: string;
+	postalCode: string;
+	timezone: string;
+	currency: string;
+	websiteUrl?: string;
+	taxId?: string;
+	vatNumber?: string;
+	password: string;
+	confirmPassword: string;
+	acceptedTerms: boolean;
+	acceptedPrivacyPolicy: boolean;
+	subscribedToMarketing?: boolean;
+	referralCode?: string;
+	referralSource?: string;
+}): ServerActionResponse<{ message: string }> {
+	try {
+		const response = await $fetch("@post/api/auth/hotel-signup", {
+			body: payload,
+			throw: true,
+		});
+		return { success: true, data: { message: response.message } };
 	} catch (error) {
 		return { success: false, error: parseError(error) };
 	}
