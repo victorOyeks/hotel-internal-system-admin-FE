@@ -33,7 +33,7 @@ function FinancesPage() {
 	const fetchOpts = {
 		query: {},
 		auth: { type: "Bearer" as const, token: cookieData.token },
-		throw: true,
+		throw: true as const,
 	};
 
 	const dashboardPromise = queryClient.ensureQueryData({
@@ -104,10 +104,10 @@ function FinancesPage() {
 	return (
 		<Financials
 			breadcrumbs={breadcrumbs}
-			dashboardData={dashboardData as any}
-			revenueData={revenueData as any}
-			profitLossData={profitLossData as any}
-			expensesData={expensesData as any}
+			dashboardData={dashboardData}
+			revenueData={revenueData}
+			profitLossData={profitLossData}
+			expensesData={expensesData}
 			hotelId={id}
 		/>
 	);
