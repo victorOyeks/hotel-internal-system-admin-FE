@@ -5294,15 +5294,15 @@ export const schema = createSchema({
 		query: z.object({ hoursAgo: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},
-	"@get/api/public/business-types": {
+	"@get/api/business-types": {
 		output: ApiResponseObject,
 	},
-	"@get/api/public/health": {
+	"@get/api/health": {
 		output: ApiResponseObject,
 	},
-	"@get/api/public/verify-email": {
-		query: z.object({ token: z.string().optional().nullable() }).partial(),
-		output: ApiResponseObject,
+	"@get/api/auth/verify-email": {
+		query: z.object({ token: z.string() }),
+		output: ApiResponseObject.extend({ data: z.unknown() }),
 	},
 	"@get/api/restaurants/bar-items": {
 		query: z
@@ -5765,11 +5765,11 @@ export const schema = createSchema({
 		input: z.any(),
 		output: ApiResponseObject,
 	},
-	"@post/api/public/hotel-signup": {
+	"@post/api/hotel-signup": {
 		input: z.any(),
 		output: ApiResponseObject,
 	},
-	"@post/api/public/resend-verification": {
+	"@post/api/resend-verification": {
 		query: z.object({ email: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},

@@ -167,7 +167,7 @@ export function AuthForm({ from, verified, error }: Props) {
 				{error && (
 					<Alert variant="destructive">
 						<XCircleIcon />
-						<AlertTitle>Verification failed</AlertTitle>
+						<AlertTitle>Failed to verify email</AlertTitle>
 						<AlertDescription>
 							{VERIFICATION_ERRORS[error] ?? decodeURIComponent(error)}
 						</AlertDescription>
