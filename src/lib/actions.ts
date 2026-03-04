@@ -28,7 +28,6 @@ export async function login(payload: {
 	message: string;
 	referenceId?: string;
 }> {
-	try {
 		const existingUser = await getUser();
 		if (existingUser) {
 			return {
@@ -37,21 +36,26 @@ export async function login(payload: {
 			};
 		}
 
-		const { data, message, referenceId } = await $fetch(
+		const { data: response, error } = await $fetch(
 			"@post/api/auth/sign-in",
 			{
 				body: payload,
-				throw: true,
 			},
 		);
+
+		if (error) {
+			return {
+				success: false,
+				error: parseError(error)
+			}
+		}
+
+
+		const { data, message, referenceId } = response;
 
 		await createSession(data.accessToken);
 
 		return { success: true, data: { message, referenceId } };
-	} catch (error) {
-		console.error(error);
-		return { success: false, error: parseError(error) };
-	}
 }
 
 export async function logout(): Promise<void> {
