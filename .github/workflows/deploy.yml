@@ -39,6 +39,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           source: standalone.tar.gz
           target: /home/oyeks/apps/his-fe/
+          command_timeout: 5m
+          retry: 3
 
       - uses: appleboy/ssh-action@v1.0.3
         with:
