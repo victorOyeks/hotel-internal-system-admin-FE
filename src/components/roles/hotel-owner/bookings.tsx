@@ -56,7 +56,7 @@ import type {
 } from "@/lib/fetch";
 import { formatCurrency } from "@/lib/utils";
 import { FolioContent } from "@/components/roles/front-desk/folio-content";
-import { getOwnerBookingFolio, exportOwnerFolioPdf } from "@/lib/hotel-owner-actions";
+import { getOwnerBookingFolio, exportOwnerFolioPdf, exportBookings } from "@/lib/hotel-owner-actions";
 import {
 	parseAsStringLiteral,
 	parseAsString,
@@ -521,17 +521,55 @@ function BookingsListToolbar({
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
+			try {
+				const result = await exportBookings({
+					search: filterStates.search || undefined,
+					roomType: filterStates.roomType || undefined,
+					bookingStatus: filterStates.bookingStatus || undefined,
+					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+				});
 
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
+				if (result.success && result.data) {
+					const byteCharacters = atob(result.data.base64);
+					const byteNumbers = new Array(byteCharacters.length);
+					for (let i = 0; i < byteCharacters.length; i++) {
+						byteNumbers[i] = byteCharacters.charCodeAt(i);
+					}
+					const byteArray = new Uint8Array(byteNumbers);
+					const mimeType =
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+					const blob = new Blob([byteArray], { type: mimeType });
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = result.data.filename;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					setExportDialogOpen(false);
+					setSuccessDialogOpen({
+						show: true,
+						message: "Bookings exported successfully!",
+					});
+				} else {
+					setSuccessDialogOpen({
+						show: true,
+						message: result.error || "Failed to export bookings",
+					});
+				}
+			} catch {
+				setSuccessDialogOpen({
+					show: true,
+					message: "An error occurred during export",
+				});
+			}
 		},
-		[setSuccessDialogOpen],
+		[filterStates, setSuccessDialogOpen],
 	);
 
 	return (
