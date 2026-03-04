@@ -639,27 +639,19 @@ function createColumns(hotelId: string, readOnly = false) {
 								{!readOnly && (
 									<>
 										<DropdownMenuSeparator />
-										<DropdownMenuItem asChild>
-											<DialogTrigger
-												className="w-full"
-												onClick={() => setOpen("edit-org")}
-											>
-												<PencilIcon />
-												Edit
-											</DialogTrigger>
+										<DropdownMenuItem
+											onSelect={() => setOpen("edit-org")}
+										>
+											<PencilIcon />
+											Edit
 										</DropdownMenuItem>
 										<DropdownMenuSeparator />
 										<DropdownMenuItem
 											className="hover:bg-red-500/10 text-red-500 focus:text-red-500"
-											asChild
+											onSelect={() => setOpen("delete-org")}
 										>
-											<DialogTrigger
-												className="w-full"
-												onClick={() => setOpen("delete-org")}
-											>
-												<TrashIcon className="text-red-500" />
-												Delete
-											</DialogTrigger>
+											<TrashIcon className="text-red-500" />
+											Delete
 										</DropdownMenuItem>
 									</>
 								)}
