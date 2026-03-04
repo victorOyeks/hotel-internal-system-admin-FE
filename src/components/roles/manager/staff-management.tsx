@@ -81,6 +81,7 @@ import { Label } from "@/components/ui/label";
 import { RotateCcwIcon, XIcon } from "lucide-react";
 import {
 	editStaffDetails,
+	exportStaff,
 	onboardStaffToHotel,
 	resetPasswordForStaff,
 	suspendStaffAccount,
@@ -345,15 +346,45 @@ function HotelListToolbar({
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
+			try {
+				const formatMap = { pdf: "PDF", csv: "CSV", excel: "EXCEL" } as const;
+				const result = await exportStaff({
+					format: formatMap[data.export_type as keyof typeof formatMap],
+				});
+
+				if (result.success && result.data) {
+					const binaryString = atob(result.data);
+					const bytes = new Uint8Array(binaryString.length);
+					for (let i = 0; i < binaryString.length; i++) {
+						bytes[i] = binaryString.charCodeAt(i);
+					}
+					const blob = new Blob([bytes], {
+						type:
+							data.export_type === "csv"
+								? "text/csv"
+								: data.export_type === "pdf"
+									? "application/pdf"
+									: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					});
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					const extension = data.export_type === "excel" ? "xlsx" : data.export_type;
+					a.download = `staff-export-${format(new Date(), "yyyy-MM-dd")}.${extension}`;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					toast.success("Export downloaded successfully");
+				} else {
+					toast.error(result.error || "Failed to export staff");
+				}
+			} catch {
+				toast.error("An error occurred during export");
+			}
 			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
 		},
-		[setSuccessDialogOpen],
+		[],
 	);
 
 	const [open, setOpen] = useState(false);
@@ -430,6 +461,7 @@ function HotelListToolbar({
 					open={exportDialogOpen}
 					setOpenAction={setExportDialogOpen}
 					onSubmitAction={handleExport}
+					showDates={false}
 				/>
 			</div>
 		</div>

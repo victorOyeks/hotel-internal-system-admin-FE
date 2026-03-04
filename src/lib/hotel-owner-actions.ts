@@ -394,3 +394,38 @@ export async function exportRooms(filters: {
 		};
 	}
 }
+
+export async function exportStaff(filters: {
+	format: "CSV" | "PDF" | "EXCEL";
+}): Promise<{ success: boolean; data?: string; error?: string }> {
+	const { sessionData, hotelId } = await getOwnerContext();
+
+	try {
+		const params = new URLSearchParams();
+		params.set("format", filters.format);
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/hotel-owners/${hotelId}/staff/export?${params}`,
+			{
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+			},
+		);
+
+		if (!response.ok) {
+			return { success: false, error: "Failed to export staff" };
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+		return { success: true, data: base64 };
+	} catch (error) {
+		return {
+			success: false,
+			error:
+				error instanceof Error
+					? error.message
+					: "An error occurred during export",
+		};
+	}
+}

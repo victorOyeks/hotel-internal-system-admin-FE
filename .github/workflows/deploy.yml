@@ -43,16 +43,24 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+          success=false
           for i in 1 2 3; do
             echo "SCP attempt $i..."
-            scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-              standalone.tar.gz "${VPS_USER}@${VPS_HOST}:/home/oyeks/apps/his-fe/" \
-              && break
+            if scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
+              standalone.tar.gz "${VPS_USER}@${VPS_HOST}:/home/oyeks/apps/his-fe/"; then
+              success=true
+              break
+            fi
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done
 
           rm -f ~/.ssh/deploy_key
+
+          if [ "$success" = false ]; then
+            echo "All SCP attempts failed"
+            exit 1
+          fi
 
       - uses: appleboy/ssh-action@v1.0.3
         with:
