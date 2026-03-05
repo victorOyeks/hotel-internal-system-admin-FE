@@ -33,15 +33,36 @@ export function parseError(error: unknown): string {
 		throw error;
 	}
 
-	if (error instanceof Error) {
-		// Check for fetch error structure which often has error.data.message
-		if (typeof error === "object" && error !== null && "data" in error) {
-			const fetchError = error as { data?: { message?: string } };
-			if (typeof fetchError.data?.message === "string") {
-				return fetchError.data.message;
-			}
+	// BetterFetchError (thrown when $fetch uses throw: true):
+	// Shape: Error { message: "Bad Request", status: 400, error: { message: "...", data: { message: "..." } } }
+	// The backend message is in error.error.message; fallback: error.error.data.message
+	if (error && typeof error === "object" && "error" in error) {
+		const bfe = error as { error?: { message?: string; data?: { message?: string } } };
+		if (typeof bfe.error?.data?.message === "string") {
+			return bfe.error.data.message;
 		}
+		if (typeof bfe.error?.message === "string") {
+			return bfe.error.message;
+		}
+	}
+	// $fetch non-throw error objects (returned, not thrown):
+	// Shape: { ...parsedBody, status: 400, statusText: "Bad Request" }
+	// The backend message is spread at the top level as error.message
+	if (error && typeof error === "object" && "data" in error) {
+		const fetchError = error as { data?: { message?: string } };
+		if (typeof fetchError.data?.message === "string") {
+			return fetchError.data.message;
+		}
+	}
+	if (error instanceof Error) {
 		return error.message;
+	}
+	// Handle plain objects with a message field
+	if (error && typeof error === "object" && "message" in error) {
+		const msg = (error as { message: unknown }).message;
+		if (typeof msg === "string") {
+			return msg;
+		}
 	}
 	if (typeof error === "string") {
 		return error;

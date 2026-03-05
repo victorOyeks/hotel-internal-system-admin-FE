@@ -6899,21 +6899,6 @@ export const $fetch = createFetch({
 	errorSchema: ApiExceptionResponseObject,
 	onError: ({ error }) => {
 		console.error(error);
-		if (error.status === 400) {
-			return;
-		}
-		throw new Error(
-			"data" in error
-				? typeof error.data === "string"
-					? error.data
-					: error.data.message ||
-						(error.cause as Error)?.message ||
-						String(error)
-				: error.error,
-			{
-				cause: error,
-			},
-		);
 	},
 	onRequest(context) {
 		console.log("<==", context.url.toString());

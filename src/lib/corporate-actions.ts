@@ -181,6 +181,10 @@ export async function exportOrganizationReport(payload: {
 			},
 		);
 
+		if (response.error) {
+			return { success: false as const, error: response.error.message || "Failed to export report" };
+		}
+
 		if (!response.data) {
 			return { success: false as const, error: "No data returned" };
 		}
