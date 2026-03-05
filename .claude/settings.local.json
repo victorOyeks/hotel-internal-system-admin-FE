@@ -19,7 +19,9 @@
       "Bash(ls /home/apex/Workspace/hms/src/app/\\\\\\(dashboard\\\\\\)/financials/)",
       "Bash(git pull --rebase origin2 dev)",
       "Bash(git stash)",
-      "Bash(git stash pop)"
+      "Bash(git stash pop)",
+      "Bash(bun tsc --noEmit)",
+      "Bash(/home/apex/.bun/bin/bun tsc --noEmit)"
     ],
     "deny": [],
     "ask": []
