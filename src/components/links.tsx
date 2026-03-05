@@ -66,12 +66,6 @@ export const hotelOwnerLinks = [
 		icon: <ChartNoAxesCombined />,
 		url: "/dashboard/financials",
 	},
-	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
-	{
-		title: "Notifications",
-		icon: <BellIcon />,
-		url: "/dashboard/notifications",
-	},
 	{ title: "Activity Log", icon: <BookOpenIcon />, url: "/dashboard/activity" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];
@@ -109,12 +103,6 @@ export const managerOwnerLinks = [
 		title: "Financials",
 		icon: <ChartNoAxesCombined />,
 		url: "/dashboard/financials",
-	},
-	{ title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
-	{
-		title: "Notifications",
-		icon: <BellIcon />,
-		url: "/dashboard/notifications",
 	},
 	{
 		title: "Activity Log",

@@ -1,4 +1,5 @@
 import { ManagerActivityLogPage } from "@/components/roles/manager/activity-log";
+import { exportAuditLogs } from "@/lib/manager-actions";
 import { getManagerCurrentHotel } from "@/lib/dal";
 import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
@@ -70,6 +71,7 @@ function Page({ searchParams }: PageProps) {
 			}}
 			data={content}
 			paginationMeta={paginationMeta}
+			exportAction={exportAuditLogs}
 		/>
 	);
 }

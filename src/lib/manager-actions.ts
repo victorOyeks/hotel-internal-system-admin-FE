@@ -723,6 +723,47 @@ export async function exportRooms(filters: {
 	}
 }
 
+export async function exportAuditLogs(filters: {
+	search?: string;
+	startDate?: string;
+	endDate?: string;
+	format: "CSV" | "PDF" | "EXCEL";
+}): ServerActionResponse<{ base64: string; filename: string }> {
+	const { sessionData, hotelId } = await getManagerContext();
+
+	try {
+		const params = new URLSearchParams({ format: filters.format });
+		if (filters.search) params.set("search", filters.search);
+		if (filters.startDate) params.set("startDate", filters.startDate);
+		if (filters.endDate) params.set("endDate", filters.endDate);
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/managers/logs/${hotelId}/export?${params}`,
+			{
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+			},
+		);
+
+		if (!response.ok) {
+			return { success: false, error: "Failed to export audit logs" };
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		const base64 = Buffer.from(arrayBuffer).toString("base64");
+		const disposition = response.headers.get("content-disposition");
+		const filename =
+			disposition?.match(/filename="?(.+?)"?$/)?.[1] ?? "audit-logs-export";
+
+		return { success: true, data: { base64, filename } };
+	} catch (e) {
+		return {
+			success: false,
+			error:
+				e instanceof Error ? e.message : "Failed to export audit logs",
+		};
+	}
+}
+
 export async function exportStaff(filters: {
 	format: "CSV" | "PDF" | "EXCEL";
 }): Promise<{ success: boolean; data?: string; error?: string }> {

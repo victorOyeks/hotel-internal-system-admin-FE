@@ -88,6 +88,7 @@ import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { exportHotels } from "@/lib/hotel-owner-actions";
 import z from "zod";
 
 type HotelItem = GetHotelResponse;
@@ -113,15 +114,47 @@ function HotelListToolbar({
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
-			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
+			try {
+				const result = await exportHotels({
+					searchText: searchText || undefined,
+					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+				});
+
+				if (result.success && result.data) {
+					const byteCharacters = atob(result.data.base64);
+					const byteNumbers = new Array(byteCharacters.length);
+					for (let i = 0; i < byteCharacters.length; i++) {
+						byteNumbers[i] = byteCharacters.charCodeAt(i);
+					}
+					const byteArray = new Uint8Array(byteNumbers);
+					const mimeType =
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+					const blob = new Blob([byteArray], { type: mimeType });
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = result.data.filename;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					setExportDialogOpen(false);
+					setSuccessDialogOpen({
+						show: true,
+						message: "Hotels exported successfully!",
+					});
+				} else {
+					toast.error(result.error || "Failed to export hotels");
+				}
+			} catch {
+				toast.error("An error occurred during export");
+			}
 		},
-		[setSuccessDialogOpen],
+		[searchText, setSuccessDialogOpen],
 	);
 
 	return (
@@ -829,7 +862,6 @@ const columns = [
 		id: "actions",
 		cell: (info) => {
 			const [open, setOpen] = useState<
-				| "contact-manager"
 				| "delete-hotel"
 				| "edit-hotel"
 				| "assign-manager"
@@ -838,14 +870,6 @@ const columns = [
 
 			const dialog = useMemo(() => {
 				switch (open) {
-					case "contact-manager":
-						return (
-							<ContactManagerForm
-								setOpen={(isOpen) =>
-									setOpen(isOpen ? "contact-manager" : false)
-								}
-							/>
-						);
 					case "edit-hotel": {
 						const rowData = info.row.original;
 						return (
@@ -957,16 +981,6 @@ const columns = [
 								</DialogTrigger>
 							</DropdownMenuItem>
 
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger
-									className="w-full"
-									onClick={() => setOpen("contact-manager")}
-								>
-									<MessageCircleMoreIcon />
-									Contact Branch Manager
-								</DialogTrigger>
-							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								className="hover:bg-red-500/10 text-red-500 focus:text-red-500"

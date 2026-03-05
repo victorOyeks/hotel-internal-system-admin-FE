@@ -240,7 +240,14 @@ const _ActivityFilter = ({
 	);
 };
 
-function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
+type ExportAuditLogsAction = (filters: {
+	search?: string;
+	startDate?: string;
+	endDate?: string;
+	format: "CSV" | "PDF" | "EXCEL";
+}) => Promise<{ success: boolean; data?: { base64: string; filename: string }; error?: string }>;
+
+function ListToolbar({ exportAction }: { table: TableType<ManagerActivityLog>; exportAction?: ExportAuditLogsAction }) {
 	const [searchParam, setSearchParam] = useQueryStates({
 		search: parseAsString,
 	});
@@ -250,17 +257,54 @@ function ListToolbar(_props: { table: TableType<ManagerActivityLog> }) {
 
 	const handleExport = useCallback(
 		async (data: ExportData) => {
-			// Handle the export logic here, e.g., sending data to an API
-			console.log("Exporting data with the following details:", data);
+			if (!exportAction) return;
+			try {
+				const result = await exportAction({
+					search: searchParam.search || undefined,
+					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+				});
 
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-			setExportDialogOpen(false);
-			setSuccessDialogOpen({
-				show: true,
-				message: "Data exported successfully!",
-			});
+				if (result.success && result.data) {
+					const byteCharacters = atob(result.data.base64);
+					const byteNumbers = new Array(byteCharacters.length);
+					for (let i = 0; i < byteCharacters.length; i++) {
+						byteNumbers[i] = byteCharacters.charCodeAt(i);
+					}
+					const byteArray = new Uint8Array(byteNumbers);
+					const mimeType =
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+					const blob = new Blob([byteArray], { type: mimeType });
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = result.data.filename;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					setExportDialogOpen(false);
+					setSuccessDialogOpen({
+						show: true,
+						message: "Audit logs exported successfully!",
+					});
+				} else {
+					setSuccessDialogOpen({
+						show: true,
+						message: result.error || "Failed to export audit logs",
+					});
+				}
+			} catch {
+				setSuccessDialogOpen({
+					show: true,
+					message: "An error occurred during export",
+				});
+			}
 		},
-		[setSuccessDialogOpen],
+		[exportAction, searchParam, setSuccessDialogOpen],
 	);
 
 	return (
@@ -456,6 +500,7 @@ export function ManagerActivityLogPage({
 	breadcrumbs,
 	data = [],
 	paginationMeta,
+	exportAction,
 }: {
 	breadcrumbs: {
 		title: string;
@@ -463,6 +508,7 @@ export function ManagerActivityLogPage({
 	};
 	data: ManagerActivityLog[];
 	paginationMeta: Pagination;
+	exportAction?: ExportAuditLogsAction;
 }) {
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const [pagination, onPaginationChange] = usePaginationSearchParams();
@@ -491,7 +537,7 @@ export function ManagerActivityLogPage({
 
 	return (
 		<div className="h-full w-full p-4 space-y-2 md:space-y-4">
-			<ListToolbar table={table} />
+			<ListToolbar table={table} exportAction={exportAction} />
 			<ActivityLogTable table={table} />
 		</div>
 	);

@@ -86,6 +86,8 @@ export function ExportDialog({
 	showDates?: boolean;
 }) {
 	const [pending, setPending] = useState(false);
+	const [fromOpen, setFromOpen] = useState(false);
+	const [toOpen, setToOpen] = useState(false);
 	const form = useForm({
 		resolver: zodResolver(exportSchema),
 		defaultValues: {
@@ -135,7 +137,7 @@ export function ExportDialog({
 								render={({ field }) => (
 									<FormItem className="flex flex-col col-span-1 space-y-1">
 										<FormLabel className="font-semibold">From</FormLabel>
-										<Popover>
+										<Popover open={fromOpen} onOpenChange={setFromOpen}>
 											<PopoverTrigger asChild>
 												<FormControl>
 													<Button
@@ -162,7 +164,10 @@ export function ExportDialog({
 												<Calendar
 													mode="single"
 													selected={field.value}
-													onSelect={field.onChange}
+													onSelect={(date) => {
+														field.onChange(date);
+														setFromOpen(false);
+													}}
 													disabled={(date) =>
 														date > new Date() || date < new Date("1900-01-01")
 													}
@@ -181,7 +186,7 @@ export function ExportDialog({
 								render={({ field }) => (
 									<FormItem className="flex flex-col col-span-1 space-y-1">
 										<FormLabel className="font-semibold">To</FormLabel>
-										<Popover>
+										<Popover open={toOpen} onOpenChange={setToOpen}>
 											<PopoverTrigger asChild>
 												<FormControl>
 													<Button
@@ -208,7 +213,10 @@ export function ExportDialog({
 												<Calendar
 													mode="single"
 													selected={field.value}
-													onSelect={field.onChange}
+													onSelect={(date) => {
+														field.onChange(date);
+														setToOpen(false);
+													}}
 													disabled={(date) =>
 														date > new Date() || date < new Date("1900-01-01")
 													}
