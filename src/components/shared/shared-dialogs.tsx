@@ -49,15 +49,16 @@ export function SuccessDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen} modal>
-			<DialogContent className="gap-0 !max-w-sm" showCloseButton={false}>
-				<CheckCircle2Icon
-					className="size-16 mx-auto text-green-600"
-					strokeWidth={1}
-				/>
-				<DialogTitle className="text-center text-2xl">Success!</DialogTitle>
-				<DialogDescription className="text-center text-lg">
-					{message}
-				</DialogDescription>
+			<DialogContent className="!max-w-xs p-6 rounded-2xl" showCloseButton={false}>
+				<div className="flex flex-col items-center gap-3">
+					<div className="flex items-center justify-center size-14 rounded-full bg-green-50">
+						<CheckCircle2Icon className="size-8 text-green-600" strokeWidth={1.5} />
+					</div>
+					<DialogTitle className="sr-only">Success</DialogTitle>
+					<DialogDescription className="text-center text-sm text-muted-foreground">
+						{message}
+					</DialogDescription>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

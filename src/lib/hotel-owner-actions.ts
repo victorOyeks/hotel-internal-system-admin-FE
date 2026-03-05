@@ -114,8 +114,7 @@ export async function suspendStaffAccountOwner(
 	staffId: string,
 	payload: {
 		reason: string;
-		fromDate: string;
-		toDate: string;
+		sendEmail: boolean;
 	},
 ): ServerActionResponseFromEndpoint<"@patch/api/hotel-owners/:hotelId/:staffId/suspend"> {
 	const { sessionData, hotelId } = await getOwnerContext();
@@ -133,6 +132,34 @@ export async function suspendStaffAccountOwner(
 		return {
 			success: false,
 			error: error.message || "Failed to suspend staff account",
+		};
+	}
+
+	return {
+		success: true,
+		data,
+	};
+}
+
+export async function reactivateStaffAccountOwner(
+	staffId: string,
+	sendEmail: boolean = true,
+): ServerActionResponseFromEndpoint<"@patch/api/hotel-owners/:hotelId/:staffId/reactivate"> {
+	const { sessionData, hotelId } = await getOwnerContext();
+
+	const { data, error } = await $fetch(
+		"@patch/api/hotel-owners/:hotelId/:staffId/reactivate",
+		{
+			params: { hotelId, staffId },
+			query: { sendEmail },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (error) {
+		return {
+			success: false,
+			error: error.message || "Failed to reactivate staff account",
 		};
 	}
 

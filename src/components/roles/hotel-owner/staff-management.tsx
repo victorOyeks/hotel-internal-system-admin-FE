@@ -18,10 +18,10 @@ import {
 	SearchIcon,
 	AlertTriangleIcon,
 	UserXIcon,
+	UserCheckIcon,
 	ReplaceIcon,
 	EyeOffIcon,
 	EyeIcon,
-	CalendarIcon,
 	TrashIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,7 @@ import { toast } from "sonner";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RotateCcwIcon, XIcon } from "lucide-react";
 import {
@@ -88,17 +89,11 @@ import {
 } from "@/lib/actions";
 import {
 	exportStaff,
+	reactivateStaffAccountOwner,
 	resetPasswordForStaffOwner,
 	suspendStaffAccountOwner,
 } from "@/lib/hotel-owner-actions";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
 import {
 	MultiSelect,
 	MultiSelectContent,
@@ -985,31 +980,31 @@ function ResetPasswordForm({
 }
 
 const suspendStaffSchema = z.object({
-	reason: z.string().nonempty(),
-	fromDate: z.date().refine((date) => date >= new Date(new Date().setHours(0, 0, 0, 0)), {
-		message: "From date cannot be in the past",
-	}),
-	toDate: z.date().refine((date) => date >= new Date(new Date().setHours(0, 0, 0, 0)), {
-		message: "To date cannot be in the past",
-	}),
-}).refine((data) => data.toDate >= data.fromDate, {
-	message: "To date must be on or after the from date",
-	path: ["toDate"],
+	reason: z.string().nonempty({ message: "Please provide a reason for suspension" }),
+	sendEmail: z.boolean().default(true),
 });
 
 function SuspendStaffDialog({
 	setOpen,
 	id,
+	onStatusChange,
 }: {
 	setOpen: (open: boolean) => void;
 	id: string;
+	onStatusChange?: (status: string) => void;
 }) {
 	const queryClient = useQueryClient();
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 	const { mutateAsync, isPending } = useMutation({
-		mutationFn: (data: { reason: string; fromDate: string; toDate: string }) =>
-			suspendStaffAccountOwner(id, data),
+		mutationFn: async (data: { reason: string; sendEmail: boolean }) => {
+			const result = await suspendStaffAccountOwner(id, data);
+			if (!result.success) {
+				throw new Error(result.error || "Failed to suspend staff");
+			}
+			return result;
+		},
 		onSuccess: () => {
+			onStatusChange?.("SUSPENDED");
 			setOpen(false);
 			setShowSuccessDialog({
 				show: true,
@@ -1021,18 +1016,17 @@ function SuspendStaffDialog({
 			});
 			revalidateRoute("/hotel-owner/staff-management");
 		},
-		onError: () => {
+		onError: (error) => {
 			toast.error("Something went wrong", {
-				description: "Failed to suspend staff",
+				description: error.message || "Failed to suspend staff",
 			});
 		},
 	});
 	const form = useForm({
 		resolver: zodResolver(suspendStaffSchema),
 		defaultValues: {
-			fromDate: new Date(),
-			toDate: new Date(),
 			reason: "",
+			sendEmail: true,
 		},
 		reValidateMode: "onSubmit",
 		mode: "onSubmit",
@@ -1040,31 +1034,23 @@ function SuspendStaffDialog({
 
 	const handleSubmit = useCallback(
 		async (data: z.infer<typeof suspendStaffSchema>) => {
-			const isValid = await form.trigger();
-			if (!isValid) return;
-			const newData = {
-				...data,
-				fromDate: format(data.fromDate, "yyyy-MM-dd"),
-				toDate: format(data.toDate, "yyyy-MM-dd"),
-			};
-			await mutateAsync(newData);
+			await mutateAsync({ reason: data.reason, sendEmail: data.sendEmail });
 		},
-		[form, mutateAsync],
+		[mutateAsync],
 	);
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
 			<DialogTitle className="sr-only">Suspend Staff</DialogTitle>
 			<DialogDescription className="sr-only">
-				Type "SUSPEND" to confirm
+				Suspend a staff member
 			</DialogDescription>
 
 			<div className="flex flex-col items-center justify-center">
 				<AlertTriangleIcon className="text-destructive-2 size-12" />
 				<h2 className="text-destructive-2">Warning!</h2>
 				<p className="text-gray-600 text-center">
-					This action Cannot be Undone, to confirm this action is deliberate
-					"type SUSPEND below"
+					Are you sure you want to suspend this staff member?
 				</p>
 			</div>
 
@@ -1084,93 +1070,23 @@ function SuspendStaffDialog({
 						)}
 					/>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-x-2 gap-y-4">
-						<FormField
-							control={form.control}
-							name="fromDate"
-							render={({ field }) => (
-								<FormItem className="col-span-1">
-									<FormLabel>From Date</FormLabel>
-
-									<Popover>
-										<PopoverTrigger asChild>
-											<FormControl>
-												<Button
-													variant={"outline"}
-													className={cn(
-														"w-full text-left font-normal",
-														!field.value && "text-muted-foreground",
-													)}
-												>
-													{field.value ? (
-														format(field.value, "PPP")
-													) : (
-														<span>Pick a starting date</span>
-													)}
-													<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-												</Button>
-											</FormControl>
-										</PopoverTrigger>
-										<PopoverContent className="w-auto p-0" align="start">
-											<Calendar
-												mode="single"
-												selected={field.value}
-												onSelect={field.onChange}
-												disabled={(date) =>
-													date < new Date(new Date().setHours(0, 0, 0, 0))
-												}
-												captionLayout="dropdown-months"
-											/>
-										</PopoverContent>
-									</Popover>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="toDate"
-							render={({ field }) => (
-								<FormItem className="col-span-1">
-									<FormLabel>To Date</FormLabel>
-									<FormControl>
-										<Popover>
-											<PopoverTrigger asChild>
-												<FormControl>
-													<Button
-														variant={"outline"}
-														className={cn(
-															"w-full text-left font-normal",
-															!field.value && "text-muted-foreground",
-														)}
-													>
-														{field.value ? (
-															format(field.value, "PPP")
-														) : (
-															<span>Pick an ending date</span>
-														)}
-														<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-													</Button>
-												</FormControl>
-											</PopoverTrigger>
-											<PopoverContent className="w-auto p-0" align="start">
-												<Calendar
-													mode="single"
-													selected={field.value}
-													onSelect={field.onChange}
-													disabled={(date) =>
-														date < new Date(new Date().setHours(0, 0, 0, 0))
-													}
-													captionLayout="dropdown-months"
-												/>
-											</PopoverContent>
-										</Popover>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</div>
+					<FormField
+						control={form.control}
+						name="sendEmail"
+						render={({ field }) => (
+							<FormItem className="flex items-center gap-2 space-y-0">
+								<FormControl>
+									<Checkbox
+										checked={field.value}
+										onCheckedChange={field.onChange}
+									/>
+								</FormControl>
+								<FormLabel className="text-sm font-normal cursor-pointer">
+									Send suspension email to staff
+								</FormLabel>
+							</FormItem>
+						)}
+					/>
 
 					<Button
 						type="submit"
@@ -1196,6 +1112,100 @@ function SuspendStaffDialog({
 					</Button>
 				</form>
 			</Form>
+		</DialogContent>
+	);
+}
+
+function ReactivateStaffDialog({
+	setOpen,
+	id,
+	onStatusChange,
+}: {
+	setOpen: (open: boolean) => void;
+	id: string;
+	onStatusChange?: (status: string) => void;
+}) {
+	const [sendEmail, setSendEmail] = useState(true);
+	const queryClient = useQueryClient();
+	const setShowSuccessDialog = useSetAtom(successDialogAtom);
+	const { mutateAsync, isPending } = useMutation({
+		mutationFn: async () => {
+			const result = await reactivateStaffAccountOwner(id, sendEmail);
+			if (!result.success) {
+				throw new Error(result.error || "Failed to reactivate staff");
+			}
+			return result;
+		},
+		onSuccess: () => {
+			onStatusChange?.("ACTIVE");
+			setOpen(false);
+			setShowSuccessDialog({
+				show: true,
+				message: "Staff reactivated successfully",
+			});
+			queryClient.invalidateQueries({
+				exact: true,
+				queryKey: ["staffs"],
+			});
+			revalidateRoute("/hotel-owner/staff-management");
+		},
+		onError: (error) => {
+			toast.error("Something went wrong", {
+				description: error.message || "Failed to reactivate staff",
+			});
+		},
+	});
+
+	return (
+		<DialogContent className="p-4 rounded-2xl">
+			<DialogTitle className="sr-only">Reactivate Staff</DialogTitle>
+			<DialogDescription className="sr-only">
+				Reactivate a suspended staff member
+			</DialogDescription>
+
+			<div className="flex flex-col items-center justify-center">
+				<UserCheckIcon className="text-green-600 size-12" />
+				<h2 className="text-green-600 text-xl font-semibold">Reactivate Staff</h2>
+				<p className="text-gray-600 text-center">
+					Are you sure you want to reactivate this staff member? They will regain
+					access to the system.
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<div className="flex items-center gap-2">
+					<Checkbox
+						id="reactivate-send-email"
+						checked={sendEmail}
+						onCheckedChange={(checked) => setSendEmail(checked === true)}
+					/>
+					<Label htmlFor="reactivate-send-email" className="text-sm font-normal cursor-pointer">
+						Send reactivation email to staff
+					</Label>
+				</div>
+				<Button
+					className="w-full font-semibold"
+					disabled={isPending}
+					onClick={() => mutateAsync()}
+				>
+					{isPending ? (
+						<>
+							<Loader2Icon className="animate-spin" />
+							<span>Reactivating, please wait...</span>
+						</>
+					) : (
+						"Reactivate Staff"
+					)}
+				</Button>
+				<Button
+					type="button"
+					className="w-full font-semibold bg-gray-100"
+					variant={"ghost"}
+					onClick={() => setOpen(false)}
+				>
+					Cancel
+				</Button>
+			</div>
 		</DialogContent>
 	);
 }
@@ -1409,8 +1419,17 @@ const columns = [
 function StaffDetailSheet() {
 	const [staff, setStaff] = useAtom(selectedStaffAtom);
 	const [dialogOpen, setDialogOpen] = useState<
-		"edit-staff" | "reset-password" | "suspend-staff" | "delete-staff" | false
+		"edit-staff" | "reset-password" | "suspend-staff" | "reactivate-staff" | "delete-staff" | false
 	>(false);
+
+	const handleStatusChange = useCallback(
+		(newStatus: string) => {
+			setStaff((prev) =>
+				prev ? { ...prev, userStatus: newStatus } : prev,
+			);
+		},
+		[setStaff],
+	);
 
 	const dialogContent = useMemo(() => {
 		if (!staff) return null;
@@ -1445,6 +1464,17 @@ function StaffDetailSheet() {
 							setDialogOpen(isOpen ? "suspend-staff" : false)
 						}
 						id={staff.id}
+						onStatusChange={handleStatusChange}
+					/>
+				);
+			case "reactivate-staff":
+				return (
+					<ReactivateStaffDialog
+						setOpen={(isOpen) =>
+							setDialogOpen(isOpen ? "reactivate-staff" : false)
+						}
+						id={staff.id}
+						onStatusChange={handleStatusChange}
 					/>
 				);
 			case "delete-staff":
@@ -1459,7 +1489,7 @@ function StaffDetailSheet() {
 			default:
 				return null;
 		}
-	}, [dialogOpen, staff]);
+	}, [dialogOpen, staff, handleStatusChange]);
 
 	if (!staff) return null;
 
@@ -1550,7 +1580,16 @@ function StaffDetailSheet() {
 								<ReplaceIcon className="mr-2 h-4 w-4" />
 								Reset Password
 							</Button>
-							{staff.userStatus !== "SUSPENDED" && (
+							{staff.userStatus === "SUSPENDED" ? (
+								<Button
+									className="w-full text-green-600 hover:text-green-700 hover:bg-green-50"
+									variant="outline"
+									onClick={() => setDialogOpen("reactivate-staff")}
+								>
+									<UserCheckIcon className="mr-2 h-4 w-4" />
+									Reactivate Staff
+								</Button>
+							) : (
 								<Button
 									className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
 									variant="outline"
