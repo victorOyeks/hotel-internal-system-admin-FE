@@ -632,8 +632,6 @@ function OrganizationReportsTab({
 	organizationName: string;
 	hotelId: string;
 }) {
-	const [startDate, setStartDate] = useState("");
-	const [endDate, setEndDate] = useState("");
 	const [isExporting, setIsExporting] = useState(false);
 	const [includeTransactions, setIncludeTransactions] = useState(false);
 
@@ -642,14 +640,9 @@ function OrganizationReportsTab({
 			"organization-report",
 			organizationId,
 			hotelId,
-			startDate,
-			endDate,
 		],
 		queryFn: () =>
-			getOrganizationReport(organizationId, hotelId, {
-				start: startDate || undefined,
-				end: endDate || undefined,
-			}),
+			getOrganizationReport(organizationId, hotelId, {}),
 	});
 
 	const breakdowns = data?.staffBreakdowns ?? [];
@@ -667,8 +660,6 @@ function OrganizationReportsTab({
 			const result = await exportOrganizationReport({
 				organizationId,
 				hotelId,
-				start: startDate || undefined,
-				end: endDate || undefined,
 				includeTransactions,
 			});
 			if (result.success && result.data) {
@@ -700,20 +691,6 @@ function OrganizationReportsTab({
 	return (
 		<div className="space-y-6">
 			<div className="flex flex-wrap items-center gap-2">
-				<Input
-					type="date"
-					value={startDate}
-					onChange={(e) => setStartDate(e.target.value)}
-					className="w-auto"
-					placeholder="Start date"
-				/>
-				<Input
-					type="date"
-					value={endDate}
-					onChange={(e) => setEndDate(e.target.value)}
-					className="w-auto"
-					placeholder="End date"
-				/>
 
 				<div className="ml-auto flex items-center gap-3">
 					<label className="flex items-center gap-1.5 text-sm cursor-pointer">
