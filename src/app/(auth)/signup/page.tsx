@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
-	CardDescription,
 	CardFooter,
 	CardHeader,
-	CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -31,14 +29,15 @@ import { hotelSignup } from "@/lib/actions";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
 	BuildingIcon,
-	CheckCircle2Icon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
+	CheckIcon,
 	EyeIcon,
 	EyeOffIcon,
 	Loader2Icon,
 	LockIcon,
+	MailCheckIcon,
 	MapPinIcon,
 	UserIcon,
 } from "lucide-react";
@@ -88,28 +87,27 @@ const TIMEZONES = [
 ];
 
 const CURRENCIES = [
-	{ value: "AED", label: "AED – UAE Dirham" },
-	{ value: "AUD", label: "AUD – Australian Dollar" },
-	{ value: "BRL", label: "BRL – Brazilian Real" },
-	{ value: "CAD", label: "CAD – Canadian Dollar" },
-	{ value: "CHF", label: "CHF – Swiss Franc" },
-	{ value: "CNY", label: "CNY – Chinese Yuan" },
-	{ value: "EUR", label: "EUR – Euro" },
-	{ value: "GBP", label: "GBP – British Pound" },
-	{ value: "GHS", label: "GHS – Ghanaian Cedi" },
-	{ value: "INR", label: "INR – Indian Rupee" },
-	{ value: "JPY", label: "JPY – Japanese Yen" },
-	{ value: "KES", label: "KES – Kenyan Shilling" },
-	{ value: "NGN", label: "NGN – Nigerian Naira" },
-	{ value: "PKR", label: "PKR – Pakistani Rupee" },
-	{ value: "SGD", label: "SGD – Singapore Dollar" },
-	{ value: "USD", label: "USD – US Dollar" },
-	{ value: "ZAR", label: "ZAR – South African Rand" },
+	{ value: "AED", label: "AED - UAE Dirham" },
+	{ value: "AUD", label: "AUD - Australian Dollar" },
+	{ value: "BRL", label: "BRL - Brazilian Real" },
+	{ value: "CAD", label: "CAD - Canadian Dollar" },
+	{ value: "CHF", label: "CHF - Swiss Franc" },
+	{ value: "CNY", label: "CNY - Chinese Yuan" },
+	{ value: "EUR", label: "EUR - Euro" },
+	{ value: "GBP", label: "GBP - British Pound" },
+	{ value: "GHS", label: "GHS - Ghanaian Cedi" },
+	{ value: "INR", label: "INR - Indian Rupee" },
+	{ value: "JPY", label: "JPY - Japanese Yen" },
+	{ value: "KES", label: "KES - Kenyan Shilling" },
+	{ value: "NGN", label: "NGN - Nigerian Naira" },
+	{ value: "PKR", label: "PKR - Pakistani Rupee" },
+	{ value: "SGD", label: "SGD - Singapore Dollar" },
+	{ value: "USD", label: "USD - US Dollar" },
+	{ value: "ZAR", label: "ZAR - South African Rand" },
 ];
 
 const formSchema = z
 	.object({
-		// Step 1 – Business Details
 		businessName: z
 			.string()
 			.min(2, "Must be at least 2 characters")
@@ -118,7 +116,7 @@ const formSchema = z
 			.string()
 			.regex(
 				/^[A-Z0-9-]{5,50}$/,
-				"5–50 uppercase letters, numbers, or hyphens",
+				"5-50 uppercase letters, numbers, or hyphens",
 			),
 		businessType: z.string().min(1, "Business type is required"),
 		businessDescription: z.string().max(1000).optional(),
@@ -132,8 +130,6 @@ const formSchema = z
 			.or(z.literal("")),
 		taxId: z.string().max(50).optional(),
 		vatNumber: z.string().max(50).optional(),
-
-		// Step 2 – Owner & Contact
 		ownerFullName: z
 			.string()
 			.min(2, "Must be at least 2 characters")
@@ -151,8 +147,6 @@ const formSchema = z
 			.regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number")
 			.optional()
 			.or(z.literal("")),
-
-		// Step 3 – Business Location
 		streetAddress: z
 			.string()
 			.min(1, "Street address is required")
@@ -165,8 +159,6 @@ const formSchema = z
 		currency: z
 			.string()
 			.regex(/^[A-Z]{3}$/, "Select a currency"),
-
-		// Step 4 – Account & Terms
 		password: z
 			.string()
 			.min(8, "Must be at least 8 characters")
@@ -196,7 +188,8 @@ type FormValues = z.infer<typeof formSchema>;
 const STEPS = [
 	{
 		id: 1,
-		title: "Business Details",
+		title: "Business",
+		subtitle: "Tell us about your business",
 		icon: BuildingIcon,
 		fields: [
 			"businessName",
@@ -210,7 +203,8 @@ const STEPS = [
 	},
 	{
 		id: 2,
-		title: "Owner & Contact",
+		title: "Owner",
+		subtitle: "Your contact information",
 		icon: UserIcon,
 		fields: [
 			"ownerFullName",
@@ -222,7 +216,8 @@ const STEPS = [
 	},
 	{
 		id: 3,
-		title: "Business Address",
+		title: "Location",
+		subtitle: "Where is your business located?",
 		icon: MapPinIcon,
 		fields: [
 			"streetAddress",
@@ -236,7 +231,8 @@ const STEPS = [
 	},
 	{
 		id: 4,
-		title: "Account & Terms",
+		title: "Security",
+		subtitle: "Secure your account",
 		icon: LockIcon,
 		fields: [
 			"password",
@@ -249,6 +245,59 @@ const STEPS = [
 		] as const,
 	},
 ] as const;
+
+function StepIndicator({ currentStep }: { currentStep: number }) {
+	return (
+		<div className="flex items-center justify-between w-full">
+			{STEPS.map((s, i) => {
+				const Icon = s.icon;
+				const isComplete = currentStep > s.id;
+				const isCurrent = currentStep === s.id;
+				const isLast = i === STEPS.length - 1;
+
+				return (
+					<div key={s.id} className="flex items-center flex-1 last:flex-none">
+						<div className="flex flex-col items-center gap-1">
+							<div
+								className={`size-9 rounded-full flex items-center justify-center transition-all duration-300 ${
+									isComplete
+										? "bg-green-500 text-white"
+										: isCurrent
+											? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+											: "bg-gray-100 text-gray-400"
+								}`}
+							>
+								{isComplete ? (
+									<CheckIcon className="size-4" />
+								) : (
+									<Icon className="size-4" />
+								)}
+							</div>
+							<span
+								className={`text-[10px] font-medium hidden sm:block ${
+									isCurrent
+										? "text-primary"
+										: isComplete
+											? "text-green-600"
+											: "text-gray-400"
+								}`}
+							>
+								{s.title}
+							</span>
+						</div>
+						{!isLast && (
+							<div
+								className={`flex-1 h-0.5 mx-2 mb-4 sm:mb-0 rounded-full transition-colors duration-300 ${
+									isComplete ? "bg-green-500" : "bg-gray-200"
+								}`}
+							/>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
 
 function SignupPage() {
 	const [step, setStep] = useState(1);
@@ -287,7 +336,7 @@ function SignupPage() {
 			referralSource: "",
 		},
 		mode: "onSubmit",
-		reValidateMode: "onChange"
+		reValidateMode: "onChange",
 	});
 
 	const signupMutation = useMutation({
@@ -346,57 +395,49 @@ function SignupPage() {
 
 	if (submitted) {
 		return (
-			<Card className="w-full md:max-w-md">
-				<CardContent className="flex flex-col items-center gap-4 pt-10 pb-8 text-center">
-					<CheckCircle2Icon className="h-16 w-16 text-green-500" />
-					<h2 className="text-2xl font-bold">Account Created!</h2>
-					<p className="text-muted-foreground text-sm max-w-xs">
-						Your hotel business account has been submitted. Please check your
-						email to verify your account before logging in.
+			<Card className="w-full md:max-w-md overflow-hidden">
+				<div className="bg-gradient-to-br from-green-50 to-emerald-50 px-6 pt-10 pb-6 flex flex-col items-center">
+					<div className="size-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+						<MailCheckIcon className="size-8 text-green-600" />
+					</div>
+					<h2 className="text-2xl font-bold text-gray-900">
+						You&apos;re almost there!
+					</h2>
+					<p className="text-sm text-gray-500 mt-1 text-center">
+						Your account has been created successfully
 					</p>
-					<Button asChild className="mt-2 w-full">
+				</div>
+				<CardContent className="pt-6 pb-2 text-center">
+					<p className="text-sm text-gray-600 leading-relaxed">
+						We&apos;ve sent a verification link to your email address. Please
+						check your inbox and click the link to activate your account.
+					</p>
+					<p className="text-xs text-gray-400 mt-3">
+						Didn&apos;t receive the email? Check your spam folder.
+					</p>
+				</CardContent>
+				<CardFooter className="flex flex-col gap-2 pb-6">
+					<Button asChild className="w-full font-semibold">
 						<Link href="/auth">Go to Login</Link>
 					</Button>
-				</CardContent>
+				</CardFooter>
 			</Card>
 		);
 	}
 
 	return (
-		<Card className="w-full md:max-w-2xl">
-			<CardHeader className="pb-2">
-				<CardTitle>
-					<h1 className="text-2xl font-bold font-inter">
-						Register Your Business
+		<Card className="w-full md:max-w-2xl overflow-hidden">
+			<CardHeader className="pb-4 space-y-4">
+				<div>
+					<h1 className="text-2xl font-bold font-inter text-primary">
+						Create your account
 					</h1>
-				</CardTitle>
-				<CardDescription>
-					Step {step} of {STEPS.length} — {currentStep.title}
-				</CardDescription>
-
-				{/* Step indicator */}
-				<div className="flex items-center gap-1 pt-2">
-					{STEPS.map((s) => {
-						const Icon = s.icon;
-						const isComplete = step > s.id;
-						const isCurrent = step === s.id;
-						return (
-							<div
-								key={s.id}
-								className={`flex-1 flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors ${
-									isComplete
-										? "bg-primary text-primary-foreground"
-										: isCurrent
-											? "bg-primary/15 text-primary"
-											: "bg-muted text-muted-foreground"
-								}`}
-							>
-								<Icon className="h-3.5 w-3.5 shrink-0" />
-								<span className="hidden sm:block truncate">{s.title}</span>
-							</div>
-						);
-					})}
+					<p className="text-sm text-muted-foreground mt-0.5">
+						{currentStep.subtitle}
+					</p>
 				</div>
+
+				<StepIndicator currentStep={step} />
 			</CardHeader>
 
 			<Form {...form}>
@@ -404,43 +445,45 @@ function SignupPage() {
 					id="signup-form"
 					onSubmit={form.handleSubmit(handleSubmit)}
 				>
-					<CardContent className="space-y-3">
-						{/* ── Step 1: Business Details ── */}
+					<CardContent className="space-y-4">
+						{/* Step 1: Business Details */}
 						{step === 1 && (
 							<>
-								<FormField
-									name="businessName"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Business Name *</FormLabel>
-											<FormControl>
-												<Input placeholder="Acme Hotels Ltd." {...field} />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="businessRegistrationNumber"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Registration Number *</FormLabel>
-											<FormControl>
-												<Input
-													placeholder="RC-12345"
-													className="uppercase"
-													onChange={(e) =>
-														field.onChange(e.target.value.toUpperCase())
-													}
-													value={field.value}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										name="businessName"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Business Name *</FormLabel>
+												<FormControl>
+													<Input placeholder="Acme Hotels Ltd." {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										name="businessRegistrationNumber"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Registration Number *</FormLabel>
+												<FormControl>
+													<Input
+														placeholder="RC-12345"
+														className="uppercase"
+														onChange={(e) =>
+															field.onChange(e.target.value.toUpperCase())
+														}
+														value={field.value}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 								<FormField
 									name="businessType"
 									control={form.control}
@@ -534,35 +577,37 @@ function SignupPage() {
 							</>
 						)}
 
-						{/* ── Step 2: Owner & Contact ── */}
+						{/* Step 2: Owner & Contact */}
 						{step === 2 && (
 							<>
-								<FormField
-									name="ownerFullName"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Owner Full Name *</FormLabel>
-											<FormControl>
-												<Input placeholder="Jane Doe" {...field} />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="ownerPosition"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Owner Position *</FormLabel>
-											<FormControl>
-												<Input placeholder="CEO, Director..." {...field} />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										name="ownerFullName"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Full Name *</FormLabel>
+												<FormControl>
+													<Input placeholder="Jane Doe" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										name="ownerPosition"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Position *</FormLabel>
+												<FormControl>
+													<Input placeholder="CEO, Director..." {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 								<FormField
 									name="email"
 									control={form.control}
@@ -580,36 +625,38 @@ function SignupPage() {
 										</FormItem>
 									)}
 								/>
-								<FormField
-									name="phoneNumber"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Phone Number *</FormLabel>
-											<FormControl>
-												<Input placeholder="+2348012345678" {...field} />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="alternativePhone"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Alternative Phone</FormLabel>
-											<FormControl>
-												<Input placeholder="+2348087654321" {...field} />
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										name="phoneNumber"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Phone Number *</FormLabel>
+												<FormControl>
+													<Input placeholder="+2348012345678" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										name="alternativePhone"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Alternative Phone</FormLabel>
+												<FormControl>
+													<Input placeholder="+2348087654321" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 							</>
 						)}
 
-						{/* ── Step 3: Business Address ── */}
+						{/* Step 3: Business Address */}
 						{step === 3 && (
 							<>
 								<FormField
@@ -681,132 +728,141 @@ function SignupPage() {
 										)}
 									/>
 								</div>
-								<FormField
-									name="timezone"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Timezone *</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select timezone" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													{TIMEZONES.map((tz) => (
-														<SelectItem key={tz.value} value={tz.value}>
-															{tz.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="currency"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Currency *</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select currency" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													{CURRENCIES.map((c) => (
-														<SelectItem key={c.value} value={c.value}>
-															{c.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										name="timezone"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Timezone *</FormLabel>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select timezone" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{TIMEZONES.map((tz) => (
+															<SelectItem key={tz.value} value={tz.value}>
+																{tz.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										name="currency"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Currency *</FormLabel>
+												<Select
+													onValueChange={field.onChange}
+													defaultValue={field.value}
+												>
+													<FormControl>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select currency" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{CURRENCIES.map((c) => (
+															<SelectItem key={c.value} value={c.value}>
+																{c.label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 							</>
 						)}
 
-						{/* ── Step 4: Account & Terms ── */}
+						{/* Step 4: Account & Terms */}
 						{step === 4 && (
 							<>
-								<FormField
-									name="password"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Password *</FormLabel>
-											<div className="relative">
-												<FormControl>
-													<Input
-														type={showPassword ? "text" : "password"}
-														placeholder="Create a password"
-														className="pr-10"
-														{...field}
-													/>
-												</FormControl>
-												<Button
-													type="button"
-													variant="link"
-													size="icon"
-													className="absolute right-1 top-1/2 -translate-y-1/2"
-													onClick={() => setShowPassword((v) => !v)}
-												>
-													{showPassword ? (
-														<EyeOffIcon className="h-5 w-5 text-gray-500" />
-													) : (
-														<EyeIcon className="h-5 w-5 text-gray-500" />
-													)}
-												</Button>
-											</div>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="confirmPassword"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Confirm Password *</FormLabel>
-											<div className="relative">
-												<FormControl>
-													<Input
-														type={showConfirm ? "text" : "password"}
-														placeholder="Repeat your password"
-														className="pr-10"
-														{...field}
-													/>
-												</FormControl>
-												<Button
-													type="button"
-													variant="link"
-													size="icon"
-													className="absolute right-1 top-1/2 -translate-y-1/2"
-													onClick={() => setShowConfirm((v) => !v)}
-												>
-													{showConfirm ? (
-														<EyeOffIcon className="h-5 w-5 text-gray-500" />
-													) : (
-														<EyeIcon className="h-5 w-5 text-gray-500" />
-													)}
-												</Button>
-											</div>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField
+										name="password"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Password *</FormLabel>
+												<div className="relative">
+													<FormControl>
+														<Input
+															type={showPassword ? "text" : "password"}
+															placeholder="Create a password"
+															className="pr-10"
+															{...field}
+														/>
+													</FormControl>
+													<Button
+														type="button"
+														variant="link"
+														size="icon"
+														className="absolute right-1 top-1/2 -translate-y-1/2"
+														onClick={() => setShowPassword((v) => !v)}
+													>
+														{showPassword ? (
+															<EyeOffIcon className="h-5 w-5 text-gray-500" />
+														) : (
+															<EyeIcon className="h-5 w-5 text-gray-500" />
+														)}
+													</Button>
+												</div>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										name="confirmPassword"
+										control={form.control}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Confirm Password *</FormLabel>
+												<div className="relative">
+													<FormControl>
+														<Input
+															type={showConfirm ? "text" : "password"}
+															placeholder="Repeat your password"
+															className="pr-10"
+															{...field}
+														/>
+													</FormControl>
+													<Button
+														type="button"
+														variant="link"
+														size="icon"
+														className="absolute right-1 top-1/2 -translate-y-1/2"
+														onClick={() => setShowConfirm((v) => !v)}
+													>
+														{showConfirm ? (
+															<EyeOffIcon className="h-5 w-5 text-gray-500" />
+														) : (
+															<EyeIcon className="h-5 w-5 text-gray-500" />
+														)}
+													</Button>
+												</div>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+								<p className="text-xs text-muted-foreground -mt-1">
+									Min 8 characters with uppercase, lowercase, number, and
+									special character
+								</p>
+
 								<div className="grid grid-cols-2 gap-3">
 									<FormField
 										name="referralCode"
@@ -826,7 +882,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>How did you hear about us?</FormLabel>
+												<FormLabel>How did you find us?</FormLabel>
 												<FormControl>
 													<Input placeholder="Google, friend..." {...field} />
 												</FormControl>
@@ -836,7 +892,7 @@ function SignupPage() {
 									/>
 								</div>
 
-								<div className="space-y-3 pt-1">
+								<div className="space-y-3 pt-2 border-t">
 									<FormField
 										name="acceptedTerms"
 										control={form.control}
@@ -909,17 +965,16 @@ function SignupPage() {
 						)}
 					</CardContent>
 
-					<CardFooter className="flex flex-col gap-3 pt-1">
+					<CardFooter className="flex flex-col gap-3 pt-2">
 						<div className="flex w-full gap-2">
 							{step > 1 && (
 								<Button
 									type="button"
 									variant="outline"
-									className="flex-1"
 									onClick={() => setStep((s) => s - 1)}
 									disabled={signupMutation.isPending}
 								>
-									<ChevronLeftIcon className="mr-1 h-4 w-4" />
+									<ArrowLeftIcon className="mr-1 size-4" />
 									Back
 								</Button>
 							)}
@@ -927,11 +982,11 @@ function SignupPage() {
 								<Button
 									type="submit"
 									form="signup-form"
-									className="flex-1 font-bold"
+									className="flex-1 font-semibold"
 									disabled={signupMutation.isPending}
 								>
 									{signupMutation.isPending ? (
-										<Loader2Icon className="h-4 w-4 animate-spin" />
+										<Loader2Icon className="size-4 animate-spin" />
 									) : (
 										"Create Account"
 									)}
@@ -939,11 +994,11 @@ function SignupPage() {
 							) : (
 								<Button
 									type="button"
-									className="flex-1 font-bold"
+									className="flex-1 font-semibold"
 									onClick={handleNext}
 								>
-									Next
-									<ChevronRightIcon className="ml-1 h-4 w-4" />
+									Continue
+									<ArrowRightIcon className="ml-1 size-4" />
 								</Button>
 							)}
 						</div>

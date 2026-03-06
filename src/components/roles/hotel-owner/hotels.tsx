@@ -145,10 +145,10 @@ function HotelListToolbar({
 					setExportDialogOpen(false);
 					setSuccessDialogOpen({
 						show: true,
-						message: "Hotels exported successfully!",
+						message: "Branches exported successfully!",
 					});
 				} else {
-					toast.error(result.error || "Failed to export hotels");
+					toast.error(result.error || "Failed to export branches");
 				}
 			} catch {
 				toast.error("An error occurred during export");
@@ -162,7 +162,7 @@ function HotelListToolbar({
 			<div className="relative">
 				<input
 					type="text"
-					placeholder="Search Hotels"
+					placeholder="Search Branches"
 					value={searchText}
 					onChange={(e) => setSearchText(e.target.value)}
 					className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-xl"
@@ -204,14 +204,14 @@ function AddNewHotelDialog({
 					className="rounded-md md:rounded-xl"
 				>
 					<PlusCircleIcon />
-					<span className="hidden md:inline">Add New Hotel</span>
+					<span className="hidden md:inline">Add New Branch</span>
 				</Button>
 			</DialogTrigger>
 
 			<DialogContent className="p-4 rounded-2xl">
-				<DialogTitle>New Hotel</DialogTitle>
+				<DialogTitle>New Branch</DialogTitle>
 				<DialogDescription className="sr-only">
-					Fill in the details below to add a new hotel branch.
+					Fill in the details below to add a new branch.
 				</DialogDescription>
 				<SingleHotelForm
 					revalidate={revalidate}
@@ -225,8 +225,8 @@ function AddNewHotelDialog({
 }
 
 const hotelFormSchema = z.object({
-	name: z.string().nonempty("Hotel name is required"),
-	hotelAddress: z.string().nonempty("Hotel address is required"),
+	name: z.string().nonempty("Branch name is required"),
+	hotelAddress: z.string().nonempty("Branch address is required"),
 	location: z.string().nonempty("Location is required"),
 	managerId: z.string().nonempty("Manager is required"),
 });
@@ -253,12 +253,12 @@ function SingleHotelForm({
 			form.reset();
 			setShowSuccessDialog({
 				show: true,
-				message: "Hotel Added successfully",
+				message: "Branch added successfully",
 			});
 			await revalidate();
 		},
 		onError: (e) => {
-			toast.error("Failed to add hotel", {
+			toast.error("Failed to add branch", {
 				description: e.message,
 			});
 		},
@@ -294,9 +294,9 @@ function SingleHotelForm({
 					control={form.control}
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Branch Hotel Name</FormLabel>
+							<FormLabel>Branch Name</FormLabel>
 							<FormControl>
-								<Input placeholder="e.g Gibson Hotel Ajah" {...field} />
+								<Input placeholder="e.g Main Branch, Ajah" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -307,7 +307,7 @@ function SingleHotelForm({
 					name="hotelAddress"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Hotel Address</FormLabel>
+							<FormLabel>Branch Address</FormLabel>
 							<FormControl>
 								<Input
 									autoComplete="address-line1"
@@ -371,7 +371,7 @@ function SingleHotelForm({
 							<span>Creating, please wait...</span>
 						</>
 					) : (
-						"Create Hotel Branch"
+						"Add Branch"
 					)}
 				</Button>
 			</form>
@@ -412,13 +412,13 @@ function EditHotelForm({
 			setOpen(false);
 			setShowSuccessDialog({
 				show: true,
-				message: "Hotel updated successfully",
+				message: "Branch updated successfully",
 			});
 			// Invalidate and refetch
 			await revalidate();
 		},
 		onError: (e) => {
-			toast.error("Failed to update hotel", {
+			toast.error("Failed to update branch", {
 				description: e.message,
 			});
 		},
@@ -441,9 +441,9 @@ function EditHotelForm({
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle>Edit hotel</DialogTitle>
+			<DialogTitle>Edit Branch</DialogTitle>
 			<DialogDescription className="sr-only">
-				Edit hotel details
+				Edit branch details
 			</DialogDescription>
 			<Form {...form}>
 				<form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
@@ -452,9 +452,9 @@ function EditHotelForm({
 						control={form.control}
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Branch Hotel Name</FormLabel>
+								<FormLabel>Branch Name</FormLabel>
 								<FormControl>
-									<Input placeholder="e.g Gibson Hotel Ajah" {...field} />
+									<Input placeholder="e.g Main Branch, Ajah" {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>
@@ -465,7 +465,7 @@ function EditHotelForm({
 						name="location"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Branch Hotel Location</FormLabel>
+								<FormLabel>Branch Location</FormLabel>
 								<FormControl>
 									<Input
 										autoComplete="address-level2"
@@ -482,7 +482,7 @@ function EditHotelForm({
 						name="hotelAddress"
 						render={({ field }) => (
 							<FormItem>
-								<FormLabel>Hotel Address</FormLabel>
+								<FormLabel>Branch Address</FormLabel>
 								<FormControl>
 									<Input
 										autoComplete="address-line1"
@@ -550,7 +550,7 @@ function AssignManagerForm({
 			setOpen(false);
 			setShowSuccessDialog({
 				show: true,
-				message: "Hotel updated successfully",
+				message: "Manager assigned successfully",
 			});
 			// Invalidate and refetch
 			await revalidate();
@@ -730,12 +730,12 @@ function DeleteHotel({
 			setOpen(false);
 			setShowSuccessDialog({
 				show: true,
-				message: "Hotel deleted successfully",
+				message: "Branch deleted successfully",
 			});
 			await revalidate();
 		},
 		onError: async (e) => {
-			toast.error("Failed to delete hotel", {
+			toast.error("Failed to delete branch", {
 				description: e.message,
 			});
 			await revalidate();
@@ -759,7 +759,7 @@ function DeleteHotel({
 
 	return (
 		<DialogContent className="p-4 rounded-2xl">
-			<DialogTitle className="sr-only">Delete Hotel</DialogTitle>
+			<DialogTitle className="sr-only">Delete Branch</DialogTitle>
 			<DialogDescription className="sr-only">
 				Type "DELETE" to confirm
 			</DialogDescription>
@@ -799,7 +799,7 @@ function DeleteHotel({
 								<span>Deleting, please wait...</span>
 							</>
 						) : (
-							"Delete Hotel"
+							"Delete Branch"
 						)}
 					</Button>
 					<Button
@@ -824,7 +824,7 @@ const columns = [
 		),
 	}),
 	columnHelper.accessor("name", {
-		header: "Hotel Name",
+		header: "Branch Name",
 		cell: (info) => <span className="font-semibold">{info.getValue()}</span>,
 	}),
 	columnHelper.accessor("address", {
@@ -955,7 +955,7 @@ const columns = [
 							<DropdownMenuItem asChild>
 								<Link href={`/dashboard/hotels/${info.row.original.id}`}>
 									<HotelIcon />
-									View Branch Hotel
+									View Branch
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
@@ -965,7 +965,7 @@ const columns = [
 									onClick={() => setOpen("edit-hotel")}
 								>
 									<DoorOpenIcon />
-									Edit Hotel
+									Edit Branch
 								</DialogTrigger>
 							</DropdownMenuItem>
 
@@ -991,7 +991,7 @@ const columns = [
 									onClick={() => setOpen("delete-hotel")}
 								>
 									<TrashIcon className="text-red-500" />
-									Delete Hotel
+									Delete Branch
 								</DialogTrigger>
 							</DropdownMenuItem>
 						</DropdownMenuContent>

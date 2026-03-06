@@ -106,7 +106,7 @@ export function QuickStatCard({
 	const [bgClass, textClass] = accentColor.split(" ");
 
 	const content = (
-		<div className="bg-white p-4 rounded-2xl hover:shadow-sm transition-shadow cursor-pointer">
+		<div className="bg-white p-4 rounded-2xl hover:shadow-sm transition-shadow cursor-pointer h-full">
 			<div className="flex items-center justify-between mb-3">
 				<h3 className="text-sm font-medium text-gray-600">{title}</h3>
 				<div

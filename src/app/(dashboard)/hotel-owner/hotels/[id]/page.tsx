@@ -73,11 +73,11 @@ export default function Page({ params, searchParams }: PageProps) {
 				href: "/home",
 			},
 			{
-				label: "Hotels",
+				label: "Branches",
 				href: "/hotels",
 			},
 			{
-				label: content.length > 0 ? content[0].hotelName : "Hotel",
+				label: content.length > 0 ? content[0].hotelName : "Branch",
 				href: `/dashboard/hotels/${id}`,
 			},
 		],

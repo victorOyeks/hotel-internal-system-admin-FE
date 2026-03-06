@@ -29,7 +29,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-	title: "Hotel Management System",
+	title: "Hospio360",
 };
 
 export const viewport: Viewport = {

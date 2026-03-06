@@ -33,7 +33,7 @@ import {
 
 export const hotelOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	{ title: "Hotels", icon: <HotelIcon />, url: "/dashboard/hotels" },
+	{ title: "Branches", icon: <HotelIcon />, url: "/dashboard/hotels" },
 	{
 		title: "Approvals",
 		icon: <ShieldCheckIcon />,

@@ -261,9 +261,9 @@ export function AuthForm({ from, verified, error }: Props) {
 					)}
 				</Button>
 				<p className="text-sm text-center text-muted-foreground">
-					New to H.M.S?{" "}
+					New to Hospio360?{" "}
 					<Button variant="link" className="p-0 h-auto text-info" asChild>
-						<Link href="/signup">Register your business</Link>
+						<Link href="/signup">Register</Link>
 					</Button>
 				</p>
 			</CardFooter>

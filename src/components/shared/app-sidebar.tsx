@@ -71,7 +71,7 @@ export function AppSidebar({
 										<HomeIcon />
 									</div>
 									<span className="font-bold text-xl self-baseline-last">
-										H.M.S
+										Hospio360
 									</span>
 								</div>
 							</Link>

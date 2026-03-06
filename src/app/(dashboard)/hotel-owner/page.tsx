@@ -1,9 +1,11 @@
 import { HotelOwnerDashboard } from "@/components/roles/hotel-owner/dashboard";
+import { HotelOwnerOnboarding } from "@/components/roles/hotel-owner/onboarding";
 import { getOwnerCurrentHotel } from "@/lib/dal";
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import type { Breadcrumb } from "@/lib/store";
+import { fromPromise } from "neverthrow";
 import { use } from "react";
 import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 
@@ -34,11 +36,20 @@ function HomePage({ searchParams }: PageProps) {
 	const auth = { type: "Bearer" as const, token: cookieData.token };
 
 	if (!currentHotel) {
-		return (
-			<div className="flex items-center justify-center h-[60vh]">
-				<p className="text-muted-foreground">No hotel found. Please onboard a hotel first.</p>
-			</div>
+		const managersResult = use(
+			fromPromise(
+				$fetch("@get/api/hotel-owners/staff", {
+					auth,
+					query: { role: "MANAGER" },
+					throw: true,
+				}),
+				() => new Error("Failed to fetch managers"),
+			),
 		);
+		const managers = managersResult.isOk()
+			? managersResult.value.data.content
+			: [];
+		return <HotelOwnerOnboarding existingManagers={managers} />;
 	}
 
 	const hotelId = currentHotel.id;

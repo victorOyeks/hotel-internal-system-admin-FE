@@ -463,9 +463,9 @@ function DepartmentStats({
 				<QuickStatCard
 					title="Restaurant"
 					primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
-					primaryLabel="today's sales"
+					primaryLabel="sales today"
 					secondaryValue={data.restaurantActiveOrders}
-					secondaryLabel="active orders"
+					secondaryLabel="active"
 					icon={UtensilsIcon}
 					href="/dashboard/operations"
 					accentColor="bg-orange-50 text-orange-600"
@@ -473,7 +473,7 @@ function DepartmentStats({
 				<QuickStatCard
 					title="Laundry"
 					primaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
-					primaryLabel="today's revenue"
+					primaryLabel="sales today"
 					secondaryValue={data.laundryPendingOrders}
 					secondaryLabel="pending"
 					icon={ShirtIcon}
@@ -483,7 +483,7 @@ function DepartmentStats({
 				<QuickStatCard
 					title="Rentals"
 					primaryValue={data.activeRentals}
-					primaryLabel="active rentals"
+					primaryLabel="active"
 					secondaryValue={data.overdueRentals}
 					secondaryLabel="overdue"
 					icon={PackageIcon}
@@ -493,9 +493,9 @@ function DepartmentStats({
 				<QuickStatCard
 					title="Inventory"
 					primaryValue={data.lowStockCount}
-					primaryLabel="low stock items"
+					primaryLabel="low stock"
 					secondaryValue={data.pendingRestockRequests}
-					secondaryLabel="restock requests"
+					secondaryLabel="restocking"
 					icon={WarehouseIcon}
 					href="/dashboard/inventory"
 					accentColor="bg-rose-50 text-rose-600"
@@ -525,7 +525,20 @@ function RevenueBreakdown({
 		data.rentalRevenue +
 		data.otherIncomeRevenue;
 
-	if (revenueData.length === 0) return null;
+	if (revenueData.length === 0) {
+		return (
+			<div className="bg-white p-4 rounded-2xl flex flex-col items-center justify-center min-h-[280px]">
+				<h3 className="text-sm font-medium text-gray-600 self-start mb-2">
+					Revenue Breakdown — {data.selectedMonth}
+				</h3>
+				<div className="flex-1 flex items-center justify-center">
+					<p className="text-sm text-muted-foreground">
+						No revenue data for this period.
+					</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<DonutChart

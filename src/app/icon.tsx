@@ -29,7 +29,7 @@ export default function Icon() {
 						letterSpacing: "-0.5px",
 					}}
 				>
-					HMS
+					H360
 				</span>
 			</div>
 		),

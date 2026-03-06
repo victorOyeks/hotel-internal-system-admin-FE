@@ -42,13 +42,13 @@ export function SidebarSwitchers({
         mutationKey: ["set-active-hotel"],
         mutationFn: switchHotelFn,
         onError: (error) => {
-            toast.error("Failed to switch hotel.", {
+            toast.error("Failed to switch branch.", {
                 description:
                     error instanceof Error ? error.message : "Please try again later.",
             });
         },
         onSuccess: () => {
-            toast.success("Switched hotel successfully.");
+            toast.success("Switched branch successfully.");
         },
     });
 
@@ -111,7 +111,7 @@ export function SidebarSwitchers({
                         {showHotelSection && (
                             <>
                                 <DropdownMenuLabel className="text-muted-foreground text-xs">
-                                    Switch Hotel
+                                    Switch Branch
                                 </DropdownMenuLabel>
                                 <ScrollArea className="max-h-60 w-full">
                                     {hotels?.map((hotel) => (
@@ -119,7 +119,7 @@ export function SidebarSwitchers({
                                             key={hotel.id}
                                             onClick={() => {
                                                 toast.promise(switchHotel(hotel.id), {
-                                                    loading: "Switching hotel...",
+                                                    loading: "Switching branch...",
                                                 });
                                             }}
                                             className="gap-2 p-2"

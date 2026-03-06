@@ -7,7 +7,7 @@ function AuthLayout({ children }: PropsWithChildren) {
 			<div className="min-h-full w-full flex flex-col items-center justify-center space-y-6 pt-4 md:pt-0">
 				<div className="flex items-center justify-center gap-x-2">
 					<HomeIcon />
-					<span className="font-bold text-3xl">H.M.S</span>
+					<span className="font-bold text-3xl">Hospio360</span>
 				</div>
 				{children}
 			</div>

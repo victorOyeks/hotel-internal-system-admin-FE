@@ -82,14 +82,14 @@ function HotelsPage({ searchParams }: PageProps) {
 	const managers = use(managersPromise);
 
 	const breadcrumb = {
-		title: "Hotels",
+		title: "Branches",
 		breadcrumbs: [
 			{
 				label: "Dashboard",
 				href: "/dashboard",
 			},
 			{
-				label: "Hotels",
+				label: "Branches",
 				href: "/dashboard/hotels",
 			},
 		],
