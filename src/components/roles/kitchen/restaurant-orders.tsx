@@ -90,6 +90,20 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 
+function formatOrderDate(dateStr: string) {
+	const date = new Date(dateStr);
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const yesterday = new Date(today.getTime() - 86400000);
+	const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+	const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+	if (dateOnly.getTime() === today.getTime()) return `Today, ${time}`;
+	if (dateOnly.getTime() === yesterday.getTime()) return `Yesterday, ${time}`;
+	return format(date, "MMM d, yyyy") + `, ${time}`;
+}
+
 type OrderItem =
 	APIOutput<"@get/api/restaurants/restaurant-orders">["data"]["content"][number];
 
@@ -603,7 +617,7 @@ function OrderCard({
 					<p className="font-medium text-lg mt-2">Order #{order.customId}</p>
 					<p className="text-sm text-muted-foreground">{order.destination}</p>
 					<p className="text-sm text-muted-foreground">
-						{new Date(order.createdAt).toLocaleTimeString()}
+						{formatOrderDate(order.createdAt)}
 					</p>
 				</div>
 				<hr className="my-4 border-t border-primary-5/20" />

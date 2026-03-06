@@ -76,8 +76,8 @@ const rentalItemSchema = z.object({
 	weeklyRate: z.number().min(0).optional(),
 	monthlyRate: z.number().min(0).optional(),
 	flatRate: z.number().min(0).optional(),
-	depositAmount: z.number().min(0, "Deposit amount is required"),
-	totalQuantity: z.number().min(1, "At least 1 item required"),
+	depositAmount: z.number().min(0).optional(),
+	totalQuantity: z.number().min(0, "Quantity cannot be negative"),
 	replacementValue: z.number().min(0).optional(),
 	lateReturnPenaltyPerHour: z.number().min(0).optional(),
 	lateReturnPenaltyPerDay: z.number().min(0).optional(),
@@ -86,11 +86,11 @@ const rentalItemSchema = z.object({
 	specifications: z.string().optional(),
 	usageInstructions: z.string().optional(),
 	safetyInstructions: z.string().optional(),
+	maintenanceNotes: z.string().optional(),
 	requiresDeposit: z.boolean(),
 	requiresIdentification: z.boolean(),
 	requiresSignedAgreement: z.boolean(),
 	minimumAge: z.number().min(0).optional(),
-	active: z.boolean(),
 });
 
 type RentalItemFormData = z.infer<typeof rentalItemSchema>;
@@ -173,11 +173,11 @@ export function RentalItemDialog({
 			specifications: "",
 			usageInstructions: "",
 			safetyInstructions: "",
+			maintenanceNotes: "",
 			requiresDeposit: true,
 			requiresIdentification: false,
 			requiresSignedAgreement: false,
 			minimumAge: undefined,
-			active: true,
 		},
 	});
 
@@ -245,13 +245,12 @@ export function RentalItemDialog({
 				"lateReturnPenaltyPerHour",
 				"lateReturnPenaltyPerDay",
 			],
-			details: ["size", "color", "specifications", "usageInstructions", "safetyInstructions"],
+			details: ["size", "color", "specifications", "usageInstructions", "safetyInstructions", "maintenanceNotes"],
 			requirements: [
 				"requiresDeposit",
 				"requiresIdentification",
 				"requiresSignedAgreement",
 				"minimumAge",
-				"active",
 			],
 		};
 
@@ -459,7 +458,7 @@ export function RentalItemDialog({
 												<FormControl>
 													<Input
 														type="number"
-														min="1"
+														min="0"
 														placeholder="1"
 														{...field}
 														value={field.value ?? ""}
@@ -485,7 +484,7 @@ export function RentalItemDialog({
 										name="depositAmount"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Security Deposit *</FormLabel>
+												<FormLabel>Security Deposit</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -873,6 +872,24 @@ export function RentalItemDialog({
 										</FormItem>
 									)}
 								/>
+
+								<FormField
+									control={form.control}
+									name="maintenanceNotes"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Maintenance Notes</FormLabel>
+											<FormControl>
+												<Textarea
+													placeholder="Maintenance schedule, care instructions..."
+													className="min-h-[80px]"
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 							</TabsContent>
 
 							{/* Requirements Tab */}
@@ -967,27 +984,6 @@ export function RentalItemDialog({
 													Minimum age requirement (0 = no restriction)
 												</FormDescription>
 												<FormMessage />
-											</FormItem>
-										)}
-									/>
-
-									<FormField
-										control={form.control}
-										name="active"
-										render={({ field }) => (
-											<FormItem className="flex flex-row items-start space-x-3 space-y-0">
-												<FormControl>
-													<Checkbox
-														checked={field.value}
-														onCheckedChange={field.onChange}
-													/>
-												</FormControl>
-												<div className="space-y-1 leading-none">
-													<FormLabel>Active</FormLabel>
-													<FormDescription>
-														Available for rental when active
-													</FormDescription>
-												</div>
 											</FormItem>
 										)}
 									/>

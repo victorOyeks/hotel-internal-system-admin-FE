@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { processReturn } from "@/lib/rental-actions";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getOrderDetails, processReturn } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -83,6 +83,16 @@ export function ReturnDialog({
 	const queryClient = useQueryClient();
 	const router = useRouter();
 
+	const orderQuery = useQuery({
+		queryKey: ["rentals", "orders", orderId, "details"],
+		queryFn: async () => {
+			const result = await getOrderDetails(orderId);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		enabled: open,
+	});
+
 	const form = useForm<ReturnInspectionFormData>({
 		resolver: zodResolver(returnInspectionSchema),
 		defaultValues: {
@@ -103,20 +113,21 @@ export function ReturnDialog({
 
 	const inspectionMutation = useMutation({
 		mutationFn: async (data: ReturnInspectionFormData) => {
+			const orderItems = orderQuery.data?.items ?? [];
+			const items = orderItems.map((item: any) => ({
+				rentalOrderItemId: item.id,
+				condition: data.condition,
+				inspectionNotes: data.inspectionNotes,
+				damaged: data.damaged,
+				lost: data.lost,
+				damageDescription: data.damageDescription,
+				damageCharge: data.damageCharge,
+				replacementCharge: data.replacementCharge,
+			}));
 			const result = await processReturn(orderId, {
 				inspectionType: "RETURN",
 				notes: data.notes,
-				items: [
-					{
-						condition: data.condition,
-						inspectionNotes: data.inspectionNotes,
-						damaged: data.damaged,
-						lost: data.lost,
-						damageDescription: data.damageDescription,
-						damageCharge: data.damageCharge,
-						replacementCharge: data.replacementCharge,
-					},
-				],
+				items,
 			});
 			if (!result.success) throw new Error(result.error);
 			return result.data;
@@ -339,7 +350,7 @@ export function ReturnDialog({
 							</Button>
 							<Button
 								type="submit"
-								disabled={inspectionMutation.isPending}
+								disabled={inspectionMutation.isPending || orderQuery.isLoading}
 								className="bg-gradient-to-r from-blue-600 to-indigo-600"
 							>
 								{inspectionMutation.isPending && (

@@ -133,27 +133,10 @@ export async function processReturn(orderId: string, payload: any) {
 	try {
 		const session = await verifySession();
 		const response = await $fetch(
-			"@post/api/hotels/rentals/orders/:orderId/return",
+			"@post/api/hotels/rentals/orders/:orderId/inspection",
 			{
 				params: { orderId },
 				body: payload,
-				auth: { type: "Bearer", token: session.token },
-				throw: true,
-			},
-		);
-		return { success: true as const, data: response.data };
-	} catch (error) {
-		return { success: false as const, error: parseError(error) };
-	}
-}
-
-export async function getReturnDetails(orderId: string) {
-	try {
-		const session = await verifySession();
-		const response = await $fetch(
-			"@get/api/hotels/rentals/orders/:orderId/return-details",
-			{
-				params: { orderId },
 				auth: { type: "Bearer", token: session.token },
 				throw: true,
 			},

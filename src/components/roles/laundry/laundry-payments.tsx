@@ -33,6 +33,8 @@ type LaundryOrderSummary = {
 	balanceDue: number;
 	expectedDeliveryTime?: string;
 	createdAt: string;
+	updatedAt?: string;
+	lastPaymentDate?: string;
 	hasIssues: boolean;
 };
 
@@ -152,6 +154,7 @@ export function LaundryPaymentsPage({
 							<Table>
 								<TableHeader>
 									<TableRow>
+										<TableHead>Date</TableHead>
 										<TableHead>Order</TableHead>
 										<TableHead>Customer</TableHead>
 										<TableHead className="text-right">Total</TableHead>
@@ -164,7 +167,7 @@ export function LaundryPaymentsPage({
 									{filtered.length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={6}
+												colSpan={7}
 												className="text-center py-12 text-muted-foreground"
 											>
 												<CreditCardIcon className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -181,6 +184,16 @@ export function LaundryPaymentsPage({
 													setIsDetailsOpen(true);
 												}}
 											>
+												<TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+													{new Date(order.lastPaymentDate || order.createdAt).toLocaleDateString(
+														"en-US",
+														{
+															month: "short",
+															day: "numeric",
+															year: "numeric",
+														},
+													)}
+												</TableCell>
 												<TableCell>
 													<span className="font-mono text-sm font-medium">
 														{order.orderNumber}

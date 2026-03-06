@@ -67,15 +67,9 @@ const statusColors: Record<string, string> = {
 	PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
 	PICKED_UP: "bg-cyan-100 text-cyan-800 border-cyan-200",
 	IN_PROGRESS: "bg-blue-100 text-blue-800 border-blue-200",
-	WASHING: "bg-sky-100 text-sky-800 border-sky-200",
-	DRYING: "bg-indigo-100 text-indigo-800 border-indigo-200",
-	IRONING: "bg-violet-100 text-violet-800 border-violet-200",
-	QUALITY_CHECK: "bg-purple-100 text-purple-800 border-purple-200",
 	READY: "bg-teal-100 text-teal-800 border-teal-200",
-	OUT_FOR_DELIVERY: "bg-emerald-100 text-emerald-800 border-emerald-200",
 	DELIVERED: "bg-green-100 text-green-800 border-green-200",
 	CANCELLED: "bg-gray-100 text-gray-800 border-gray-200",
-	ON_HOLD: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
 const urgencyColors: Record<string, string> = {

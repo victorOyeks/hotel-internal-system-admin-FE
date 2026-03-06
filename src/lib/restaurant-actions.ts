@@ -6,6 +6,7 @@ import { $fetch } from "./fetch";
 import type { HotelRole } from "./types";
 import { env } from "@/env";
 import type { BulkUploadResult } from "./bulk-upload-types";
+import type { ExportData } from "@/components/shared/shared-dialogs";
 
 export async function recordRestaurantPayment({
 	orderId,
@@ -567,6 +568,47 @@ export async function bulkUploadBarItems(
 		return {
 			success: false,
 			error: e instanceof Error ? e.message : "Bulk upload failed",
+		};
+	}
+}
+
+export async function exportRestaurantPayments(filters: {
+	format: "CSV" | "PDF" | "EXCEL";
+	search?: string;
+	startDate?: string;
+	endDate?: string;
+}): ServerActionResponse<{ base64: string; filename: string }> {
+	const sessionData = await verifySession("RESTAURANT");
+
+	try {
+		const params = new URLSearchParams({ format: filters.format });
+		if (filters.search) params.set("search", filters.search);
+		if (filters.startDate) params.set("startDate", filters.startDate);
+		if (filters.endDate) params.set("endDate", filters.endDate);
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/restaurants/payments/export?${params}`,
+			{
+				headers: { Authorization: `Bearer ${sessionData.token}` },
+			},
+		);
+
+		if (!response.ok) {
+			return { success: false, error: "Failed to export restaurant payments" };
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		const base64 = Buffer.from(arrayBuffer).toString("base64");
+		const disposition = response.headers.get("content-disposition");
+		const filename =
+			disposition?.match(/filename="?(.+?)"?$/)?.[1] ?? "restaurant-payments-export";
+
+		return { success: true, data: { base64, filename } };
+	} catch (e) {
+		return {
+			success: false,
+			error:
+				e instanceof Error ? e.message : "Failed to export restaurant payments",
 		};
 	}
 }

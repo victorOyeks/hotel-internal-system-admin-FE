@@ -50,7 +50,6 @@ export default function RestaurantPaymentsPageRoute({
 			payments={payments}
 			paginationMeta={paginationMeta}
 			breadcrumbs={breadcrumbs}
-			token={cookieData.token}
 		/>
 	);
 }

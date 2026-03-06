@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,14 @@ import {
 	DollarSignIcon,
 	CheckCircle2Icon,
 	ClockIcon,
-	DownloadIcon,
 } from "lucide-react";
 import type { APIOutput } from "@/lib/action-utils";
 import type { Pagination } from "@/lib/fetch";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { env } from "@/env";
+import { type ExportData, ExportDialog } from "@/components/shared/shared-dialogs";
+import { exportRestaurantPayments } from "@/lib/restaurant-actions";
+import { toast } from "sonner";
 
 type Payment =
 	APIOutput<"@get/api/restaurants/payments">["data"]["content"][number];
@@ -37,7 +38,6 @@ type RestaurantPaymentsPageProps = {
 		title: string;
 		breadcrumbs: Array<{ label: string; href: string }>;
 	};
-	token: string;
 };
 
 const statusColors: Record<string, string> = {
@@ -79,10 +79,10 @@ export function RestaurantPaymentsPage({
 	payments,
 	paginationMeta,
 	breadcrumbs,
-	token,
 }: RestaurantPaymentsPageProps) {
 	const [search, setSearch] = useState("");
 	const [pagination, setPagination] = usePaginationSearchParams();
+	const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
 	const filtered = payments.filter(
 		(p) =>
@@ -101,10 +101,49 @@ export function RestaurantPaymentsPage({
 	const pageIndex = pagination.pageIndex;
 	const pageCount = paginationMeta.totalPages;
 
-	const handleExport = () => {
-		const url = `${env.NEXT_PUBLIC_API_URL}/api/restaurants/payments/export?format=CSV`;
-		window.open(url, "_blank");
-	};
+	const handleExport = useCallback(
+		async (data: ExportData) => {
+			try {
+				const result = await exportRestaurantPayments({
+					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
+					search: search || undefined,
+					startDate: data.from_date?.toISOString(),
+					endDate: data.to_date?.toISOString(),
+				});
+
+				if (result.success && result.data) {
+					const byteCharacters = atob(result.data.base64);
+					const byteNumbers = new Array(byteCharacters.length);
+					for (let i = 0; i < byteCharacters.length; i++) {
+						byteNumbers[i] = byteCharacters.charCodeAt(i);
+					}
+					const byteArray = new Uint8Array(byteNumbers);
+					const mimeType =
+						data.export_type === "csv"
+							? "text/csv"
+							: data.export_type === "pdf"
+								? "application/pdf"
+								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+					const blob = new Blob([byteArray], { type: mimeType });
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = result.data.filename;
+					document.body.appendChild(a);
+					a.click();
+					window.URL.revokeObjectURL(url);
+					document.body.removeChild(a);
+					setExportDialogOpen(false);
+					toast.success("Payments exported successfully!");
+				} else {
+					toast.error(result.error || "Failed to export payments");
+				}
+			} catch {
+				toast.error("An error occurred during export");
+			}
+		},
+		[search],
+	);
 
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
@@ -118,10 +157,11 @@ export function RestaurantPaymentsPage({
 							Track payments across all restaurant orders
 						</p>
 					</div>
-					<Button variant="outline" size="sm" onClick={handleExport}>
-						<DownloadIcon className="h-4 w-4 mr-2" />
-						Export CSV
-					</Button>
+					<ExportDialog
+						open={exportDialogOpen}
+						setOpenAction={setExportDialogOpen}
+						onSubmitAction={handleExport}
+					/>
 				</div>
 
 				{/* Payment Summary */}

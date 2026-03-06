@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { DestinationCombobox } from "./destination-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -441,8 +441,8 @@ function OrderSummary({
 }) {
 	return (
 		<div className="flex flex-col h-full relative isolate">
-			<ScrollArea className="flex-1 px-4 -mx-4 max-h-[calc(100vh-270px)]">
-				<div className="space-y-3 px-2 pb-4">
+			<div className="flex-1 max-h-[calc(100vh-270px)] overflow-y-auto">
+				<div className="space-y-3 px-4 pb-4">
 					<div className="grid grid-cols-2 gap-x-4">
 						{/* Destination */}
 						<div>
@@ -463,15 +463,35 @@ function OrderSummary({
 
 						{/* Booking Selection (Optional) */}
 						<div>
-							<Label className="text-xs">Associated Booking (Optional)</Label>
+							<Label className={cn("text-xs", orderDetails.isPaid && "text-muted-foreground")}>
+								Associated Booking (Optional)
+							</Label>
 							<div className="mt-1">
-								<BookingCombobox
-									value={orderDetails.bookingId || ""}
-									onValueChange={(bookingId) =>
-										onOrderDetailsChange({ ...orderDetails, bookingId })
-									}
-									bookings={bookings}
-								/>
+								{orderDetails.isPaid ? (
+									<Button
+										variant="outline"
+										className="w-full justify-between opacity-50 cursor-not-allowed"
+										disabled
+									>
+										Disabled while &apos;Mark as Paid&apos; is active
+										<ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+									</Button>
+								) : (
+									<BookingCombobox
+										value={orderDetails.bookingId || ""}
+										onValueChange={(bookingId) =>
+											onOrderDetailsChange({
+												...orderDetails,
+												bookingId,
+												// If booking selected, reset mark as paid
+												isPaid: false,
+												paymentMethod: undefined,
+												paymentReference: undefined,
+											})
+										}
+										bookings={bookings}
+									/>
+								)}
 							</div>
 						</div>
 					</div>
@@ -513,16 +533,19 @@ function OrderSummary({
 
 					{/* Payment Status */}
 					<div className="flex items-center justify-between">
-						<Label htmlFor="isPaid" className="text-xs">
+						<Label htmlFor="isPaid" className={cn("text-xs", !!orderDetails.bookingId && "text-muted-foreground")}>
 							Mark as Paid
 						</Label>
 						<Switch
 							id="isPaid"
 							checked={orderDetails.isPaid || false}
+							disabled={!!orderDetails.bookingId}
 							onCheckedChange={(checked) =>
 								onOrderDetailsChange({
 									...orderDetails,
 									isPaid: checked,
+									// Reset booking when marking as paid
+									bookingId: checked ? undefined : orderDetails.bookingId,
 									paymentMethod: checked ? orderDetails.paymentMethod : undefined,
 									paymentReference: checked
 										? orderDetails.paymentReference
@@ -531,6 +554,11 @@ function OrderSummary({
 							}
 						/>
 					</div>
+					{!!orderDetails.bookingId && (
+						<p className="text-[11px] text-muted-foreground -mt-1">
+							Not available when linked to a booking (charged to room)
+						</p>
+					)}
 
 					{/* Payment Method (Conditional) */}
 					{orderDetails.isPaid && (
@@ -590,7 +618,7 @@ function OrderSummary({
 						</>
 					)}
 				</div>
-			</ScrollArea>
+			</div>
 
 			{/* Footer with Total and Actions */}
 			{cart.length > 0 && (
@@ -680,6 +708,7 @@ export function OrderPage({
 	destinations: Destination[];
 }) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useQueryState(
@@ -748,6 +777,7 @@ export function OrderPage({
 			if (orderDetails.bookingId) {
 				queryClient.invalidateQueries({ queryKey: ["folio", orderDetails.bookingId] });
 			}
+			queryClient.invalidateQueries({ queryKey: ["restaurant", "orders"] });
 			setCart([]);
 			setOrderDetails({
 				destinationId: "",
@@ -756,6 +786,7 @@ export function OrderPage({
 				note: undefined,
 			});
 			setIsCartOpen(false);
+			router.push("/dashboard/orders");
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "Failed to place order");

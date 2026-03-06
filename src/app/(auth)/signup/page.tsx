@@ -51,13 +51,13 @@ const BUSINESS_TYPES = [
 	{ value: "HOTEL", label: "Hotel" },
 	{ value: "RESORT", label: "Resort" },
 	{ value: "MOTEL", label: "Motel" },
+	{ value: "BED_AND_BREAKFAST", label: "Bed & Breakfast" },
 	{ value: "HOSTEL", label: "Hostel" },
-	{ value: "GUESTHOUSE", label: "Guest House" },
-	{ value: "BOUTIQUE_HOTEL", label: "Boutique Hotel" },
 	{ value: "LODGE", label: "Lodge" },
 	{ value: "INN", label: "Inn" },
-	{ value: "SERVICED_APARTMENT", label: "Serviced Apartment" },
-	{ value: "OTHER", label: "Other" },
+	{ value: "GUEST_HOUSE", label: "Guest House" },
+	{ value: "BOUTIQUE_HOTEL", label: "Boutique Hotel" },
+	{ value: "APARTMENT_HOTEL", label: "Apartment Hotel" },
 ];
 
 const TIMEZONES = [
