@@ -1326,6 +1326,19 @@ function formatDate(value: string | null | undefined) {
 	});
 }
 
+function formatLastSeen(lastSeen: string | null | undefined, online: boolean | null | undefined) {
+	if (online) return null;
+	if (!lastSeen) return "N/A";
+	const date = new Date(lastSeen);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+	const time = date.toLocaleString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+	if (diffDays === 0) return `Today, ${time}`;
+	if (diffDays === 1) return `Yesterday, ${time}`;
+	return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric", hour12: true });
+}
+
 const selectedStaffAtom = atom<CustomPageStaffResponse | null>(null);
 
 const columns = [
@@ -1364,11 +1377,16 @@ const columns = [
 		header: "Phone",
 		cell: (info) => <span>{info.getValue() ?? "-"}</span>,
 	}),
-	columnHelper.accessor("lastLogin", {
-		header: "Last Login",
-		cell: (info) => (
-			<span className="text-gray-500">{formatDate(info.getValue())}</span>
-		),
+	columnHelper.display({
+		id: "lastSeen",
+		header: "Last Seen",
+		cell: (info) => {
+			const row = info.row.original;
+			if (row.online) {
+				return <span className="inline-flex items-center gap-1.5 text-green-600 font-medium"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />Online</span>;
+			}
+			return <span className="text-gray-500">{formatLastSeen(row.lastSeen, row.online)}</span>;
+		},
 	}),
 ];
 
@@ -1429,7 +1447,7 @@ function StaffDetailSheet() {
 		{ label: "Email", value: staff.email },
 		{ label: "Phone Number", value: staff.phoneNumber ?? "-" },
 		{ label: "Verified", value: staff.verified ? "Yes" : "No" },
-		{ label: "Last Login", value: formatDate(staff.lastLogin) },
+		{ label: "Last Seen", value: staff.online ? "Online" : formatLastSeen(staff.lastSeen, staff.online) },
 	];
 
 	return (

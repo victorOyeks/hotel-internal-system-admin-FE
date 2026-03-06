@@ -370,6 +370,8 @@ const StaffDetails = z.object({
 	lastLogin: z.string().optional().nullable(),
 	assignedToHotel: z.boolean().optional().nullable(),
 	assignedHotelName: z.string().optional().nullable(),
+	lastSeen: z.string().optional().nullable(),
+	online: z.boolean().optional().nullable(),
 });
 
 export type StaffDetails = z.infer<typeof StaffDetails>;
