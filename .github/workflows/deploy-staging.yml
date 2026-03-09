@@ -1,0 +1,101 @@
+name: Build & Deploy HIS Frontend (Staging)
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+
+      - name: Build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_APP_URL }}
+          DOMAIN_URL: ${{ secrets.STAGING_DOMAIN_URL }}
+
+      - name: Prepare standalone bundle
+        run: |
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          tar -czf standalone.tar.gz -C .next/standalone .
+
+      - name: Copy bundle to server
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          success=false
+          for i in 1 2 3; do
+            echo "SCP attempt $i..."
+            if scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
+              standalone.tar.gz "${VPS_USER}@${VPS_HOST}:/home/oyeks/apps/his-fe-staging/"; then
+              success=true
+              break
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+
+          rm -f ~/.ssh/deploy_key
+
+          if [ "$success" = false ]; then
+            echo "All SCP attempts failed"
+            exit 1
+          fi
+
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/oyeks/apps/his-fe-staging
+
+            # Backup current deployment
+            if [ -d current ]; then
+              rm -rf previous
+              mv current previous
+            fi
+
+            # Extract new deployment
+            mkdir -p current
+            tar -xzf standalone.tar.gz -C current
+            rm -f standalone.tar.gz
+
+            # Restart service
+            sudo systemctl restart his-fe-staging.service
+            sleep 5
+
+            # Check if service started successfully
+            if ! systemctl is-active --quiet his-fe-staging.service; then
+              echo "Service failed to start - rolling back"
+              if [ -d previous ]; then
+                rm -rf current
+                mv previous current
+                sudo systemctl restart his-fe-staging.service
+              fi
+              exit 1
+            fi
+
+            echo "Staging deployment successful!"
+            rm -rf previous
