@@ -464,7 +464,7 @@ function OrderSummary({
 						{/* Booking Selection (Optional) */}
 						<div>
 							<Label className={cn("text-xs", orderDetails.isPaid && "text-muted-foreground")}>
-								Associated Booking (Optional)
+								Associated Reservation (Optional)
 							</Label>
 							<div className="mt-1">
 								{orderDetails.isPaid ? (

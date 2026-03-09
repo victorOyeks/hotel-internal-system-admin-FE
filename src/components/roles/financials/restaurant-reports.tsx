@@ -34,28 +34,42 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, cn } from "@/lib/utils";
-import type { RestaurantDailySummary } from "./restaurant-summary-card";
 
 // --- Types ---
 
+interface LocationAmount {
+    location?: string | null;
+    amount?: number | null;
+}
+
+interface DetailedReport {
+    totalKitchenSales?: number | null;
+    totalBarSales?: number | null;
+    totalRevenue?: number | null;
+    totalOrders?: number | null;
+    totalItemsSold?: number | null;
+    salesByDestination?: LocationAmount[] | null;
+}
+
 interface RoomFoodSaleRow {
-    roomNumber?: string | null;
+    roomIdentifier?: string | null;
     guestName?: string | null;
-    orderCount?: number | null;
+    checkInDate?: string | null;
+    checkOutDate?: string | null;
+    daily?: { date?: string; totalAmount?: number }[] | null;
     totalAmount?: number | null;
-    date?: string | null;
 }
 
 interface ItemSaleDetailRow {
     itemName?: string | null;
-    category?: string | null;
-    quantitySold?: number | null;
+    destination?: string | null;
+    quantity?: number | null;
     unitPrice?: number | null;
-    totalRevenue?: number | null;
+    totalAmount?: number | null;
 }
 
 interface RestaurantReportsProps {
-    dailySummary: RestaurantDailySummary | null;
+    detailedReport: DetailedReport | null;
     roomFoodSales: unknown;
     itemSalesDetail: unknown;
 }
@@ -102,17 +116,24 @@ function KPICard({
 
 // --- Revenue split section ---
 
-function RevenueSplitSection({ summary }: { summary: RestaurantDailySummary }) {
-    const slices = useMemo(
-        () =>
-            [
-                { name: "Kitchen", value: summary.kitchenRevenue ?? 0, fill: COLORS[0] },
-                { name: "Bar", value: summary.barRevenue ?? 0, fill: COLORS[1] },
-                { name: "Room Charges", value: summary.roomCharges ?? 0, fill: COLORS[2] },
-                { name: "Direct Payments", value: summary.directPayments ?? 0, fill: COLORS[3] },
-            ].filter((s) => s.value > 0),
-        [summary],
-    );
+function RevenueSplitSection({ report }: { report: DetailedReport }) {
+    const slices = useMemo(() => {
+        // If salesByDestination is available, use it for a richer breakdown
+        if (report.salesByDestination && report.salesByDestination.length > 0) {
+            return report.salesByDestination
+                .map((d, i) => ({
+                    name: d.location ?? "Unknown",
+                    value: d.amount ?? 0,
+                    fill: COLORS[i % COLORS.length],
+                }))
+                .filter((s) => s.value > 0);
+        }
+        // Fallback to kitchen/bar split
+        return [
+            { name: "Kitchen", value: report.totalKitchenSales ?? 0, fill: COLORS[0] },
+            { name: "Bar", value: report.totalBarSales ?? 0, fill: COLORS[1] },
+        ].filter((s) => s.value > 0);
+    }, [report]);
 
     const total = slices.reduce((sum, s) => sum + s.value, 0);
 
@@ -205,7 +226,7 @@ function RevenueSplitSection({ summary }: { summary: RestaurantDailySummary }) {
 
 const roomFoodColHelper = createColumnHelper<RoomFoodSaleRow>();
 const roomFoodColumns = [
-    roomFoodColHelper.accessor("roomNumber", {
+    roomFoodColHelper.accessor("roomIdentifier", {
         header: "Room",
         cell: (i) => (
             <span className="font-medium text-gray-800">{i.getValue() ?? "—"}</span>
@@ -215,9 +236,9 @@ const roomFoodColumns = [
         header: "Guest",
         cell: (i) => i.getValue() ?? "—",
     }),
-    roomFoodColHelper.accessor("orderCount", {
-        header: "Orders",
-        cell: (i) => (i.getValue() ?? 0).toLocaleString(),
+    roomFoodColHelper.accessor("daily", {
+        header: "Days",
+        cell: (i) => (i.getValue()?.length ?? 0).toLocaleString(),
     }),
     roomFoodColHelper.accessor("totalAmount", {
         header: () => <span className="block text-right">Amount</span>,
@@ -227,8 +248,8 @@ const roomFoodColumns = [
             </div>
         ),
     }),
-    roomFoodColHelper.accessor("date", {
-        header: "Date",
+    roomFoodColHelper.accessor("checkInDate", {
+        header: "Check-in",
         cell: (i) => {
             const v = i.getValue();
             return v ? new Date(v).toLocaleDateString() : "—";
@@ -255,7 +276,7 @@ function RoomFoodSalesSection({
                 .sort((a, b) => (b.totalAmount ?? 0) - (a.totalAmount ?? 0))
                 .slice(0, 8)
                 .map((r) => ({
-                    name: r.roomNumber ?? "N/A",
+                    name: r.roomIdentifier ?? "N/A",
                     revenue: r.totalAmount ?? 0,
                 })),
         [data],
@@ -366,20 +387,16 @@ const itemColumns = [
             <span className="font-medium text-gray-800">{i.getValue() ?? "—"}</span>
         ),
     }),
-    itemColHelper.accessor("category", {
-        header: "Category",
+    itemColHelper.accessor("destination", {
+        header: "Destination",
         cell: (i) => {
             const v = i.getValue();
             if (!v) return "—";
-            const isDrink =
-                v.toUpperCase() === "DRINK" || v.toUpperCase() === "BAR";
             return (
                 <span
                     className={cn(
                         "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                        isDrink
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-green-100 text-green-700",
+                        "bg-gray-100 text-gray-700",
                     )}
                 >
                     {v}
@@ -387,7 +404,7 @@ const itemColumns = [
             );
         },
     }),
-    itemColHelper.accessor("quantitySold", {
+    itemColHelper.accessor("quantity", {
         header: "Qty",
         cell: (i) => (
             <span className="tabular-nums">{(i.getValue() ?? 0).toLocaleString()}</span>
@@ -399,7 +416,7 @@ const itemColumns = [
             <span className="tabular-nums">{formatCurrency(i.getValue() ?? 0)}</span>
         ),
     }),
-    itemColHelper.accessor("totalRevenue", {
+    itemColHelper.accessor("totalAmount", {
         header: () => <span className="block text-right">Revenue</span>,
         cell: (i) => (
             <div className="text-right tabular-nums font-semibold text-green-700">
@@ -419,11 +436,11 @@ function ItemSalesDetailSection({ data }: { data: ItemSaleDetailRow[] }) {
     const chartData = useMemo(
         () =>
             [...data]
-                .sort((a, b) => (b.totalRevenue ?? 0) - (a.totalRevenue ?? 0))
+                .sort((a, b) => (b.totalAmount ?? 0) - (a.totalAmount ?? 0))
                 .slice(0, 8)
                 .map((r) => ({
                     name: r.itemName ?? "N/A",
-                    revenue: r.totalRevenue ?? 0,
+                    revenue: r.totalAmount ?? 0,
                 })),
         [data],
     );
@@ -533,7 +550,7 @@ function ItemSalesDetailSection({ data }: { data: ItemSaleDetailRow[] }) {
 // --- Main export ---
 
 export function RestaurantReports({
-    dailySummary,
+    detailedReport,
     roomFoodSales,
     itemSalesDetail,
 }: RestaurantReportsProps) {
@@ -555,28 +572,28 @@ export function RestaurantReports({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KPICard
                     label="Total Revenue"
-                    value={dailySummary?.totalRevenue}
+                    value={detailedReport?.totalRevenue}
                     icon={DollarSignIcon}
                     iconBg="bg-green-50"
                     iconColor="text-green-600"
                 />
                 <KPICard
                     label="Kitchen Revenue"
-                    value={dailySummary?.kitchenRevenue}
+                    value={detailedReport?.totalKitchenSales}
                     icon={UtensilsIcon}
                     iconBg="bg-amber-50"
                     iconColor="text-amber-500"
                 />
                 <KPICard
                     label="Bar Revenue"
-                    value={dailySummary?.barRevenue}
+                    value={detailedReport?.totalBarSales}
                     icon={WineIcon}
                     iconBg="bg-indigo-50"
                     iconColor="text-indigo-500"
                 />
                 <KPICard
                     label="Total Orders"
-                    value={dailySummary?.totalOrders}
+                    value={detailedReport?.totalOrders}
                     icon={ShoppingCartIcon}
                     iconBg="bg-blue-50"
                     iconColor="text-blue-500"
@@ -585,8 +602,8 @@ export function RestaurantReports({
             </div>
 
             {/* Revenue split */}
-            {dailySummary ? (
-                <RevenueSplitSection summary={dailySummary} />
+            {detailedReport ? (
+                <RevenueSplitSection report={detailedReport} />
             ) : (
                 <div className="bg-card border border-gray-100 rounded-xl flex items-center justify-center h-40 text-sm text-gray-400">
                     No summary data available.

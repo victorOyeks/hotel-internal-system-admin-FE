@@ -63,10 +63,10 @@ function ExpendituresPage({ searchParams }: PageProps) {
     return (
         <BreadCrumbWrapper
             breadcrumbs={{
-                title: "Expenditures",
+                title: "Expenses",
                 breadcrumbs: [
                     { label: "Dashboard", href: "/dashboard" },
-                    { label: "Expenditures", href: "/dashboard/expenditures" },
+                    { label: "Expenses", href: "/dashboard/expenditures" },
                 ],
             }}
         >

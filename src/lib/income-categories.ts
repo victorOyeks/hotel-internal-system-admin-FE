@@ -50,7 +50,7 @@ export const INCOME_CATEGORIES = [
 	{ group: "Technology", value: "PROJECTOR_RENTAL", label: "Projector Rental" },
 	{ group: "Miscellaneous Services", value: "LUGGAGE_STORAGE", label: "Luggage Storage" },
 	{ group: "Miscellaneous Services", value: "SAFE_DEPOSIT_BOX", label: "Safe Deposit Box" },
-	{ group: "Miscellaneous Services", value: "LOST_AND_FOUND_FEES", label: "Lost & Found Fees" },
+	{ group: "Miscellaneous Services", value: "LOST_AND_FOUND_FEES", label: "Forgotten Items Fees" },
 	{ group: "Miscellaneous Services", value: "EARLY_CHECKIN_FEES", label: "Early Check-in Fees" },
 	{ group: "Miscellaneous Services", value: "LATE_CHECKOUT_FEES", label: "Late Checkout Fees" },
 	{ group: "Miscellaneous Services", value: "KEY_REPLACEMENT", label: "Key Replacement" },

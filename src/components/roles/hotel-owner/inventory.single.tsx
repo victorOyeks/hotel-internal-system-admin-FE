@@ -569,7 +569,7 @@ const inventoryHistoryColumns = [
 		cell: (info) => <span className="text-foreground">{info.getValue()}</span>,
 	}),
 	inventoryHistoryColumnHelper.accessor("supplier", {
-		header: "Supplier",
+		header: "Vendor",
 		cell: (info) => <span>{info.getValue()}</span>,
 	}),
 	inventoryHistoryColumnHelper.accessor("baseUnit", {

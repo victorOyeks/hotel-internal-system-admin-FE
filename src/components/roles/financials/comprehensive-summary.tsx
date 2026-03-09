@@ -179,8 +179,8 @@ function DailyBreakdownChart({ data }: { data: ComprehensiveSummaryData }) {
         { key: "Rooms", color: "#4c091e" },
         { key: "Kitchen", color: "#297045" },
         { key: "Bar", color: "#6366f1" },
-        { key: "Laundry", color: "#f59e0b" },
-        { key: "Rentals", color: "#ec4899" },
+        { key: "Laundry & Valet", color: "#f59e0b" },
+        { key: "Guest Services", color: "#ec4899" },
         { key: "Other", color: "#6366f1" },
     ];
 
@@ -266,17 +266,17 @@ export function ComprehensiveSummary({ data }: ComprehensiveSummaryProps) {
                         percentage: data.bookingRevenuePercentage,
                     },
                     {
-                        label: "Restaurant Revenue",
+                        label: "F&B Revenue",
                         amount: data.totalRestaurantRevenue ?? 0,
                         percentage: data.restaurantRevenuePercentage,
                     },
                     {
-                        label: "Laundry Revenue",
+                        label: "Laundry & Valet Revenue",
                         amount: data.totalLaundryRevenue ?? 0,
                         percentage: data.laundryRevenuePercentage,
                     },
                     {
-                        label: "Rental Revenue",
+                        label: "Guest Services Revenue",
                         amount: data.totalRentalRevenue ?? 0,
                         percentage: data.rentalRevenuePercentage,
                     },

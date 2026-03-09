@@ -189,9 +189,9 @@ function ReportLostItemDialog() {
 			</DialogTrigger>
 			<DialogContent className="max-w-lg">
 				<DialogHeader>
-					<DialogTitle>Lost Item</DialogTitle>
+					<DialogTitle>Report Forgotten Item</DialogTitle>
 					<DialogDescription>
-						Log a found item to the lost and found registry.
+						Log a found item to the forgotten items registry.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -352,7 +352,7 @@ function ReportLostItemDialog() {
 
 						<Dialog open={showSummary} onOpenChange={setShowSummary}>
 							<DialogContent className="max-w-lg">
-								<DialogTitle>Confirm Lost Item Report</DialogTitle>
+								<DialogTitle>Confirm Forgotten Item Report</DialogTitle>
 								<DialogDescription>
 									Please review the details before submitting the report.
 								</DialogDescription>
@@ -360,7 +360,7 @@ function ReportLostItemDialog() {
 								<div className="space-y-4">
 									<div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
 										<h3 className="text-sm font-medium text-orange-900 mb-3">
-											Lost Item Summary
+											Forgotten Item Summary
 										</h3>
 										<div className="space-y-3 text-sm">
 											<div className="grid grid-cols-2 gap-4">
@@ -552,7 +552,7 @@ function LostItemFilter({
 	return (
 		<div className="space-y-4 w-80">
 			<div className="flex items-center justify-between">
-				<h4 className="font-semibold text-sm">Filter Lost Items</h4>
+				<h4 className="font-semibold text-sm">Filter Forgotten Items</h4>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -690,7 +690,7 @@ function Toolbar({ table: _ }: { table: TableType<LostItem> }) {
 				<div className="relative">
 					<input
 						type="text"
-						placeholder="Search lost items..."
+						placeholder="Search forgotten items..."
 						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-primary-1/80 rounded-md md:rounded-full"
 						value={queryStates.search ?? ""}
 						onChange={(e) => setQueryStates({ search: e.target.value || null })}
@@ -1047,7 +1047,7 @@ function UpdateLostItemDialog({
 	return (
 		<DialogContent className="max-w-md">
 			<DialogHeader>
-				<DialogTitle>Update Lost Item</DialogTitle>
+				<DialogTitle>Update Forgotten Item</DialogTitle>
 				<DialogDescription>
 					Update claim details for the lost item "{info.itemName}"
 				</DialogDescription>

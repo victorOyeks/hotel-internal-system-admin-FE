@@ -59,7 +59,7 @@ export function GRNPage({
 			cell: (info) => info.getValue(),
 		}),
 		columnHelper.accessor("supplierName", {
-			header: "Supplier",
+			header: "Vendor",
 			cell: (info) => {
 				const selectedGRN = info.row.original;
 

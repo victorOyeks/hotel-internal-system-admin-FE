@@ -127,10 +127,10 @@ export function RestaurantOrdersPage({
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-2xl font-bold tracking-tight">
-							Restaurant Orders
+							F&B Orders
 						</h1>
 						<p className="text-sm text-muted-foreground mt-1">
-							Manage all restaurant orders and track their progress
+							Manage all F&B orders and track their progress
 						</p>
 					</div>
 					<Link href="/dashboard/create-order">
@@ -169,7 +169,7 @@ const KitchenOrdersFilter = ({
 			<div className="space-y-2">
 				<Label className="text-sm font-medium text-gray-700">Destination</Label>
 				<Input
-					placeholder="e.g. Poolside, Restaurant..."
+					placeholder="e.g. Poolside, Dining area..."
 					value={queryState.destination ?? ""}
 					onChange={(e) =>
 						setQueryState({ destination: e.target.value || null })

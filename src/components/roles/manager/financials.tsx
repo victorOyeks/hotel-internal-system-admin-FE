@@ -286,10 +286,10 @@ function OverviewTab({ data }: { data: FinancialDashboard }) {
 function RevenueTab({ data }: { data: RevenueData }) {
 	const sources = useMemo(
 		() => [
-			{ name: "Room Bookings", value: data.roomBookingsRevenue ?? 0, color: "#6366f1" },
-			{ name: "Restaurant", value: data.restaurantRevenue ?? 0, color: "#f59e0b" },
-			{ name: "Laundry", value: data.laundryRevenue ?? 0, color: "#06b6d4" },
-			{ name: "Rentals", value: data.rentalsRevenue ?? 0, color: "#8b5cf6" },
+			{ name: "Room Reservations", value: data.roomBookingsRevenue ?? 0, color: "#6366f1" },
+			{ name: "F&B", value: data.restaurantRevenue ?? 0, color: "#f59e0b" },
+			{ name: "Laundry & Valet", value: data.laundryRevenue ?? 0, color: "#06b6d4" },
+			{ name: "Guest Services", value: data.rentalsRevenue ?? 0, color: "#8b5cf6" },
 			{ name: "Other Income", value: data.otherIncomeRevenue ?? 0, color: "#ec4899" },
 		],
 		[data],
@@ -862,8 +862,8 @@ function ProfitLossTab({ data }: { data: ProfitLossData }) {
 		const items: { name: string; amount: number }[] = [];
 		if (data.roomRevenue) items.push({ name: "Room Revenue", amount: data.roomRevenue });
 		if (data.foodAndBeverageRevenue) items.push({ name: "Food & Beverage", amount: data.foodAndBeverageRevenue });
-		if (data.laundryRevenue) items.push({ name: "Laundry", amount: data.laundryRevenue });
-		if (data.rentalRevenue) items.push({ name: "Rentals", amount: data.rentalRevenue });
+		if (data.laundryRevenue) items.push({ name: "Laundry & Valet", amount: data.laundryRevenue });
+		if (data.rentalRevenue) items.push({ name: "Guest Services", amount: data.rentalRevenue });
 		if (data.otherRevenue) items.push({ name: "Other Revenue", amount: data.otherRevenue });
 		return items;
 	}, [data]);

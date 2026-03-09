@@ -24,7 +24,7 @@ const loadSearchParams = createLoader({
 });
 
 const breadcrumbs = {
-	title: "Restaurant Orders",
+	title: "F&B Orders",
 	breadcrumbs: [
 		{ label: "Dashboard", href: "/dashboard" },
 		{ label: "Orders", href: "/dashboard/orders" },

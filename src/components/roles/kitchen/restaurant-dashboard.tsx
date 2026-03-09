@@ -65,10 +65,10 @@ export function RestaurantDashboard({
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-2xl font-bold tracking-tight">
-							Restaurant Dashboard
+							F&B Dashboard
 						</h1>
 						<p className="text-sm text-muted-foreground">
-							Manage restaurant orders, menu items, and payments
+							Manage food & beverage orders, menu items, and payments
 						</p>
 					</div>
 					<div className="flex gap-2">

@@ -25,7 +25,7 @@ function OverdueExpendituresPage() {
                 title: "Overdue Expenditures",
                 breadcrumbs: [
                     { label: "Dashboard", href: "/dashboard" },
-                    { label: "Expenditures", href: "/dashboard/expenditures" },
+                    { label: "Expenses", href: "/dashboard/expenditures" },
                     { label: "Overdue", href: "/dashboard/expenditures/overdue" },
                 ],
             }}
