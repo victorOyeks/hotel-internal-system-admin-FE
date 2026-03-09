@@ -447,7 +447,7 @@ function OrganizationTransactionsTab({
 					<SelectContent>
 						<SelectItem value="ALL">All Types</SelectItem>
 						<SelectItem value="ROOM">Room</SelectItem>
-						<SelectItem value="RESTAURANT">Restaurant</SelectItem>
+						<SelectItem value="RESTAURANT">Food & Beverages</SelectItem>
 						<SelectItem value="BAR">Bar</SelectItem>
 						<SelectItem value="LAUNDRY">Laundry</SelectItem>
 						<SelectItem value="RENTAL">Rental</SelectItem>
@@ -726,7 +726,7 @@ function OrganizationReportsTab({
 						value={data.totalRoomCharges}
 					/>
 					<SummaryCard
-						label="Restaurant Charges"
+						label="F&B Charges"
 						value={data.totalRestaurantCharges}
 					/>
 		<SummaryCard

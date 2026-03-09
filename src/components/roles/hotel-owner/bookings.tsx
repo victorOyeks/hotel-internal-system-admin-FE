@@ -260,7 +260,7 @@ function BookingDetailsContent({ booking }: { booking: ManagerBookingViewRespons
 											)}
 											{booking.restaurantOrdersTotal != null && booking.restaurantOrdersTotal > 0 && (
 												<div className="flex justify-between">
-													<span className="text-muted-foreground">Restaurant Orders</span>
+													<span className="text-muted-foreground">F&B Orders</span>
 													<span className="font-medium">{formatCurrency(booking.restaurantOrdersTotal)}</span>
 												</div>
 											)}

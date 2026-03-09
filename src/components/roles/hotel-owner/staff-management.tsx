@@ -782,7 +782,7 @@ function UpdateHotelStaffForm({
 												Inventory
 											</MultiSelectItem>
 											<MultiSelectItem value="RESTAURANT">
-												Restaurant
+												Food & Beverages
 											</MultiSelectItem>
 											<MultiSelectItem value="RENTALS">
 												Rentals
