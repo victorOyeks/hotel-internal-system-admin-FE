@@ -264,10 +264,10 @@ export function CashFlowStatement({ data }: { data: CashFlowStatementType | null
             !data
                 ? []
                 : [
-                    { label: "Room Bookings", amount: data.cashFromRoomBookings ?? 0 },
-                    { label: "Restaurants", amount: data.cashFromRestaurants ?? 0 },
-                    { label: "Laundry", amount: data.cashFromLaundry ?? 0 },
-                    { label: "Rentals", amount: data.cashFromRentals ?? 0 },
+                    { label: "Room Reservations", amount: data.cashFromRoomBookings ?? 0 },
+                    { label: "F&B", amount: data.cashFromRestaurants ?? 0 },
+                    { label: "Laundry & Valet", amount: data.cashFromLaundry ?? 0 },
+                    { label: "Guest Services", amount: data.cashFromRentals ?? 0 },
                     { label: "Other Income", amount: data.cashFromOtherIncome ?? 0 },
                 ].filter((i) => i.amount !== 0),
         [data],

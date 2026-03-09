@@ -103,10 +103,10 @@ function Page({ searchParams }: PageProps) {
 			rooms={rooms}
 			roomTypes={roomTypes}
 			breadcrumb={{
-				title: "Bookings",
+				title: "Reservations",
 				breadcrumbs: [
 					{ label: "Dashboard", href: "/dashboard" },
-					{ label: "Bookings", href: "/dashboard/bookings" },
+					{ label: "Reservations", href: "/dashboard/bookings" },
 				],
 			}}
 			paginationMeta={paginationMeta}

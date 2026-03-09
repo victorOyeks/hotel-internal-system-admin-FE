@@ -481,13 +481,17 @@ export const getRestaurantDetailedReport = cache(
 		const cookieData = await getCookieData();
 		if (!cookieData) return null;
 
-		const res = await $fetch("@get/api/financials/restaurant/detailed-report", {
-			auth: { type: "Bearer" as const, token: cookieData.token },
-			query: { ...params },
-			throw: true,
-		});
+		try {
+			const res = await $fetch("@get/api/financials/restaurant/detailed-report", {
+				auth: { type: "Bearer" as const, token: cookieData.token },
+				query: { ...params },
+				throw: true,
+			});
 
-		return res.data;
+			return res.data;
+		} catch {
+			return null;
+		}
 	},
 );
 

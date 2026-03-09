@@ -305,7 +305,7 @@ function InventoryTableToolbar({
 			const categoryLabels = {
 				FRONT_DESK: "Front Desk",
 				MAINTENANCE: "Maintenance",
-				INVENTORY: "Inventory",
+				INVENTORY: "Stores",
 				BAR: "Bar",
 				KITCHEN: "Kitchen",
 				HOUSEKEEPING: "Housekeeping",
@@ -964,7 +964,7 @@ const InventoryFilter = ({
 		() => [
 			{ value: "FRONT_DESK", label: "Front Desk" },
 			{ value: "MAINTENANCE", label: "Maintenance" },
-			{ value: "INVENTORY", label: "Inventory" },
+			{ value: "INVENTORY", label: "Stores" },
 			{ value: "BAR", label: "Bar" },
 			{ value: "KITCHEN", label: "Kitchen" },
 			{ value: "HOUSEKEEPING", label: "Housekeeping" },

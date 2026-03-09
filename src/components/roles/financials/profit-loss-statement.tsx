@@ -141,8 +141,8 @@ function RevenueDistributionChart({ data }: { data: ProfitAndLossData }) {
         const sources = [
             { name: "Rooms", value: data.roomRevenue ?? 0 },
             { name: "F&B", value: data.foodAndBeverageRevenue ?? 0 },
-            { name: "Laundry", value: data.laundryRevenue ?? 0 },
-            { name: "Rentals", value: data.rentalRevenue ?? 0 },
+            { name: "Laundry & Valet", value: data.laundryRevenue ?? 0 },
+            { name: "Guest Services", value: data.rentalRevenue ?? 0 },
             { name: "Other", value: data.otherRevenue ?? 0 },
         ];
         return sources.filter((s) => s.value > 0);
@@ -335,8 +335,8 @@ export function ProfitLossStatement({ data }: { data: ProfitAndLossData | null }
                 : [
                     { label: "Room Revenue", amount: data.roomRevenue ?? 0 },
                     { label: "Food & Beverage", amount: data.foodAndBeverageRevenue ?? 0 },
-                    { label: "Laundry", amount: data.laundryRevenue ?? 0 },
-                    { label: "Rentals", amount: data.rentalRevenue ?? 0 },
+                    { label: "Laundry & Valet", amount: data.laundryRevenue ?? 0 },
+                    { label: "Guest Services", amount: data.rentalRevenue ?? 0 },
                     { label: "Other Revenue", amount: data.otherRevenue ?? 0 },
                 ].filter((r) => r.amount !== 0),
         [data],

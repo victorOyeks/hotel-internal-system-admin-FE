@@ -58,10 +58,10 @@ function Page({
 			bookings={content}
 			paginationMeta={paginationMeta}
 			breadcrumb={{
-				title: "Bookings",
+				title: "Reservations",
 				breadcrumbs: [
 					{ label: "Dashboard", href: "/dashboard" },
-					{ label: "Bookings", href: "/dashboard/bookings" },
+					{ label: "Reservations", href: "/dashboard/bookings" },
 				],
 			}}
 		/>

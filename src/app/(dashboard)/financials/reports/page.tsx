@@ -3,7 +3,7 @@ import {
     getProfitAndLoss,
     getConsumptionReport,
     getComprehensiveSummary,
-    getRestaurantDailySummary,
+    getRestaurantDetailedReport,
     getRestaurantRoomFoodSales,
     getRestaurantItemSalesDetail,
 } from "@/lib/financials-actions";
@@ -39,57 +39,67 @@ function ReportsPage({ searchParams }: PageProps) {
     const queryClient = getQueryClient();
     const query = use(loadSearchParams(searchParams));
 
+    // Default to current month when no dates are specified
+    const now = new Date();
+    const defaultStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const defaultEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const startDate = query.startDate || defaultStartDate;
+    const endDate = query.endDate || defaultEndDate;
+
     // Start all promises in parallel before any use() calls
     const plPromise = queryClient.ensureQueryData({
-        queryKey: ["financials", "profit-loss", cookieData.userId, query],
+        queryKey: ["financials", "profit-loss", cookieData.userId, startDate, endDate, query.period],
         queryFn: () =>
             getProfitAndLoss({
-                startDate: query.startDate || "",
-                endDate: query.endDate || "",
+                startDate,
+                endDate,
                 period: query.period || "month",
             }),
     });
 
     const cashFlowPromise = queryClient.ensureQueryData({
-        queryKey: ["financials", "cash-flow", cookieData.userId, query],
+        queryKey: ["financials", "cash-flow", cookieData.userId, startDate, endDate, query.period],
         queryFn: () =>
             getCashFlow({
-                startDate: query.startDate || "",
-                endDate: query.endDate || "",
+                startDate,
+                endDate,
                 period: query.period || "month",
             }),
     });
 
     const consumptionPromise = queryClient.ensureQueryData({
-        queryKey: ["financials", "consumption", cookieData.userId, query],
+        queryKey: ["financials", "consumption", cookieData.userId, startDate, endDate, query.page, query.size],
         queryFn: () =>
             getConsumptionReport({
-                startDate: query.startDate || undefined,
-                endDate: query.endDate || undefined,
+                startDate,
+                endDate,
                 page: query.page,
                 size: query.size,
             }),
     });
 
     const summaryPromise = queryClient.ensureQueryData({
-        queryKey: ["financials", "comprehensive", cookieData.userId, query],
+        queryKey: ["financials", "comprehensive", cookieData.userId, startDate, endDate],
         queryFn: () =>
             getComprehensiveSummary({
-                startDate: query.startDate,
-                endDate: query.endDate,
+                startDate,
+                endDate,
             }),
     });
 
-    const restaurantSummaryPromise = queryClient.ensureQueryData({
+    const restaurantDetailedPromise = queryClient.ensureQueryData({
         queryKey: [
             "financials",
-            "restaurant-summary",
+            "restaurant-detailed",
             cookieData.userId,
-            query,
+            startDate,
+            endDate,
         ],
         queryFn: () =>
-            getRestaurantDailySummary({
-                date: query.startDate || undefined,
+            getRestaurantDetailedReport({
+                startDate,
+                endDate,
             }),
     });
 
@@ -98,23 +108,26 @@ function ReportsPage({ searchParams }: PageProps) {
             "financials",
             "room-food-sales",
             cookieData.userId,
-            query,
+            startDate,
+            endDate,
+            query.page,
+            query.size,
         ],
         queryFn: () =>
             getRestaurantRoomFoodSales({
-                startDate: query.startDate || undefined,
-                endDate: query.endDate || undefined,
+                startDate,
+                endDate,
                 page: query.page ?? undefined,
                 size: query.size ?? undefined,
             }),
     });
 
     const itemSalesPromise = queryClient.ensureQueryData({
-        queryKey: ["financials", "item-sales", cookieData.userId, query],
+        queryKey: ["financials", "item-sales", cookieData.userId, startDate, endDate, query.page, query.size],
         queryFn: () =>
             getRestaurantItemSalesDetail({
-                startDate: query.startDate || undefined,
-                endDate: query.endDate || undefined,
+                startDate,
+                endDate,
                 page: query.page ?? undefined,
                 size: query.size ?? undefined,
             }),
@@ -124,7 +137,7 @@ function ReportsPage({ searchParams }: PageProps) {
     const cashFlowData = use(cashFlowPromise);
     const consumptionData = use(consumptionPromise);
     const summaryData = use(summaryPromise);
-    const restaurantSummaryData = use(restaurantSummaryPromise);
+    const restaurantDetailedData = use(restaurantDetailedPromise);
     const roomFoodSalesData = use(roomFoodSalesPromise);
     const itemSalesData = use(itemSalesPromise);
 
@@ -164,7 +177,7 @@ function ReportsPage({ searchParams }: PageProps) {
                         </TabsTrigger>
                         <TabsTrigger value="restaurant" className="gap-1.5">
                             <UtensilsIcon className="size-3.5" />
-                            Restaurant
+                            F&B
                         </TabsTrigger>
                         <TabsTrigger value="consumption" className="gap-1.5">
                             <PackageIcon className="size-3.5" />
@@ -184,11 +197,7 @@ function ReportsPage({ searchParams }: PageProps) {
                     </TabsContent>
                     <TabsContent value="restaurant" className="space-y-4">
                         <RestaurantReports
-                            dailySummary={
-                                restaurantSummaryData as Parameters<
-                                    typeof RestaurantReports
-                                >[0]["dailySummary"]
-                            }
+                            detailedReport={restaurantDetailedData}
                             roomFoodSales={roomFoodSalesData}
                             itemSalesDetail={itemSalesData}
                         />

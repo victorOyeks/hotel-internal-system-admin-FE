@@ -150,7 +150,7 @@ export function ReceiveStockItem({
 									<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
 									<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
 									<SelectItem value="MANAGEMENT">Management</SelectItem>
-									<SelectItem value="INVENTORY">Inventory</SelectItem>
+									<SelectItem value="INVENTORY">Stores</SelectItem>
 									<SelectItem value="OTHER">Other</SelectItem>
 								</SelectContent>
 							</Select>

@@ -33,7 +33,7 @@ import {
 
 export const hotelOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	{ title: "Branches", icon: <HotelIcon />, url: "/dashboard/hotels" },
+	{ title: "Properties", icon: <HotelIcon />, url: "/dashboard/hotels" },
 	{
 		title: "Approvals",
 		icon: <ShieldCheckIcon />,
@@ -41,7 +41,7 @@ export const hotelOwnerLinks = [
 	},
 	{ title: "Room Management", icon: <Building2Icon />, url: "/dashboard/rooms" },
 	{
-		title: "Manage Bookings",
+		title: "Reservations",
 		icon: <BookTextIcon />,
 		url: "/dashboard/bookings",
 	},
@@ -79,7 +79,7 @@ export const managerOwnerLinks = [
 	},
 	{ title: "Room Management", icon: <HotelIcon />, url: "/dashboard/rooms" },
 	{
-		title: "Manage Bookings",
+		title: "Reservations",
 		icon: <BookTextIcon />,
 		url: "/dashboard/bookings",
 	},
@@ -121,7 +121,7 @@ export const inventoryOfficerLinks = [
 	},
 	// { title: "Inventory", icon: <ToolCaseIcon />, url: "/dashboard/inventory" },
 	{
-		title: "Suppliers",
+		title: "Vendors",
 		icon: <TruckIcon />,
 		url: "/dashboard/supplies",
 	},
@@ -166,11 +166,11 @@ export const inventoryOfficerLinks = [
 
 export const frontDeskLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	{ title: "Bookings", icon: <BookTextIcon />, url: "/dashboard/bookings" },
+	{ title: "Reservations", icon: <BookTextIcon />, url: "/dashboard/bookings" },
 	{ title: "Rooms", icon: <HotelIcon />, url: "/dashboard/rooms" },
-	{ title: "Guests Log", icon: <IdCardIcon />, url: "/dashboard/guests" },
+	{ title: "Guest Registry", icon: <IdCardIcon />, url: "/dashboard/guests" },
 	{
-		title: "Lost & Found",
+		title: "Forgotten Items",
 		icon: <FolderClosedIcon />,
 		url: "/dashboard/lost-and-found",
 	},
@@ -210,7 +210,7 @@ export const rentalsLinks = [
 		url: "/dashboard/overdue",
 	},
 	{ title: "Payments", icon: <DollarSignIcon />, url: "/dashboard/payments" },
-	{ title: "Customers", icon: <UsersIcon />, url: "/dashboard/customers" },
+	{ title: "Guests", icon: <UsersIcon />, url: "/dashboard/customers" },
 	{
 		title: "Maintenance",
 		icon: <WrenchIcon />,
@@ -232,7 +232,7 @@ export const financialsLinks = [
 	{ title: "Overview", icon: <ChartNoAxesCombined />, url: "/dashboard" },
 	{ title: "Compare", icon: <ArrowLeftRightIcon />, url: "/dashboard/compare" },
 	{ title: "Other Income", icon: <DollarSignIcon />, url: "/dashboard/other-income" },
-	{ title: "Expenditures", icon: <CreditCardIcon />, url: "/dashboard/expenditures" },
+	{ title: "Expenses", icon: <CreditCardIcon />, url: "/dashboard/expenditures" },
 	{ title: "Reports", icon: <BarChart3Icon />, url: "/dashboard/reports" },
 	{ title: "Messages", icon: <MessagesSquare />, url: "/dashboard/messages" },
 ];

@@ -300,12 +300,12 @@ function RevenueDepartmentChart({ data }: { data: OverviewData }) {
 					color: "#6366f1",
 				},
 				{
-					name: "Restaurant",
+					name: "F&B",
 					value: data.restaurantRevenue,
 					color: "#f59e0b",
 				},
-				{ name: "Laundry", value: data.laundryRevenue, color: "#06b6d4" },
-				{ name: "Rentals", value: data.rentalRevenue, color: "#8b5cf6" },
+				{ name: "Laundry & Valet", value: data.laundryRevenue, color: "#06b6d4" },
+				{ name: "Guest Services", value: data.rentalRevenue, color: "#8b5cf6" },
 				{
 					name: "Other Income",
 					value: data.otherIncomeRevenue,
@@ -330,7 +330,7 @@ function OperationsQuickStats({ data }: { data: OverviewData }) {
 	return (
 		<div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
 			<QuickStatCard
-				title="Restaurant"
+				title="F&B"
 				primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
 				primaryLabel="today's sales"
 				secondaryValue={data.restaurantActiveOrders}
@@ -340,7 +340,7 @@ function OperationsQuickStats({ data }: { data: OverviewData }) {
 				href="/dashboard/operations"
 			/>
 			<QuickStatCard
-				title="Laundry"
+				title="Laundry & Valet"
 				primaryValue={data.laundryPendingOrders}
 				primaryLabel="pending orders"
 				secondaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
@@ -350,7 +350,7 @@ function OperationsQuickStats({ data }: { data: OverviewData }) {
 				href="/dashboard/operations"
 			/>
 			<QuickStatCard
-				title="Rentals"
+				title="Guest Services"
 				primaryValue={data.activeRentals}
 				primaryLabel="active rentals"
 				secondaryValue={data.overdueRentals}

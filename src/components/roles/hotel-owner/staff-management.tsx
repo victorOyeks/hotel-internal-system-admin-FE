@@ -195,11 +195,11 @@ function StaffFilter({
 	const roleOptions = [
 		{ value: "MANAGER", label: "Manager" },
 		{ value: "FRONT_DESK", label: "Front Desk" },
-		{ value: "INVENTORY", label: "Inventory" },
-		{ value: "RESTAURANT", label: "Restaurant" },
+		{ value: "INVENTORY", label: "Stores" },
+		{ value: "RESTAURANT", label: "Food & Beverages" },
 		{ value: "MARKETER", label: "Marketer" },
-		{ value: "RENTALS", label: "Rentals" },
-		{ value: "LAUNDRY", label: "Laundry" },
+		{ value: "RENTALS", label: "Guest Services" },
+		{ value: "LAUNDRY", label: "Laundry & Valet" },
 		{ value: "FINANCIALS", label: "Financials" },
 	];
 
