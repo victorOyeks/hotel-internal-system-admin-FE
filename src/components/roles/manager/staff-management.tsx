@@ -625,7 +625,7 @@ function AddStaffForm({ setOpen }: { setOpen: (open: boolean) => void }) {
 									<MultiSelectContent search={{ placeholder: "Search roles..." }}>
 										<MultiSelectItem value="FRONT_DESK">Front Desk</MultiSelectItem>
 										<MultiSelectItem value="INVENTORY">Inventory</MultiSelectItem>
-										<MultiSelectItem value="RESTAURANT">Restaurant</MultiSelectItem>
+										<MultiSelectItem value="RESTAURANT">Food & Beverages</MultiSelectItem>
 										<MultiSelectItem value="RENTALS">Rentals</MultiSelectItem>
 										<MultiSelectItem value="LAUNDRY">Laundry</MultiSelectItem>
 										<MultiSelectItem value="FINANCIALS">Financials</MultiSelectItem>
@@ -878,7 +878,7 @@ function UpdateHotelStaffForm({
 												Inventory
 											</MultiSelectItem>
 											<MultiSelectItem value="RESTAURANT">
-												Restaurant
+												Food & Beverages
 											</MultiSelectItem>
 											<MultiSelectItem value="RENTALS">
 												Rentals

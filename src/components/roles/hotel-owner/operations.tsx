@@ -179,7 +179,7 @@ function AccommodationTab({ data }: { data: AccommodationData }) {
 	);
 }
 
-// ==================== Restaurant Tab (Food + Bar combined) ====================
+// ==================== Food & Beverages Tab (Food + Bar combined) ====================
 function RestaurantTab({ data, barData }: { data: RestaurantData; barData: BarData }) {
 	const totals = data.periodTotals;
 	const dailySummaries = data.dailySummaries ?? [];
@@ -783,7 +783,7 @@ export function OwnerOperations({
 					</TabsTrigger>
 					<TabsTrigger value="restaurant" className="rounded-lg">
 						<UtensilsIcon className="size-4 mr-1.5" />
-						Restaurant
+						Food & Beverages
 					</TabsTrigger>
 					<TabsTrigger value="laundry" className="rounded-lg">
 						<ShirtIcon className="size-4 mr-1.5" />
