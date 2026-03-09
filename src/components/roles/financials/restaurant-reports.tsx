@@ -52,19 +52,20 @@ interface DetailedReport {
 }
 
 interface RoomFoodSaleRow {
-    roomNumber?: string | null;
+    roomIdentifier?: string | null;
     guestName?: string | null;
-    orderCount?: number | null;
+    checkInDate?: string | null;
+    checkOutDate?: string | null;
+    daily?: { date?: string; totalAmount?: number }[] | null;
     totalAmount?: number | null;
-    date?: string | null;
 }
 
 interface ItemSaleDetailRow {
     itemName?: string | null;
-    category?: string | null;
-    quantitySold?: number | null;
+    destination?: string | null;
+    quantity?: number | null;
     unitPrice?: number | null;
-    totalRevenue?: number | null;
+    totalAmount?: number | null;
 }
 
 interface RestaurantReportsProps {
@@ -225,7 +226,7 @@ function RevenueSplitSection({ report }: { report: DetailedReport }) {
 
 const roomFoodColHelper = createColumnHelper<RoomFoodSaleRow>();
 const roomFoodColumns = [
-    roomFoodColHelper.accessor("roomNumber", {
+    roomFoodColHelper.accessor("roomIdentifier", {
         header: "Room",
         cell: (i) => (
             <span className="font-medium text-gray-800">{i.getValue() ?? "—"}</span>
@@ -235,9 +236,9 @@ const roomFoodColumns = [
         header: "Guest",
         cell: (i) => i.getValue() ?? "—",
     }),
-    roomFoodColHelper.accessor("orderCount", {
-        header: "Orders",
-        cell: (i) => (i.getValue() ?? 0).toLocaleString(),
+    roomFoodColHelper.accessor("daily", {
+        header: "Days",
+        cell: (i) => (i.getValue()?.length ?? 0).toLocaleString(),
     }),
     roomFoodColHelper.accessor("totalAmount", {
         header: () => <span className="block text-right">Amount</span>,
@@ -247,8 +248,8 @@ const roomFoodColumns = [
             </div>
         ),
     }),
-    roomFoodColHelper.accessor("date", {
-        header: "Date",
+    roomFoodColHelper.accessor("checkInDate", {
+        header: "Check-in",
         cell: (i) => {
             const v = i.getValue();
             return v ? new Date(v).toLocaleDateString() : "—";
@@ -275,7 +276,7 @@ function RoomFoodSalesSection({
                 .sort((a, b) => (b.totalAmount ?? 0) - (a.totalAmount ?? 0))
                 .slice(0, 8)
                 .map((r) => ({
-                    name: r.roomNumber ?? "N/A",
+                    name: r.roomIdentifier ?? "N/A",
                     revenue: r.totalAmount ?? 0,
                 })),
         [data],
@@ -386,20 +387,16 @@ const itemColumns = [
             <span className="font-medium text-gray-800">{i.getValue() ?? "—"}</span>
         ),
     }),
-    itemColHelper.accessor("category", {
-        header: "Category",
+    itemColHelper.accessor("destination", {
+        header: "Destination",
         cell: (i) => {
             const v = i.getValue();
             if (!v) return "—";
-            const isDrink =
-                v.toUpperCase() === "DRINK" || v.toUpperCase() === "BAR";
             return (
                 <span
                     className={cn(
                         "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                        isDrink
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-green-100 text-green-700",
+                        "bg-gray-100 text-gray-700",
                     )}
                 >
                     {v}
@@ -407,7 +404,7 @@ const itemColumns = [
             );
         },
     }),
-    itemColHelper.accessor("quantitySold", {
+    itemColHelper.accessor("quantity", {
         header: "Qty",
         cell: (i) => (
             <span className="tabular-nums">{(i.getValue() ?? 0).toLocaleString()}</span>
@@ -419,7 +416,7 @@ const itemColumns = [
             <span className="tabular-nums">{formatCurrency(i.getValue() ?? 0)}</span>
         ),
     }),
-    itemColHelper.accessor("totalRevenue", {
+    itemColHelper.accessor("totalAmount", {
         header: () => <span className="block text-right">Revenue</span>,
         cell: (i) => (
             <div className="text-right tabular-nums font-semibold text-green-700">
@@ -439,11 +436,11 @@ function ItemSalesDetailSection({ data }: { data: ItemSaleDetailRow[] }) {
     const chartData = useMemo(
         () =>
             [...data]
-                .sort((a, b) => (b.totalRevenue ?? 0) - (a.totalRevenue ?? 0))
+                .sort((a, b) => (b.totalAmount ?? 0) - (a.totalAmount ?? 0))
                 .slice(0, 8)
                 .map((r) => ({
                     name: r.itemName ?? "N/A",
-                    revenue: r.totalRevenue ?? 0,
+                    revenue: r.totalAmount ?? 0,
                 })),
         [data],
     );
