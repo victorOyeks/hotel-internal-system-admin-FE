@@ -47,7 +47,7 @@ function Page({ searchParams }: PageProps) {
 				title: "Item Management",
 				breadcrumbs: [
 					{ label: "Dashboard", href: "/dashboard" },
-					{ label: "Restaurant", href: "/dashboard/restaurant" },
+					{ label: "F&B", href: "/dashboard/restaurant" },
 					{
 						label: "Item Management",
 						href: "/dashboard/restaurant/item-management",

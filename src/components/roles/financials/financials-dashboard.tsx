@@ -1068,10 +1068,10 @@ function RevenueBreakdownSection({
     const sourceData = useMemo(
         () =>
             [
-                { name: "Room Bookings", value: breakdown.roomBookingsRevenue },
-                { name: "Restaurant", value: breakdown.restaurantRevenue },
-                { name: "Laundry", value: breakdown.laundryRevenue },
-                { name: "Rentals", value: breakdown.rentalsRevenue },
+                { name: "Room Reservations", value: breakdown.roomBookingsRevenue },
+                { name: "F&B", value: breakdown.restaurantRevenue },
+                { name: "Laundry & Valet", value: breakdown.laundryRevenue },
+                { name: "Guest Services", value: breakdown.rentalsRevenue },
                 { name: "Other Income", value: breakdown.otherIncomeRevenue },
             ].filter((d) => d.value > 0),
         [breakdown],

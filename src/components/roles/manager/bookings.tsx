@@ -146,7 +146,7 @@ const ManagerBookingsFilter = ({
 	return (
 		<div className="space-y-4 w-80">
 			<div className="flex items-center justify-between">
-				<h4 className="font-semibold text-sm">Filter Bookings</h4>
+				<h4 className="font-semibold text-sm">Filter Reservations</h4>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -764,7 +764,7 @@ function BookingsListToolbar({
 					onClick={() => setBookingState(null)}
 					className="shadow-none text-xs hover:border-transparent rounded-full"
 				>
-					All Bookings{" "}
+					All Reservations{" "}
 					{bookingState === null &&
 						`(${table.getRowCount() * table.getPageCount()})`}
 				</Button>

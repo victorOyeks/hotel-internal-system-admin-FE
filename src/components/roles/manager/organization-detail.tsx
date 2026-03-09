@@ -559,19 +559,19 @@ const staffBreakdownColumns = [
 		),
 	}),
 	staffBreakdownColumnHelper.accessor("restaurantCharges", {
-		header: "Restaurant",
+		header: "F&B",
 		cell: (info) => (
 			<span className="font-mono">{info.getValue().toLocaleString()}</span>
 		),
 	}),
 staffBreakdownColumnHelper.accessor("laundryCharges", {
-		header: "Laundry",
+		header: "Laundry & Valet",
 		cell: (info) => (
 			<span className="font-mono">{info.getValue().toLocaleString()}</span>
 		),
 	}),
 	staffBreakdownColumnHelper.accessor("rentalCharges", {
-		header: "Rental",
+		header: "Guest Services",
 		cell: (info) => (
 			<span className="font-mono">{info.getValue().toLocaleString()}</span>
 		),

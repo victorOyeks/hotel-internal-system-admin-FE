@@ -3,7 +3,7 @@ import {
     getProfitAndLoss,
     getConsumptionReport,
     getComprehensiveSummary,
-    getRestaurantDailySummary,
+    getRestaurantDetailedReport,
     getRestaurantRoomFoodSales,
     getRestaurantItemSalesDetail,
 } from "@/lib/financials-actions";
@@ -80,16 +80,17 @@ function ReportsPage({ searchParams }: PageProps) {
             }),
     });
 
-    const restaurantSummaryPromise = queryClient.ensureQueryData({
+    const restaurantDetailedPromise = queryClient.ensureQueryData({
         queryKey: [
             "financials",
-            "restaurant-summary",
+            "restaurant-detailed",
             cookieData.userId,
             query,
         ],
         queryFn: () =>
-            getRestaurantDailySummary({
-                date: query.startDate || undefined,
+            getRestaurantDetailedReport({
+                startDate: query.startDate || undefined,
+                endDate: query.endDate || undefined,
             }),
     });
 
@@ -124,7 +125,7 @@ function ReportsPage({ searchParams }: PageProps) {
     const cashFlowData = use(cashFlowPromise);
     const consumptionData = use(consumptionPromise);
     const summaryData = use(summaryPromise);
-    const restaurantSummaryData = use(restaurantSummaryPromise);
+    const restaurantDetailedData = use(restaurantDetailedPromise);
     const roomFoodSalesData = use(roomFoodSalesPromise);
     const itemSalesData = use(itemSalesPromise);
 
@@ -164,7 +165,7 @@ function ReportsPage({ searchParams }: PageProps) {
                         </TabsTrigger>
                         <TabsTrigger value="restaurant" className="gap-1.5">
                             <UtensilsIcon className="size-3.5" />
-                            Restaurant
+                            F&B
                         </TabsTrigger>
                         <TabsTrigger value="consumption" className="gap-1.5">
                             <PackageIcon className="size-3.5" />
@@ -184,11 +185,7 @@ function ReportsPage({ searchParams }: PageProps) {
                     </TabsContent>
                     <TabsContent value="restaurant" className="space-y-4">
                         <RestaurantReports
-                            dailySummary={
-                                restaurantSummaryData as Parameters<
-                                    typeof RestaurantReports
-                                >[0]["dailySummary"]
-                            }
+                            detailedReport={restaurantDetailedData}
                             roomFoodSales={roomFoodSalesData}
                             itemSalesDetail={itemSalesData}
                         />

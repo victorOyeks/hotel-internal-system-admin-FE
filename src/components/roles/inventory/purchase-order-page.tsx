@@ -47,7 +47,7 @@ const columnDefs = [
 		),
 	}),
 	columnHelper.accessor("supplierName", {
-		header: "Supplier",
+		header: "Vendor",
 		cell: (info) => {
 			const order = info.row.original;
 			return (

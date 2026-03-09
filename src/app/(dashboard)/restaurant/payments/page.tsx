@@ -13,7 +13,7 @@ type PageProps = {
 const loadSearchParams = createLoader(paginationSearchParams);
 
 const breadcrumbs = {
-	title: "Restaurant Payments",
+	title: "F&B Payments",
 	breadcrumbs: [
 		{ label: "Dashboard", href: "/dashboard" },
 		{ label: "Payments", href: "/dashboard/payments" },

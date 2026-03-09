@@ -229,15 +229,15 @@ function ReportLostItem({ setOpen }: { setOpen?: (open: boolean) => void }) {
 				throw new Error(response.error || "Failed to report lost item");
 			}
 
-			return { message: "Lost item reported successfully" };
+			return { message: "Forgotten item reported successfully" };
 		},
 		onError: (e) => {
-			toast.error("Something went wrong while reporting the lost item.", {
+			toast.error("Something went wrong while reporting the forgotten item.", {
 				description: e.message,
 			});
 		},
 		onSuccess: async (data) => {
-			toast.success(data.message || "Lost item reported successfully.");
+			toast.success(data.message || "Forgotten item reported successfully.");
 			await revalidateRoute("/front-desk/lost-and-found");
 			form.reset();
 			setSelectedImage(null);
@@ -1409,7 +1409,7 @@ const actions: QuickAction[] = [
 	},
 	{
 		type: "link",
-		title: "Bookings",
+		title: "Reservations",
 		href: "/dashboard/bookings",
 		icon: CalendarIcon,
 		style: "border-blue-200 bg-blue-50/60 text-blue-700 hover:bg-blue-100/80",
@@ -1441,7 +1441,7 @@ const actions: QuickAction[] = [
 	},
 	{
 		type: "modal",
-		title: "Lost Item",
+		title: "Forgotten Item",
 		Component: ReportLostItem,
 		icon: SearchIcon,
 		style: "border-rose-200 bg-rose-50/60 text-rose-700 hover:bg-rose-100/80",

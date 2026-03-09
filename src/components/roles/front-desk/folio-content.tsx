@@ -46,10 +46,10 @@ interface FolioContentProps {
 
 const ENTRY_TYPE_LABELS: Record<string, string> = {
 	ACCOMMODATION: "Accommodation",
-	RESTAURANT: "Restaurant",
+	RESTAURANT: "F&B",
 	BAR: "Bar",
-	LAUNDRY: "Laundry",
-	RENTAL: "Rental",
+	LAUNDRY: "Laundry & Valet",
+	RENTAL: "Guest Services",
 	MANUAL_CHARGE: "Manual Charge",
 	OTHER_INCOME: "Other Income",
 	PAYMENT: "Payment",

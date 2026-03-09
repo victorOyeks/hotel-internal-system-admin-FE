@@ -34,9 +34,22 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, cn } from "@/lib/utils";
-import type { RestaurantDailySummary } from "./restaurant-summary-card";
 
 // --- Types ---
+
+interface LocationAmount {
+    location?: string | null;
+    amount?: number | null;
+}
+
+interface DetailedReport {
+    totalKitchenSales?: number | null;
+    totalBarSales?: number | null;
+    totalRevenue?: number | null;
+    totalOrders?: number | null;
+    totalItemsSold?: number | null;
+    salesByDestination?: LocationAmount[] | null;
+}
 
 interface RoomFoodSaleRow {
     roomNumber?: string | null;
@@ -55,7 +68,7 @@ interface ItemSaleDetailRow {
 }
 
 interface RestaurantReportsProps {
-    dailySummary: RestaurantDailySummary | null;
+    detailedReport: DetailedReport | null;
     roomFoodSales: unknown;
     itemSalesDetail: unknown;
 }
@@ -102,17 +115,24 @@ function KPICard({
 
 // --- Revenue split section ---
 
-function RevenueSplitSection({ summary }: { summary: RestaurantDailySummary }) {
-    const slices = useMemo(
-        () =>
-            [
-                { name: "Kitchen", value: summary.kitchenRevenue ?? 0, fill: COLORS[0] },
-                { name: "Bar", value: summary.barRevenue ?? 0, fill: COLORS[1] },
-                { name: "Room Charges", value: summary.roomCharges ?? 0, fill: COLORS[2] },
-                { name: "Direct Payments", value: summary.directPayments ?? 0, fill: COLORS[3] },
-            ].filter((s) => s.value > 0),
-        [summary],
-    );
+function RevenueSplitSection({ report }: { report: DetailedReport }) {
+    const slices = useMemo(() => {
+        // If salesByDestination is available, use it for a richer breakdown
+        if (report.salesByDestination && report.salesByDestination.length > 0) {
+            return report.salesByDestination
+                .map((d, i) => ({
+                    name: d.location ?? "Unknown",
+                    value: d.amount ?? 0,
+                    fill: COLORS[i % COLORS.length],
+                }))
+                .filter((s) => s.value > 0);
+        }
+        // Fallback to kitchen/bar split
+        return [
+            { name: "Kitchen", value: report.totalKitchenSales ?? 0, fill: COLORS[0] },
+            { name: "Bar", value: report.totalBarSales ?? 0, fill: COLORS[1] },
+        ].filter((s) => s.value > 0);
+    }, [report]);
 
     const total = slices.reduce((sum, s) => sum + s.value, 0);
 
@@ -533,7 +553,7 @@ function ItemSalesDetailSection({ data }: { data: ItemSaleDetailRow[] }) {
 // --- Main export ---
 
 export function RestaurantReports({
-    dailySummary,
+    detailedReport,
     roomFoodSales,
     itemSalesDetail,
 }: RestaurantReportsProps) {
@@ -555,28 +575,28 @@ export function RestaurantReports({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KPICard
                     label="Total Revenue"
-                    value={dailySummary?.totalRevenue}
+                    value={detailedReport?.totalRevenue}
                     icon={DollarSignIcon}
                     iconBg="bg-green-50"
                     iconColor="text-green-600"
                 />
                 <KPICard
                     label="Kitchen Revenue"
-                    value={dailySummary?.kitchenRevenue}
+                    value={detailedReport?.totalKitchenSales}
                     icon={UtensilsIcon}
                     iconBg="bg-amber-50"
                     iconColor="text-amber-500"
                 />
                 <KPICard
                     label="Bar Revenue"
-                    value={dailySummary?.barRevenue}
+                    value={detailedReport?.totalBarSales}
                     icon={WineIcon}
                     iconBg="bg-indigo-50"
                     iconColor="text-indigo-500"
                 />
                 <KPICard
                     label="Total Orders"
-                    value={dailySummary?.totalOrders}
+                    value={detailedReport?.totalOrders}
                     icon={ShoppingCartIcon}
                     iconBg="bg-blue-50"
                     iconColor="text-blue-500"
@@ -585,8 +605,8 @@ export function RestaurantReports({
             </div>
 
             {/* Revenue split */}
-            {dailySummary ? (
-                <RevenueSplitSection summary={dailySummary} />
+            {detailedReport ? (
+                <RevenueSplitSection report={detailedReport} />
             ) : (
                 <div className="bg-card border border-gray-100 rounded-xl flex items-center justify-center h-40 text-sm text-gray-400">
                     No summary data available.

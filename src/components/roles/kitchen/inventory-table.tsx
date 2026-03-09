@@ -218,12 +218,12 @@ function EditInventoryItemForm({
 								</FormControl>
 								<SelectContent>
 									<SelectItem value="BAR">Bar</SelectItem>
-									<SelectItem value="RESTAURANT">Restaurant</SelectItem>
+									<SelectItem value="RESTAURANT">F&B</SelectItem>
 									<SelectItem value="HOUSEKEEPING">Housekeeping</SelectItem>
 									<SelectItem value="FRONT_DESK">Front Desk</SelectItem>
 									<SelectItem value="MAINTENANCE">Maintenance</SelectItem>
 									<SelectItem value="MANAGEMENT">Management</SelectItem>
-									<SelectItem value="INVENTORY">Inventory</SelectItem>
+									<SelectItem value="INVENTORY">Stores</SelectItem>
 									<SelectItem value="OTHER">Other</SelectItem>
 								</SelectContent>
 							</Select>
@@ -402,7 +402,7 @@ function InventoryTableToolbar({
 				FRONT_DESK: "Front Desk",
 				MAINTENANCE: "Maintenance",
 				INVENTORY: "Inventory",
-				RESTAURANT: "Restaurant",
+				RESTAURANT: "F&B",
 				HOUSEKEEPING: "Housekeeping",
 				MANAGEMENT: "Management",
 				OTHER: "Other",
@@ -1113,8 +1113,8 @@ const InventoryFilter = ({
 		() => [
 			{ value: "FRONT_DESK", label: "Front Desk" },
 			{ value: "MAINTENANCE", label: "Maintenance" },
-			{ value: "INVENTORY", label: "Inventory" },
-			{ value: "RESTAURANT", label: "Restaurant" },
+			{ value: "INVENTORY", label: "Stores" },
+			{ value: "RESTAURANT", label: "F&B" },
 			{ value: "HOUSEKEEPING", label: "Housekeeping" },
 			{ value: "MANAGEMENT", label: "Management" },
 			{ value: "OTHER", label: "Other" },

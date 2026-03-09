@@ -2018,7 +2018,7 @@ function BookingsFilter({
 		<TableFilter open={isOpen} setOpen={(open) => setIsOpen(open)}>
 			<div className="space-y-4">
 				<div className="flex items-center justify-between">
-					<h4 className="font-semibold text-sm">Filter Bookings</h4>
+					<h4 className="font-semibold text-sm">Filter Reservations</h4>
 					<Button
 						variant="ghost"
 						size="sm"
@@ -2158,7 +2158,7 @@ function BookingsListToolbar({
 						: ""
 						}`}
 				>
-					All Bookings{" "}
+					All Reservations{" "}
 					{queryState.bookingStatus === null &&
 						`(${table.getRowCount() * table.getPageCount()})`}
 				</Button>

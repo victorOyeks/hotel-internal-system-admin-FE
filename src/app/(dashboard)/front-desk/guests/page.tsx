@@ -46,10 +46,10 @@ function Page({ searchParams }: PageProps) {
 	return (
 		<GuestsLogPage
 			breadcrumb={{
-				title: "Guests Log",
+				title: "Guest Registry",
 				breadcrumbs: [
 					{ label: "Dashboard", href: "/dashboard" },
-					{ label: "Guests Log", href: "/dashboard/guests" },
+					{ label: "Guest Registry", href: "/dashboard/guests" },
 				],
 			}}
 			paginationMeta={pagination}

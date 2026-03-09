@@ -461,7 +461,7 @@ function DepartmentStats({
 			<h2 className="text-lg font-semibold text-primary">Department Overview</h2>
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
 				<QuickStatCard
-					title="Restaurant"
+					title="F&B"
 					primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
 					primaryLabel="sales today"
 					secondaryValue={data.restaurantActiveOrders}
@@ -471,7 +471,7 @@ function DepartmentStats({
 					accentColor="bg-orange-50 text-orange-600"
 				/>
 				<QuickStatCard
-					title="Laundry"
+					title="Laundry & Valet"
 					primaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
 					primaryLabel="sales today"
 					secondaryValue={data.laundryPendingOrders}
@@ -481,7 +481,7 @@ function DepartmentStats({
 					accentColor="bg-purple-50 text-purple-600"
 				/>
 				<QuickStatCard
-					title="Rentals"
+					title="Guest Services"
 					primaryValue={data.activeRentals}
 					primaryLabel="active"
 					secondaryValue={data.overdueRentals}
@@ -512,9 +512,9 @@ function RevenueBreakdown({
 }) {
 	const revenueData = [
 		{ name: "Accommodation", value: data.accommodationRevenue, color: "#3b82f6" },
-		{ name: "Restaurant", value: data.restaurantRevenue, color: "#f97316" },
-		{ name: "Laundry", value: data.laundryRevenue, color: "#8b5cf6" },
-		{ name: "Rentals", value: data.rentalRevenue, color: "#14b8a6" },
+		{ name: "F&B", value: data.restaurantRevenue, color: "#f97316" },
+		{ name: "Laundry & Valet", value: data.laundryRevenue, color: "#8b5cf6" },
+		{ name: "Guest Services", value: data.rentalRevenue, color: "#14b8a6" },
 		{ name: "Other Income", value: data.otherIncomeRevenue, color: "#6b7280" },
 	].filter((d) => d.value > 0);
 

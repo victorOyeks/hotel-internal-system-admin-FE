@@ -76,10 +76,10 @@ function Page({ searchParams }: PageProps) {
 			<FrontDeskLostItemStats stats={lostItemStats} />
 			<LostItemPage
 				breadcrumbs={{
-					title: "Lost & Found",
+					title: "Forgotten Items",
 					breadcrumbs: [
 						{ label: "Dashboard", href: "/dashboard" },
-						{ label: "Lost & Found", href: "/dashboard/lost-and-found" },
+						{ label: "Forgotten Items", href: "/dashboard/lost-and-found" },
 					],
 				}}
 				data={lostItems}

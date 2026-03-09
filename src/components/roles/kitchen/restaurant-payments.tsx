@@ -151,10 +151,10 @@ export function RestaurantPaymentsPage({
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-2xl font-bold tracking-tight">
-							Restaurant Payments
+							F&B Payments
 						</h1>
 						<p className="text-sm text-muted-foreground mt-1">
-							Track payments across all restaurant orders
+							Track payments across all F&B orders
 						</p>
 					</div>
 					<ExportDialog

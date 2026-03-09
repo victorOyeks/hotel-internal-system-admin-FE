@@ -131,7 +131,7 @@ function SupplierFileUploadTab({ onDone }: { onDone: () => void }) {
 			const ws = XLSX.utils.aoa_to_sheet(data);
 			ws["!cols"] = [{ wch: 24 }, { wch: 28 }, { wch: 16 }];
 			const wb = XLSX.utils.book_new();
-			XLSX.utils.book_append_sheet(wb, ws, "Suppliers");
+			XLSX.utils.book_append_sheet(wb, ws, "Vendors");
 			XLSX.writeFile(wb, "supplier_upload_template.xlsx");
 		});
 	}
@@ -243,7 +243,7 @@ function SupplierFileUploadTab({ onDone }: { onDone: () => void }) {
 				onClick={handleUpload}
 			>
 				<UploadIcon className="size-4 mr-2" />
-				Upload & Add Suppliers
+				Upload & Add Vendors
 			</Button>
 		</div>
 	);
@@ -267,7 +267,7 @@ function AddSupplierDialog() {
 					className="rounded-md md:rounded-xl transition-[width,contents] will-change-contents duration-300"
 				>
 					<PlusIcon />
-					<span className="hidden md:inline">Add Supplier</span>
+					<span className="hidden md:inline">Add Vendor</span>
 				</Button>
 			</DialogTrigger>
 
@@ -327,7 +327,7 @@ function AddSupplierForm({
 			}
 		},
 		onSuccess: () => {
-			toast.success(initialData ? "Supplier updated" : "Supplier added");
+			toast.success(initialData ? "Vendor updated" : "Vendor added");
 			revalidateRoute("/dashboard/supplies")
 			onSuccess();
 		},
@@ -356,7 +356,7 @@ function AddSupplierForm({
 						<FormItem>
 							<FormLabel>Name</FormLabel>
 							<FormControl>
-								<Input placeholder="Supplier Name" {...field} />
+								<Input placeholder="Vendor Name" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -441,7 +441,7 @@ function AddSupplierForm({
 								Please wait...
 							</>
 						) : (
-							initialData ? "Update Supplier" : "Add Supplier"
+							initialData ? "Update Vendor" : "Add Vendor"
 						)}
 					</Button>
 				</DialogFooter>
@@ -538,7 +538,7 @@ const suppliesPageColumns = [
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Supplier Details</DialogTitle>
+							<DialogTitle>Vendor Details</DialogTitle>
 						</DialogHeader>
 						<div className="space-y-4">
 							<div className="grid grid-cols-2 gap-4">
@@ -674,7 +674,7 @@ function SuppliesActions({
 			<Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Edit Supplier</DialogTitle>
+						<DialogTitle>Edit Vendor</DialogTitle>
 					</DialogHeader>
 					<AddSupplierForm
 						initialData={row}
