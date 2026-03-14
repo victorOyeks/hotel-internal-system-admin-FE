@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,8 +121,11 @@ const formSchema = z.object({
 		"TRANSFER",
 	]),
 	adjustmentQuantity: z.coerce.number().min(0.01, "Quantity must be greater than 0"),
-	unitCost: z.number().min(0).optional(),
-	description: z.string().min(1, "Description is required"),
+	unitCost: z.preprocess(
+		(val) => (val === "" || val === undefined || val === null || Number.isNaN(val) ? undefined : Number(val)),
+		z.number().min(0).optional(),
+	),
+	description: z.string().optional(),
 	notes: z.string().optional(),
 	adjustmentDate: z.string().min(1, "Date is required"),
 });
@@ -276,10 +280,12 @@ function LocationServerCombobox({
 
 function CreateAdjustmentForm({
 	onClose,
+	onSuccess,
 	products,
 	locations,
 }: {
 	onClose: () => void;
+	onSuccess?: () => void;
 	products: InventoryProduct[];
 	locations: InventoryLocationListResponse[];
 }) {
@@ -307,6 +313,7 @@ function CreateAdjustmentForm({
 		onSuccess: () => {
 			toast.success("Stock adjustment created successfully");
 			onClose();
+			onSuccess?.();
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to create stock adjustment");
@@ -469,7 +476,7 @@ function CreateAdjustmentForm({
 					name="description"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Description</FormLabel>
+							<FormLabel>Description (Optional)</FormLabel>
 							<FormControl>
 								<Textarea placeholder="Enter description..." {...field} />
 							</FormControl>
@@ -719,6 +726,7 @@ export function StockAdjustmentPage({
 	products: InventoryProduct[];
 	locations: InventoryLocationListResponse[];
 }) {
+	const router = useRouter();
 	const [pagination, setPagination] = usePaginationSearchParams();
 	const table = useReactTable({
 		data: adjustments,
@@ -760,6 +768,7 @@ export function StockAdjustmentPage({
 						</DialogHeader>
 						<CreateAdjustmentForm
 							onClose={() => setIsCreateOpen(false)}
+							onSuccess={() => router.refresh()}
 							products={products}
 							locations={locations}
 						/>

@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { $fetch } from "@/lib/fetch";
+import { createRentalItem, updateRentalItem } from "@/lib/rental-actions";
 import {
 	Dialog,
 	DialogContent,
@@ -183,18 +183,11 @@ export function RentalItemDialog({
 
 	const mutation = useMutation({
 		mutationFn: async (data: RentalItemFormData) => {
-			if (isEditing) {
-				return await $fetch("@put/api/hotels/rentals/items/:itemId", {
-					params: { itemId: item.id },
-					body: data,
-					throw: true,
-				});
-			} else {
-				return await $fetch("@post/api/hotels/rentals/items", {
-					body: data,
-					throw: true,
-				});
-			}
+			const result = isEditing
+				? await updateRentalItem(item.id, data)
+				: await createRentalItem(data);
+			if (!result.success) throw new Error(result.error);
+			return result.data;
 		},
 		onSuccess: () => {
 			toast.success(

@@ -34,11 +34,11 @@ import {
 export const hotelOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
 	{ title: "Properties", icon: <HotelIcon />, url: "/dashboard/hotels" },
-	{
-		title: "Approvals",
-		icon: <ShieldCheckIcon />,
-		url: "/dashboard/approvals",
-	},
+	// {
+	// 	title: "Approvals",
+	// 	icon: <ShieldCheckIcon />,
+	// 	url: "/dashboard/approvals",
+	// },
 	{ title: "Room Management", icon: <Building2Icon />, url: "/dashboard/rooms" },
 	{
 		title: "Reservations",
@@ -72,11 +72,11 @@ export const hotelOwnerLinks = [
 
 export const managerOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	{
-		title: "Approvals",
-		icon: <ShieldCheckIcon />,
-		url: "/dashboard/approvals",
-	},
+	// {
+	// 	title: "Approvals",
+	// 	icon: <ShieldCheckIcon />,
+	// 	url: "/dashboard/approvals",
+	// },
 	{ title: "Room Management", icon: <HotelIcon />, url: "/dashboard/rooms" },
 	{
 		title: "Reservations",

@@ -2,7 +2,10 @@
 
 import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { useSetAtom } from "jotai";
-import { type PropsWithChildren, useEffect } from "react";
+import { type PropsWithChildren, useEffect, useLayoutEffect } from "react";
+
+const useIsomorphicLayoutEffect =
+	typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function BreadCrumbWrapper({
 	breadcrumbs,
@@ -15,9 +18,8 @@ export function BreadCrumbWrapper({
 }>) {
 	const setBreadcrumb = useSetAtom(breadcrumbAtom);
 
-	useEffect(() => {
+	useIsomorphicLayoutEffect(() => {
 		setBreadcrumb(breadcrumbs);
-		return () => setBreadcrumb(null);
 	}, [setBreadcrumb, breadcrumbs]);
 
 	return <>{children}</>;

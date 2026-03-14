@@ -33,7 +33,7 @@ export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
 					query: {
 						page: query.page < 1 ? query.page : query.page - 1,
 						size: query.size,
-						sort: "lastPaymentDate,desc",
+						sort: "createdAt,desc",
 					},
 					auth: { type: "Bearer", token },
 					signal,

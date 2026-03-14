@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryState, parseAsIndex } from "nuqs";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -102,6 +103,7 @@ export function LaundryOrdersPage({
 	paginationMeta,
 	breadcrumbs,
 }: LaundryOrdersPageProps) {
+	const router = useRouter();
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -109,7 +111,7 @@ export function LaundryOrdersPage({
 	const [editOrderData, setEditOrderData] = useState<any>(null);
 	const [isEditOpen, setIsEditOpen] = useState(false);
 	const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
-	const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+	const [paymentOrder, setPaymentOrder] = useState<{ id: string; balanceDue: number } | null>(null);
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
 	const canEdit = (status: string) =>
@@ -348,7 +350,7 @@ export function LaundryOrdersPage({
 																{order.balanceDue > 0 && (
 																	<DropdownMenuItem
 																		onClick={() => {
-																			setPaymentOrderId(order.id);
+																			setPaymentOrder({ id: order.id, balanceDue: order.balanceDue });
 																			setIsPaymentOpen(true);
 																		}}
 																	>
@@ -400,11 +402,13 @@ export function LaundryOrdersPage({
 				/>
 			)}
 
-			{paymentOrderId && (
+			{paymentOrder && (
 				<LaundryPaymentDialog
-					orderId={paymentOrderId}
+					orderId={paymentOrder.id}
+					balanceDue={paymentOrder.balanceDue}
 					open={isPaymentOpen}
 					onOpenChange={setIsPaymentOpen}
+					onSuccess={() => router.refresh()}
 				/>
 			)}
 		</BreadCrumbWrapper>
