@@ -3717,9 +3717,14 @@ export const schema = createSchema({
 		params: z.object({ hotelId: z.string(), staffId: z.string() }),
 		input: z.object({
 			reason: z.string().nonempty(),
-			fromDate: z.coerce.date(), // yyyy-mm-dd
-			toDate: z.coerce.date(), // yyyy-mm-dd
+			sendEmail: z.boolean().optional(),
 		}),
+		output: ApiResponseObject.extend({
+			data: z.string(),
+		}),
+	},
+	"@patch/api/managers/:hotelId/:staffId/reactivate": {
+		params: z.object({ hotelId: z.string(), staffId: z.string() }),
 		output: ApiResponseObject.extend({
 			data: z.string(),
 		}),

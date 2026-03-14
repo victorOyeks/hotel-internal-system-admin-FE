@@ -294,8 +294,7 @@ export async function suspendStaffAccount(
 	staffId: string,
 	payload: {
 		reason: string;
-		fromDate: string; // yyyy-mm-dd
-		toDate: string; // yyyy-mm-dd
+		sendEmail: boolean;
 	},
 ): ServerActionResponseFromEndpoint<"@patch/api/managers/:hotelId/:staffId/suspend"> {
 	const sessionData = await verifySession();
@@ -327,6 +326,48 @@ export async function suspendStaffAccount(
 		return {
 			success: false,
 			error: error.message || "Failed to suspend staff account",
+		};
+	}
+
+	return {
+		success: true,
+		data,
+	};
+}
+
+export async function reactivateStaffAccount(
+	staffId: string,
+	sendEmail: boolean = true,
+): ServerActionResponseFromEndpoint<"@patch/api/managers/:hotelId/:staffId/reactivate"> {
+	const sessionData = await verifySession();
+	if (!isManager(sessionData.roles)) {
+		return {
+			success: false,
+			error: "Unauthorized",
+		};
+	}
+	const currentHotel = await getManagerCurrentHotel();
+
+	if (!currentHotel) {
+		return {
+			success: false,
+			error: "No hotel found for the manager",
+		};
+	}
+
+	const { data, error } = await $fetch(
+		"@patch/api/managers/:hotelId/:staffId/reactivate",
+		{
+			params: { hotelId: currentHotel.id, staffId },
+			query: { sendEmail },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (error) {
+		return {
+			success: false,
+			error: error.message || "Failed to reactivate staff account",
 		};
 	}
 

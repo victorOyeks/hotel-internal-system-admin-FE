@@ -64,6 +64,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 
 type LaundryPaymentDialogProps = {
 	orderId: string;
+	balanceDue?: number;
 	trigger?: React.ReactNode;
 	onSuccess?: () => void;
 	open?: boolean;
@@ -72,6 +73,7 @@ type LaundryPaymentDialogProps = {
 
 export function LaundryPaymentDialog({
 	orderId,
+	balanceDue,
 	trigger,
 	onSuccess,
 	open: controlledOpen,
@@ -85,7 +87,7 @@ export function LaundryPaymentDialog({
 	const form = useForm<PaymentFormData>({
 		resolver: zodResolver(paymentSchema),
 		defaultValues: {
-			amount: undefined,
+			amount: balanceDue ?? undefined,
 			method: "CASH",
 			type: "FULL_PAYMENT",
 			reference: "",
@@ -166,6 +168,17 @@ export function LaundryPaymentDialog({
 											value={field.value ?? ""}
 										/>
 									</FormControl>
+									{balanceDue != null && (
+										<p className="text-xs text-muted-foreground">
+											Balance due:{" "}
+											<span className="font-medium">
+												{balanceDue.toLocaleString("en-NG", {
+													style: "currency",
+													currency: "NGN",
+												})}
+											</span>
+										</p>
+									)}
 									<FormMessage />
 								</FormItem>
 							)}

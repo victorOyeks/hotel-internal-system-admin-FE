@@ -331,6 +331,20 @@ export async function getRentalItemMaintenanceHistory(itemId: string) {
 	}
 }
 
+export async function createRentalItem(payload: Record<string, unknown>) {
+	try {
+		const session = await verifySession();
+		const response = await $fetch("@post/api/hotels/rentals/items", {
+			body: payload,
+			auth: { type: "Bearer", token: session.token },
+			throw: true,
+		});
+		return { success: true as const, data: response.data };
+	} catch (error) {
+		return { success: false as const, error: parseError(error) };
+	}
+}
+
 export async function updateRentalItem(itemId: string, payload: Record<string, unknown>) {
 	try {
 		const session = await verifySession();
