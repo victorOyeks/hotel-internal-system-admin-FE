@@ -26,6 +26,7 @@ function ExpendituresPage({ searchParams }: PageProps) {
             queryKey: ["financials", "expenditures", cookieData.userId, query],
             queryFn: () => getExpenditures({
                 search: query.search || undefined,
+                status: query.status || undefined,
                 startDate: query.startDate || undefined,
                 endDate: query.endDate || undefined,
                 page: query.page,

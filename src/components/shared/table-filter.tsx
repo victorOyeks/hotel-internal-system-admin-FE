@@ -35,7 +35,7 @@ export function TableFilter({
 				align="end"
 				side="bottom"
 				sideOffset={16}
-				className="p-2 rounded-xl w-auto bg-white min-w-sm"
+				className="p-3 rounded-xl w-auto bg-white min-w-[260px]"
 			>
 				{children}
 			</PopoverContent>

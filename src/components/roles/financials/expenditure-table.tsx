@@ -51,6 +51,7 @@ import {
 import { useState, useMemo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/shared/date-picker";
 import { CreateExpenditureModal } from "./create-expenditure-modal";
 import { updateExpenditureStatus } from "@/lib/financials-actions";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
@@ -293,7 +294,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
         status: parseAsString,
         startDate: parseAsString,
         endDate: parseAsString,
-    });
+    }, { shallow: false, clearOnDefault: true });
     const [filterOpen, setFilterOpen] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
@@ -436,16 +437,17 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
 
                         <div className="flex items-center gap-2">
                             <TableFilter open={filterOpen} setOpen={setFilterOpen} count={(filters.status ? 1 : 0) + (filters.startDate ? 1 : 0) + (filters.endDate ? 1 : 0)}>
-                                <div className="flex flex-col gap-y-4 w-[280px]">
+                                <div className="flex flex-col gap-y-3">
                                     <div className="space-y-2">
                                         <h4 className="font-medium leading-none">Status</h4>
                                         <Select
                                             value={filters.status ?? "all"}
-                                            onValueChange={(value) =>
+                                            onValueChange={(value) => {
                                                 setFilters({
                                                     status: value === "all" ? null : value,
-                                                })
-                                            }
+                                                });
+                                                setPagination({ pageIndex: 0 });
+                                            }}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="All statuses" />
@@ -461,27 +463,35 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                                     </div>
                                     <div className="space-y-2">
                                         <h4 className="font-medium leading-none">Start Date</h4>
-                                        <input
-                                            type="date"
-                                            value={filters.startDate ?? ""}
-                                            onChange={(e) => setFilters({ startDate: e.target.value || null })}
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        <DatePicker
+                                            initialDate={filters.startDate ?? ""}
+                                            placeholder="Select start date"
+                                            onChange={(date) => {
+                                                setFilters({ startDate: date || null });
+                                                setPagination({ pageIndex: 0 });
+                                            }}
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <h4 className="font-medium leading-none">End Date</h4>
-                                        <input
-                                            type="date"
-                                            value={filters.endDate ?? ""}
-                                            onChange={(e) => setFilters({ endDate: e.target.value || null })}
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary"
+                                        <DatePicker
+                                            initialDate={filters.endDate ?? ""}
+                                            placeholder="Select end date"
+                                            minDate={filters.startDate ? new Date(filters.startDate) : undefined}
+                                            onChange={(date) => {
+                                                setFilters({ endDate: date || null });
+                                                setPagination({ pageIndex: 0 });
+                                            }}
                                         />
                                     </div>
-                                    <div className="flex items-center justify-between border-t pt-4">
+                                    <div className="flex items-center justify-between border-t pt-3">
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setFilters({ status: null, startDate: null, endDate: null })}
+                                            onClick={() => {
+                                                setFilters({ status: null, startDate: null, endDate: null });
+                                                setPagination({ pageIndex: 0 });
+                                            }}
                                             className="text-muted-foreground hover:text-foreground"
                                         >
                                             Reset
@@ -499,7 +509,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                                     {filters.status && (
                                         <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
                                             {filters.status}
-                                            <button type="button" onClick={() => setFilters({ status: null })} className="hover:text-foreground">
+                                            <button type="button" onClick={() => { setFilters({ status: null }); setPagination({ pageIndex: 0 }); }} className="hover:text-foreground">
                                                 <XIcon className="h-3 w-3" />
                                             </button>
                                         </span>
@@ -507,7 +517,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                                     {filters.startDate && (
                                         <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
                                             From: {filters.startDate}
-                                            <button type="button" onClick={() => setFilters({ startDate: null })} className="hover:text-foreground">
+                                            <button type="button" onClick={() => { setFilters({ startDate: null }); setPagination({ pageIndex: 0 }); }} className="hover:text-foreground">
                                                 <XIcon className="h-3 w-3" />
                                             </button>
                                         </span>
@@ -515,7 +525,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                                     {filters.endDate && (
                                         <span className="inline-flex items-center gap-1 bg-primary-5/10 px-2 py-1 rounded-md font-medium">
                                             To: {filters.endDate}
-                                            <button type="button" onClick={() => setFilters({ endDate: null })} className="hover:text-foreground">
+                                            <button type="button" onClick={() => { setFilters({ endDate: null }); setPagination({ pageIndex: 0 }); }} className="hover:text-foreground">
                                                 <XIcon className="h-3 w-3" />
                                             </button>
                                         </span>
