@@ -72,11 +72,11 @@ export const hotelOwnerLinks = [
 
 export const managerOwnerLinks = [
 	{ title: "Home", icon: <HomeIcon />, url: "/dashboard" },
-	// {
-	// 	title: "Approvals",
-	// 	icon: <ShieldCheckIcon />,
-	// 	url: "/dashboard/approvals",
-	// },
+	{
+		title: "Approvals",
+		icon: <ShieldCheckIcon />,
+		url: "/dashboard/approvals",
+	},
 	{ title: "Room Management", icon: <HotelIcon />, url: "/dashboard/rooms" },
 	{
 		title: "Reservations",

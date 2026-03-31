@@ -90,7 +90,9 @@ import {
 	updateBarItem,
 	deleteFoodItem,
 	deleteBarItem,
+	restockRequest,
 } from "@/lib/restaurant-actions";
+import { PackagePlusIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 import { FileUploadLoader } from "@/components/shared/file-upload-loader";
@@ -1024,11 +1026,134 @@ function EditItemForm({
 	);
 }
 
+// ==================== RESTOCK REQUEST DIALOG ====================
+
+const restockSchema = z.object({
+	quantity: z
+		.number({ invalid_type_error: "Enter a number" })
+		.int("Must be a whole number")
+		.positive("Must be at least 1"),
+	reason: z.string().min(1, "Reason is required"),
+});
+
+function RestockRequestDialog({
+	item,
+	open,
+	setOpen,
+}: {
+	item: FoodDrinkItem;
+	open: boolean;
+	setOpen: (v: boolean) => void;
+}) {
+	const form = useForm({
+		resolver: zodResolver(restockSchema),
+		defaultValues: { quantity: 1, reason: "" },
+	});
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof restockSchema>) => {
+			const res = await restockRequest({
+				barItemId: item.id,
+				quantity: data.quantity,
+			});
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+		onSuccess: (msg) => {
+			form.reset();
+			setOpen(false);
+			toast.success("Restock request submitted", {
+				description:
+					msg ??
+					"The manager will review and approve before stock is updated.",
+			});
+		},
+		onError: (err: Error) => {
+			toast.error("Failed to submit request", { description: err.message });
+		},
+	});
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent>
+				<DialogTitle className="flex items-center gap-2">
+					<PackagePlusIcon className="h-5 w-5 text-primary" />
+					Request Restock — {item.name}
+				</DialogTitle>
+				<DialogDescription>
+					This will notify the manager. Stock will only be updated after
+					approval.
+				</DialogDescription>
+				<Form {...form}>
+					<form
+						className="space-y-4"
+						onSubmit={form.handleSubmit((data) => mutate(data))}
+					>
+						<FormField
+							control={form.control}
+							name="quantity"
+							render={() => (
+								<FormItem>
+									<FormLabel>Quantity to Add</FormLabel>
+									<FormControl>
+										<Input
+											type="number"
+											min="1"
+											placeholder="e.g. 24"
+											{...form.register("quantity", { valueAsNumber: true })}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="reason"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>
+										Reason <span className="text-red-500">*</span>
+									</FormLabel>
+									<FormControl>
+										<Input
+											placeholder="e.g. New delivery from supplier, replacing damaged stock..."
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<div className="flex gap-2 justify-end pt-1">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setOpen(false)}
+								disabled={isPending}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={isPending}>
+								{isPending && (
+									<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+								)}
+								Submit Request
+							</Button>
+						</div>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 // ==================== ITEM ACTIONS CELL (UNCHANGED) ====================
 
 function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 	const [editOpen, setEditOpen] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [restockOpen, setRestockOpen] = useState(false);
 
 	const { mutate: deleteItem, isPending: isDeleting } = useMutation({
 		mutationFn: async () => {
@@ -1052,6 +1177,14 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 
 	return (
 		<>
+			{item.itemType === "DRINK" && (
+				<RestockRequestDialog
+					item={item}
+					open={restockOpen}
+					setOpen={setRestockOpen}
+				/>
+			)}
+
 			<Dialog open={editOpen} onOpenChange={setEditOpen}>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -1063,6 +1196,18 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 						<DialogTrigger asChild>
 							<DropdownMenuItem>Edit Item</DropdownMenuItem>
 						</DialogTrigger>
+						{item.itemType === "DRINK" && (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									onSelect={() => setRestockOpen(true)}
+									className="text-primary"
+								>
+									<PackagePlusIcon className="h-4 w-4 mr-2" />
+									Request Restock
+								</DropdownMenuItem>
+							</>
+						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 
@@ -1180,6 +1325,19 @@ const columns = [
 		cell: (info) => (
 			<span className="font-medium">{info.getValue().toLocaleString()}</span>
 		),
+	}),
+	columnHelper.accessor("quantity", {
+		header: "Stock Qty",
+		cell: (info) => {
+			const item = info.row.original;
+			if (item.itemType !== "DRINK") return <span className="text-muted-foreground">—</span>;
+			const qty = info.getValue();
+			return (
+				<span className={cn("font-medium tabular-nums", qty === 0 ? "text-red-500" : qty != null && qty <= 5 ? "text-amber-500" : "")}>
+					{qty ?? 0}
+				</span>
+			);
+		},
 	}),
 	columnHelper.accessor("inStock", {
 		header: "Status",

@@ -55,6 +55,20 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type OrderRequest, placeOrder } from "@/lib/restaurant-actions";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { Badge } from "@/components/ui/badge";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { PrinterIcon } from "lucide-react";
+import {
+	type ReceiptData,
+	printCustomerReceipt,
+	printKitchenTicket,
+} from "@/lib/receipt-printer";
 
 type FoodItemAPIResponse =
 	APIOutput<"@get/api/restaurants/items/all">["data"][number];
@@ -702,15 +716,18 @@ export function OrderPage({
 	foodItems,
 	currentBookings,
 	destinations,
+	hotelName,
 }: {
 	foodItems: MenuItem[];
 	currentBookings: CurrentBooking[];
 	destinations: Destination[];
+	hotelName: string;
 }) {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [isCartOpen, setIsCartOpen] = useState(false);
+	const [printReceipt, setPrintReceipt] = useState<ReceiptData | null>(null);
 	const [searchQuery, setSearchQuery] = useQueryState(
 		"search",
 		parseAsString.withDefault("").withOptions({
@@ -770,7 +787,7 @@ export function OrderPage({
 
 			return response.data;
 		},
-		onSuccess: (message) => {
+		onSuccess: ({ message, orderId }) => {
 			toast.success(message, {
 				description: `Total Amount: ${formatCurrency(cartSummary.total)}`,
 			});
@@ -778,15 +795,34 @@ export function OrderPage({
 				queryClient.invalidateQueries({ queryKey: ["folio", orderDetails.bookingId] });
 			}
 			queryClient.invalidateQueries({ queryKey: ["restaurant", "orders"] });
-			setCart([]);
-			setOrderDetails({
-				destinationId: "",
-				bookingId: undefined,
-				orderItems: [],
-				note: undefined,
+
+			// Build receipt data from current cart snapshot before clearing
+			const destinationName =
+				destinations.find((d) => d.id === orderDetails.destinationId)?.name ??
+				orderDetails.destinationId;
+
+			setPrintReceipt({
+				hotelName,
+				orderId,
+				destination: destinationName,
+				items: cart.map((item) => ({
+					name: item.name,
+					quantity: item.quantity,
+					price: item.price,
+					rate: item.rate,
+					note: item.note,
+					itemType: item.itemType,
+				})),
+				total: cartSummary.total,
+				note: orderDetails.note,
+				isPaid: orderDetails.isPaid,
+				paymentMethod: orderDetails.paymentMethod,
+				paymentReference: orderDetails.paymentReference,
+				guestBookingId: orderDetails.bookingId,
+				printedAt: new Date(),
 			});
+
 			setIsCartOpen(false);
-			router.push("/dashboard/orders");
 		},
 		onError: (error: Error) => {
 			toast.error(error.message || "Failed to place order");
@@ -847,6 +883,19 @@ export function OrderPage({
 	const clearCart = () => {
 		setCart([]);
 		toast.success("Cart cleared");
+	};
+
+	// Called after print dialog is dismissed — clear state and navigate
+	const handlePrintDone = () => {
+		setPrintReceipt(null);
+		setCart([]);
+		setOrderDetails({
+			destinationId: "",
+			bookingId: undefined,
+			orderItems: [],
+			note: undefined,
+		});
+		router.push("/dashboard/orders");
 	};
 
 	// Place order
@@ -957,6 +1006,74 @@ export function OrderPage({
 					<MenuGrid items={filteredItems} onAddToCart={addToCart} />
 				</div>
 			</div>
+
+			{/* Print Receipt Dialog */}
+			<Dialog open={!!printReceipt} onOpenChange={(open) => { if (!open) handlePrintDone(); }}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<PrinterIcon className="h-5 w-5" />
+							Order Placed — Print Receipts
+						</DialogTitle>
+						<DialogDescription>
+							Your order has been placed successfully. Print a customer receipt
+							and/or a kitchen ticket below.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-3 py-2">
+						{/* Customer Receipt */}
+						<div className="border rounded-lg p-4">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="font-medium text-sm">Customer Receipt</p>
+									<p className="text-xs text-muted-foreground mt-0.5">
+										Full receipt with item prices, totals, and payment status.
+										Give this to the customer.
+									</p>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									className="shrink-0"
+									onClick={() => printReceipt && printCustomerReceipt(printReceipt)}
+								>
+									<PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
+									Print
+								</Button>
+							</div>
+						</div>
+
+						{/* Kitchen Ticket */}
+						<div className="border rounded-lg p-4">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<p className="font-medium text-sm">Kitchen Ticket</p>
+									<p className="text-xs text-muted-foreground mt-0.5">
+										Items and instructions only — no prices. Send this to the
+										kitchen/bar for preparation.
+									</p>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									className="shrink-0"
+									onClick={() => printReceipt && printKitchenTicket(printReceipt)}
+								>
+									<PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
+									Print
+								</Button>
+							</div>
+						</div>
+					</div>
+
+					<DialogFooter>
+						<Button onClick={handlePrintDone} className="w-full sm:w-auto">
+							Done
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

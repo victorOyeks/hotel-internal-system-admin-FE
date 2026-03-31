@@ -42,15 +42,48 @@ function ApprovalsPage() {
 		},
 	});
 
+	const historyPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "approvals", "history", id],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/manager/approvals/history", {
+				query: { hotelId: id, size: 50 },
+				auth,
+				throw: true,
+			});
+			return res.data.content;
+		},
+	});
+
+	// Fetch ALL bar restock requests (pending + history combined)
+	const barRestockAllPromise = queryClient.ensureQueryData({
+		queryKey: ["manager", "approvals", "bar-restock-all", id],
+		queryFn: async () => {
+			const res = await $fetch("@get/api/restaurants/bar-restock-requests", {
+				query: { size: 200, hotelId: id },
+				auth,
+				throw: true,
+			});
+			return res.data.content;
+		},
+	});
+
 	// Await all in parallel
 	const summaryData = use(summaryPromise);
 	const pendingData = use(pendingPromise);
+	const historyData = use(historyPromise);
+	const barRestockAll = use(barRestockAllPromise);
+
+	const barRestockPending = barRestockAll.filter((r) => r.status === "PENDING");
+	const barRestockHistory = barRestockAll.filter((r) => r.status !== "PENDING");
 
 	return (
 		<Approvals
 			breadcrumbs={breadcrumbs}
 			summaryData={summaryData}
 			pendingData={pendingData}
+			historyData={historyData}
+			barRestockData={barRestockPending}
+			barRestockHistory={barRestockHistory}
 			hotelId={id}
 		/>
 	);

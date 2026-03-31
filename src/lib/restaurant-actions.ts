@@ -129,7 +129,7 @@ export interface OrderRequest {
 
 export async function placeOrder(
 	payload: OrderRequest,
-): ServerActionResponse<string> {
+): ServerActionResponse<{ message: string; orderId?: string }> {
 	const sessionData = await verifySession("RESTAURANT");
 	const response = await $fetch("@post/api/restaurants/restaurant-orders", {
 		body: payload,
@@ -143,9 +143,14 @@ export async function placeOrder(
 		};
 	}
 
+	// Extract the order customId from the API response if available
+	const orderId =
+		// biome-ignore lint/suspicious/noExplicitAny: API response shape not fully typed
+		(response.data as any)?.data?.customId as string | undefined;
+
 	return {
 		success: true,
-		data: "Order placed successfully",
+		data: { message: "Order placed successfully", orderId },
 	};
 }
 

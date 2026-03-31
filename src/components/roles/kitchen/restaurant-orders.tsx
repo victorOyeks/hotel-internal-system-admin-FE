@@ -52,7 +52,9 @@ import {
 	RotateCcwIcon,
 	CalendarIcon,
 	LinkIcon,
+	PrinterIcon,
 } from "lucide-react";
+import { printCustomerReceipt, printKitchenTicket } from "@/lib/receipt-printer";
 import {
 	createParser,
 	parseAsInteger,
@@ -110,6 +112,7 @@ type OrderItem =
 type RestaurantOrdersPageProps = {
 	orders: OrderItem[];
 	paginationMeta: Pagination;
+	hotelName: string;
 	breadcrumbs: {
 		title: string;
 		breadcrumbs: Array<{ label: string; href: string }>;
@@ -120,6 +123,7 @@ export function RestaurantOrdersPage({
 	orders,
 	paginationMeta,
 	breadcrumbs,
+	hotelName,
 }: RestaurantOrdersPageProps) {
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
@@ -141,7 +145,7 @@ export function RestaurantOrdersPage({
 					</Link>
 				</div>
 				<KitchenToolbar />
-				<Orders orders={orders} pagination={paginationMeta} />
+				<Orders orders={orders} pagination={paginationMeta} hotelName={hotelName} />
 			</div>
 		</BreadCrumbWrapper>
 	);
@@ -794,10 +798,12 @@ function RecordPaymentForm({
 
 function OrderDetailSheet({
 	order,
+	hotelName,
 	onPaymentRecorded,
 	onOrderUpdated,
 }: {
 	order: OrderItem;
+	hotelName: string;
 	onPaymentRecorded?: () => void;
 	onOrderUpdated?: (updated: OrderItem) => void;
 }) {
@@ -850,7 +856,64 @@ function OrderDetailSheet({
 				</SheetDescription>
 			</SheetHeader>
 
-			<ScrollArea className="h-[calc(100vh-120px)] px-4">
+			{/* Print Actions */}
+			<div className="flex gap-2 px-4 pb-2 pt-1 border-b">
+				<Button
+					variant="outline"
+					size="sm"
+					className="flex-1 text-xs"
+					onClick={() =>
+						printCustomerReceipt({
+							hotelName,
+							orderId: order.customId,
+							destination: order.destination,
+							items: order.orderItems.map((item) => ({
+								name: item.itemName,
+								quantity: item.quantity,
+								price: item.price,
+								itemType: item.itemType,
+							})),
+							total: order.totalAmount,
+							note: order.note,
+							isPaid: (order.amountRemaining ?? order.totalAmount) <= 0,
+							paymentMethod: order.paymentMethod ?? undefined,
+							paymentReference: order.paymentReference ?? undefined,
+							guestBookingId: order.bookingId ?? undefined,
+							printedAt: new Date(),
+						})
+					}
+				>
+					<PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
+					Customer Receipt
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					className="flex-1 text-xs"
+					onClick={() =>
+						printKitchenTicket({
+							hotelName,
+							orderId: order.customId,
+							destination: order.destination,
+							items: order.orderItems.map((item) => ({
+								name: item.itemName,
+								quantity: item.quantity,
+								price: item.price,
+								itemType: item.itemType,
+							})),
+							total: order.totalAmount,
+							note: order.note,
+							isPaid: (order.amountRemaining ?? order.totalAmount) <= 0,
+							printedAt: new Date(),
+						})
+					}
+				>
+					<PrinterIcon className="h-3.5 w-3.5 mr-1.5" />
+					Kitchen Ticket
+				</Button>
+			</div>
+
+			<ScrollArea className="h-[calc(100vh-160px)] px-4">
 				<div className="space-y-4 pb-6">
 					{/* Order Status */}
 					<div className="bg-gray-50 rounded-lg p-4">
@@ -1081,9 +1144,11 @@ function OrderDetailSheet({
 function Orders({
 	orders,
 	pagination,
+	hotelName,
 }: {
 	orders: OrderItem[];
 	pagination: Pagination;
+	hotelName: string;
 }) {
 	const [localPagination, setLocalPagination] = useQueryState(
 		"page",
@@ -1143,6 +1208,7 @@ function Orders({
 				>
 					<OrderDetailSheet
 						order={orderDetailState}
+						hotelName={hotelName}
 						onPaymentRecorded={() => setOrderDetailState(null)}
 						onOrderUpdated={(updated) => setOrderDetailState(updated)}
 					/>

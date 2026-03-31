@@ -3,6 +3,7 @@ import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
+import { getUser } from "@/lib/dal";
 import {
 	createLoader,
 	parseAsString,
@@ -31,6 +32,8 @@ function Page({ searchParams }: PageProps) {
 	const cookieData = use(getCookieData())!;
 	const queryClient = getQueryClient();
 	const params = use(loadSearchParams(searchParams));
+	const user = use(getUser());
+	const hotelName = user?.hotels?.[0]?.name ?? "Hospio360";
 
 	const foodItems = use(
 		queryClient.ensureQueryData({
@@ -101,6 +104,7 @@ function Page({ searchParams }: PageProps) {
 				foodItems={foodItems}
 				currentBookings={currentBookings}
 				destinations={destinations}
+				hotelName={hotelName}
 			/>
 		</BreadCrumbWrapper>
 	);

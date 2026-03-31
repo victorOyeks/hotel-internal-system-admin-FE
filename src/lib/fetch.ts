@@ -4311,6 +4311,7 @@ export const schema = createSchema({
 				endDate: z.iso.date().nullable(),
 				page: z.coerce.number().default(0),
 				size: z.coerce.number().default(10),
+				hotelId: z.string().nullable(),
 			})
 			.partial(),
 		output: ApiResponseObject.extend({
@@ -4322,6 +4323,7 @@ export const schema = createSchema({
 						barItemCustomId: z.string(),
 						barItemName: z.string(),
 						requestedQuantity: z.number(),
+						currentStock: z.number(),
 						status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
 						requestedBy: z.string(),
 						requestedAt: z.coerce.date(),
@@ -4405,6 +4407,7 @@ export const schema = createSchema({
 					price: z.number(),
 					itemType: z.enum(["DRINK", "FOOD"]),
 					inStock: z.boolean(),
+					quantity: z.number().nullable().optional(),
 					createdAt: z.coerce.date(),
 					updatedAt: z.coerce.date(),
 				})
@@ -5700,7 +5703,7 @@ export const schema = createSchema({
 	},
 	"@post/api/inventories/review-bar-restock/:requestId": {
 		params: z.object({ requestId: z.string() }),
-		query: z.object({ status: z.string().optional().nullable() }).partial(),
+		query: z.object({ status: z.string().optional().nullable(), hotelId: z.string().optional().nullable() }).partial(),
 		output: ApiResponseObject,
 	},
 	"@post/api/inventories/stock/issue": {

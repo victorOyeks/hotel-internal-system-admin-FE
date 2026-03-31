@@ -483,6 +483,35 @@ export async function rejectRequest(
 	return { success: true, data: { message: "Request rejected successfully" } };
 }
 
+export async function reviewBarRestockRequest(
+	requestId: string,
+	status: "APPROVED" | "REJECTED",
+	hotelId: string,
+): ServerActionResponse<string> {
+	const { sessionData } = await getManagerContext();
+
+	const { error } = await $fetch(
+		"@post/api/inventories/review-bar-restock/:requestId",
+		{
+			params: { requestId },
+			query: { status, hotelId },
+			auth: { type: "Bearer", token: sessionData.token },
+		},
+	);
+
+	if (error) {
+		return {
+			success: false,
+			error: error.message || `Failed to ${status.toLowerCase()} restock request`,
+		};
+	}
+
+	return {
+		success: true,
+		data: `Restock request ${status === "APPROVED" ? "approved" : "rejected"} successfully`,
+	};
+}
+
 // ==================== OPERATIONS DATA FETCHING ====================
 
 export async function getOperationsRestaurantSummary() {

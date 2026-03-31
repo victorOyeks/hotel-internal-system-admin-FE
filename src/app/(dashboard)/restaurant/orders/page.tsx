@@ -3,6 +3,7 @@ import { $fetch } from "@/lib/fetch";
 import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
+import { getUser } from "@/lib/dal";
 import {
 	createLoader,
 	parseAsString,
@@ -36,6 +37,8 @@ export default function RestaurantOrdersPageRoute({
 }: PageProps) {
 	const { token } = use(getCookieData())!;
 	const query = use(loadSearchParams(searchParams));
+	const user = use(getUser());
+	const hotelName = user?.hotels?.[0]?.name ?? "Hospio360";
 	const qc = getQueryClient();
 
 	const { content: orders, ...paginationMeta } = use(
@@ -66,6 +69,7 @@ export default function RestaurantOrdersPageRoute({
 			orders={orders}
 			paginationMeta={paginationMeta}
 			breadcrumbs={breadcrumbs}
+			hotelName={hotelName}
 		/>
 	);
 }
