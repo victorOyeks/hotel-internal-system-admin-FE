@@ -79,6 +79,7 @@ import {
 	cancelReservation,
 	checkInGuest,
 	checkOutGuest,
+	getBookingFolioSummary,
 	getBookingPayments,
 	recordPayment,
 	updateBooking,
@@ -116,13 +117,15 @@ const successDialogAtom = atom({
 function ChangeBookingStatus({
 	booking,
 	onClose,
+	initialStatus,
 }: {
 	booking?: BookingViewResponse;
 	onClose?: () => void;
+	initialStatus?: BookingStatus;
 }) {
 	const queryClient = useQueryClient();
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
-	const [selectedStatus, setSelectedStatus] = useState<BookingStatus | "">("");
+	const [selectedStatus, setSelectedStatus] = useState<BookingStatus | "">(initialStatus ?? "");
 	const [notes, setNotes] = useState("");
 	const [optionalFields, setOptionalFields] = useState<{
 		finalAmountPaid?: number;
@@ -207,6 +210,23 @@ function ChangeBookingStatus({
 		statusOptions.find((option) => option.value === currentStatus)?.label ||
 		currentStatus?.replaceAll("_", " ").toLowerCase();
 
+	// Fetch live folio balance so the payment summary reflects all posted charges —
+	// including any nights the nightly scheduler may have missed.
+	const { data: folioSummary, isLoading: folioLoading } = useQuery({
+		queryKey: ["folio-summary", booking?.id],
+		queryFn: async () => {
+			const result = await getBookingFolioSummary({ bookingId: booking!.id });
+			if (!result.success) throw new Error(result.error);
+			return result.data;
+		},
+		enabled: !!booking?.id && currentStatus === "CHECKED_IN",
+		staleTime: 0,
+	});
+
+	const liveBalance = folioSummary?.balance ?? booking?.amountRemaining ?? 0;
+	const liveTotalCharges = folioSummary?.totalCharges ?? booking?.totalAmountDue ?? 0;
+	const liveTotalPayments = folioSummary?.totalPayments ?? booking?.amountPaid ?? 0;
+
 	const { isPending, mutate } = useMutation({
 		mutationFn: async () => {
 			if (!selectedStatus) return;
@@ -285,7 +305,7 @@ function ChangeBookingStatus({
 					// For other payment types (INSTALLMENT, DEPOSIT, OTHER), just record payment without checkout
 					if (
 						optionalFields.paymentType === "FINAL" ||
-						booking?.amountRemaining === 0
+						liveBalance === 0
 					) {
 						const response = await checkOutGuest({
 							roomId: booking?.roomId!,
@@ -343,12 +363,14 @@ function ChangeBookingStatus({
 	return (
 		<DialogContent className="p-6 rounded-2xl max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden">
 			<DialogTitle className="text-xl font-semibold">
-				Change Booking Status
+				{initialStatus === "CHECKED_OUT" ? "Check Out Guest" : "Change Booking Status"}
 			</DialogTitle>
 			<DialogDescription className="text-gray-600">
-				{statusOptions.length > 0
-					? "Update the status of this booking following the hotel workflow."
-					: "View booking details and current status."}
+				{initialStatus === "CHECKED_OUT"
+					? "Review the final bill and complete the check-out for this guest."
+					: statusOptions.length > 0
+						? "Update the status of this booking following the hotel workflow."
+						: "View booking details and current status."}
 			</DialogDescription>
 
 			<div className="space-y-2">
@@ -380,23 +402,27 @@ function ChangeBookingStatus({
 							<div className="pt-2 border-t border-gray-200">
 								<div className="flex justify-between text-sm">
 									<span className="text-gray-600">Balance:</span>
-									<span
-										className={`font-medium ${booking.amountRemaining > 0
-											? "text-amber-600"
-											: "text-green-600"
-											}`}
-									>
-										{formatCurrency(booking.amountRemaining)}
-										{booking.amountRemaining > 0 && " due"}
-									</span>
+									{folioLoading ? (
+										<span className="text-gray-400 text-xs">Calculating…</span>
+									) : (
+										<span
+											className={`font-medium ${liveBalance > 0
+												? "text-amber-600"
+												: "text-green-600"
+												}`}
+										>
+											{formatCurrency(liveBalance)}
+											{liveBalance > 0 && " due"}
+										</span>
+									)}
 								</div>
 							</div>
 						)}
 					</div>
 				)}
 
-				{/* Status Selection */}
-				<div className="space-y-3">
+				{/* Status Selection — hidden when opened directly from the Check Out action */}
+				{!initialStatus && <div className="space-y-3">
 					<Label htmlFor="status-select" className="text-sm font-medium">
 						New Status
 					</Label>
@@ -428,7 +454,7 @@ function ChangeBookingStatus({
 							No status changes available for this booking
 						</div>
 					)}
-				</div>
+				</div>}
 
 				{/* Status Change Warning */}
 				{selectedStatus && selectedStatus !== currentStatus && (
@@ -481,44 +507,48 @@ function ChangeBookingStatus({
 							<h4 className="font-medium text-blue-900 text-sm">
 								Payment Summary
 							</h4>
-							<div className="space-y-1 text-sm">
-								<div className="flex justify-between">
-									<span className="text-blue-700">Total Amount Due:</span>
-									<span className="font-medium text-blue-900">
-										{formatCurrency(booking.totalAmountDue)}
-									</span>
+							{folioLoading ? (
+								<p className="text-xs text-blue-600">Calculating charges…</p>
+							) : (
+								<div className="space-y-1 text-sm">
+									<div className="flex justify-between">
+										<span className="text-blue-700">Total Amount Due:</span>
+										<span className="font-medium text-blue-900">
+											{formatCurrency(liveTotalCharges)}
+										</span>
+									</div>
+									<div className="flex justify-between">
+										<span className="text-blue-700">Amount Paid:</span>
+										<span className="font-medium text-blue-900">
+											{formatCurrency(liveTotalPayments)}
+										</span>
+									</div>
+									<div className="flex justify-between pt-2 border-t border-blue-200">
+										<span className="text-blue-700 font-medium">
+											Amount Remaining:
+										</span>
+										<span
+											className={`font-bold ${liveBalance > 0
+												? "text-red-600"
+												: "text-green-600"
+												}`}
+										>
+											{formatCurrency(liveBalance)}
+										</span>
+									</div>
 								</div>
-								<div className="flex justify-between">
-									<span className="text-blue-700">Amount Paid:</span>
-									<span className="font-medium text-blue-900">
-										{formatCurrency(booking.amountPaid)}
-									</span>
-								</div>
-								<div className="flex justify-between pt-2 border-t border-blue-200">
-									<span className="text-blue-700 font-medium">
-										Amount Remaining:
-									</span>
-									<span
-										className={`font-bold ${booking.amountRemaining > 0
-											? "text-red-600"
-											: "text-green-600"
-											}`}
-									>
-										{formatCurrency(booking.amountRemaining)}
-									</span>
-								</div>
-							</div>
+							)}
 						</div>
 
 						{/* Outstanding Balance Alert */}
-						{booking.amountRemaining > 0 && (
+						{liveBalance > 0 && (
 							<Alert variant="warning">
 								<AlertCircleIcon className="h-4 w-4" />
 								<AlertDescription>
 									<p>
 										Guest has an outstanding balance of{" "}
 										<span className="font-medium">
-											{formatCurrency(booking.amountRemaining)}
+											{formatCurrency(liveBalance)}
 										</span>
 										. You can record a payment now or check out and collect later.
 									</p>
@@ -527,7 +557,7 @@ function ChangeBookingStatus({
 						)}
 
 						{/* Payment Fields */}
-						{booking.amountRemaining > 0 && (
+						{liveBalance > 0 && (
 							<>
 								<div className="space-y-2">
 									<Label
@@ -541,7 +571,7 @@ function ChangeBookingStatus({
 										type="number"
 										step="0.01"
 										min="0"
-										max={booking.amountRemaining}
+										max={liveBalance}
 										value={optionalFields.finalAmountPaid || ""}
 										onChange={(e) =>
 											setOptionalFields((prev) => ({
@@ -549,14 +579,11 @@ function ChangeBookingStatus({
 												finalAmountPaid: Number(e.target.value),
 											}))
 										}
-										placeholder={`Enter amount (Max: ${formatCurrency(
-											booking.amountRemaining,
-										)})`}
+										placeholder={`Enter amount (Max: ${formatCurrency(liveBalance)})`}
 										className="w-full"
 									/>
 									{optionalFields.finalAmountPaid !== undefined &&
-										optionalFields.finalAmountPaid !==
-										booking.amountRemaining && (
+										optionalFields.finalAmountPaid !== liveBalance && (
 											<p className="text-xs text-amber-600">
 												Note: Amount entered (
 												{formatCurrency(optionalFields.finalAmountPaid)}) is
@@ -651,7 +678,7 @@ function ChangeBookingStatus({
 							</>
 						)}
 
-						{booking.amountRemaining === 0 && (
+						{liveBalance === 0 && (
 							<Alert variant="success">
 								<CheckIcon className="h-4 w-4" />
 								<AlertDescription>
@@ -1701,22 +1728,42 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 					</Dialog>
 				)}
 
-				<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
-					<DialogTrigger asChild>
-						<DropdownMenuItem
-							onSelect={(e) => {
-								e.preventDefault();
-							}}
-						>
-							<EditIcon className="mr-2 h-4 w-4" />
-							Update Status
-						</DropdownMenuItem>
-					</DialogTrigger>
-					<ChangeBookingStatus
-						booking={booking}
-						onClose={() => setOpenStatusDialog(false)}
-					/>
-				</Dialog>
+				{booking.bookingStatus === "CHECKED_IN" ? (
+					<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
+						<DialogTrigger asChild>
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.preventDefault();
+								}}
+							>
+								<EditIcon className="mr-2 h-4 w-4" />
+								Check Out
+							</DropdownMenuItem>
+						</DialogTrigger>
+						<ChangeBookingStatus
+							booking={booking}
+							onClose={() => setOpenStatusDialog(false)}
+							initialStatus="CHECKED_OUT"
+						/>
+					</Dialog>
+				) : (
+					<Dialog open={openStatusDialog} onOpenChange={setOpenStatusDialog}>
+						<DialogTrigger asChild>
+							<DropdownMenuItem
+								onSelect={(e) => {
+									e.preventDefault();
+								}}
+							>
+								<EditIcon className="mr-2 h-4 w-4" />
+								Update Status
+							</DropdownMenuItem>
+						</DialogTrigger>
+						<ChangeBookingStatus
+							booking={booking}
+							onClose={() => setOpenStatusDialog(false)}
+						/>
+					</Dialog>
+				)}
 
 				<Dialog
 					open={openPaymentHistory}

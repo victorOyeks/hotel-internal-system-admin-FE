@@ -498,6 +498,31 @@ export async function voidFolioEntry({
 	return { success: true, data: response.data };
 }
 
+export async function getBookingFolioSummary({
+	bookingId,
+}: {
+	bookingId: string;
+}): ServerActionResponseFromEndpoint<"@get/api/front-desks/bookings/:bookingId/folio/summary"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch(
+		"@get/api/front-desks/bookings/:bookingId/folio/summary",
+		{
+			params: { bookingId },
+			auth: { type: "Bearer", token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to fetch folio summary",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
 export async function exportFolioPdf({
 	bookingId,
 }: {
