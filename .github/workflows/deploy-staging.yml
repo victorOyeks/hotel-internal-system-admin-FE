@@ -82,8 +82,13 @@ jobs:
             tar -xzf standalone.tar.gz -C current
             rm -f standalone.tar.gz
 
-            # Restart service
-            sudo systemctl restart his-fe-staging.service
+            # Stop service and force-release the port before starting fresh
+            sudo systemctl stop his-fe-staging.service
+            sleep 2
+            sudo fuser -k 3001/tcp 2>/dev/null || true
+
+            # Start service
+            sudo systemctl start his-fe-staging.service
             sleep 5
 
             # Check if service started successfully
@@ -92,7 +97,9 @@ jobs:
               if [ -d previous ]; then
                 rm -rf current
                 mv previous current
-                sudo systemctl restart his-fe-staging.service
+                sudo systemctl stop his-fe-staging.service
+                sudo fuser -k 3001/tcp 2>/dev/null || true
+                sudo systemctl start his-fe-staging.service
               fi
               exit 1
             fi

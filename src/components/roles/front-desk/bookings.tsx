@@ -220,7 +220,7 @@ function ChangeBookingStatus({
 			return result.data;
 		},
 		enabled: !!booking?.id && currentStatus === "CHECKED_IN",
-		staleTime: 0,
+		staleTime: 60_000,
 	});
 
 	const liveBalance = folioSummary?.balance ?? booking?.amountRemaining ?? 0;
