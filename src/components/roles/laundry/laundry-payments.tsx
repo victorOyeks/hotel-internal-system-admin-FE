@@ -38,9 +38,16 @@ type LaundryOrderSummary = {
 	hasIssues: boolean;
 };
 
+type LaundryPaymentStats = {
+	totalBilled: number;
+	totalRevenue: number;
+	outstandingAmount: number;
+};
+
 type LaundryPaymentsPageProps = {
 	orders: LaundryOrderSummary[];
 	paginationMeta: Pagination;
+	stats: LaundryPaymentStats;
 	breadcrumbs: {
 		title: string;
 		breadcrumbs: Array<{ label: string; href: string }>;
@@ -68,6 +75,7 @@ function formatCurrency(amount: number) {
 export function LaundryPaymentsPage({
 	orders,
 	paginationMeta,
+	stats,
 	breadcrumbs,
 }: LaundryPaymentsPageProps) {
 	const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -80,10 +88,6 @@ export function LaundryPaymentsPage({
 			o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
 			o.customerName.toLowerCase().includes(search.toLowerCase()),
 	);
-
-	const totalAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-	const totalPaid = orders.reduce((sum, o) => sum + o.amountPaid, 0);
-	const totalOutstanding = orders.reduce((sum, o) => sum + o.balanceDue, 0);
 
 	return (
 		<BreadCrumbWrapper breadcrumbs={breadcrumbs}>
@@ -105,7 +109,7 @@ export function LaundryPaymentsPage({
 						</div>
 						<div>
 							<p className="text-xs text-muted-foreground">Total Billed</p>
-							<p className="text-lg font-bold">{formatCurrency(totalAmount)}</p>
+							<p className="text-lg font-bold">{formatCurrency(stats.totalBilled)}</p>
 						</div>
 					</div>
 					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
@@ -115,7 +119,7 @@ export function LaundryPaymentsPage({
 						<div>
 							<p className="text-xs text-muted-foreground">Total Paid</p>
 							<p className="text-lg font-bold text-green-600">
-								{formatCurrency(totalPaid)}
+								{formatCurrency(stats.totalRevenue)}
 							</p>
 						</div>
 					</div>
@@ -126,7 +130,7 @@ export function LaundryPaymentsPage({
 						<div>
 							<p className="text-xs text-muted-foreground">Outstanding</p>
 							<p className="text-lg font-bold text-orange-600">
-								{formatCurrency(totalOutstanding)}
+								{formatCurrency(stats.outstandingAmount)}
 							</p>
 						</div>
 					</div>

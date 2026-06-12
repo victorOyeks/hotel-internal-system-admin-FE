@@ -39,7 +39,23 @@ export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
 					signal,
 					throw: true,
 				});
-				return response.data;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return response.data as any;
+			},
+		}),
+	);
+
+	const stats = use(
+		qc.ensureQueryData({
+			queryKey: ["laundry", "dashboard", "stats"],
+			queryFn: async ({ signal }) => {
+				const response = await $fetch("@get/api/hotels/laundry/dashboard/stats", {
+					auth: { type: "Bearer", token },
+					signal,
+					throw: true,
+				});
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return response.data as any;
 			},
 		}),
 	);
@@ -49,6 +65,7 @@ export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
 			orders={orders}
 			paginationMeta={paginationMeta}
 			breadcrumbs={breadcrumbs}
+			stats={stats}
 		/>
 	);
 }
