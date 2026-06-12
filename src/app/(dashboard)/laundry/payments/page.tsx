@@ -25,22 +25,21 @@ export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
 	const query = use(loadSearchParams(searchParams));
 	const qc = getQueryClient();
 
-	const { content: orders, ...paginationMeta } = use(
+	const { content: payments, ...paginationMeta } = use(
 		qc.ensureQueryData({
 			queryKey: ["laundry", "payments", query],
 			queryFn: async ({ signal }) => {
-				const response = await $fetch("@get/api/hotels/laundry/orders", {
+				const response = await $fetch("@get/api/hotels/laundry/payments", {
 					query: {
 						page: query.page < 1 ? query.page : query.page - 1,
 						size: query.size,
-						sort: "createdAt,desc",
 					},
 					auth: { type: "Bearer", token },
 					signal,
 					throw: true,
 				});
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return response.data as any;
+				return (response as any).data as any;
 			},
 		}),
 	);
@@ -62,7 +61,7 @@ export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
 
 	return (
 		<LaundryPaymentsPage
-			orders={orders}
+			payments={payments}
 			paginationMeta={paginationMeta}
 			breadcrumbs={breadcrumbs}
 			stats={stats}
