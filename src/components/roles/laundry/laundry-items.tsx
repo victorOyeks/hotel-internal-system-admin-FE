@@ -14,7 +14,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLaundryItems } from "@/lib/laundry-actions";
 import { LaundryItemDialog } from "./laundry-item-dialog";
@@ -110,6 +110,7 @@ export function LaundryItemsPage({
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+	const [selectedStatus, setSelectedStatus] = useState<"active" | "inactive" | null>(null);
 
 	const { data: items = initialItems } = useQuery({
 		queryKey: ["laundry", "items"],
@@ -142,7 +143,10 @@ export function LaundryItemsPage({
 				.includes(searchQuery.toLowerCase());
 		const matchesCategory =
 			!selectedCategory || item.category === selectedCategory;
-		return matchesSearch && matchesCategory;
+		const matchesStatus =
+			!selectedStatus ||
+			(selectedStatus === "active" ? item.active : !item.active);
+		return matchesSearch && matchesCategory && matchesStatus;
 	});
 
 	return (
@@ -164,7 +168,15 @@ export function LaundryItemsPage({
 
 				{/* Summary Stats */}
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+					<button
+						onClick={() => setSelectedStatus(null)}
+						className={cn(
+							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
+							selectedStatus === null
+								? "ring-2 ring-blue-500 border-blue-300"
+								: "hover:border-gray-300",
+						)}
+					>
 						<div className="p-2 bg-blue-50 rounded-lg">
 							<ShirtIcon className="w-4 h-4 text-blue-600" />
 						</div>
@@ -175,8 +187,18 @@ export function LaundryItemsPage({
 								{stats.categories} categories
 							</p>
 						</div>
-					</div>
-					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+					</button>
+					<button
+						onClick={() =>
+							setSelectedStatus(selectedStatus === "active" ? null : "active")
+						}
+						className={cn(
+							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
+							selectedStatus === "active"
+								? "ring-2 ring-green-500 border-green-300"
+								: "hover:border-gray-300",
+						)}
+					>
 						<div className="p-2 bg-green-50 rounded-lg">
 							<CheckCircle2Icon className="w-4 h-4 text-green-600" />
 						</div>
@@ -187,8 +209,20 @@ export function LaundryItemsPage({
 								Available services
 							</p>
 						</div>
-					</div>
-					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
+					</button>
+					<button
+						onClick={() =>
+							setSelectedStatus(
+								selectedStatus === "inactive" ? null : "inactive",
+							)
+						}
+						className={cn(
+							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
+							selectedStatus === "inactive"
+								? "ring-2 ring-red-500 border-red-300"
+								: "hover:border-gray-300",
+						)}
+					>
 						<div className="p-2 bg-red-50 rounded-lg">
 							<XCircleIcon className="w-4 h-4 text-red-600" />
 						</div>
@@ -199,7 +233,7 @@ export function LaundryItemsPage({
 								Disabled items
 							</p>
 						</div>
-					</div>
+					</button>
 					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-purple-50 rounded-lg">
 							<ShirtIcon className="w-4 h-4 text-purple-600" />
@@ -215,10 +249,24 @@ export function LaundryItemsPage({
 				{/* Table */}
 				<Card>
 					<CardHeader className="pb-3">
-						<div className="flex items-center justify-between">
-							<CardTitle className="text-lg">
-								Service Items ({filteredItems.length})
-							</CardTitle>
+						<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center gap-2 min-w-0">
+								<CardTitle className="text-lg shrink-0">
+									Service Items ({filteredItems.length})
+								</CardTitle>
+								{(selectedStatus || selectedCategory) && (
+									<button
+										onClick={() => {
+											setSelectedStatus(null);
+											setSelectedCategory(null);
+										}}
+										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+									>
+										<XIcon className="w-3 h-3" />
+										Clear filters
+									</button>
+								)}
+							</div>
 							<div className="relative">
 								<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
 								<Input
@@ -229,39 +277,66 @@ export function LaundryItemsPage({
 								/>
 							</div>
 						</div>
-						{categories.length > 1 && (
-							<div className="flex flex-wrap gap-1.5 pt-2">
+						<div className="flex flex-wrap gap-1.5 pt-2">
+							<button
+								onClick={() => setSelectedCategory(null)}
+								className={cn(
+									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+									!selectedCategory
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-muted-foreground hover:bg-muted/80",
+								)}
+							>
+								All
+							</button>
+							{categories.map((cat) => (
 								<button
-									onClick={() => setSelectedCategory(null)}
+									key={cat}
+									onClick={() =>
+										setSelectedCategory(
+											selectedCategory === cat ? null : cat,
+										)
+									}
 									className={cn(
 										"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-										!selectedCategory
+										selectedCategory === cat
 											? "bg-primary text-primary-foreground"
 											: "bg-muted text-muted-foreground hover:bg-muted/80",
 									)}
 								>
-									All
+									{categoryLabels[cat] || cat}
 								</button>
-								{categories.map((cat) => (
-									<button
-										key={cat}
-										onClick={() =>
-											setSelectedCategory(
-												selectedCategory === cat ? null : cat,
-											)
-										}
-										className={cn(
-											"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-											selectedCategory === cat
-												? "bg-primary text-primary-foreground"
-												: "bg-muted text-muted-foreground hover:bg-muted/80",
-										)}
-									>
-										{categoryLabels[cat] || cat}
-									</button>
-								))}
-							</div>
-						)}
+							))}
+							<span className="w-px bg-border self-stretch mx-0.5" />
+							<button
+								onClick={() =>
+									setSelectedStatus(selectedStatus === "active" ? null : "active")
+								}
+								className={cn(
+									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+									selectedStatus === "active"
+										? "bg-green-600 text-white"
+										: "bg-muted text-muted-foreground hover:bg-muted/80",
+								)}
+							>
+								Active
+							</button>
+							<button
+								onClick={() =>
+									setSelectedStatus(
+										selectedStatus === "inactive" ? null : "inactive",
+									)
+								}
+								className={cn(
+									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+									selectedStatus === "inactive"
+										? "bg-gray-500 text-white"
+										: "bg-muted text-muted-foreground hover:bg-muted/80",
+								)}
+							>
+								Inactive
+							</button>
+						</div>
 					</CardHeader>
 					<CardContent>
 						{filteredItems.length === 0 ? (
