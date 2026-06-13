@@ -338,7 +338,7 @@ export function LaundryItemsPage({
 								<ShirtIcon className="w-10 h-10 mx-auto mb-3 opacity-50" />
 								<p className="font-medium">No laundry items found</p>
 								<p className="text-sm mt-1">
-									{searchQuery || selectedCategory
+									{searchQuery || appliedFilters.category || appliedFilters.status
 										? "Try adjusting your search or filter"
 										: "Add your first laundry item to get started"}
 								</p>
