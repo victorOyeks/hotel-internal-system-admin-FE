@@ -14,8 +14,17 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { SearchIcon, ShirtIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import { TableFilter } from "@/components/shared/table-filter";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { getLaundryItems } from "@/lib/laundry-actions";
 import { LaundryItemDialog } from "./laundry-item-dialog";
 import { LaundryBulkUploadDialog } from "./laundry-bulk-upload-dialog";
@@ -109,8 +118,12 @@ export function LaundryItemsPage({
 	const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-	const [selectedStatus, setSelectedStatus] = useState<"active" | "inactive" | null>(null);
+	const [filterOpen, setFilterOpen] = useState(false);
+	const [appliedFilters, setAppliedFilters] = useState<{
+		category: string | null;
+		status: string | null;
+	}>({ category: null, status: null });
+	const [localFilters, setLocalFilters] = useState(appliedFilters);
 
 	const { data: items = initialItems } = useQuery({
 		queryKey: ["laundry", "items"],
@@ -135,6 +148,19 @@ export function LaundryItemsPage({
 		return Array.from(cats).sort();
 	}, [items]);
 
+	const activeFilterCount = [appliedFilters.category, appliedFilters.status].filter(Boolean).length;
+
+	const applyFilters = () => {
+		setAppliedFilters(localFilters);
+		setFilterOpen(false);
+	};
+
+	const clearFilters = () => {
+		const cleared = { category: null, status: null };
+		setLocalFilters(cleared);
+		setAppliedFilters(cleared);
+	};
+
 	const filteredItems = items.filter((item) => {
 		const matchesSearch =
 			item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,10 +168,10 @@ export function LaundryItemsPage({
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase());
 		const matchesCategory =
-			!selectedCategory || item.category === selectedCategory;
+			!appliedFilters.category || item.category === appliedFilters.category;
 		const matchesStatus =
-			!selectedStatus ||
-			(selectedStatus === "active" ? item.active : !item.active);
+			!appliedFilters.status ||
+			(appliedFilters.status === "active" ? item.active : !item.active);
 		return matchesSearch && matchesCategory && matchesStatus;
 	});
 
@@ -168,15 +194,7 @@ export function LaundryItemsPage({
 
 				{/* Summary Stats */}
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-					<button
-						onClick={() => setSelectedStatus(null)}
-						className={cn(
-							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
-							selectedStatus === null
-								? "ring-2 ring-blue-500 border-blue-300"
-								: "hover:border-gray-300",
-						)}
-					>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-blue-50 rounded-lg">
 							<ShirtIcon className="w-4 h-4 text-blue-600" />
 						</div>
@@ -187,18 +205,8 @@ export function LaundryItemsPage({
 								{stats.categories} categories
 							</p>
 						</div>
-					</button>
-					<button
-						onClick={() =>
-							setSelectedStatus(selectedStatus === "active" ? null : "active")
-						}
-						className={cn(
-							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
-							selectedStatus === "active"
-								? "ring-2 ring-green-500 border-green-300"
-								: "hover:border-gray-300",
-						)}
-					>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-green-50 rounded-lg">
 							<CheckCircle2Icon className="w-4 h-4 text-green-600" />
 						</div>
@@ -209,20 +217,8 @@ export function LaundryItemsPage({
 								Available services
 							</p>
 						</div>
-					</button>
-					<button
-						onClick={() =>
-							setSelectedStatus(
-								selectedStatus === "inactive" ? null : "inactive",
-							)
-						}
-						className={cn(
-							"bg-white border rounded-xl p-3 flex items-center gap-3 text-left transition-all",
-							selectedStatus === "inactive"
-								? "ring-2 ring-red-500 border-red-300"
-								: "hover:border-gray-300",
-						)}
-					>
+					</div>
+					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-red-50 rounded-lg">
 							<XCircleIcon className="w-4 h-4 text-red-600" />
 						</div>
@@ -233,7 +229,7 @@ export function LaundryItemsPage({
 								Disabled items
 							</p>
 						</div>
-					</button>
+					</div>
 					<div className="bg-white border rounded-xl p-3 flex items-center gap-3">
 						<div className="p-2 bg-purple-50 rounded-lg">
 							<ShirtIcon className="w-4 h-4 text-purple-600" />
@@ -250,92 +246,90 @@ export function LaundryItemsPage({
 				<Card>
 					<CardHeader className="pb-3">
 						<div className="flex items-center justify-between gap-3">
-							<div className="flex items-center gap-2 min-w-0">
-								<CardTitle className="text-lg shrink-0">
-									Service Items ({filteredItems.length})
-								</CardTitle>
-								{(selectedStatus || selectedCategory) && (
-									<button
-										onClick={() => {
-											setSelectedStatus(null);
-											setSelectedCategory(null);
-										}}
-										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-									>
-										<XIcon className="w-3 h-3" />
-										Clear filters
-									</button>
-								)}
-							</div>
-							<div className="relative">
-								<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-								<Input
-									placeholder="Search items..."
-									className="pl-10 w-64"
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-								/>
-							</div>
-						</div>
-						<div className="flex flex-wrap gap-1.5 pt-2">
-							<button
-								onClick={() => setSelectedCategory(null)}
-								className={cn(
-									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-									!selectedCategory
-										? "bg-primary text-primary-foreground"
-										: "bg-muted text-muted-foreground hover:bg-muted/80",
-								)}
-							>
-								All
-							</button>
-							{categories.map((cat) => (
-								<button
-									key={cat}
-									onClick={() =>
-										setSelectedCategory(
-											selectedCategory === cat ? null : cat,
-										)
-									}
-									className={cn(
-										"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-										selectedCategory === cat
-											? "bg-primary text-primary-foreground"
-											: "bg-muted text-muted-foreground hover:bg-muted/80",
-									)}
+							<CardTitle className="text-lg">
+								Service Items ({filteredItems.length})
+							</CardTitle>
+							<div className="flex items-center gap-2">
+								<div className="relative">
+									<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+									<Input
+										placeholder="Search items..."
+										className="pl-10 w-64"
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+									/>
+								</div>
+								<TableFilter
+									open={filterOpen}
+									setOpen={(open) => {
+										setFilterOpen(open);
+										if (open) setLocalFilters(appliedFilters);
+									}}
+									count={activeFilterCount}
 								>
-									{categoryLabels[cat] || cat}
-								</button>
-							))}
-							<span className="w-px bg-border self-stretch mx-0.5" />
-							<button
-								onClick={() =>
-									setSelectedStatus(selectedStatus === "active" ? null : "active")
-								}
-								className={cn(
-									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-									selectedStatus === "active"
-										? "bg-green-600 text-white"
-										: "bg-muted text-muted-foreground hover:bg-muted/80",
-								)}
-							>
-								Active
-							</button>
-							<button
-								onClick={() =>
-									setSelectedStatus(
-										selectedStatus === "inactive" ? null : "inactive",
-									)
-								}
-								className={cn(
-									"px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-									selectedStatus === "inactive"
-										? "bg-gray-500 text-white"
-										: "bg-muted text-muted-foreground hover:bg-muted/80",
-								)}
-							>
-								Inactive
-							</button>
+									<div className="w-72 space-y-4 p-1">
+										<div className="flex items-center justify-between border-b pb-2">
+											<h4 className="font-semibold text-sm">Filter Items</h4>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={clearFilters}
+												className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+											>
+												Clear all
+											</Button>
+										</div>
+										<div className="space-y-2">
+											<Label>Category</Label>
+											<Select
+												value={localFilters.category || "all"}
+												onValueChange={(val) =>
+													setLocalFilters((prev) => ({
+														...prev,
+														category: val === "all" ? null : val,
+													}))
+												}
+											>
+												<SelectTrigger>
+													<SelectValue placeholder="All Categories" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="all">All Categories</SelectItem>
+													{categories.map((cat) => (
+														<SelectItem key={cat} value={cat}>
+															{categoryLabels[cat] || cat}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+										<div className="space-y-2">
+											<Label>Status</Label>
+											<Select
+												value={localFilters.status || "all"}
+												onValueChange={(val) =>
+													setLocalFilters((prev) => ({
+														...prev,
+														status: val === "all" ? null : val,
+													}))
+												}
+											>
+												<SelectTrigger>
+													<SelectValue placeholder="All Statuses" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="all">All Statuses</SelectItem>
+													<SelectItem value="active">Active</SelectItem>
+													<SelectItem value="inactive">Inactive</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+										<Button className="w-full" onClick={applyFilters}>
+											Apply Filters
+										</Button>
+									</div>
+								</TableFilter>
+							</div>
 						</div>
 					</CardHeader>
 					<CardContent>
