@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/sheet";
 import { useState, useMemo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/shared/date-picker";
 import { CreateExpenditureModal } from "./create-expenditure-modal";
@@ -301,6 +302,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const statusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string; status: "PENDING" | "APPROVED" | "PAID" | "REJECTED" }) => {
@@ -314,7 +316,8 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
             };
             toast.success(`Expenditure ${labels[variables.status] ?? "updated"} successfully`);
             queryClient.invalidateQueries({ queryKey: ["financials"] });
-            revalidateRoute("/dashboard/expenditures")
+            revalidateRoute("/dashboard/expenditures");
+            router.refresh();
         },
         onError: (error) => {
             toast.error(error instanceof Error ? error.message : "Failed to update expenditure status");

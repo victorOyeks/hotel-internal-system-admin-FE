@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateExpenditureStatus } from "@/lib/financials-actions";
 
@@ -45,6 +46,7 @@ function daysOverdue(dueDate: string | null | undefined): number {
 export function OverdueExpendituresList({ items }: { items: Expenditure[] }) {
     const totalOverdue = items.reduce((sum, item) => sum + item.amount, 0);
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const markAsPaidMutation = useMutation({
         mutationFn: (id: string) => updateExpenditureStatus(id, "PAID"),
@@ -52,6 +54,7 @@ export function OverdueExpendituresList({ items }: { items: Expenditure[] }) {
             toast.success("Expenditure marked as paid");
             queryClient.invalidateQueries({ queryKey: ["financials"] });
             queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+            router.refresh();
         },
         onError: (error) => {
             toast.error(error instanceof Error ? error.message : "Failed to mark as paid");

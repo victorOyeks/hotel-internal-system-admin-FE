@@ -30,6 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -215,6 +216,7 @@ interface CreateExpenditureModalProps {
 
 export function CreateExpenditureModal({ open, onOpenChange }: CreateExpenditureModalProps) {
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const form = useForm({
         resolver: zodResolver(schema),
@@ -259,6 +261,7 @@ export function CreateExpenditureModal({ open, onOpenChange }: CreateExpenditure
             queryClient.invalidateQueries({ queryKey: ["financials", "expenditures"] });
             onOpenChange(false);
             form.reset();
+            router.refresh();
         },
         onError: (error) => {
             toast.error(error instanceof Error ? error.message : "Failed to record expenditure");
