@@ -28,6 +28,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { updateExpenditureStatus } from "@/lib/financials-actions";
 
 const columnHelper = createColumnHelper<Expenditure>();
 
@@ -38,81 +42,103 @@ function daysOverdue(dueDate: string | null | undefined): number {
     return Math.max(0, Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-const columns = [
-    columnHelper.accessor("dueDate", {
-        header: "Due Date",
-        cell: (info) => {
-            const val = info.getValue();
-            if (!val) return "-";
-            return new Date(val).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "2-digit",
-            });
-        },
-    }),
-    columnHelper.display({
-        id: "daysOverdue",
-        header: "Days Overdue",
-        cell: ({ row }) => {
-            const days = daysOverdue(row.original.dueDate);
-            return (
-                <Badge variant={days > 30 ? "destructive" : "secondary"}>
-                    {days}d
-                </Badge>
-            );
-        },
-    }),
-    columnHelper.accessor("title", {
-        header: "Title",
-        cell: (info) => <div className="font-medium">{info.getValue() ?? "-"}</div>,
-    }),
-    columnHelper.accessor("vendorName", {
-        header: "Vendor",
-        cell: (info) => info.getValue() ?? "-",
-    }),
-    columnHelper.accessor("category", {
-        header: "Category",
-        cell: (info) => info.getValue(),
-    }),
-    columnHelper.accessor("invoiceNumber", {
-        header: "Invoice #",
-        cell: (info) => info.getValue() ?? "-",
-    }),
-    columnHelper.accessor("amount", {
-        header: "Amount",
-        cell: (info) => {
-            const amount = parseFloat(info.getValue() as unknown as string);
-            return <div className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(amount)}</div>;
-        },
-    }),
-    columnHelper.display({
-        id: "actions",
-        cell: ({ row }) => (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem
-                        onClick={() => navigator.clipboard.writeText(row.original.id)}
-                    >
-                        Copy ID
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-green-600">Mark as Paid</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        ),
-    }),
-];
-
 export function OverdueExpendituresList({ items }: { items: Expenditure[] }) {
     const totalOverdue = items.reduce((sum, item) => sum + item.amount, 0);
+    const queryClient = useQueryClient();
+
+    const markAsPaidMutation = useMutation({
+        mutationFn: (id: string) => updateExpenditureStatus(id, "PAID"),
+        onSuccess: () => {
+            toast.success("Expenditure marked as paid");
+            queryClient.invalidateQueries({ queryKey: ["financials"] });
+            queryClient.invalidateQueries({ queryKey: ["expenditures"] });
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Failed to mark as paid");
+        },
+    });
+
+    const columns = useMemo(
+        () => [
+            columnHelper.accessor("dueDate", {
+                header: "Due Date",
+                cell: (info) => {
+                    const val = info.getValue();
+                    if (!val) return "-";
+                    return new Date(val).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                    });
+                },
+            }),
+            columnHelper.display({
+                id: "daysOverdue",
+                header: "Days Overdue",
+                cell: ({ row }) => {
+                    const days = daysOverdue(row.original.dueDate);
+                    return (
+                        <Badge variant={days > 30 ? "destructive" : "secondary"}>
+                            {days}d
+                        </Badge>
+                    );
+                },
+            }),
+            columnHelper.accessor("title", {
+                header: "Title",
+                cell: (info) => <div className="font-medium">{info.getValue() ?? "-"}</div>,
+            }),
+            columnHelper.accessor("vendorName", {
+                header: "Vendor",
+                cell: (info) => info.getValue() ?? "-",
+            }),
+            columnHelper.accessor("category", {
+                header: "Category",
+                cell: (info) => info.getValue(),
+            }),
+            columnHelper.accessor("invoiceNumber", {
+                header: "Invoice #",
+                cell: (info) => info.getValue() ?? "-",
+            }),
+            columnHelper.accessor("amount", {
+                header: "Amount",
+                cell: (info) => {
+                    const amount = parseFloat(info.getValue() as unknown as string);
+                    return <div className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(amount)}</div>;
+                },
+            }),
+            columnHelper.display({
+                id: "actions",
+                cell: ({ row }) => (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => navigator.clipboard.writeText(row.original.id)}
+                            >
+                                Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-green-600"
+                                disabled={markAsPaidMutation.isPending}
+                                onClick={() => markAsPaidMutation.mutate(row.original.id)}
+                            >
+                                {markAsPaidMutation.isPending ? "Saving..." : "Mark as Paid"}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ),
+            }),
+        ],
+        [markAsPaidMutation],
+    );
 
     const table = useReactTable({
         data: items,
