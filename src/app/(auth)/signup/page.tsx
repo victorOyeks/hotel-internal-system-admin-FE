@@ -147,14 +147,11 @@ const formSchema = z
 			.regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number")
 			.optional()
 			.or(z.literal("")),
-		streetAddress: z
-			.string()
-			.min(1, "Street address is required")
-			.max(255),
-		city: z.string().min(1, "City is required").max(100),
-		stateProvince: z.string().min(1, "State / Province is required").max(100),
+		streetAddress: z.string().max(255).optional().or(z.literal("")),
+		city: z.string().max(100).optional().or(z.literal("")),
+		stateProvince: z.string().max(100).optional().or(z.literal("")),
 		country: z.string().min(1, "Country is required").max(100),
-		postalCode: z.string().min(1, "Postal code is required").max(20),
+		postalCode: z.string().max(20).optional().or(z.literal("")),
 		timezone: z.string().min(1, "Timezone is required"),
 		currency: z
 			.string()
@@ -664,7 +661,7 @@ function SignupPage() {
 									control={form.control}
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Street Address *</FormLabel>
+											<FormLabel>Street Address</FormLabel>
 											<FormControl>
 												<Input placeholder="123 Main Street" {...field} />
 											</FormControl>
@@ -678,7 +675,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>City *</FormLabel>
+												<FormLabel>City</FormLabel>
 												<FormControl>
 													<Input placeholder="Lagos" {...field} />
 												</FormControl>
@@ -691,7 +688,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>State / Province *</FormLabel>
+												<FormLabel>State / Province</FormLabel>
 												<FormControl>
 													<Input placeholder="Lagos State" {...field} />
 												</FormControl>
@@ -719,7 +716,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Postal Code *</FormLabel>
+												<FormLabel>Postal Code</FormLabel>
 												<FormControl>
 													<Input placeholder="100001" {...field} />
 												</FormControl>
