@@ -117,7 +117,9 @@ const formSchema = z
 			.regex(
 				/^[A-Z0-9-]{5,50}$/,
 				"5-50 uppercase letters, numbers, or hyphens",
-			),
+			)
+			.optional()
+			.or(z.literal("")),
 		businessType: z.string().min(1, "Business type is required"),
 		businessDescription: z.string().max(1000).optional(),
 		websiteUrl: z
@@ -134,10 +136,7 @@ const formSchema = z
 			.string()
 			.min(2, "Must be at least 2 characters")
 			.max(100, "Must be at most 100 characters"),
-		ownerPosition: z
-			.string()
-			.min(1, "Position is required")
-			.max(100, "Must be at most 100 characters"),
+		ownerPosition: z.string().max(100).optional().or(z.literal("")),
 		email: z.email("Invalid email address"),
 		phoneNumber: z
 			.string()
@@ -465,7 +464,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Registration Number *</FormLabel>
+												<FormLabel>Registration Number</FormLabel>
 												<FormControl>
 													<Input
 														placeholder="RC-12345"
@@ -596,7 +595,7 @@ function SignupPage() {
 										control={form.control}
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Position *</FormLabel>
+												<FormLabel>Position</FormLabel>
 												<FormControl>
 													<Input placeholder="CEO, Director..." {...field} />
 												</FormControl>
