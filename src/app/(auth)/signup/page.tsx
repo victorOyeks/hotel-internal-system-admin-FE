@@ -981,6 +981,7 @@ function SignupPage() {
 							)}
 							{isLastStep ? (
 								<Button
+									key="submit-btn"
 									type="submit"
 									form="signup-form"
 									className="flex-1 font-semibold"
@@ -994,6 +995,7 @@ function SignupPage() {
 								</Button>
 							) : (
 								<Button
+									key="next-btn"
 									type="button"
 									className="flex-1 font-semibold"
 									onClick={handleNext}
