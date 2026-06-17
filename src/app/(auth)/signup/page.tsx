@@ -337,11 +337,17 @@ function SignupPage() {
 		mutationFn: async (data: FormValues) => {
 			const payload = {
 				...data,
+				businessRegistrationNumber: data.businessRegistrationNumber || undefined,
+				ownerPosition: data.ownerPosition || undefined,
 				businessDescription: data.businessDescription || undefined,
 				websiteUrl: data.websiteUrl || undefined,
 				taxId: data.taxId || undefined,
 				vatNumber: data.vatNumber || undefined,
 				alternativePhone: data.alternativePhone || undefined,
+				streetAddress: data.streetAddress || undefined,
+				city: data.city || undefined,
+				stateProvince: data.stateProvince || undefined,
+				postalCode: data.postalCode || undefined,
 				referralCode: data.referralCode || undefined,
 				referralSource: data.referralSource || undefined,
 			};
