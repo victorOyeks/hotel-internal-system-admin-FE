@@ -42,7 +42,7 @@ import {
 	UserIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -334,6 +334,10 @@ function SignupPage() {
 		mode: "onSubmit",
 		reValidateMode: "onChange",
 	});
+
+	useEffect(() => {
+		form.clearErrors();
+	}, [step, form]);
 
 	const signupMutation = useMutation({
 		mutationKey: ["hotel-signup"],
