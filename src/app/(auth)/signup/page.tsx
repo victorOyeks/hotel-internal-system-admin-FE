@@ -159,10 +159,7 @@ const formSchema = z
 			.string()
 			.min(8, "Must be at least 8 characters")
 			.max(128)
-			.regex(
-				/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/,
-				"Must include uppercase, lowercase, number, and special character (@$!%*?&#)",
-			),
+			,
 		confirmPassword: z.string().min(1, "Please confirm your password"),
 		acceptedTerms: z.boolean().refine((v) => v, {
 			message: "You must accept the terms of service",
@@ -858,8 +855,7 @@ function SignupPage() {
 									/>
 								</div>
 								<p className="text-xs text-muted-foreground -mt-1">
-									Min 8 characters with uppercase, lowercase, number, and
-									special character
+									Minimum 8 characters
 								</p>
 
 								<div className="grid grid-cols-2 gap-3">
