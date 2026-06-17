@@ -42,7 +42,7 @@ import {
 	UserIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -335,10 +335,6 @@ function SignupPage() {
 		reValidateMode: "onChange",
 	});
 
-	useEffect(() => {
-		form.clearErrors();
-	}, [step, form]);
-
 	const signupMutation = useMutation({
 		mutationKey: ["hotel-signup"],
 		mutationFn: async (data: FormValues) => {
@@ -370,7 +366,10 @@ function SignupPage() {
 	const handleNext = useCallback(async () => {
 		const fields = STEPS[step - 1].fields as unknown as (keyof FormValues)[];
 		const valid = await form.trigger(fields);
-		if (valid) setStep((s) => s + 1);
+		if (valid) {
+			form.clearErrors();
+			setStep((s) => s + 1);
+		}
 	}, [form, step]);
 
 	const handleSubmit = useCallback(
@@ -971,7 +970,7 @@ function SignupPage() {
 								<Button
 									type="button"
 									variant="outline"
-									onClick={() => setStep((s) => s - 1)}
+									onClick={() => { form.clearErrors(); setStep((s) => s - 1); }}
 									disabled={signupMutation.isPending}
 								>
 									<ArrowLeftIcon className="mr-1 size-4" />
