@@ -331,7 +331,7 @@ export function FolioContent({
 													)
 												: ""}
 										</TableCell>
-										<TableCell className="text-right font-mono text-sm font-medium">
+										<TableCell className={`text-right font-mono text-sm font-medium ${entry.runningBalance < 0 ? "text-red-600" : "text-green-600"}`}>
 											{formatCurrency(
 												entry.runningBalance,
 											)}
@@ -433,15 +433,17 @@ export function FolioContent({
 					</div>
 				</div>
 				<div
-					className={`p-3 rounded-lg border text-center ${folio.balance > 0 ? "bg-red-50" : "bg-green-50"}`}
+					className={`p-3 rounded-lg border text-center ${folio.balance < 0 ? "bg-red-50" : "bg-green-50"}`}
 				>
 					<div className="text-xs text-muted-foreground uppercase tracking-wider">
-						Outstanding Balance
+						{folio.balance < 0 ? "Outstanding Balance" : "Credit Balance"}
 					</div>
 					<div
-						className={`text-lg font-bold font-mono ${folio.balance > 0 ? "text-red-600" : "text-green-600"}`}
+						className={`text-lg font-bold font-mono ${folio.balance < 0 ? "text-red-600" : "text-green-600"}`}
 					>
-						{formatCurrency(folio.balance)}
+						{folio.balance < 0
+							? formatCurrency(Math.abs(folio.balance))
+							: formatCurrency(folio.balance)}
 					</div>
 				</div>
 			</div>
