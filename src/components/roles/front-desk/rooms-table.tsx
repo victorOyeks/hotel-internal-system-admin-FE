@@ -25,6 +25,9 @@ import { DataTablePagination } from "@/components/shared/pagination";
 import type { Pagination, RoomDetails } from "@/lib/fetch";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
 import { RoomsTableActions } from "./rooms-table-actions";
+import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
+import { RoomGridView } from "./rooms-page";
 
 const columnHelper = createColumnHelper<RoomDetails>();
 
@@ -157,6 +160,7 @@ export function RoomsListTable({
 }) {
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const [pagination, onPaginationChange] = usePaginationSearchParams();
+	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
 	const table = useReactTable({
 		data: rooms,
@@ -176,61 +180,92 @@ export function RoomsListTable({
 	});
 
 	return (
-		<div className="overflow-hidden rounded-md border bg-card">
-			<Table>
-				<TableHeader className="bg-gray-100">
-					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
-							{headerGroup.headers.map((header) => {
-								return (
-									<TableHead key={header.id} className="text-gray-500">
-										{header.isPlaceholder
-											? null
-											: flexRender(
-												header.column.columnDef.header,
-												header.getContext(),
-											)}
-									</TableHead>
-								);
-							})}
-						</TableRow>
-					))}
-				</TableHeader>
+		<div className="space-y-3">
+			{/* Header with toggle */}
+			<div className="flex items-center justify-between">
+				<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Rooms</h2>
+				<div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setViewMode("grid")}
+						className={`h-7 w-7 p-0 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+						title="Grid view"
+					>
+						<LayoutGrid className="h-3.5 w-3.5" />
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setViewMode("list")}
+						className={`h-7 w-7 p-0 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+						title="List view"
+					>
+						<List className="h-3.5 w-3.5" />
+					</Button>
+				</div>
+			</div>
 
-				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id} className="hover:bg-gray-50">
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id} className="text-gray-600">
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
+			{viewMode === "grid" ? (
+				<RoomGridView rooms={rooms} paginationMeta={paginationMeta} table={table} />
+			) : (
+				<div className="overflow-hidden rounded-md border bg-card">
+					<Table>
+						<TableHeader className="bg-gray-100">
+							{table.getHeaderGroups().map((headerGroup) => (
+								<TableRow key={headerGroup.id}>
+									{headerGroup.headers.map((header) => {
+										return (
+											<TableHead key={header.id} className="text-gray-500">
+												{header.isPlaceholder
+													? null
+													: flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+											</TableHead>
+										);
+									})}
+								</TableRow>
+							))}
+						</TableHeader>
+
+						<TableBody>
+							{table.getRowModel().rows?.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow key={row.id} className="hover:bg-gray-50">
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id} className="text-gray-600">
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow>
+									<TableCell colSpan={columns.length} className="h-24 text-center">
+										No results.
 									</TableCell>
-								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
+								</TableRow>
+							)}
+						</TableBody>
 
-				<TableFooter>
-					<TableRow>
-						<TableCell colSpan={columns.length}>
-							<div className="w-full flex items-center justify-between">
-								<span className="text-sm text-gray-500">
-									Page {table.getState().pagination.pageIndex + 1} of{" "}
-									{table.getPageCount()}
-								</span>
-								<DataTablePagination table={table} />
-							</div>
-						</TableCell>
-					</TableRow>
-				</TableFooter>
-			</Table>
+						<TableFooter>
+							<TableRow>
+								<TableCell colSpan={columns.length}>
+									<div className="w-full flex items-center justify-between">
+										<span className="text-sm text-gray-500">
+											Page {table.getState().pagination.pageIndex + 1} of{" "}
+											{table.getPageCount()}
+										</span>
+										<DataTablePagination table={table} />
+									</div>
+								</TableCell>
+							</TableRow>
+						</TableFooter>
+					</Table>
+				</div>
+			)}
 		</div>
 	);
 }

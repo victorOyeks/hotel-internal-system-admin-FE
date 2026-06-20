@@ -3,7 +3,7 @@
 import { TableFilter } from "@/components/shared/table-filter";
 import { Button } from "@/components/ui/button";
 import type { Pagination, RoomDetails } from "@/lib/fetch";
-import { SearchIcon, RotateCcwIcon, XIcon } from "lucide-react";
+import { SearchIcon, RotateCcwIcon, XIcon, LayoutGrid, List, BedDouble, Users, Building2 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import {
 	Select,
@@ -42,6 +42,14 @@ import {
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { RoomsTableActions } from "./rooms-table-actions";
 import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
+import { STATUS_CARD_STYLES, STATUS_BADGE_STYLES } from "./room-status-styles";
+import { UnifiedBookingForm } from "./dashboard";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { exportRooms } from "@/lib/front-desk-actions";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -283,10 +291,14 @@ function RoomListToolbar({
 	table,
 	rooms,
 	isDeactivatedView,
+	viewMode,
+	onViewModeChange,
 }: {
 	table: TableType<RoomDetails>;
 	rooms: RoomDetails[];
 	isDeactivatedView: boolean;
+	viewMode: "grid" | "list";
+	onViewModeChange: (mode: "grid" | "list") => void;
 }) {
 	const [queryState, setQueryState] = useQueryStates({
 		roomStatus: parseAsString,
@@ -363,6 +375,28 @@ function RoomListToolbar({
 							</Button>
 						</div>
 					)}
+
+					{/* View mode toggle */}
+					<div className="flex items-center rounded-lg border bg-muted/40 p-0.5">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onViewModeChange("grid")}
+							className={`h-7 w-7 p-0 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+							title="Grid view"
+						>
+							<LayoutGrid className="h-3.5 w-3.5" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onViewModeChange("list")}
+							className={`h-7 w-7 p-0 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+							title="List view"
+						>
+							<List className="h-3.5 w-3.5" />
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -552,6 +586,130 @@ function RoomListTable({ table }: { table: TableType<RoomDetails> }) {
 	);
 }
 
+export { STATUS_CARD_STYLES, STATUS_BADGE_STYLES } from "./room-status-styles";
+
+export function RoomCard({ room, onBook }: { room: RoomDetails; onBook?: () => void }) {
+	const style = STATUS_CARD_STYLES[room.checkInStatus] ?? STATUS_CARD_STYLES.AVAILABLE;
+	const badgeStyle = STATUS_BADGE_STYLES[room.checkInStatus] ?? STATUS_BADGE_STYLES.AVAILABLE;
+	const statusLabel = room.checkInStatus.replace(/_/g, " ").toLowerCase();
+	const guest = room.guestDetails;
+	const showGuest = !!guest?.guestName && room.checkInStatus !== "AVAILABLE";
+	const facilities = room.roomFacility ?? [];
+	const shownFacilities = facilities.slice(0, 3);
+	const extraCount = facilities.length - shownFacilities.length;
+	const isAvailable = room.checkInStatus === "AVAILABLE";
+
+	return (
+		<div className={`rounded-xl border ${style.border} bg-card overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow ${isAvailable && onBook ? "hover:ring-2 hover:ring-green-300/60" : ""}`}>
+			{/* Card header strip */}
+			<div className={`${style.headerBg} px-4 py-3 flex items-center justify-between`}>
+				<div className="flex items-center gap-2">
+					<span className={`h-2 w-2 rounded-full ${style.dot} shrink-0`} />
+					<span className="font-bold text-base text-foreground tracking-wide">{room.roomIdentifier}</span>
+				</div>
+				<span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeStyle}`}>
+					{statusLabel}
+				</span>
+			</div>
+
+			{/* Card body — clickable for available rooms */}
+			<div
+				className={`px-4 py-3 flex-1 space-y-3 ${isAvailable && onBook ? "cursor-pointer" : ""}`}
+				onClick={isAvailable && onBook ? onBook : undefined}
+				role={isAvailable && onBook ? "button" : undefined}
+				tabIndex={isAvailable && onBook ? 0 : undefined}
+				onKeyDown={isAvailable && onBook ? (e) => { if (e.key === "Enter" || e.key === " ") onBook(); } : undefined}
+			>
+				{/* Room type + branch */}
+				<div className="flex items-center gap-2">
+					<BedDouble className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+					<span className="text-xs font-medium text-foreground">{room.roomType}</span>
+					{room.hotelName && (
+						<>
+							<span className="text-muted-foreground/40 text-xs">·</span>
+							<Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+							<span className="text-xs text-muted-foreground truncate">{room.hotelName}</span>
+						</>
+					)}
+				</div>
+
+				{/* Guest info / book CTA */}
+				{showGuest ? (
+					<div className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2">
+						<Users className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+						<div className="min-w-0">
+							<div className="flex items-center gap-1.5">
+								<span className="text-xs font-semibold text-foreground truncate">{guest!.guestName}</span>
+								{guest!.isCurrentGuest && (
+									<span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">Current</span>
+								)}
+							</div>
+							{guest!.organizationName && (
+								<span className="text-[10px] text-muted-foreground block truncate">{guest!.organizationName}</span>
+							)}
+							{guest!.bookingId && (
+								<span className="text-[9px] font-mono text-muted-foreground/70">#{guest!.bookingId.slice(-6)}</span>
+							)}
+						</div>
+					</div>
+				) : isAvailable && onBook ? (
+					<div className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-primary/70 hover:bg-primary/10 hover:text-primary transition-colors">
+						<span className="text-xs font-medium">+ Book This Room</span>
+					</div>
+				) : (
+					<div className="flex items-center gap-2 rounded-lg bg-muted/20 px-3 py-2">
+						<Users className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+						<span className="text-xs text-muted-foreground/50 italic">No guest</span>
+					</div>
+				)}
+
+				{/* Facilities */}
+				{shownFacilities.length > 0 && (
+					<div className="flex flex-wrap gap-1">
+						{shownFacilities.map((f) => (
+							<span key={f} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/50">
+								{f}
+							</span>
+						))}
+						{extraCount > 0 && (
+							<span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/50 text-muted-foreground/70 border border-border/30">
+								+{extraCount}
+							</span>
+						)}
+					</div>
+				)}
+			</div>
+
+			{/* Card footer with actions */}
+			<div className="border-t border-border/50 px-3 py-2 flex items-center justify-between bg-muted/10">
+				<span className="text-[10px] font-mono text-muted-foreground/60">{room.customId}</span>
+				<RoomsTableActions row={room} />
+			</div>
+		</div>
+	);
+}
+
+export function RoomGridView({ rooms, paginationMeta, table, onBook }: { rooms: RoomDetails[]; paginationMeta: Pagination; table: TableType<RoomDetails>; onBook?: (room: RoomDetails) => void }) {
+	return (
+		<div className="space-y-4">
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+				{rooms.length > 0 ? (
+					rooms.map((room) => <RoomCard key={room.id} room={room} onBook={onBook ? () => onBook(room) : undefined} />)
+				) : (
+					<div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
+						<BedDouble className="h-10 w-10 mb-2 opacity-30" />
+						<p className="text-sm">No rooms found</p>
+					</div>
+				)}
+			</div>
+			<div className="flex items-center justify-between text-sm text-muted-foreground">
+				<span>Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</span>
+				<DataTablePagination table={table} />
+			</div>
+		</div>
+	);
+}
+
 export function RoomPage({
 	breadcrumb,
 	paginationMeta,
@@ -567,6 +725,8 @@ export function RoomPage({
 	isDeactivatedView?: boolean;
 }) {
 	const [pagination, onPaginationChange] = usePaginationSearchParams();
+	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+	const [bookingRoom, setBookingRoom] = useState<RoomDetails | null>(null);
 
 	const columnVisibility = useMemo(() => ({
 		deactivationReason: isDeactivatedView,
@@ -598,8 +758,33 @@ export function RoomPage({
 
 	return (
 		<div className="space-y-6 px-2">
-			<RoomListToolbar table={table} rooms={rooms} isDeactivatedView={isDeactivatedView} />
-			<RoomListTable table={table} />
+			<RoomListToolbar
+				table={table}
+				rooms={rooms}
+				isDeactivatedView={isDeactivatedView}
+				viewMode={viewMode}
+				onViewModeChange={setViewMode}
+			/>
+			{viewMode === "grid" ? (
+				<RoomGridView rooms={rooms} paginationMeta={paginationMeta} table={table} onBook={setBookingRoom} />
+			) : (
+				<RoomListTable table={table} />
+			)}
+
+			{/* Quick-book dialog triggered by clicking an available room card */}
+			<Dialog open={!!bookingRoom} onOpenChange={(open) => { if (!open) setBookingRoom(null); }}>
+				<DialogContent className="max-w-2xl rounded-2xl">
+					<DialogTitle>New Booking — {bookingRoom?.roomIdentifier}</DialogTitle>
+					<DialogDescription className="sr-only">Book or reserve this room</DialogDescription>
+					{bookingRoom && (
+						<UnifiedBookingForm
+							data={{ rooms: [bookingRoom], roomTypes: [bookingRoom.roomType] }}
+							setOpen={(open) => { if (!open) setBookingRoom(null); }}
+							preselectedRoomId={bookingRoom.id}
+						/>
+					)}
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

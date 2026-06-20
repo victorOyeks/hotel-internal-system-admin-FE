@@ -1,11 +1,10 @@
 import {
 	FrontDeskStats,
 	QuickActions,
+	DashboardRoomsSection,
 } from "@/components/roles/front-desk/dashboard";
-import { RoomsListTable } from "@/components/roles/front-desk/rooms-table";
 import { BreadCrumbWrapper } from "@/components/shared/BreadCrumbWrapper";
 import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
 import { getQueryClient } from "@/lib/queries";
 import { getCookieData } from "@/lib/server-fns";
 import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
@@ -18,9 +17,6 @@ type PageProps = {
 const loadSearchParams = createLoader({
 	"room:search": parseAsString,
 	"room:type": parseAsString,
-	search: parseAsString,
-	roomType: parseAsString,
-	...paginationSearchParams,
 });
 
 function Page({ searchParams }: PageProps) {
@@ -68,17 +64,12 @@ function Page({ searchParams }: PageProps) {
 		}),
 	);
 
-	const { content, ...paginationMeta } = use(
+	const { content: dashboardRooms, totalElements } = use(
 		queryClient.ensureQueryData({
-			queryKey: ["front-desks", "rooms", query],
+			queryKey: ["front-desks", "rooms-dashboard"],
 			queryFn: async ({ signal }) => {
 				const response = await $fetch("@get/api/front-desks/rooms", {
-					query: {
-						page: query.page ? query.page - 1 : 0,
-						roomType: query.roomType,
-						search: query.search,
-						size: query.size ?? 10,
-					},
+					query: { size: 50 },
 					signal,
 					throw: true,
 					auth: { type: "Bearer", token },
@@ -118,7 +109,7 @@ function Page({ searchParams }: PageProps) {
 				</section>
 
 				<section>
-					<RoomsListTable rooms={content} paginationMeta={paginationMeta} />
+					<DashboardRoomsSection rooms={dashboardRooms} totalElements={totalElements} />
 				</section>
 			</div>
 		</BreadCrumbWrapper>

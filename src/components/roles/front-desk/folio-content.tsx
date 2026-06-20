@@ -27,10 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
-import { getBookingFolio, voidFolioEntry, exportFolioPdf } from "@/lib/front-desk-actions";
+import { getBookingFolio, voidFolioEntry, exportFolioPdf, getFolioEntryBreakdown } from "@/lib/front-desk-actions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Receipt, XCircle } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, ChevronUp, Download, Loader2, Receipt, XCircle } from "lucide-react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -76,6 +76,8 @@ const STATUS_COLORS: Record<string, string> = {
 	BALANCE_DUE: "bg-red-50 text-red-700 border-red-200",
 };
 
+const EXPANDABLE_TYPES = new Set(["RESTAURANT", "LAUNDRY", "RENTAL"]);
+
 export function FolioContent({
 	bookingId,
 	readOnly = false,
@@ -87,6 +89,13 @@ export function FolioContent({
 	const [voidReason, setVoidReason] = useState("");
 	const [voidingEntryId, setVoidingEntryId] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
+	const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+
+	const { data: breakdownResult, isLoading: breakdownLoading } = useQuery({
+		queryKey: ["folio-entry-breakdown", expandedEntryId],
+		queryFn: () => getFolioEntryBreakdown({ entryId: expandedEntryId! }),
+		enabled: !!expandedEntryId,
+	});
 
 	const action = fetchAction ?? getBookingFolio;
 	const doExport = exportAction ?? exportFolioPdf;
@@ -240,28 +249,21 @@ export function FolioContent({
 				<Table>
 					<TableHeader>
 						<TableRow className="bg-muted/50">
+							<TableHead className="w-[30px]" />
 							<TableHead className="w-[140px]">Date</TableHead>
 							<TableHead>Description</TableHead>
 							<TableHead className="w-[100px]">Type</TableHead>
-							<TableHead className="w-[120px] text-right">
-								Charge
-							</TableHead>
-							<TableHead className="w-[120px] text-right">
-								Payment
-							</TableHead>
-							<TableHead className="w-[120px] text-right">
-								Balance
-							</TableHead>
-							{!readOnly && (
-								<TableHead className="w-[60px]" />
-							)}
+							<TableHead className="w-[120px] text-right">Charge</TableHead>
+							<TableHead className="w-[120px] text-right">Payment</TableHead>
+							<TableHead className="w-[120px] text-right">Balance</TableHead>
+							{!readOnly && <TableHead className="w-[60px]" />}
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{entries.length === 0 ? (
 							<TableRow>
 								<TableCell
-									colSpan={readOnly ? 6 : 7}
+									colSpan={readOnly ? 7 : 8}
 									className="text-center text-muted-foreground py-8"
 								>
 									No folio entries yet
@@ -271,79 +273,58 @@ export function FolioContent({
 							entries.map((entry) => {
 								const isCharge = entry.amount > 0;
 								const isVoided = entry.voided;
+								const isExpandable = EXPANDABLE_TYPES.has(entry.entryType) && !isVoided && !!entry.referenceId;
+								const isExpanded = expandedEntryId === entry.id;
+								const colSpan = readOnly ? 7 : 8;
 
 								return (
-									<TableRow
-										key={entry.id}
-										className={
-											isVoided
-												? "line-through opacity-50"
-												: ""
-										}
-									>
-										<TableCell className="text-sm text-muted-foreground">
-											{new Date(
-												entry.postedAt,
-											).toLocaleDateString("en-GB", {
-												day: "2-digit",
-												month: "short",
-												year: "numeric",
-											})}
-											<div className="text-xs">
-												{new Date(
-													entry.postedAt,
-												).toLocaleTimeString("en-GB", {
-													hour: "2-digit",
-													minute: "2-digit",
-												})}
-											</div>
-										</TableCell>
-										<TableCell>
-											<div className="text-sm font-medium">
-												{entry.description}
-											</div>
-											{entry.postedBy && (
-												<div className="text-xs text-muted-foreground">
-													by {entry.postedBy}
+									<Fragment key={entry.id}>
+										<TableRow className={isVoided ? "line-through opacity-50" : ""}>
+											{/* Expand toggle */}
+											<TableCell className="p-0 pl-2">
+												{isExpandable && (
+													<button
+														onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
+														className="flex items-center justify-center h-6 w-6 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+													>
+														{isExpanded
+															? <ChevronUp className="h-3.5 w-3.5" />
+															: <ChevronDown className="h-3.5 w-3.5" />}
+													</button>
+												)}
+											</TableCell>
+											<TableCell className="text-sm text-muted-foreground">
+												{new Date(entry.postedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+												<div className="text-xs">
+													{new Date(entry.postedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
 												</div>
-											)}
-											{isVoided && entry.voidReason && (
-												<div className="text-xs text-red-500">
-													Void: {entry.voidReason}
-												</div>
-											)}
-										</TableCell>
-										<TableCell>
-											<span
-												className={`text-xs px-1.5 py-0.5 rounded border ${ENTRY_TYPE_COLORS[entry.entryType] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}
-											>
-												{ENTRY_TYPE_LABELS[
-													entry.entryType
-												] ?? entry.entryType}
-											</span>
-										</TableCell>
-										<TableCell className="text-right font-mono text-sm">
-											{isCharge
-												? formatCurrency(entry.amount)
-												: ""}
-										</TableCell>
-										<TableCell className="text-right font-mono text-sm text-green-600">
-											{!isCharge
-												? formatCurrency(
-														Math.abs(entry.amount),
-													)
-												: ""}
-										</TableCell>
-										<TableCell className={`text-right font-mono text-sm font-medium ${entry.runningBalance < 0 ? "text-red-600" : "text-green-600"}`}>
-											{formatCurrency(
-												entry.runningBalance,
-											)}
-										</TableCell>
-										{!readOnly && (
+											</TableCell>
 											<TableCell>
-												{!isVoided &&
-													entry.entryType !==
-														"ADJUSTMENT" && (
+												<div className="text-sm font-medium">{entry.description}</div>
+												{entry.postedBy && (
+													<div className="text-xs text-muted-foreground">by {entry.postedBy}</div>
+												)}
+												{isVoided && entry.voidReason && (
+													<div className="text-xs text-red-500">Void: {entry.voidReason}</div>
+												)}
+											</TableCell>
+											<TableCell>
+												<span className={`text-xs px-1.5 py-0.5 rounded border ${ENTRY_TYPE_COLORS[entry.entryType] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
+													{ENTRY_TYPE_LABELS[entry.entryType] ?? entry.entryType}
+												</span>
+											</TableCell>
+											<TableCell className="text-right font-mono text-sm">
+												{isCharge ? formatCurrency(entry.amount) : ""}
+											</TableCell>
+											<TableCell className="text-right font-mono text-sm text-green-600">
+												{!isCharge ? formatCurrency(Math.abs(entry.amount)) : ""}
+											</TableCell>
+											<TableCell className={`text-right font-mono text-sm font-medium ${entry.runningBalance < 0 ? "text-red-600" : "text-green-600"}`}>
+												{formatCurrency(entry.runningBalance)}
+											</TableCell>
+											{!readOnly && (
+												<TableCell>
+													{!isVoided && entry.entryType !== "ADJUSTMENT" && (
 														<AlertDialog
 															open={voidingEntryId === entry.id}
 															onOpenChange={(open) => {
@@ -353,9 +334,7 @@ export function FolioContent({
 																}
 															}}
 														>
-															<AlertDialogTrigger
-																asChild
-															>
+															<AlertDialogTrigger asChild>
 																<Button
 																	variant="ghost"
 																	size="sm"
@@ -367,9 +346,7 @@ export function FolioContent({
 															</AlertDialogTrigger>
 															<AlertDialogContent>
 																<AlertDialogHeader>
-																	<AlertDialogTitle>
-																		Void Folio Entry
-																	</AlertDialogTitle>
+																	<AlertDialogTitle>Void Folio Entry</AlertDialogTitle>
 																	<AlertDialogDescription>
 																		This will void the entry &quot;{entry.description}&quot; and create a reversal adjustment.
 																	</AlertDialogDescription>
@@ -383,22 +360,14 @@ export function FolioContent({
 																<AlertDialogFooter>
 																	<AlertDialogCancel
 																		disabled={isVoiding}
-																		onClick={() => {
-																			setVoidReason("");
-																			setVoidingEntryId(null);
-																		}}
+																		onClick={() => { setVoidReason(""); setVoidingEntryId(null); }}
 																	>
 																		Cancel
 																	</AlertDialogCancel>
 																	<Button
 																		variant="destructive"
 																		disabled={!voidReason.trim() || isVoiding}
-																		onClick={() =>
-																			doVoid({
-																				entryId: entry.id,
-																				reason: voidReason,
-																			})
-																		}
+																		onClick={() => doVoid({ entryId: entry.id, reason: voidReason })}
 																	>
 																		{isVoiding && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
 																		{isVoiding ? "Voiding..." : "Void Entry"}
@@ -407,9 +376,64 @@ export function FolioContent({
 															</AlertDialogContent>
 														</AlertDialog>
 													)}
-											</TableCell>
+												</TableCell>
+											)}
+										</TableRow>
+
+										{/* Inline breakdown row */}
+										{isExpanded && (
+											<TableRow className="bg-muted/20 hover:bg-muted/20">
+												<TableCell colSpan={colSpan} className="py-0 px-6">
+													<div className="py-3">
+														{breakdownLoading ? (
+															<div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+																<Loader2 className="h-3.5 w-3.5 animate-spin" />
+																Loading breakdown...
+															</div>
+														) : breakdownResult?.success && breakdownResult.data?.data?.items?.length ? (
+															<table className="w-full text-xs">
+																<thead>
+																	<tr className="text-muted-foreground border-b">
+																		<th className="text-left font-medium pb-1.5 w-[40%]">Item</th>
+																		<th className="text-left font-medium pb-1.5 w-[20%]">Category</th>
+																		<th className="text-center font-medium pb-1.5 w-[10%]">Qty</th>
+																		<th className="text-right font-medium pb-1.5 w-[15%]">Unit Price</th>
+																		<th className="text-right font-medium pb-1.5 w-[15%]">Total</th>
+																	</tr>
+																</thead>
+																<tbody>
+																	{breakdownResult.data.data.items.map((item, i) => (
+																		<tr key={i} className="border-b border-dashed border-muted last:border-0">
+																			<td className="py-1.5 pr-2">
+																				<span className="font-medium text-foreground">{item.name}</span>
+																				{item.note && <div className="text-muted-foreground text-[10px]">{item.note}</div>}
+																			</td>
+																			<td className="py-1.5 pr-2 text-muted-foreground capitalize">
+																				{item.category?.toLowerCase().replace(/_/g, " ") ?? "—"}
+																			</td>
+																			<td className="py-1.5 text-center text-muted-foreground">{item.quantity}</td>
+																			<td className="py-1.5 text-right font-mono text-muted-foreground">{formatCurrency(item.unitPrice)}</td>
+																			<td className="py-1.5 text-right font-mono font-medium">{formatCurrency(item.total)}</td>
+																		</tr>
+																	))}
+																</tbody>
+																<tfoot>
+																	<tr>
+																		<td colSpan={4} className="pt-2 text-right text-muted-foreground font-medium">Total</td>
+																		<td className="pt-2 text-right font-mono font-bold">
+																			{formatCurrency(breakdownResult.data.data.totalAmount)}
+																		</td>
+																	</tr>
+																</tfoot>
+															</table>
+														) : (
+															<p className="text-xs text-muted-foreground py-2">No breakdown available.</p>
+														)}
+													</div>
+												</TableCell>
+											</TableRow>
 										)}
-									</TableRow>
+									</Fragment>
 								);
 							})
 						)}

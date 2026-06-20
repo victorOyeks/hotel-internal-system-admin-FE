@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2Icon, MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { GuestDetailsContent } from "./guest-details-content";
 import type { RoomDetails } from "@/lib/fetch";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { RoomDetailsContent } from "./room-details-content";
@@ -138,7 +137,6 @@ export function AssignToOrgContent({
 }
 
 export function RoomsTableActions({ row }: RoomsTableActionsProps) {
-	const [showGuestDetails, setShowGuestDetails] = useState(false);
 	const [showRoomDetails, setShowRoomDetails] = useState(false);
 	const [showAssignOrg, setShowAssignOrg] = useState(false);
 	const [showDeactivate, setShowDeactivate] = useState(false);
@@ -177,12 +175,6 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
 			<DropdownMenuContent align="end">
 				<DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-				<DropdownMenuItem
-					onClick={() => navigator.clipboard.writeText(row.customId)}
-				>
-					Copy Room ID
-				</DropdownMenuItem>
-				<DropdownMenuSeparator />
 				<Dialog open={showRoomDetails} onOpenChange={setShowRoomDetails}>
 					<DialogTrigger asChild>
 						<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -192,24 +184,6 @@ export function RoomsTableActions({ row }: RoomsTableActionsProps) {
 					<RoomDetailsContent room={row} />
 				</Dialog>
 
-				<Dialog open={showGuestDetails} onOpenChange={setShowGuestDetails}>
-					<DialogTrigger asChild>
-						<DropdownMenuItem
-							disabled={!row.guestDetails}
-							onSelect={(e) => e.preventDefault()}
-						>
-							{row.checkInStatus === "AVAILABLE"
-								? "View Last Guest"
-								: "View Guest Details"}
-						</DropdownMenuItem>
-					</DialogTrigger>
-					<GuestDetailsContent
-						guestDetails={row.guestDetails}
-						roomIdentifier={row.roomIdentifier}
-					/>
-				</Dialog>
-
-	
 				{isCheckedIn && hasGuest && !alreadyAssigned && (
 					<>
 						<DropdownMenuSeparator />

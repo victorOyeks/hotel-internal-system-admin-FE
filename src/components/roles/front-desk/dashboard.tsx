@@ -40,8 +40,10 @@ import {
 	CalendarIcon,
 	UsersIcon,
 	CreditCardIcon,
+	AlertTriangleIcon,
 	type LucideIcon,
 } from "lucide-react";
+import { STATUS_CARD_STYLES, STATUS_BADGE_STYLES } from "./room-status-styles";
 import {
 	useEffect,
 	useState,
@@ -692,6 +694,7 @@ export function UnifiedBookingForm({
 	data,
 	setOpen,
 	mode: initialMode,
+	preselectedRoomId,
 }: {
 	data: {
 		rooms: Array<RoomType>;
@@ -699,6 +702,7 @@ export function UnifiedBookingForm({
 	};
 	setOpen: (open: boolean) => void;
 	mode?: "check-in" | "reservation" | undefined;
+	preselectedRoomId?: string;
 }) {
 	const setShowSuccessDialog = useSetAtom(successDialogAtom);
 
@@ -832,6 +836,18 @@ export function UnifiedBookingForm({
 		},
 	});
 
+	// Auto-select room when opened from a room card
+	useEffect(() => {
+		if (!preselectedRoomId) return;
+		const room = data.rooms.find((r) => r.id === preselectedRoomId);
+		if (room) {
+			form.setValue("roomId", room.id);
+			form.setValue("nightlyRate", room.roomPrice);
+			setRoomQuery({ "room:type": room.roomType });
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [preselectedRoomId]);
+
 	// Clean queries on unmount
 	// biome-ignore lint/correctness/useExhaustiveDependencies: cleanup only
 	useEffect(() => {
@@ -843,7 +859,7 @@ export function UnifiedBookingForm({
 	return (
 		<Form {...form}>
 			<form
-				className="space-y-0 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 scrollbar-hidden"
+				className="space-y-0 max-h-[calc(100vh-200px)] overflow-y-auto pr-2"
 				onSubmit={form.handleSubmit((formData) => {
 					mutate(formData);
 				})}
@@ -1537,5 +1553,216 @@ function BaseModal({
 				{children}
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+const DASHBOARD_STATUS_TABS = [
+	{ label: "All", value: "ALL" },
+	{ label: "Occupied", value: "CHECKED_IN" },
+	{ label: "Reserved", value: "RESERVED" },
+	{ label: "Available", value: "AVAILABLE" },
+	{ label: "Attention", value: "ATTENTION" },
+];
+
+const STATUS_SORT_ORDER: Record<string, number> = {
+	CHECKED_IN: 0, BOOKED: 0, RESERVED: 1, DIRTY: 2, BLOCKED: 3, AVAILABLE: 4, CHECKED_OUT: 5,
+};
+
+function MiniRoomCard({ room, dimmed }: { room: RoomDetails; dimmed?: boolean }) {
+	const style = STATUS_CARD_STYLES[room.checkInStatus] ?? STATUS_CARD_STYLES.AVAILABLE;
+	const badgeStyle = STATUS_BADGE_STYLES[room.checkInStatus] ?? STATUS_BADGE_STYLES.AVAILABLE;
+	const guest = room.guestDetails;
+	const hasGuest = !!guest?.guestName && room.checkInStatus !== "AVAILABLE";
+
+	return (
+		<div className={cn(
+			"rounded-lg border bg-card overflow-hidden transition-all duration-200",
+			style.border,
+			dimmed ? "opacity-25 scale-[0.98]" : "hover:shadow-sm",
+		)}>
+			<div className={`${style.headerBg} px-3 py-2 flex items-center justify-between`}>
+				<div className="flex items-center gap-1.5">
+					<span className={`h-1.5 w-1.5 rounded-full ${style.dot} shrink-0`} />
+					<span className="font-bold text-sm text-foreground">{room.roomIdentifier}</span>
+				</div>
+				<span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${badgeStyle}`}>
+					{room.checkInStatus.replace(/_/g, " ").toLowerCase()}
+				</span>
+			</div>
+			<div className="px-3 py-2 space-y-1.5">
+				<div className="text-[11px] text-muted-foreground font-medium">{room.roomType}</div>
+				{hasGuest ? (
+					<div>
+						<div className="text-xs font-semibold text-foreground truncate">{guest!.guestName}</div>
+						{guest!.organizationName && (
+							<div className="text-[10px] text-muted-foreground truncate">{guest!.organizationName}</div>
+						)}
+					</div>
+				) : (
+					<div className="text-[11px] text-muted-foreground/50 italic">No guest</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+export function DashboardRoomsSection({
+	rooms,
+	totalElements,
+}: {
+	rooms: RoomDetails[];
+	totalElements: number;
+}) {
+	const [statusFilter, setStatusFilter] = useState("ALL");
+
+	const sorted = [...rooms].sort(
+		(a, b) => (STATUS_SORT_ORDER[a.checkInStatus] ?? 5) - (STATUS_SORT_ORDER[b.checkInStatus] ?? 5),
+	);
+
+	const needsAttention = rooms.filter((r) => ["DIRTY", "BLOCKED"].includes(r.checkInStatus));
+	const checkedIn = rooms.filter((r) => r.checkInStatus === "CHECKED_IN" || r.checkInStatus === "BOOKED");
+	const reserved = rooms.filter((r) => r.checkInStatus === "RESERVED");
+
+	const isMatch = (room: RoomDetails) => {
+		if (statusFilter === "ALL") return true;
+		if (statusFilter === "ATTENTION") return ["DIRTY", "BLOCKED"].includes(room.checkInStatus);
+		return room.checkInStatus === statusFilter;
+	};
+
+	return (
+		<div className="grid grid-cols-12 gap-4">
+			{/* Left: mini rooms grid — always full, tabs dim non-matching */}
+			<div className="col-span-12 lg:col-span-8 space-y-3">
+				<div className="flex items-center justify-between">
+					<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Rooms Overview</h2>
+					<Link href="/dashboard/rooms" className="text-xs text-primary flex items-center gap-0.5 hover:underline">
+						View all {totalElements} rooms <ChevronRightIcon className="h-3 w-3" />
+					</Link>
+				</div>
+
+				{/* Status highlight tabs */}
+				<div className="flex items-center gap-1.5 flex-wrap">
+					{DASHBOARD_STATUS_TABS.map((tab) => {
+						const count =
+							tab.value === "CHECKED_IN" ? checkedIn.length
+							: tab.value === "RESERVED" ? reserved.length
+							: tab.value === "ATTENTION" ? needsAttention.length
+							: null;
+						return (
+							<button
+								key={tab.value}
+								type="button"
+								onClick={() => setStatusFilter(tab.value)}
+								className={cn(
+									"text-xs px-2.5 py-1 rounded-full font-medium transition-colors",
+									statusFilter === tab.value
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-muted-foreground hover:bg-muted/70",
+								)}
+							>
+								{tab.label}
+								{count != null && count > 0 && (
+									<span className="ml-1 opacity-75">({count})</span>
+								)}
+							</button>
+						);
+					})}
+				</div>
+
+				{/* Mini grid — always renders all rooms, tabs just dim non-matches */}
+				<div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+					{sorted.map((room) => (
+						<MiniRoomCard key={room.id} room={room} dimmed={!isMatch(room)} />
+					))}
+				</div>
+
+				{totalElements > rooms.length && (
+					<Link
+						href="/dashboard/rooms"
+						className="text-xs text-muted-foreground hover:text-primary flex items-center justify-center gap-1 py-1"
+					>
+						+{totalElements - rooms.length} more rooms · View all <ChevronRightIcon className="h-3 w-3" />
+					</Link>
+				)}
+			</div>
+
+			{/* Right: activity panel — sticky so it stays visible while rooms grid scrolls */}
+			<div className="col-span-12 lg:col-span-4 space-y-3 lg:sticky lg:top-4 lg:self-start">
+				{/* Checked-in guests */}
+				<div className="rounded-lg border bg-card p-3 space-y-2">
+					<div className="flex items-center justify-between">
+						<h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+							<LogInIcon className="h-3 w-3" /> Checked In
+						</h3>
+						<span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">{checkedIn.length}</span>
+					</div>
+					{checkedIn.length === 0 ? (
+						<p className="text-[11px] text-muted-foreground/50 italic py-2 text-center">No guests checked in</p>
+					) : (
+						<div className="space-y-2 max-h-44 overflow-y-auto">
+							{checkedIn.map((room) => (
+								<div key={room.id} className="flex items-center justify-between gap-2">
+									<div className="min-w-0">
+										<div className="text-xs font-semibold truncate">{room.guestDetails?.guestName ?? "—"}</div>
+										{room.guestDetails?.organizationName && (
+											<div className="text-[10px] text-muted-foreground truncate">{room.guestDetails.organizationName}</div>
+										)}
+									</div>
+									<span className="text-[10px] font-mono bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded shrink-0">
+										{room.roomIdentifier}
+									</span>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+
+				{/* Reservations */}
+				<div className="rounded-lg border bg-card p-3 space-y-2">
+					<div className="flex items-center justify-between">
+						<h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+							<CalendarClockIcon className="h-3 w-3" /> Reservations
+						</h3>
+						<span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-bold">{reserved.length}</span>
+					</div>
+					{reserved.length === 0 ? (
+						<p className="text-[11px] text-muted-foreground/50 italic py-2 text-center">No reservations</p>
+					) : (
+						<div className="space-y-2 max-h-32 overflow-y-auto">
+							{reserved.map((room) => (
+								<div key={room.id} className="flex items-center justify-between gap-2">
+									<div className="text-xs font-semibold truncate">{room.guestDetails?.guestName ?? "—"}</div>
+									<span className="text-[10px] font-mono bg-yellow-50 text-yellow-700 border border-yellow-100 px-1.5 py-0.5 rounded shrink-0">
+										{room.roomIdentifier}
+									</span>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+
+				{/* Needs attention */}
+				{needsAttention.length > 0 && (
+					<div className="rounded-lg border border-orange-200 bg-orange-50/60 p-3 space-y-2">
+						<div className="flex items-center justify-between">
+							<h3 className="text-[11px] font-bold uppercase tracking-wider text-orange-700 flex items-center gap-1.5">
+								<AlertTriangleIcon className="h-3 w-3" /> Needs Attention
+							</h3>
+							<span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-bold">{needsAttention.length}</span>
+						</div>
+						<div className="space-y-1.5">
+							{needsAttention.map((room) => (
+								<div key={room.id} className="flex items-center justify-between gap-2">
+									<span className="text-[11px] text-orange-800 capitalize">{room.checkInStatus.replace(/_/g, " ").toLowerCase()}</span>
+									<span className="text-[10px] font-mono bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded shrink-0">
+										{room.roomIdentifier}
+									</span>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+			</div>
+		</div>
 	);
 }

@@ -6833,6 +6833,24 @@ export const schema = createSchema({
 			data: z.string().nullable(),
 		}),
 	},
+	"@get/api/front-desks/folio/entries/:entryId/breakdown": {
+		params: z.object({ entryId: z.string() }),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				entryType: z.string(),
+				referenceId: z.string(),
+				totalAmount: z.number(),
+				items: z.array(z.object({
+					name: z.string(),
+					category: z.string().nullable(),
+					quantity: z.number(),
+					unitPrice: z.number(),
+					total: z.number(),
+					note: z.string().nullable(),
+				})),
+			}),
+		}),
+	},
 	"@get/api/managers/bookings/:bookingId/folio": {
 		params: z.object({ bookingId: z.string() }),
 		output: ApiResponseObject.extend({
