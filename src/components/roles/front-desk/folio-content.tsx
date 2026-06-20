@@ -31,6 +31,7 @@ import { getBookingFolio, voidFolioEntry, exportFolioPdf } from "@/lib/front-des
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, Loader2, Receipt, XCircle } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 type ExportResult =
@@ -82,6 +83,7 @@ export function FolioContent({
 	exportAction,
 }: FolioContentProps) {
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [voidReason, setVoidReason] = useState("");
 	const [voidingEntryId, setVoidingEntryId] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
@@ -136,6 +138,7 @@ export function FolioContent({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+			router.refresh();
 			toast.success("Folio entry voided successfully");
 			setVoidReason("");
 			setVoidingEntryId(null);

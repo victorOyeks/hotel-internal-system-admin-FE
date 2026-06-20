@@ -85,6 +85,7 @@ import {
 	updateBooking,
 } from "@/lib/front-desk-actions";
 import { revalidateRoute } from "@/lib/actions";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { UnifiedBookingForm, type RoomType } from "./dashboard";
 import { TableFilter } from "@/components/shared/table-filter";
@@ -223,7 +224,10 @@ function ChangeBookingStatus({
 		staleTime: 60_000,
 	});
 
-	const liveBalance = folioSummary?.balance ?? booking?.amountRemaining ?? 0;
+	const router = useRouter();
+
+	// credit model: positive = guest has credit, negative = guest owes
+	const liveBalance = folioSummary?.balance ?? -(booking?.amountRemaining ?? 0);
 	const liveTotalCharges = folioSummary?.totalCharges ?? booking?.totalAmountDue ?? 0;
 	const liveTotalPayments = folioSummary?.totalPayments ?? booking?.amountPaid ?? 0;
 
@@ -303,9 +307,10 @@ function ChangeBookingStatus({
 
 					// Only proceed with checkout if payment type is FINAL (full payment)
 					// For other payment types (INSTALLMENT, DEPOSIT, OTHER), just record payment without checkout
+					// liveBalance >= 0 means guest has credit or is fully settled — allow checkout
 					if (
 						optionalFields.paymentType === "FINAL" ||
-						liveBalance === 0
+						liveBalance >= 0
 					) {
 						const response = await checkOutGuest({
 							roomId: booking?.roomId!,
@@ -341,6 +346,7 @@ function ChangeBookingStatus({
 			}
 			onClose?.();
 			revalidateRoute("/front-desk/bookings");
+			router.refresh();
 		},
 		onError: (e) => {
 			toast.error("Failed to update booking status.", {
@@ -406,13 +412,15 @@ function ChangeBookingStatus({
 										<span className="text-gray-400 text-xs">Calculating…</span>
 									) : (
 										<span
-											className={`font-medium ${liveBalance > 0
+											className={`font-medium ${liveBalance < 0
 												? "text-amber-600"
 												: "text-green-600"
 												}`}
 										>
-											{formatCurrency(liveBalance)}
-											{liveBalance > 0 && " due"}
+											{liveBalance < 0
+												? formatCurrency(Math.abs(liveBalance))
+												: formatCurrency(liveBalance)}
+											{liveBalance < 0 && " due"}
 										</span>
 									)}
 								</div>
@@ -525,15 +533,17 @@ function ChangeBookingStatus({
 									</div>
 									<div className="flex justify-between pt-2 border-t border-blue-200">
 										<span className="text-blue-700 font-medium">
-											Amount Remaining:
+											{liveBalance < 0 ? "Amount Remaining:" : "Credit Balance:"}
 										</span>
 										<span
-											className={`font-bold ${liveBalance > 0
+											className={`font-bold ${liveBalance < 0
 												? "text-red-600"
 												: "text-green-600"
 												}`}
 										>
-											{formatCurrency(liveBalance)}
+											{liveBalance < 0
+												? formatCurrency(Math.abs(liveBalance))
+												: formatCurrency(liveBalance)}
 										</span>
 									</div>
 								</div>
@@ -541,14 +551,14 @@ function ChangeBookingStatus({
 						</div>
 
 						{/* Outstanding Balance Alert */}
-						{liveBalance > 0 && (
+						{liveBalance < 0 && (
 							<Alert variant="warning">
 								<AlertCircleIcon className="h-4 w-4" />
 								<AlertDescription>
 									<p>
 										Guest has an outstanding balance of{" "}
 										<span className="font-medium">
-											{formatCurrency(liveBalance)}
+											{formatCurrency(Math.abs(liveBalance))}
 										</span>
 										. You can record a payment now or check out and collect later.
 									</p>
@@ -557,7 +567,7 @@ function ChangeBookingStatus({
 						)}
 
 						{/* Payment Fields */}
-						{liveBalance > 0 && (
+						{liveBalance < 0 && (
 							<>
 								<div className="space-y-2">
 									<Label
@@ -571,7 +581,7 @@ function ChangeBookingStatus({
 										type="number"
 										step="0.01"
 										min="0"
-										max={liveBalance}
+										max={Math.abs(liveBalance)}
 										value={optionalFields.finalAmountPaid || ""}
 										onChange={(e) =>
 											setOptionalFields((prev) => ({
@@ -579,11 +589,11 @@ function ChangeBookingStatus({
 												finalAmountPaid: Number(e.target.value),
 											}))
 										}
-										placeholder={`Enter amount (Max: ${formatCurrency(liveBalance)})`}
+										placeholder={`Enter amount (Max: ${formatCurrency(Math.abs(liveBalance))})`}
 										className="w-full"
 									/>
 									{optionalFields.finalAmountPaid !== undefined &&
-										optionalFields.finalAmountPaid !== liveBalance && (
+										optionalFields.finalAmountPaid !== Math.abs(liveBalance) && (
 											<p className="text-xs text-amber-600">
 												Note: Amount entered (
 												{formatCurrency(optionalFields.finalAmountPaid)}) is
