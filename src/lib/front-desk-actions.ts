@@ -561,6 +561,58 @@ export async function exportFolioPdf({
 	}
 }
 
+export async function transferFolioBill({
+	bookingId,
+	targetBookingId,
+	entryIds,
+}: {
+	bookingId: string;
+	targetBookingId: string;
+	entryIds?: string[];
+}): ServerActionResponseFromEndpoint<"@post/api/front-desks/bookings/:bookingId/folio/transfer"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch(
+		"@post/api/front-desks/bookings/:bookingId/folio/transfer",
+		{
+			params: { bookingId },
+			body: { targetBookingId, entryIds },
+			auth: { type: "Bearer", token },
+		},
+	);
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to transfer bill",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
+export async function searchBookingsForTransfer({
+	search,
+}: {
+	search: string;
+}): ServerActionResponseFromEndpoint<"@get/api/front-desks/bookings"> {
+	const { token } = await verifySession("FRONT_DESK");
+
+	const response = await $fetch("@get/api/front-desks/bookings", {
+		query: { search, size: 10 },
+		auth: { type: "Bearer", token },
+	});
+
+	if (response.error) {
+		return {
+			success: false,
+			error: response.error.message || "Failed to search bookings",
+		};
+	}
+
+	return { success: true, data: response.data };
+}
+
 export async function getFolioEntryBreakdown({
 	entryId,
 }: {

@@ -1,10 +1,12 @@
 "use client";
 
 import {
+	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { BillTransferDialog } from "./bill-transfer-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
 import { getBookingFolio, voidFolioEntry, exportFolioPdf, getFolioEntryBreakdown } from "@/lib/front-desk-actions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Download, Loader2, Receipt, XCircle } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, ChevronUp, Download, Loader2, Receipt, XCircle } from "lucide-react";
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -90,6 +92,7 @@ export function FolioContent({
 	const [voidingEntryId, setVoidingEntryId] = useState<string | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+	const [transferOpen, setTransferOpen] = useState(false);
 
 	const { data: breakdownResult, isLoading: breakdownLoading } = useQuery({
 		queryKey: ["folio-entry-breakdown", expandedEntryId],
@@ -183,6 +186,7 @@ export function FolioContent({
 	const entries = folio.entries ?? [];
 
 	return (
+		<>
 		<DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-y-auto">
 			<DialogHeader>
 				<div className="flex items-center justify-between gap-3">
@@ -199,20 +203,31 @@ export function FolioContent({
 							{folio.folioStatus?.replace(/_/g, " ")}
 						</Badge>
 					</DialogTitle>
-					<Button
-						variant="outline"
-						size="sm"
-						className="mr-6"
-						onClick={handleExportPdf}
-						disabled={isExporting}
-					>
-						{isExporting ? (
-							<Loader2 className="h-4 w-4 animate-spin mr-1" />
-						) : (
-							<Download className="h-4 w-4 mr-1" />
+					<div className="flex items-center gap-2 mr-6">
+						{!readOnly && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setTransferOpen(true)}
+							>
+								<ArrowRightLeft className="h-4 w-4 mr-1" />
+								Transfer Bill
+							</Button>
 						)}
-						Export PDF
-					</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleExportPdf}
+							disabled={isExporting}
+						>
+							{isExporting ? (
+								<Loader2 className="h-4 w-4 animate-spin mr-1" />
+							) : (
+								<Download className="h-4 w-4 mr-1" />
+							)}
+							Export PDF
+						</Button>
+					</div>
 				</div>
 			</DialogHeader>
 
@@ -270,7 +285,7 @@ export function FolioContent({
 								</TableCell>
 							</TableRow>
 						) : (
-							entries.map((entry) => {
+							entries.map((entry: { id: string; entryType: string; description: string; amount: number; runningBalance: number; referenceId: string | null; referenceType: string | null; postedAt: Date; postedBy: string | null; voided: boolean; voidReason: string | null }) => {
 								const isCharge = entry.amount > 0;
 								const isVoided = entry.voided;
 								const isExpandable = EXPANDABLE_TYPES.has(entry.entryType) && !isVoided && !!entry.referenceId;
@@ -475,5 +490,23 @@ export function FolioContent({
 				</div>
 			</div>
 		</DialogContent>
+
+		{!readOnly && (
+			<Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+				<BillTransferDialog
+					bookingId={bookingId}
+					entries={entries.map((e: { id: string; entryType: string; description: string; amount: number; voided: boolean }) => ({
+						id: e.id,
+						entryType: e.entryType,
+						description: e.description,
+						amount: e.amount,
+						voided: e.voided,
+					}))}
+					onSuccess={() => queryClient.invalidateQueries({ queryKey: ["folio", bookingId] })}
+					setOpen={setTransferOpen}
+				/>
+			</Dialog>
+		)}
+		</>
 	);
 }

@@ -6833,6 +6833,23 @@ export const schema = createSchema({
 			data: z.string().nullable(),
 		}),
 	},
+	"@post/api/front-desks/bookings/:bookingId/folio/transfer": {
+		params: z.object({ bookingId: z.string() }),
+		input: z.object({
+			targetBookingId: z.string(),
+			entryIds: z.array(z.string()).optional(),
+		}),
+		output: ApiResponseObject.extend({
+			data: z.object({
+				transferredCount: z.number(),
+				totalTransferred: z.number(),
+				sourceBookingId: z.string(),
+				targetBookingId: z.string(),
+				targetRoomIdentifier: z.string(),
+				targetGuestName: z.string().nullable(),
+			}),
+		}),
+	},
 	"@get/api/front-desks/folio/entries/:entryId/breakdown": {
 		params: z.object({ entryId: z.string() }),
 		output: ApiResponseObject.extend({
