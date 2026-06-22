@@ -30,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
 import { getBookingFolio, voidFolioEntry, exportFolioPdf, getFolioEntryBreakdown } from "@/lib/front-desk-actions";
+import { revalidateRoute } from "@/lib/actions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRightLeft, ChevronDown, ChevronUp, Download, Loader2, Receipt, XCircle } from "lucide-react";
 import { Fragment, useState } from "react";
@@ -502,7 +503,11 @@ export function FolioContent({
 						amount: e.amount,
 						voided: e.voided,
 					}))}
-					onSuccess={() => queryClient.invalidateQueries({ queryKey: ["folio", bookingId] })}
+					onSuccess={() => {
+						queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+						revalidateRoute("/front-desk/bookings");
+						router.refresh();
+					}}
 					setOpen={setTransferOpen}
 				/>
 			</Dialog>

@@ -20,6 +20,13 @@ import { toast } from "sonner";
 
 const NON_TRANSFERABLE = new Set(["PAYMENT", "REFUND", "ADJUSTMENT"]);
 
+type BookingSearchItem = {
+	id: string;
+	roomIdentifier: string;
+	guestName: string;
+	bookingStatus: string | null;
+};
+
 interface TransferEntry {
 	id: string;
 	entryType: string;
@@ -69,13 +76,6 @@ export function BillTransferDialog({
 		queryFn: () => searchBookingsForTransfer({ search: debouncedSearch }),
 		enabled: debouncedSearch.length >= 2,
 	});
-
-	type BookingSearchItem = {
-		id: string;
-		roomIdentifier: string;
-		guestName: string;
-		bookingStatus: string | null;
-	};
 
 	const results: BookingSearchItem[] =
 		searchResult?.success && searchResult.data?.data?.content
@@ -239,13 +239,11 @@ export function BillTransferDialog({
 									No bookings found
 								</p>
 							) : (
-								results.map((booking) => (
+								results.map((booking: BookingSearchItem) => (
 									<button
 										key={booking.id}
 										onClick={() => pickTarget(booking)}
-										className={`w-full text-left px-3 py-2.5 text-xs hover:bg-muted/40 flex items-center justify-between gap-2 border-b last:border-0 transition-colors ${
-											selectedTarget?.id === booking.id ? "bg-primary/5" : ""
-										}`}
+										className="w-full text-left px-3 py-2.5 text-xs hover:bg-muted/40 flex items-center justify-between gap-2 border-b last:border-0 transition-colors"
 									>
 										<div className="min-w-0">
 											<span className="font-semibold">
