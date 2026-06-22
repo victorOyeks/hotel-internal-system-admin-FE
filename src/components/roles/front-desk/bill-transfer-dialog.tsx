@@ -265,7 +265,7 @@ export function BillTransferDialog({
 								</div>
 								<div className="border-t pt-2 flex justify-between text-sm font-semibold">
 									<span>Outstanding balance</span>
-									<span className="text-destructive">
+									<span className="text-red-600">
 										{formatCurrency(outstandingBalance)}
 									</span>
 								</div>
