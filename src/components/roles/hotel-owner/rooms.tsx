@@ -94,12 +94,12 @@ function AddRoomDialog({ hotelId, roomTypes }: { hotelId: string; roomTypes: any
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		const formData = new FormData(e.currentTarget);
+		const facilitiesRaw = (formData.get("roomFacility") as string) || "";
 		const payload = {
-			roomName: formData.get("roomName") as string,
-			roomNumber: formData.get("roomNumber") as string,
+			roomIdentifier: formData.get("roomIdentifier") as string,
 			roomType: formData.get("roomType") as string,
-			price: Number(formData.get("price")),
-			facilities: (formData.get("facilities") as string)
+			roomPrice: Number(formData.get("roomPrice")),
+			roomFacility: facilitiesRaw
 				.split(",")
 				.map((f) => f.trim())
 				.filter(Boolean),
@@ -131,15 +131,14 @@ function AddRoomDialog({ hotelId, roomTypes }: { hotelId: string; roomTypes: any
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="grid grid-cols-2 gap-3">
 						<div>
-							<Label htmlFor="roomName">Room Name</Label>
-							<Input id="roomName" name="roomName" required />
+							<Label htmlFor="roomIdentifier">Room Name / Number</Label>
+							<Input
+								id="roomIdentifier"
+								name="roomIdentifier"
+								placeholder="e.g. 101, Suite A"
+								required
+							/>
 						</div>
-						<div>
-							<Label htmlFor="roomNumber">Room Number</Label>
-							<Input id="roomNumber" name="roomNumber" required />
-						</div>
-					</div>
-					<div className="grid grid-cols-2 gap-3">
 						<div>
 							<Label htmlFor="roomType">Room Type</Label>
 							<Input
@@ -155,27 +154,30 @@ function AddRoomDialog({ hotelId, roomTypes }: { hotelId: string; roomTypes: any
 								))}
 							</datalist>
 						</div>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
 						<div>
-							<Label htmlFor="price">Price per Night</Label>
+							<Label htmlFor="roomPrice">Price per Night</Label>
 							<Input
-								id="price"
-								name="price"
+								id="roomPrice"
+								name="roomPrice"
 								type="number"
-								min="0"
+								min="0.01"
 								step="0.01"
+								placeholder="0.00"
 								required
 							/>
 						</div>
-					</div>
-					<div>
-						<Label htmlFor="facilities">
-							Facilities (comma-separated)
-						</Label>
-						<Input
-							id="facilities"
-							name="facilities"
-							placeholder="WiFi, AC, TV, Mini Bar"
-						/>
+						<div>
+							<Label htmlFor="roomFacility">
+								Facilities (comma-separated)
+							</Label>
+							<Input
+								id="roomFacility"
+								name="roomFacility"
+								placeholder="WiFi, AC, TV, Mini Bar"
+							/>
+						</div>
 					</div>
 					<Button type="submit" className="w-full" disabled={isPending}>
 						{isPending ? "Adding..." : "Add Room"}
