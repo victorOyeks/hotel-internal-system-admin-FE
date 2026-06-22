@@ -159,7 +159,7 @@ export function BillTransferDialog({
 		(mode === "balance" && outstandingBalance <= 0);
 
 	return (
-		<DialogContent className="sm:max-w-lg">
+		<DialogContent className="sm:max-w-xl">
 			<DialogHeader>
 				<DialogTitle>Transfer Bill</DialogTitle>
 				<DialogDescription>
@@ -220,7 +220,7 @@ export function BillTransferDialog({
 								{transferable.map((entry) => (
 									<label
 										key={entry.id}
-										className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
+										className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer min-w-0 overflow-hidden"
 									>
 										<input
 											type="checkbox"
