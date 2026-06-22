@@ -1124,25 +1124,6 @@ export function UnifiedBookingForm({
 									</FormItem>
 								)}
 							/>
-							<FormField
-								control={form.control}
-								name="dailySpendingCap"
-								render={() => (
-									<FormItem>
-										<FormLabel>Daily Spending Cap</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												step="0.01"
-												placeholder="e.g 10000"
-												{...form.register("dailySpendingCap", { valueAsNumber: true })}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
 						</div>
 						<div className="grid gap-4 p-4 border rounded-lg bg-muted/20">
 							<div className="grid grid-cols-2 gap-3">
@@ -1329,22 +1310,46 @@ export function UnifiedBookingForm({
 									checked={showOrganization}
 									onCheckedChange={(checked) => {
 										setShowOrganization(checked === true);
-										if (!checked) setSelectedOrgId("");
+										if (!checked) {
+											setSelectedOrgId("");
+											form.setValue("dailySpendingCap", 0);
+										}
 									}}
 								/>
 								<Label htmlFor="linkOrganization" className="cursor-pointer">Link to organization</Label>
 							</div>
 							{showOrganization && (
-								<Combobox
-									options={organizations.map((org: { id: string; name: string }) => ({
-										label: org.name,
-										value: org.id,
-									}))}
-									value={selectedOrgId}
-									onSelect={setSelectedOrgId}
-									placeholder="Select organization..."
-									emptyText="No organizations found"
-								/>
+								<>
+									<Combobox
+										options={organizations.map((org: { id: string; name: string }) => ({
+											label: org.name,
+											value: org.id,
+										}))}
+										value={selectedOrgId}
+										onSelect={setSelectedOrgId}
+										placeholder="Select organization..."
+										emptyText="No organizations found"
+									/>
+									<FormField
+										control={form.control}
+										name="dailySpendingCap"
+										render={() => (
+											<FormItem>
+												<FormLabel>Daily Spending Cap <span className="text-muted-foreground font-normal text-xs">(Optional)</span></FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														step="0.01"
+														placeholder="e.g 10000"
+														{...form.register("dailySpendingCap", { valueAsNumber: true })}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</>
 							)}
 							<FormField
 								control={form.control}
