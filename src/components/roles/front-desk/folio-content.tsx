@@ -503,6 +503,9 @@ export function FolioContent({
 						amount: e.amount,
 						voided: e.voided,
 					}))}
+					balance={folio.balance}
+					totalCharges={folio.totalCharges}
+					totalPayments={folio.totalPayments}
 					onSuccess={() => {
 						queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
 						revalidateRoute("/front-desk/bookings");

@@ -565,10 +565,12 @@ export async function transferFolioBill({
 	bookingId,
 	targetBookingId,
 	entryIds,
+	balanceOnly,
 }: {
 	bookingId: string;
 	targetBookingId: string;
 	entryIds?: string[];
+	balanceOnly?: boolean;
 }): ServerActionResponseFromEndpoint<"@post/api/front-desks/bookings/:bookingId/folio/transfer"> {
 	const { token } = await verifySession("FRONT_DESK");
 
@@ -576,7 +578,7 @@ export async function transferFolioBill({
 		"@post/api/front-desks/bookings/:bookingId/folio/transfer",
 		{
 			params: { bookingId },
-			body: { targetBookingId, entryIds },
+			body: { targetBookingId, entryIds, balanceOnly },
 			auth: { type: "Bearer", token },
 		},
 	);

@@ -6838,6 +6838,7 @@ export const schema = createSchema({
 		input: z.object({
 			targetBookingId: z.string(),
 			entryIds: z.array(z.string()).optional(),
+			balanceOnly: z.boolean().optional(),
 		}),
 		output: ApiResponseObject.extend({
 			data: z.object({

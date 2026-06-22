@@ -38,6 +38,9 @@ interface TransferEntry {
 interface BillTransferDialogProps {
 	bookingId: string;
 	entries: TransferEntry[];
+	balance: number; // totalPayments - totalCharges: negative = guest owes
+	totalCharges: number;
+	totalPayments: number;
 	onSuccess: () => void;
 	setOpen: (open: boolean) => void;
 }
@@ -45,6 +48,9 @@ interface BillTransferDialogProps {
 export function BillTransferDialog({
 	bookingId,
 	entries,
+	balance,
+	totalCharges,
+	totalPayments,
 	onSuccess,
 	setOpen,
 }: BillTransferDialogProps) {
@@ -54,14 +60,13 @@ export function BillTransferDialog({
 		(e) => !e.voided && e.amount > 0 && !NON_TRANSFERABLE.has(e.entryType),
 	);
 
+	const outstandingBalance = balance < 0 ? Math.abs(balance) : 0;
+	const hasPartialPayment = totalPayments > 0 && outstandingBalance > 0;
+
+	const [mode, setMode] = useState<"charges" | "balance">("charges");
 	const [search, setSearch] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
-	const [selectedTarget, setSelectedTarget] = useState<{
-		id: string;
-		roomIdentifier: string;
-		guestName: string;
-		bookingStatus: string | null;
-	} | null>(null);
+	const [selectedTarget, setSelectedTarget] = useState<BookingSearchItem | null>(null);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(
 		new Set(transferable.map((e) => e.id)),
 	);
@@ -79,14 +84,7 @@ export function BillTransferDialog({
 
 	const results: BookingSearchItem[] =
 		searchResult?.success && searchResult.data?.data?.content
-			? (
-					searchResult.data.data.content as unknown as Array<{
-						id: string;
-						roomIdentifier: string;
-						guestName: string;
-						bookingStatus: string | null;
-					}>
-				)
+			? (searchResult.data.data.content as unknown as BookingSearchItem[])
 					.filter((b) => b.id !== bookingId)
 					.slice(0, 8)
 			: [];
@@ -97,16 +95,22 @@ export function BillTransferDialog({
 			const res = await transferFolioBill({
 				bookingId,
 				targetBookingId: selectedTarget.id,
-				entryIds: Array.from(selectedIds),
+				entryIds: mode === "charges" ? Array.from(selectedIds) : undefined,
+				balanceOnly: mode === "balance",
 			});
 			if (!res.success) throw new Error(res.error);
 			return res.data;
 		},
 		onSuccess: (data) => {
 			queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
-			const count = data?.data?.transferredCount ?? selectedIds.size;
 			const room = data?.data?.targetRoomIdentifier ?? selectedTarget?.roomIdentifier;
-			toast.success(`${count} charge${count !== 1 ? "s" : ""} transferred to ${room}`);
+			if (mode === "balance") {
+				const amt = data?.data?.totalTransferred ?? outstandingBalance;
+				toast.success(`Balance of ${formatCurrency(amt)} transferred to ${room}`);
+			} else {
+				const count = data?.data?.transferredCount ?? selectedIds.size;
+				toast.success(`${count} charge${count !== 1 ? "s" : ""} transferred to ${room}`);
+			}
 			onSuccess();
 			setOpen(false);
 		},
@@ -137,80 +141,142 @@ export function BillTransferDialog({
 	};
 
 	const pickTarget = (booking: BookingSearchItem) => {
-		setSelectedTarget({
-			id: booking.id,
-			roomIdentifier: booking.roomIdentifier,
-			guestName: booking.guestName,
-			bookingStatus: booking.bookingStatus ?? null,
-		});
+		setSelectedTarget(booking);
 		setSearch("");
 		setDebouncedSearch("");
 	};
+
+	const isTransferDisabled =
+		!selectedTarget ||
+		isPending ||
+		(mode === "charges" && selectedIds.size === 0) ||
+		(mode === "balance" && outstandingBalance <= 0);
 
 	return (
 		<DialogContent className="sm:max-w-lg">
 			<DialogHeader>
 				<DialogTitle>Transfer Bill</DialogTitle>
 				<DialogDescription>
-					Move selected charges to another booking&apos;s folio.
+					Move charges to another booking&apos;s folio.
 				</DialogDescription>
 			</DialogHeader>
 
 			<div className="space-y-5">
-				{/* Charge list */}
-				<div>
-					<div className="flex items-center justify-between mb-2">
-						<span className="text-sm font-medium">Charges to transfer</span>
-						{transferable.length > 0 && (
-							<button
-								onClick={toggleAll}
-								className="text-xs text-primary hover:underline"
-							>
-								{selectedIds.size === transferable.length
-									? "Deselect all"
-									: "Select all"}
-							</button>
+				{/* Mode toggle — only show when there's a partial payment */}
+				{hasPartialPayment && (
+					<div className="flex rounded-lg border p-0.5 bg-muted/40 text-sm">
+						<button
+							onClick={() => setMode("charges")}
+							className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
+								mode === "charges"
+									? "bg-background shadow-sm text-foreground"
+									: "text-muted-foreground"
+							}`}
+						>
+							Transfer charges
+						</button>
+						<button
+							onClick={() => setMode("balance")}
+							className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
+								mode === "balance"
+									? "bg-background shadow-sm text-foreground"
+									: "text-muted-foreground"
+							}`}
+						>
+							Transfer balance
+						</button>
+					</div>
+				)}
+
+				{/* Charge list — charges mode */}
+				{mode === "charges" && (
+					<div>
+						<div className="flex items-center justify-between mb-2">
+							<span className="text-sm font-medium">Charges to transfer</span>
+							{transferable.length > 0 && (
+								<button
+									onClick={toggleAll}
+									className="text-xs text-primary hover:underline"
+								>
+									{selectedIds.size === transferable.length
+										? "Deselect all"
+										: "Select all"}
+								</button>
+							)}
+						</div>
+
+						{transferable.length === 0 ? (
+							<p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
+								No transferable charges on this folio.
+							</p>
+						) : (
+							<div className="space-y-0.5 max-h-48 overflow-y-auto rounded-lg border p-1.5">
+								{transferable.map((entry) => (
+									<label
+										key={entry.id}
+										className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
+									>
+										<input
+											type="checkbox"
+											checked={selectedIds.has(entry.id)}
+											onChange={() => toggleEntry(entry.id)}
+											className="accent-primary shrink-0"
+										/>
+										<span className="flex-1 text-xs text-foreground truncate">
+											{entry.description}
+										</span>
+										<span className="text-xs font-mono font-medium shrink-0">
+											{formatCurrency(entry.amount)}
+										</span>
+									</label>
+								))}
+							</div>
+						)}
+
+						{selectedIds.size > 0 && (
+							<div className="flex justify-between text-xs text-muted-foreground mt-1.5 px-1">
+								<span>
+									{selectedIds.size} charge{selectedIds.size !== 1 ? "s" : ""}{" "}
+									selected
+								</span>
+								<span className="font-medium">{formatCurrency(totalSelected)}</span>
+							</div>
 						)}
 					</div>
+				)}
 
-					{transferable.length === 0 ? (
-						<p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
-							No transferable charges on this folio.
-						</p>
-					) : (
-						<div className="space-y-0.5 max-h-48 overflow-y-auto rounded-lg border p-1.5">
-							{transferable.map((entry) => (
-								<label
-									key={entry.id}
-									className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-muted/40 cursor-pointer"
-								>
-									<input
-										type="checkbox"
-										checked={selectedIds.has(entry.id)}
-										onChange={() => toggleEntry(entry.id)}
-										className="accent-primary shrink-0"
-									/>
-									<span className="flex-1 text-xs text-foreground truncate">
-										{entry.description}
+				{/* Balance mode */}
+				{mode === "balance" && (
+					<div>
+						<span className="text-sm font-medium block mb-2">
+							Outstanding balance to transfer
+						</span>
+						{outstandingBalance > 0 ? (
+							<div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+								<div className="flex justify-between text-xs text-muted-foreground">
+									<span>Total charges</span>
+									<span>{formatCurrency(totalCharges)}</span>
+								</div>
+								<div className="flex justify-between text-xs text-muted-foreground">
+									<span>Amount paid</span>
+									<span className="text-green-600">
+										− {formatCurrency(totalPayments)}
 									</span>
-									<span className="text-xs font-mono font-medium shrink-0">
-										{formatCurrency(entry.amount)}
+								</div>
+								<div className="border-t pt-2 flex justify-between text-sm font-semibold">
+									<span>Outstanding balance</span>
+									<span className="text-destructive">
+										{formatCurrency(outstandingBalance)}
 									</span>
-								</label>
-							))}
-						</div>
-					)}
-
-					{selectedIds.size > 0 && (
-						<div className="flex justify-between text-xs text-muted-foreground mt-1.5 px-1">
-							<span>
-								{selectedIds.size} charge{selectedIds.size !== 1 ? "s" : ""}{" "}
-								selected
-							</span>
-							<span className="font-medium">{formatCurrency(totalSelected)}</span>
-						</div>
-					)}
-				</div>
+								</div>
+							</div>
+						) : (
+							<p className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
+								This folio has no outstanding balance.
+							</p>
+						)}
+					</div>
+				)}
 
 				{/* Target booking search */}
 				<div>
@@ -294,13 +360,15 @@ export function BillTransferDialog({
 					</Button>
 					<Button
 						className="flex-1"
-						disabled={!selectedTarget || selectedIds.size === 0 || isPending}
+						disabled={isTransferDisabled}
 						onClick={() => doTransfer()}
 					>
 						{isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
 						{isPending
 							? "Transferring…"
-							: `Transfer ${selectedIds.size} charge${selectedIds.size !== 1 ? "s" : ""}`}
+							: mode === "balance"
+								? `Transfer ${formatCurrency(outstandingBalance)}`
+								: `Transfer ${selectedIds.size} charge${selectedIds.size !== 1 ? "s" : ""}`}
 					</Button>
 				</div>
 			</div>
