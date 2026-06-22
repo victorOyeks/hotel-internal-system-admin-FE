@@ -71,6 +71,7 @@ export async function addNewRoomToHotelOwner(
 		};
 	}
 
+	revalidatePath("/hotel-owner/rooms");
 	return {
 		success: true,
 		data: data.data,
