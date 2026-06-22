@@ -143,7 +143,8 @@ export function BillTransferDialog({
 			guestName: booking.guestName,
 			bookingStatus: booking.bookingStatus ?? null,
 		});
-		setSearch(`${booking.roomIdentifier} — ${booking.guestName}`);
+		setSearch("");
+		setDebouncedSearch("");
 	};
 
 	return (
@@ -227,7 +228,7 @@ export function BillTransferDialog({
 						/>
 					</div>
 
-					{debouncedSearch.length >= 2 && (
+					{debouncedSearch.length >= 2 && !selectedTarget && (
 						<div className="mt-1 rounded-lg border bg-card shadow-sm max-h-44 overflow-y-auto">
 							{searching ? (
 								<div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
