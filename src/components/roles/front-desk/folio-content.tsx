@@ -496,12 +496,13 @@ export function FolioContent({
 			<Dialog open={transferOpen} onOpenChange={setTransferOpen}>
 				<BillTransferDialog
 					bookingId={bookingId}
-					entries={entries.map((e: { id: string; entryType: string; description: string; amount: number; voided: boolean }) => ({
+					entries={entries.map((e: { id: string; entryType: string; description: string; amount: number; voided: boolean; referenceType?: string | null }) => ({
 						id: e.id,
 						entryType: e.entryType,
 						description: e.description,
 						amount: e.amount,
 						voided: e.voided,
+						referenceType: e.referenceType,
 					}))}
 					balance={folio.balance}
 					totalCharges={folio.totalCharges}

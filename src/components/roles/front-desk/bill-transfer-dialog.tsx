@@ -19,6 +19,7 @@ import { ArrowRight, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 const NON_TRANSFERABLE = new Set(["PAYMENT", "REFUND", "ADJUSTMENT"]);
+const NON_TRANSFERABLE_REF_TYPES = new Set(["BILL_TRANSFER", "BILL_TRANSFER_BALANCE"]);
 
 type BookingSearchItem = {
 	id: string;
@@ -33,6 +34,7 @@ interface TransferEntry {
 	description: string;
 	amount: number;
 	voided: boolean;
+	referenceType?: string | null;
 }
 
 interface BillTransferDialogProps {
@@ -57,7 +59,11 @@ export function BillTransferDialog({
 	const queryClient = useQueryClient();
 
 	const transferable = entries.filter(
-		(e) => !e.voided && e.amount > 0 && !NON_TRANSFERABLE.has(e.entryType),
+		(e) =>
+			!e.voided &&
+			e.amount > 0 &&
+			!NON_TRANSFERABLE.has(e.entryType) &&
+			!NON_TRANSFERABLE_REF_TYPES.has(e.referenceType ?? ""),
 	);
 
 	const outstandingBalance = balance < 0 ? Math.abs(balance) : 0;
