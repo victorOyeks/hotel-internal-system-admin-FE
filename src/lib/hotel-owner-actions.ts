@@ -50,6 +50,65 @@ export async function switchOwnerCurrentHotel(
 
 // ==================== ROOM MANAGEMENT ====================
 
+export async function updateRoomOwner(
+	roomId: string,
+	payload: {
+		roomIdentifier: string;
+		roomType: string;
+		roomPrice: number;
+		roomStatus: string;
+		roomFacility: string[];
+	},
+): ServerActionResponseFromEndpoint<"@put/api/hotel-owners/hotels/rooms/:roomId"> {
+	const { sessionData } = await getOwnerContext();
+
+	const data = await $fetch("@put/api/hotel-owners/hotels/rooms/:roomId", {
+		params: { roomId },
+		auth: { type: "Bearer", token: sessionData.token },
+		body: payload,
+	});
+
+	if (data.error) {
+		return { success: false, error: data.error.message || "Failed to update room" };
+	}
+
+	revalidatePath("/hotel-owner/rooms");
+	return { success: true, data: data.data };
+}
+
+export async function toggleRoomActiveOwner(
+	roomId: string,
+	reason?: string,
+): ServerActionResponse<{ message: string }> {
+	const { sessionData } = await getOwnerContext();
+
+	try {
+		const headers: Record<string, string> = {
+			Authorization: `Bearer ${sessionData.token}`,
+		};
+		let body: string | undefined;
+		if (reason) {
+			headers["Content-Type"] = "application/json";
+			body = JSON.stringify({ reason });
+		}
+
+		const response = await fetch(
+			`${env.NEXT_PUBLIC_API_URL}/api/hotel-owners/hotels/rooms/${roomId}/toggle-active`,
+			{ method: "PATCH", headers, body },
+		);
+
+		const responseData = await response.json();
+		if (!response.ok) {
+			return { success: false, error: responseData.message || "Failed to toggle room status" };
+		}
+
+		revalidatePath("/hotel-owner/rooms");
+		return { success: true, data: { message: responseData.message } };
+	} catch (e) {
+		return { success: false, error: e instanceof Error ? e.message : "Failed to toggle room status" };
+	}
+}
+
 export async function addNewRoomToHotelOwner(
 	payload: Omit<CreateRoomRequest, "hotelId">,
 ): ServerActionResponseFromEndpoint<"@post/api/hotel-owners/hotels/:hotelId/rooms"> {

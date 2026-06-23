@@ -1,14 +1,29 @@
 "use client";
 
-import { useLayoutEffect, useState, useTransition, useMemo, useCallback } from "react";
+import { useLayoutEffect, useState, useMemo, useCallback } from "react";
 import { useSetAtom } from "jotai";
-import { PlusIcon, SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, RotateCcwIcon, XIcon, MoreVerticalIcon, TrashIcon } from "lucide-react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import z from "zod";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { ListSubmitLoader } from "@/components/shared/list-submit-loader";
+import { BulkUploadResultDisplay } from "@/components/shared/bulk-upload-result";
+import type { BulkUploadResult } from "@/lib/bulk-upload-types";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -35,7 +50,10 @@ import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
 import { DataTablePagination } from "@/components/shared/pagination";
 import { TableFilter } from "@/components/shared/table-filter";
 import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { addNewRoomToHotelOwner, exportRooms } from "@/lib/hotel-owner-actions";
+import { addNewRoomToHotelOwner, exportRooms, updateRoomOwner, toggleRoomActiveOwner } from "@/lib/hotel-owner-actions";
+import { useMutation } from "@tanstack/react-query";
+import { revalidateRoute } from "@/lib/actions";
+import { DeactivateRoomDialog } from "@/components/shared/deactivate-room-dialog";
 import { toast } from "sonner";
 import { ExportDialog, type ExportData } from "@/components/shared/shared-dialogs";
 import { format } from "date-fns";
@@ -85,104 +103,351 @@ const statusVariants: Record<string, BadgeVariant> = {
 	DIRTY: "red",
 };
 
+// --- Edit Room Dialog ---
+
+const editRoomSchema = z.object({
+	roomIdentifier: z.string().min(1, "Required"),
+	roomType: z.string().min(1, "Required"),
+	roomPrice: z.string().min(1, "Required"),
+	roomFacilities: z.string().optional(),
+});
+
+function EditRoomDialog({
+	room,
+	open,
+	onOpenChange,
+}: {
+	room: RoomEntry;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const form = useForm<z.infer<typeof editRoomSchema>>({
+		resolver: zodResolver(editRoomSchema),
+		defaultValues: {
+			roomIdentifier: room.roomIdentifier,
+			roomType: room.roomType,
+			roomPrice: String(room.roomPrice),
+			roomFacilities: room.roomFacility?.join(", ") ?? "",
+		},
+	});
+
+	const { mutate, isPending } = useMutation({
+		mutationFn: async (data: z.infer<typeof editRoomSchema>) => {
+			const facilities = data.roomFacilities
+				? data.roomFacilities.split(",").map((f) => f.trim()).filter(Boolean)
+				: [];
+			const res = await updateRoomOwner(room.id, {
+				roomIdentifier: data.roomIdentifier,
+				roomType: data.roomType,
+				roomPrice: Number(data.roomPrice),
+				roomStatus: room.checkInStatus,
+				roomFacility: facilities,
+			});
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+		onSuccess: () => {
+			toast.success("Room updated successfully");
+			onOpenChange(false);
+			revalidateRoute("/hotel-owner/rooms");
+		},
+		onError: (e) => {
+			toast.error("Failed to update room", { description: e.message });
+		},
+	});
+
+	return (
+		<DialogContent className="max-w-md">
+			<DialogHeader>
+				<DialogTitle>Edit Room</DialogTitle>
+				<DialogDescription className="sr-only">Edit room details</DialogDescription>
+			</DialogHeader>
+			<Form {...form}>
+				<form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
+					<FormField
+						control={form.control}
+						name="roomIdentifier"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room Identifier</FormLabel>
+								<FormControl><Input {...field} /></FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="roomType"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room Type</FormLabel>
+								<FormControl><Input {...field} /></FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="roomPrice"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Room Price</FormLabel>
+								<FormControl><Input type="number" {...field} /></FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name="roomFacilities"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Facilities (comma separated)</FormLabel>
+								<FormControl><Input placeholder="WiFi, AC, TV" {...field} /></FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<Button type="submit" className="w-full" disabled={isPending}>
+						{isPending ? "Saving..." : "Save Changes"}
+					</Button>
+				</form>
+			</Form>
+		</DialogContent>
+	);
+}
+
 // --- Add Room Dialog ---
+
+const roomRowSchema = z.object({
+	roomIdentifier: z.string().min(1, "Required"),
+	roomType: z.string().min(1, "Required"),
+	roomPrice: z.string().min(1, "Required"),
+	roomFacilities: z.string().optional(),
+});
+
+const multiRoomSchema = z.object({
+	rooms: z.array(roomRowSchema).min(1, "Add at least one room"),
+});
+
+type MultiRoomForm = z.infer<typeof multiRoomSchema>;
+
+type RoomResult = { roomIdentifier: string; success: boolean; error?: string };
+type SubmissionState = "idle" | "submitting" | "complete";
+
+function MultiRoomFormTab({ onDone }: { onDone: () => void }) {
+	const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
+	const [progress, setProgress] = useState({ current: 0, total: 0 });
+	const [results, setResults] = useState<RoomResult[]>([]);
+
+	const form = useForm<MultiRoomForm>({
+		resolver: zodResolver(multiRoomSchema),
+		defaultValues: {
+			rooms: [{ roomIdentifier: "", roomType: "", roomPrice: "", roomFacilities: "" }],
+		},
+	});
+
+	const { fields, append, remove } = useFieldArray({ control: form.control, name: "rooms" });
+
+	async function onSubmit(data: MultiRoomForm) {
+		setSubmissionState("submitting");
+		setProgress({ current: 0, total: data.rooms.length });
+		const roomResults: RoomResult[] = [];
+
+		for (let i = 0; i < data.rooms.length; i++) {
+			const room = data.rooms[i];
+			setProgress({ current: i + 1, total: data.rooms.length });
+			try {
+				const facilities = room.roomFacilities
+					? room.roomFacilities.split(",").map((f) => f.trim()).filter(Boolean)
+					: [];
+				const res = await addNewRoomToHotelOwner({
+					roomIdentifier: room.roomIdentifier,
+					roomType: room.roomType,
+					roomPrice: Number(room.roomPrice),
+					roomFacility: facilities,
+				});
+				roomResults.push({
+					roomIdentifier: room.roomIdentifier,
+					success: res.success,
+					error: res.success ? undefined : res.error,
+				});
+			} catch {
+				roomResults.push({ roomIdentifier: room.roomIdentifier, success: false, error: "Unexpected error" });
+			}
+		}
+
+		setResults(roomResults);
+		setSubmissionState("complete");
+	}
+
+	function handleReset() {
+		setSubmissionState("idle");
+		setResults([]);
+		setProgress({ current: 0, total: 0 });
+		form.reset();
+	}
+
+	const successCount = results.filter((r) => r.success).length;
+	const failCount = results.filter((r) => !r.success).length;
+
+	if (submissionState === "submitting") {
+		return <ListSubmitLoader current={progress.current} total={progress.total} label="room" />;
+	}
+
+	if (submissionState === "complete") {
+		const bulkResult: BulkUploadResult = {
+			summary: {
+				totalRows: results.length,
+				successCount,
+				failedCount: failCount,
+				processingTimeMs: 0,
+				fileName: "",
+				uploadedBy: "",
+				uploadedAt: new Date().toISOString(),
+			},
+			results: results.map((r, i) => ({
+				rowNumber: i + 1,
+				success: r.success,
+				itemIdentifier: r.roomIdentifier,
+				errorMessage: r.error ?? null,
+			})),
+		};
+		return (
+			<BulkUploadResultDisplay
+				result={bulkResult}
+				entityName="rooms"
+				onClose={onDone}
+				onReset={handleReset}
+				resetLabel="Add More Rooms"
+			/>
+		);
+	}
+
+	return (
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+				<div className="py-3 flex items-center justify-between border-b">
+					<span className="text-sm text-muted-foreground">
+						{fields.length} room{fields.length !== 1 && "s"} added
+					</span>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="gap-1.5"
+						onClick={() => append({ roomIdentifier: "", roomType: "", roomPrice: "", roomFacilities: "" })}
+					>
+						<PlusIcon className="size-3.5" />
+						Add Room
+					</Button>
+				</div>
+				<div className="flex-1 overflow-y-auto min-h-0 max-h-[400px]">
+					<div className="py-4 space-y-4">
+						{fields.map((field, index) => (
+							<div key={field.id} className="border rounded-xl p-4 space-y-3 bg-muted/30">
+								<div className="flex items-center justify-between">
+									<span className="text-sm font-medium text-muted-foreground">Room {index + 1}</span>
+									{fields.length > 1 && (
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="h-8 px-2 text-destructive border-destructive/30 hover:text-destructive hover:bg-destructive/10 hover:border-destructive/50"
+											onClick={() => remove(index)}
+										>
+											<TrashIcon className="size-4 mr-1" />
+											Remove
+										</Button>
+									)}
+								</div>
+								<div className="grid grid-cols-[1fr_1fr_auto] gap-3">
+									<FormField
+										control={form.control}
+										name={`rooms.${index}.roomIdentifier`}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-xs">Room Identifier</FormLabel>
+												<FormControl>
+													<Input placeholder="e.g Room 101" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name={`rooms.${index}.roomType`}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-xs">Room Type</FormLabel>
+												<FormControl>
+													<Input placeholder="e.g Executive" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name={`rooms.${index}.roomPrice`}
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel className="text-xs">Price</FormLabel>
+												<FormControl>
+													<Input type="number" placeholder="e.g 50000" className="w-28" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+								<FormField
+									control={form.control}
+									name={`rooms.${index}.roomFacilities`}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel className="text-xs">Facilities (comma separated)</FormLabel>
+											<FormControl>
+												<Input placeholder="e.g WiFi, AC, TV, Mini Bar" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						))}
+					</div>
+				</div>
+				<div className="pt-4 border-t mt-auto">
+					<Button type="submit" className="w-full font-semibold" disabled={fields.length === 0}>
+						Create {fields.length} Room{fields.length !== 1 && "s"}
+					</Button>
+				</div>
+			</form>
+		</Form>
+	);
+}
 
 function AddRoomDialog({ hotelId, roomTypes }: { hotelId: string; roomTypes: any[] }) {
 	const [open, setOpen] = useState(false);
-	const [isPending, startTransition] = useTransition();
-
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		const formData = new FormData(e.currentTarget);
-		const facilitiesRaw = (formData.get("roomFacility") as string) || "";
-		const payload = {
-			roomIdentifier: formData.get("roomIdentifier") as string,
-			roomType: formData.get("roomType") as string,
-			roomPrice: Number(formData.get("roomPrice")),
-			roomFacility: facilitiesRaw
-				.split(",")
-				.map((f) => f.trim())
-				.filter(Boolean),
-		};
-
-		startTransition(async () => {
-			const result = await addNewRoomToHotelOwner(payload);
-			if (result.success) {
-				toast.success("Room added successfully");
-				setOpen(false);
-			} else {
-				toast.error(result.error || "Failed to add room");
-			}
-		});
-	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button size="sm" className="rounded-xl gap-1.5">
 					<PlusIcon className="size-4" />
-					Add New Room
+					Add Rooms
 				</Button>
 			</DialogTrigger>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Add New Room</DialogTitle>
+			<DialogContent className="min-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+				<DialogHeader className="px-6 pt-6 pb-0">
+					<DialogTitle className="text-lg">Add Rooms</DialogTitle>
+					<DialogDescription className="sr-only">Add one or more rooms manually.</DialogDescription>
 				</DialogHeader>
-				<form onSubmit={handleSubmit} className="space-y-4">
-					<div className="grid grid-cols-2 gap-3">
-						<div>
-							<Label htmlFor="roomIdentifier">Room Name / Number</Label>
-							<Input
-								id="roomIdentifier"
-								name="roomIdentifier"
-								placeholder="e.g. 101, Suite A"
-								required
-							/>
-						</div>
-						<div>
-							<Label htmlFor="roomType">Room Type</Label>
-							<Input
-								id="roomType"
-								name="roomType"
-								placeholder="e.g. Standard, Deluxe"
-								list="room-types-list"
-								required
-							/>
-							<datalist id="room-types-list">
-								{roomTypes.map((rt: any) => (
-									<option key={rt.id} value={rt.name} />
-								))}
-							</datalist>
-						</div>
-					</div>
-					<div className="grid grid-cols-2 gap-3">
-						<div>
-							<Label htmlFor="roomPrice">Price per Night</Label>
-							<Input
-								id="roomPrice"
-								name="roomPrice"
-								type="number"
-								min="0.01"
-								step="0.01"
-								placeholder="0.00"
-								required
-							/>
-						</div>
-						<div>
-							<Label htmlFor="roomFacility">
-								Facilities (comma-separated)
-							</Label>
-							<Input
-								id="roomFacility"
-								name="roomFacility"
-								placeholder="WiFi, AC, TV, Mini Bar"
-							/>
-						</div>
-					</div>
-					<Button type="submit" className="w-full" disabled={isPending}>
-						{isPending ? "Adding..." : "Add Room"}
-					</Button>
-				</form>
+				<div className="flex-1 flex flex-col min-h-0 px-6 pb-6">
+					<MultiRoomFormTab onDone={() => setOpen(false)} />
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
@@ -504,6 +769,26 @@ function RoomListToolbar({
 function RoomTableActions({ row }: { row: RoomEntry }) {
 	const [showRoomDetails, setShowRoomDetails] = useState(false);
 	const [showGuestDetails, setShowGuestDetails] = useState(false);
+	const [showEdit, setShowEdit] = useState(false);
+	const [showDeactivate, setShowDeactivate] = useState(false);
+
+	const { mutate: activateRoom, isPending: isActivating } = useMutation({
+		mutationFn: async () => {
+			const res = await toggleRoomActiveOwner(row.id);
+			if (!res.success) throw new Error(res.error);
+			return res.data;
+		},
+		onSuccess: (data) => {
+			toast.success(data?.message ?? "Room activated");
+			revalidateRoute("/hotel-owner/rooms");
+		},
+		onError: (e) => {
+			toast.error("Failed to activate room", { description: e.message });
+		},
+	});
+
+	const isActive = row.active !== false;
+	const isAvailable = row.checkInStatus === "AVAILABLE";
 
 	return (
 		<DropdownMenu modal={false}>
@@ -514,8 +799,6 @@ function RoomTableActions({ row }: { row: RoomEntry }) {
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
-				<DropdownMenuLabel>Actions</DropdownMenuLabel>
-
 				<DropdownMenuItem
 					onClick={() => navigator.clipboard.writeText(row.customId)}
 				>
@@ -548,7 +831,51 @@ function RoomTableActions({ row }: { row: RoomEntry }) {
 					/>
 				</Dialog>
 
-				</DropdownMenuContent>
+				<DropdownMenuSeparator />
+
+				<Dialog open={showEdit} onOpenChange={setShowEdit}>
+					<DialogTrigger asChild>
+						<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+							Edit Room
+						</DropdownMenuItem>
+					</DialogTrigger>
+					<EditRoomDialog room={row} open={showEdit} onOpenChange={setShowEdit} />
+				</Dialog>
+
+				<DropdownMenuSeparator />
+
+				{isActive && (
+					<Dialog open={showDeactivate} onOpenChange={setShowDeactivate}>
+						<DialogTrigger asChild>
+							<DropdownMenuItem
+								variant="destructive"
+								disabled={!isAvailable}
+								onSelect={(e) => e.preventDefault()}
+								className="font-medium"
+							>
+								Deactivate Room
+							</DropdownMenuItem>
+						</DialogTrigger>
+						<DeactivateRoomDialog
+							roomId={row.id}
+							roomIdentifier={row.roomIdentifier}
+							toggleAction={toggleRoomActiveOwner}
+							revalidatePath="/hotel-owner/rooms"
+							onClose={() => setShowDeactivate(false)}
+						/>
+					</Dialog>
+				)}
+
+				{!isActive && (
+					<DropdownMenuItem
+						disabled={isActivating}
+						onClick={() => activateRoom()}
+						className="text-green-600 font-medium focus:!bg-green-50 focus:!text-green-600"
+					>
+						{isActivating ? "Activating..." : "Activate Room"}
+					</DropdownMenuItem>
+				)}
+			</DropdownMenuContent>
 		</DropdownMenu>
 	);
 }

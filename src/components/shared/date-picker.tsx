@@ -67,18 +67,11 @@ export function DatePicker({
 				<Input
 					value={value}
 					placeholder={placeholder}
-					className="bg-background pr-10"
-					onChange={(e) => {
-						const newDate = new Date(e.target.value);
-						setValue(e.target.value);
-						if (isValidDate(newDate)) {
-							setDate(newDate);
-							setMonth(newDate);
-							handleDateChange(newDate);
-						}
-					}}
+					className="bg-background pr-10 cursor-pointer"
+					readOnly
+					onClick={() => setOpen(true)}
 					onKeyDown={(e) => {
-						if (e.key === "ArrowDown") {
+						if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
 							e.preventDefault();
 							setOpen(true);
 						}

@@ -50,9 +50,30 @@ const typeIcons: Record<string, typeof PackageIcon> = {
 function SummaryCards({ data }: { data: SummaryData }) {
 	if (!data) return null;
 	const cards = [
-		{ title: "Purchase Orders", value: data.pendingPurchaseOrders ?? 0, icon: FileTextIcon },
-		{ title: "GRNs", value: data.pendingGRNs ?? 0, icon: PackageIcon },
-		{ title: "Stock Takes", value: data.pendingStockTakes ?? 0, icon: ClipboardListIcon },
+		{
+			title: "Purchase Orders",
+			value: data.pendingPurchaseOrders ?? 0,
+			icon: FileTextIcon,
+			bgClass: "bg-blue-50",
+			textClass: "text-blue-600",
+			ringClass: "ring-blue-100",
+		},
+		{
+			title: "GRNs",
+			value: data.pendingGRNs ?? 0,
+			icon: PackageIcon,
+			bgClass: "bg-amber-50",
+			textClass: "text-amber-600",
+			ringClass: "ring-amber-100",
+		},
+		{
+			title: "Stock Takes",
+			value: data.pendingStockTakes ?? 0,
+			icon: ClipboardListIcon,
+			bgClass: "bg-violet-50",
+			textClass: "text-violet-600",
+			ringClass: "ring-violet-100",
+		},
 	];
 
 	return (
@@ -60,14 +81,19 @@ function SummaryCards({ data }: { data: SummaryData }) {
 			{cards.map((card) => (
 				<div
 					key={card.title}
-					className="bg-white p-4 rounded-2xl flex items-center space-x-3"
+					className="bg-white p-4 rounded-2xl flex flex-col justify-between"
 				>
-					<div className="size-11 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0">
-						<card.icon className="text-amber-600 size-5" />
+					<div className="flex items-center justify-between">
+						<span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+							{card.title}
+						</span>
+						<div className={`size-8 rounded-lg ${card.bgClass} ring-1 ${card.ringClass} flex items-center justify-center`}>
+							<card.icon className={`size-4 ${card.textClass}`} />
+						</div>
 					</div>
-					<div>
-						<p className="text-xs text-gray-400">{card.title}</p>
-						<p className="text-xl font-semibold text-primary">{card.value}</p>
+					<div className="mt-2">
+						<p className="text-3xl font-bold text-primary">{card.value}</p>
+						<p className="text-xs text-gray-400 mt-0.5">pending</p>
 					</div>
 				</div>
 			))}

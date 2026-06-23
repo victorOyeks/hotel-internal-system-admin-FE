@@ -713,6 +713,7 @@ export function UnifiedBookingForm({
 	const [selectedOrgId, setSelectedOrgId] = useState("");
 	const [showOrganization, setShowOrganization] = useState(false);
 	const [showPayment, setShowPayment] = useState(false);
+	const [showDiscount, setShowDiscount] = useState(false);
 
 	const { data: orgData } = useQuery({
 		queryKey: ["front-desk", "organizations"],
@@ -859,7 +860,7 @@ export function UnifiedBookingForm({
 	return (
 		<Form {...form}>
 			<form
-				className="space-y-0 max-h-[calc(100vh-200px)] overflow-y-auto pr-2"
+				className="space-y-0 max-h-[calc(100vh-200px)] overflow-y-auto -mr-6 pr-6"
 				onSubmit={form.handleSubmit((formData) => {
 					mutate(formData);
 				})}
@@ -867,9 +868,10 @@ export function UnifiedBookingForm({
 				<div className="space-y-6">
 					{/* ── Booking Setup ── */}
 					<div className="space-y-3">
-						<div className="flex items-center gap-2">
-							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Booking Setup</p>
-							<div className="h-px bg-border flex-1" />
+						<div className="flex items-center gap-2.5">
+							<span className="h-3.5 w-0.5 rounded-full bg-primary/70 shrink-0" />
+							<span className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground whitespace-nowrap">Booking Setup</span>
+							<div className="flex-1 h-px bg-border" />
 						</div>
 						<div className="grid grid-cols-2 gap-x-3 gap-y-4">
 							<FormField
@@ -989,9 +991,10 @@ export function UnifiedBookingForm({
 
 					{/* ── Guest Information ── */}
 					<div className="space-y-3">
-						<div className="flex items-center gap-2">
-							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Guest Information</p>
-							<div className="h-px bg-border flex-1" />
+						<div className="flex items-center gap-2.5">
+							<span className="h-3.5 w-0.5 rounded-full bg-primary/70 shrink-0" />
+							<span className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground whitespace-nowrap">Guest Information</span>
+							<div className="flex-1 h-px bg-border" />
 						</div>
 						<div className="grid grid-cols-4 gap-x-3 gap-y-4">
 							<FormField
@@ -1098,92 +1101,96 @@ export function UnifiedBookingForm({
 
 					{/* ── Rate & Financials ── */}
 					<div className="space-y-3">
-						<div className="flex items-center gap-2">
-							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Rate & Financials</p>
-							<div className="h-px bg-border flex-1" />
+						<div className="flex items-center gap-2.5">
+							<span className="h-3.5 w-0.5 rounded-full bg-primary/70 shrink-0" />
+							<span className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground whitespace-nowrap">Rate & Financials</span>
+							<div className="flex-1 h-px bg-border" />
 						</div>
-						<div className="grid grid-cols-2 gap-x-3 gap-y-4">
-							<FormField
-								control={form.control}
-								name="nightlyRate"
-								render={() => (
-									<FormItem>
-										<FormLabel>Nightly Rate</FormLabel>
-										<FormControl>
-											<Input
-												type="number"
-												min="0"
-												step="0.01"
-												value={form.watch("nightlyRate") || ""}
-												onChange={(e) => form.setValue("nightlyRate", Number(e.target.value))}
-												readOnly
-												className="bg-muted/50"
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
-						<div className="grid gap-4 p-4 border rounded-lg bg-muted/20">
-							<div className="grid grid-cols-2 gap-3">
-								<FormField
-									control={form.control}
-									name="discountType"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Discount Type</FormLabel>
-											<Select onValueChange={field.onChange} defaultValue={field.value}>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select type" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value="FIXED">Fixed Amount</SelectItem>
-													<SelectItem value="PERCENTAGE">Percentage</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="discountValue"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Discount Value</FormLabel>
-											<FormControl>
-												<Input
-													type="number"
-													min="0"
-													{...field}
-													onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
-													className="w-full"
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+						<div className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/40 border border-border/60">
+							<div>
+								<p className="text-xs text-muted-foreground mb-0.5">Nightly Rate</p>
+								<p className="text-lg font-semibold">
+									{form.watch("nightlyRate")
+										? formatCurrency(form.watch("nightlyRate"))
+										: <span className="text-muted-foreground text-sm font-normal">Select a room above</span>}
+								</p>
 							</div>
-							<div className="flex items-center space-x-2">
+							<span className="text-[10px] text-muted-foreground bg-muted/60 border border-border/50 px-2 py-1 rounded-md">Auto-set</span>
+						</div>
+						<div className="rounded-xl border border-border/60 overflow-hidden">
+							<div className="flex items-center gap-3 px-4 py-3">
+								<Checkbox
+									id="showDiscount"
+									checked={showDiscount}
+									onCheckedChange={(checked) => {
+										setShowDiscount(checked === true);
+										if (!checked) form.setValue("discountValue", 0);
+									}}
+								/>
+								<Label htmlFor="showDiscount" className="cursor-pointer text-sm font-medium">Apply Discount</Label>
+							</div>
+							{showDiscount && (
+								<div className="px-4 pb-4 pt-3 border-t border-border/50 grid grid-cols-2 gap-3">
+									<FormField
+										control={form.control}
+										name="discountType"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Discount Type</FormLabel>
+												<Select onValueChange={field.onChange} defaultValue={field.value}>
+													<FormControl>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select type" />
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														<SelectItem value="FIXED">Fixed Amount</SelectItem>
+														<SelectItem value="PERCENTAGE">Percentage</SelectItem>
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="discountValue"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Discount Value</FormLabel>
+												<FormControl>
+													<Input
+														type="number"
+														min="0"
+														{...field}
+														onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
+														className="w-full"
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+							)}
+						</div>
+						<div className="rounded-xl border border-border/60 overflow-hidden">
+							<div className="flex items-center gap-3 px-4 py-3">
 								<Checkbox
 									id="includePayment"
 									checked={showPayment}
 									onCheckedChange={(checked) => setShowPayment(checked === true)}
 								/>
-								<Label htmlFor="includePayment" className="cursor-pointer">Include initial payment</Label>
+								<Label htmlFor="includePayment" className="cursor-pointer text-sm font-medium">Include Initial Payment</Label>
 							</div>
 							{showPayment && (
-								<div className="grid grid-cols-2 gap-3">
+								<div className="px-4 pb-4 pt-3 border-t border-border/50 grid grid-cols-2 gap-3">
 									<FormField
 										control={form.control}
 										name="initialPayment.amount"
 										render={({ field }) => (
 											<FormItem>
-												<FormLabel>Payment Amount</FormLabel>
+												<FormLabel>Amount</FormLabel>
 												<FormControl>
 													<Input
 														type="number"
@@ -1250,46 +1257,39 @@ export function UnifiedBookingForm({
 									: rate;
 							const total = nights * effectiveRate;
 							return (
-								<div className="bg-primary-5/10 border border-primary-5/20 rounded-lg p-4 space-y-2">
-									<h3 className="font-medium text-sm">
-										{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
-									</h3>
-									<div className="grid grid-cols-2 gap-2 text-sm">
-										<div>
-											<span className="text-muted-foreground">Duration:</span>
-											<span className="ml-2 font-medium">
-												{nights} {nights === 1 ? "night" : "nights"}
-											</span>
-										</div>
-										<div>
-											<span className="text-muted-foreground">Nightly Rate:</span>
-											<span className="ml-2 font-medium">
-												{formatCurrency(rate)}
-											</span>
+								<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+									<div className="flex items-center justify-between">
+										<h3 className="text-sm font-semibold">
+											{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
+										</h3>
+										<span className="text-xs font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">
+											{nights} {nights === 1 ? "night" : "nights"}
+										</span>
+									</div>
+									<div className="space-y-1.5 text-sm">
+										<div className="flex items-center justify-between">
+											<span className="text-muted-foreground">Rate / night</span>
+											<span className="font-medium">{formatCurrency(rate)}</span>
 										</div>
 										{discountVal > 0 && (
-											<>
-												<div>
-													<span className="text-muted-foreground">Discount:</span>
-													<span className="ml-2 font-medium text-green-600">
-														{discountType === "PERCENTAGE"
-															? `${discountVal}%`
-															: formatCurrency(discountVal)}
-													</span>
-												</div>
-												<div>
-													<span className="text-muted-foreground">Effective Rate:</span>
-													<span className="ml-2 font-medium">
-														{formatCurrency(effectiveRate)}
-													</span>
-												</div>
-											</>
+											<div className="flex items-center justify-between text-green-600 dark:text-green-500">
+												<span>
+													Discount{" "}
+													{discountType === "PERCENTAGE"
+														? `(${discountVal}%)`
+														: "(fixed)"}
+												</span>
+												<span>
+													− {discountType === "PERCENTAGE"
+														? formatCurrency(rate * discountVal / 100)
+														: formatCurrency(discountVal)}
+												</span>
+											</div>
 										)}
-										<div className="col-span-2">
-											<span className="text-muted-foreground">Total Cost:</span>
-											<span className="ml-2 font-medium text-lg">
-												{formatCurrency(total)}
-											</span>
+										<div className="h-px bg-border/60 my-1" />
+										<div className="flex items-center justify-between font-semibold text-base">
+											<span>Total</span>
+											<span>{formatCurrency(total)}</span>
 										</div>
 									</div>
 								</div>
@@ -1299,58 +1299,61 @@ export function UnifiedBookingForm({
 
 					{/* ── Additional ── */}
 					<div className="space-y-3">
-						<div className="flex items-center gap-2">
-							<p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Additional</p>
-							<div className="h-px bg-border flex-1" />
+						<div className="flex items-center gap-2.5">
+							<span className="h-3.5 w-0.5 rounded-full bg-primary/70 shrink-0" />
+							<span className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-foreground whitespace-nowrap">Additional</span>
+							<div className="flex-1 h-px bg-border" />
 						</div>
-						<div className="space-y-4">
-							<div className="flex items-center space-x-2">
-								<Checkbox
-									id="linkOrganization"
-									checked={showOrganization}
-									onCheckedChange={(checked) => {
-										setShowOrganization(checked === true);
-										if (!checked) {
-											setSelectedOrgId("");
-											form.setValue("dailySpendingCap", 0);
-										}
-									}}
-								/>
-								<Label htmlFor="linkOrganization" className="cursor-pointer">Link to organization</Label>
+						<div className="space-y-3">
+							<div className="rounded-xl border border-border/60 overflow-hidden">
+								<div className="flex items-center gap-3 px-4 py-3">
+									<Checkbox
+										id="linkOrganization"
+										checked={showOrganization}
+										onCheckedChange={(checked) => {
+											setShowOrganization(checked === true);
+											if (!checked) {
+												setSelectedOrgId("");
+												form.setValue("dailySpendingCap", 0);
+											}
+										}}
+									/>
+									<Label htmlFor="linkOrganization" className="cursor-pointer text-sm font-medium">Link to Organization</Label>
+								</div>
+								{showOrganization && (
+									<div className="px-4 pb-4 pt-3 border-t border-border/50 space-y-3">
+										<Combobox
+											options={organizations.map((org: { id: string; name: string }) => ({
+												label: org.name,
+												value: org.id,
+											}))}
+											value={selectedOrgId}
+											onSelect={setSelectedOrgId}
+											placeholder="Select organization..."
+											emptyText="No organizations found"
+										/>
+										<FormField
+											control={form.control}
+											name="dailySpendingCap"
+											render={() => (
+												<FormItem>
+													<FormLabel>Daily Spending Cap <span className="text-muted-foreground font-normal text-xs">(Optional)</span></FormLabel>
+													<FormControl>
+														<Input
+															type="number"
+															min="0"
+															step="0.01"
+															placeholder="e.g 10000"
+															{...form.register("dailySpendingCap", { valueAsNumber: true })}
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+								)}
 							</div>
-							{showOrganization && (
-								<>
-									<Combobox
-										options={organizations.map((org: { id: string; name: string }) => ({
-											label: org.name,
-											value: org.id,
-										}))}
-										value={selectedOrgId}
-										onSelect={setSelectedOrgId}
-										placeholder="Select organization..."
-										emptyText="No organizations found"
-									/>
-									<FormField
-										control={form.control}
-										name="dailySpendingCap"
-										render={() => (
-											<FormItem>
-												<FormLabel>Daily Spending Cap <span className="text-muted-foreground font-normal text-xs">(Optional)</span></FormLabel>
-												<FormControl>
-													<Input
-														type="number"
-														min="0"
-														step="0.01"
-														placeholder="e.g 10000"
-														{...form.register("dailySpendingCap", { valueAsNumber: true })}
-													/>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
-								</>
-							)}
 							<FormField
 								control={form.control}
 								name="notes"
@@ -1374,12 +1377,12 @@ export function UnifiedBookingForm({
 				</div>
 				<Button
 					type="submit"
-					className="mt-4 w-full font-semibold"
+					className="mt-4 w-full h-11 font-semibold text-sm"
 					disabled={isPending}
 				>
 					{isPending ? (
 						<>
-							<Loader2Icon className="animate-spin" />
+							<Loader2Icon className="size-4 animate-spin" />
 							<span>{isCheckIn ? "Processing check-in..." : "Creating reservation..."}</span>
 						</>
 					) : (
