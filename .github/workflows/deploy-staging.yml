@@ -18,6 +18,9 @@ jobs:
 
       - run: bun install
 
+      - name: Write version file
+        run: echo "{\"version\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}" > public/version.json
+
       - name: Build
         run: bun run build
         env:

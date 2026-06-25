@@ -1,4 +1,5 @@
 import Providers from "@/components/react-query";
+import { NewVersionBanner } from "@/components/new-version-banner";
 import { cn } from "@/lib/utils";
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter } from "next/font/google";
@@ -55,6 +56,7 @@ export default function RootLayout({
 				<Providers>
 					{children}
 
+					<NewVersionBanner />
 					<Toaster richColors theme="light" duration={5000} />
 					<ReactQueryDevtools initialIsOpen={false} />
 				</Providers>
