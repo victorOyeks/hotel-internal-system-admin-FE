@@ -1274,11 +1274,21 @@ function StockToggleCell({ item }: { item: FoodDrinkItem }) {
 		},
 	});
 
+	const zeroStock = item.itemType === "DRINK" && (item.quantity ?? 0) === 0;
+
 	return (
 		<div className="flex items-center gap-2">
 			<Switch
 				checked={item.inStock}
-				onCheckedChange={(checked) => mutate(checked)}
+				onCheckedChange={(checked) => {
+					if (checked && zeroStock) {
+						toast.error("Cannot mark as In Stock", {
+							description: "Stock quantity is 0. Add stock before enabling.",
+						});
+						return;
+					}
+					mutate(checked);
+				}}
 				disabled={isPending}
 				className="data-[state=checked]:bg-green-600"
 			/>
