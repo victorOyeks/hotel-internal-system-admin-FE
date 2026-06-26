@@ -541,7 +541,7 @@ function OrderCard({
 					</Badge>
 
 					{order.status !== "COMPLETED" && (
-						<DropdownMenu>
+						<DropdownMenu modal={false}>
 							<DropdownMenuTrigger disabled={isPending} asChild>
 								<button
 									type="button"

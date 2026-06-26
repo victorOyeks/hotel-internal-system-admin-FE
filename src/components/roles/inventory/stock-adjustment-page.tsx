@@ -548,7 +548,7 @@ function StockAdjustmentActions({ adjustment }: { adjustment: StockAdjustmentRes
 	if (adjustment.posted || adjustment.cancelled) return null;
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu modal={false}>
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" className="h-8 w-8 p-0">
 					<span className="sr-only">Open menu</span>

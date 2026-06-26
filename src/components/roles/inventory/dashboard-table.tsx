@@ -78,7 +78,7 @@ const allSupplyColumns = [
 		id: "actions",
 		cell: () => {
 			return (
-				<DropdownMenu>
+				<DropdownMenu modal={false}>
 					<DropdownMenuTrigger asChild>
 						<Button variant="ghost" size="icon" className="rounded-full">
 							<MoreVerticalIcon />

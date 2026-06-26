@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
 	useCallback,
@@ -768,7 +768,7 @@ function ExpensesList() {
 											<td className="py-2.5">
 												{item.status !== "PAID" &&
 													item.status !== "CANCELLED" && (
-														<DropdownMenu>
+														<DropdownMenu modal={false}>
 															<DropdownMenuTrigger asChild>
 																<button
 																	type="button"

@@ -113,7 +113,7 @@ export function OverdueExpendituresList({ items }: { items: Expenditure[] }) {
             columnHelper.display({
                 id: "actions",
                 cell: ({ row }) => (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                                 <span className="sr-only">Open menu</span>

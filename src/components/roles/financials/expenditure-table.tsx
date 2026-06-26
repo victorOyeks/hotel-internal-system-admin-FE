@@ -341,7 +341,7 @@ export function ExpenditureTable({ data, totalPages, metrics }: { data: Expendit
                 const isUpdating = statusMutation.isPending && statusMutation.variables?.id === row.original.id;
                 const pendingStatus = statusMutation.variables?.status;
                 return (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0" disabled={isUpdating}>
                                 {isUpdating ? (
