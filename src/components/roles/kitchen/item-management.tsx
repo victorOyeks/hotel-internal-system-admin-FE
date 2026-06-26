@@ -56,7 +56,6 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
@@ -1185,32 +1184,32 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 				/>
 			)}
 
-			<Dialog open={editOpen} onOpenChange={setEditOpen}>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon">
-							<MoreVerticalIcon className="h-4 w-4" />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DialogTrigger asChild>
-							<DropdownMenuItem>Edit Item</DropdownMenuItem>
-						</DialogTrigger>
-						{item.itemType === "DRINK" && (
-							<>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									onSelect={() => setRestockOpen(true)}
-									className="text-primary"
-								>
-									<PackagePlusIcon className="h-4 w-4 mr-2" />
-									Request Restock
-								</DropdownMenuItem>
-							</>
-						)}
-					</DropdownMenuContent>
-				</DropdownMenu>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size="icon">
+						<MoreVerticalIcon className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onSelect={() => setEditOpen(true)}>
+						Edit Item
+					</DropdownMenuItem>
+					{item.itemType === "DRINK" && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onSelect={() => setRestockOpen(true)}
+								className="text-primary"
+							>
+								<PackagePlusIcon className="h-4 w-4 mr-2" />
+								Request Restock
+							</DropdownMenuItem>
+						</>
+					)}
+				</DropdownMenuContent>
+			</DropdownMenu>
 
+			<Dialog open={editOpen} onOpenChange={setEditOpen}>
 				<DialogContent>
 					<DialogTitle>
 						Edit {item.itemType === "FOOD" ? "Food" : "Drink"} Item
