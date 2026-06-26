@@ -1184,7 +1184,7 @@ function ItemActionsCell({ item }: { item: FoodDrinkItem }) {
 				/>
 			)}
 
-			<DropdownMenu>
+			<DropdownMenu modal={false}>
 				<DropdownMenuTrigger asChild>
 					<Button variant="ghost" size="icon">
 						<MoreVerticalIcon className="h-4 w-4" />
