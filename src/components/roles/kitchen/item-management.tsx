@@ -1058,12 +1058,11 @@ function RestockRequestDialog({
 			if (!res.success) throw new Error(res.error);
 			return res.data;
 		},
-		onSuccess: (msg) => {
+		onSuccess: () => {
 			form.reset();
 			setOpen(false);
 			toast.success("Restock request submitted", {
 				description:
-					msg ??
 					"The manager will review and approve before stock is updated.",
 			});
 		},
