@@ -66,7 +66,6 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
@@ -84,7 +83,6 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteStockItem, updateStockItem } from "@/lib/restaurant-actions";
 import { revalidateRoute } from "@/lib/actions";
@@ -601,28 +599,30 @@ const allSupplyColumns = [
 			});
 
 			return (
-				<Dialog open={editOpen} onOpenChange={setEditOpen}>
-					<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="icon">
-									<MoreVerticalIcon />
-								</Button>
-							</DropdownMenuTrigger>
+				<>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="ghost" size="icon">
+								<MoreVerticalIcon />
+							</Button>
+						</DropdownMenuTrigger>
 
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem asChild>
-									<DialogTrigger className="w-full">Edit</DialogTrigger>
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem asChild>
-									<AlertDialogTrigger className="w-full text-red-600">
-										Delete
-									</AlertDialogTrigger>
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onSelect={() => setEditOpen(true)}>
+								Edit
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onSelect={() => setDeleteOpen(true)}
+								className="text-red-600"
+							>
+								Delete
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 
+					<Dialog open={editOpen} onOpenChange={setEditOpen}>
+						<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
 						<DialogContent>
 							<DialogTitle>Edit Item "{info.row.original.name}"</DialogTitle>
 							<DialogDescription className="sr-only">
@@ -667,8 +667,9 @@ const allSupplyColumns = [
 								</AlertDialogAction>
 							</AlertDialogFooter>
 						</AlertDialogContent>
-					</AlertDialog>
-				</Dialog>
+						</AlertDialog>
+					</Dialog>
+				</>
 			);
 		},
 	}),

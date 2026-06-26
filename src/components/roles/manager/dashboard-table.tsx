@@ -29,7 +29,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -160,25 +160,19 @@ const columns = [
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger className="w-full" onClick={() => setOpen("")}>
-									<DoorOpenIcon />
-									Edit room
-								</DialogTrigger>
+							<DropdownMenuItem onSelect={() => setOpen("")}>
+								<DoorOpenIcon />
+								Edit room
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger className="w-full" onClick={() => setOpen("")}>
-									<BanIcon />
-									Block Room
-								</DialogTrigger>
+							<DropdownMenuItem onSelect={() => setOpen("")}>
+								<BanIcon />
+								Block Room
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<DialogTrigger className="w-full" onClick={() => setOpen("")}>
-									<MessageCircleMoreIcon />
-									Contact Branch Manager
-								</DialogTrigger>
+							<DropdownMenuItem onSelect={() => setOpen("")}>
+								<MessageCircleMoreIcon />
+								Contact Branch Manager
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
