@@ -1402,6 +1402,7 @@ export function FoodItemsManagement({ items }: FoodItemsManagementProps) {
 		columns,
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
+		autoResetPageIndex: false,
 		initialState: {
 			pagination: { pageSize: 20 },
 		},
