@@ -1099,6 +1099,11 @@ function BookingDetailsContent({ booking }: { booking: BookingViewResponse }) {
 					<span className="text-muted-foreground font-normal text-base">
 						- {booking.customId}
 					</span>
+					{booking.complimentary && (
+						<span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
+							COMP
+						</span>
+					)}
 					<span
 						className={`text-xs px-2 py-0.5 rounded-full border ${statusColor[booking.bookingStatus] || "bg-gray-100 text-gray-700 border-gray-200"}`}
 					>
@@ -1842,7 +1847,16 @@ const columns = [
 	}),
 	columnHelper.accessor("guestName", {
 		header: "Guest Name",
-		cell: (info) => info.getValue(),
+		cell: (info) => (
+			<div className="flex items-center gap-2">
+				<span>{info.getValue()}</span>
+				{info.row.original.complimentary && (
+					<span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
+						COMP
+					</span>
+				)}
+			</div>
+		),
 	}),
 	columnHelper.accessor("roomIdentifier", {
 		header: "Room",

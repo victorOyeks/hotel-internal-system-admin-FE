@@ -197,6 +197,11 @@ export function FolioContent({
 						<span className="text-muted-foreground font-normal text-base">
 							- {folio.guestName}
 						</span>
+						{folio.complimentary && (
+							<Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+								COMP
+							</Badge>
+						)}
 						<Badge
 							variant="outline"
 							className={STATUS_COLORS[folio.folioStatus] ?? ""}

@@ -558,6 +558,8 @@ const bookingFormSchema = z
 			(val) => (val === "" || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
 			z.number().nonnegative("Daily spending cap must be 0 or greater"),
 		),
+		complimentary: z.boolean().default(false),
+		complimentaryReason: z.string().optional(),
 		discountValue: z.number().nonnegative().default(0),
 		discountType: z.enum(["PERCENTAGE", "FIXED"]).default("FIXED"),
 		initialPayment: z.object({
@@ -736,6 +738,8 @@ export function UnifiedBookingForm({
 			dailySpendingCap: undefined,
 			checkInDate: initialMode === "check-in" ? toLocalDateString(new Date()) : "",
 			checkOutDate: initialMode === "check-in" ? toLocalDateString(new Date(Date.now() + 86400000)) : "",
+			complimentary: false,
+			complimentaryReason: "",
 			discountValue: 0,
 			discountType: "FIXED" as "FIXED" | "PERCENTAGE",
 			initialPayment: {
@@ -756,10 +760,11 @@ export function UnifiedBookingForm({
 
 	const bookingType = form.watch("bookingType");
 	const isCheckIn = bookingType === "check-in";
+	const isComplimentary = form.watch("complimentary");
 
 	const { isPending, mutate } = useMutation({
 		mutationFn: async (formData: z.infer<typeof bookingFormSchema>) => {
-			const includePayment = showPayment && formData.initialPayment.amount > 0;
+			const includePayment = showPayment && formData.initialPayment.amount > 0 && !formData.complimentary;
 			const payload = {
 				roomId: formData.roomId,
 				title: formData.title,
@@ -772,6 +777,8 @@ export function UnifiedBookingForm({
 				dailySpendingCap: formData.dailySpendingCap,
 				checkInDate: formData.checkInDate,
 				checkOutDate: formData.checkOutDate,
+				complimentary: formData.complimentary,
+				complimentaryReason: formData.complimentaryReason,
 				discountValue: formData.discountValue,
 				discountType: formData.discountType,
 				notes: formData.notes,
@@ -1117,6 +1124,50 @@ export function UnifiedBookingForm({
 							</div>
 							<span className="text-[10px] text-muted-foreground bg-muted/60 border border-border/50 px-2 py-1 rounded-md">Auto-set</span>
 						</div>
+						{isCheckIn && (
+							<div className="rounded-xl border border-border/60 overflow-hidden">
+								<div className="flex items-center gap-3 px-4 py-3">
+									<Checkbox
+										id="isComplimentary"
+										checked={isComplimentary}
+										onCheckedChange={(checked) => {
+											form.setValue("complimentary", checked === true);
+											if (!checked) form.setValue("complimentaryReason", "");
+											if (checked) {
+												setShowDiscount(false);
+												setShowPayment(false);
+											}
+										}}
+									/>
+									<div>
+										<Label htmlFor="isComplimentary" className="cursor-pointer text-sm font-medium">Complimentary Stay</Label>
+										<p className="text-xs text-muted-foreground">No accommodation charges will be posted</p>
+									</div>
+								</div>
+								{isComplimentary && (
+									<div className="px-4 pb-4 pt-3 border-t border-border/50">
+										<FormField
+											control={form.control}
+											name="complimentaryReason"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Reason <span className="text-muted-foreground font-normal text-xs">(Optional)</span></FormLabel>
+													<FormControl>
+														<Textarea
+															placeholder="e.g. VIP guest, management request, staff accommodation..."
+															className="resize-none"
+															rows={2}
+															{...field}
+														/>
+													</FormControl>
+												</FormItem>
+											)}
+										/>
+									</div>
+								)}
+							</div>
+						)}
+						{!isComplimentary && (<>
 						<div className="rounded-xl border border-border/60 overflow-hidden">
 							<div className="flex items-center gap-3 px-4 py-3">
 								<Checkbox
@@ -1234,6 +1285,7 @@ export function UnifiedBookingForm({
 								</div>
 							)}
 						</div>
+					</>)}
 					</div>
 
 					{/* ── Booking Summary ── */}
@@ -1262,16 +1314,23 @@ export function UnifiedBookingForm({
 										<h3 className="text-sm font-semibold">
 											{isCheckIn ? "Check-in Summary" : "Reservation Summary"}
 										</h3>
-										<span className="text-xs font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">
-											{nights} {nights === 1 ? "night" : "nights"}
-										</span>
+										<div className="flex items-center gap-2">
+											{isComplimentary && (
+												<span className="text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-2.5 py-1 rounded-full">
+													COMP
+												</span>
+											)}
+											<span className="text-xs font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-full">
+												{nights} {nights === 1 ? "night" : "nights"}
+											</span>
+										</div>
 									</div>
 									<div className="space-y-1.5 text-sm">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground">Rate / night</span>
 											<span className="font-medium">{formatCurrency(rate)}</span>
 										</div>
-										{discountVal > 0 && (
+										{!isComplimentary && discountVal > 0 && (
 											<div className="flex items-center justify-between text-green-600 dark:text-green-500">
 												<span>
 													Discount{" "}
@@ -1289,7 +1348,10 @@ export function UnifiedBookingForm({
 										<div className="h-px bg-border/60 my-1" />
 										<div className="flex items-center justify-between font-semibold text-base">
 											<span>Total</span>
-											<span>{formatCurrency(total)}</span>
+											{isComplimentary
+												? <span className="text-purple-600 dark:text-purple-400">No Charge</span>
+												: <span>{formatCurrency(total)}</span>
+											}
 										</div>
 									</div>
 								</div>

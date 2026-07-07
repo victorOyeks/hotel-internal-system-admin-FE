@@ -328,7 +328,16 @@ const columns = [
 	}),
 	columnHelper.accessor("guestName", {
 		header: "Guest Name",
-		cell: (info) => info.getValue(),
+		cell: (info) => (
+			<div className="flex items-center gap-2">
+				<span>{info.getValue()}</span>
+				{info.row.original.complimentary && (
+					<span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">
+						COMP
+					</span>
+				)}
+			</div>
+		),
 	}),
 	columnHelper.accessor("branchName", {
 		header: "Branch Name",

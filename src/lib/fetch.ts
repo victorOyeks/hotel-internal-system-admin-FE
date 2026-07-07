@@ -511,6 +511,8 @@ export const CheckInRequest = z.object({
 	dailySpendingCap: z.number(),
 	checkInDate: z.string(),
 	checkOutDate: z.string(),
+	complimentary: z.boolean().optional().default(false),
+	complimentaryReason: z.string().optional(),
 	discountValue: z.number(),
 	discountType: z.enum(["PERCENTAGE", "FIXED"]),
 	notes: z.string().optional(),
@@ -536,6 +538,7 @@ const BookingViewResponse = z.object({
 	expectedCheckInDate: z.iso.date(),
 	checkInDate: z.iso.date(),
 	checkOutDate: z.iso.date(),
+	complimentary: z.boolean().optional().default(false),
 });
 
 export type BookingViewResponse = z.infer<typeof BookingViewResponse>;
@@ -6785,6 +6788,7 @@ export const schema = createSchema({
 				checkInDate: z.coerce.date(),
 				checkOutDate: z.coerce.date().nullable(),
 				bookingStatus: z.string(),
+				complimentary: z.boolean().optional().default(false),
 				entries: z.array(z.object({
 					id: z.string(),
 					customId: z.string(),
@@ -6819,6 +6823,7 @@ export const schema = createSchema({
 				checkInDate: z.coerce.date(),
 				checkOutDate: z.coerce.date().nullable(),
 				bookingStatus: z.string(),
+				complimentary: z.boolean().optional().default(false),
 				totalCharges: z.number(),
 				totalPayments: z.number(),
 				balance: z.number(),
