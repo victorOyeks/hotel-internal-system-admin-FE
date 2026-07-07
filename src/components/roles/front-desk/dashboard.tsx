@@ -1124,11 +1124,10 @@ export function UnifiedBookingForm({
 							</div>
 							<span className="text-[10px] text-muted-foreground bg-muted/60 border border-border/50 px-2 py-1 rounded-md">Auto-set</span>
 						</div>
-						{isCheckIn && (
-							<div className="rounded-xl border border-border/60 overflow-hidden">
-								<div className="flex items-center gap-3 px-4 py-3">
-									<Checkbox
-										id="isComplimentary"
+						<div className="rounded-xl border border-border/60 overflow-hidden">
+							<div className="flex items-center gap-3 px-4 py-3">
+								<Checkbox
+									id="isComplimentary"
 										checked={isComplimentary}
 										onCheckedChange={(checked) => {
 											form.setValue("complimentary", checked === true);
@@ -1166,7 +1165,6 @@ export function UnifiedBookingForm({
 									</div>
 								)}
 							</div>
-						)}
 						{!isComplimentary && (<>
 						<div className="rounded-xl border border-border/60 overflow-hidden">
 							<div className="flex items-center gap-3 px-4 py-3">
