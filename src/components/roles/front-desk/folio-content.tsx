@@ -46,6 +46,7 @@ interface FolioContentProps {
 	readOnly?: boolean;
 	fetchAction?: (args: { bookingId: string }) => Promise<any>;
 	exportAction?: (args: { bookingId: string }) => Promise<ExportResult>;
+	onMutation?: () => void;
 }
 
 const ENTRY_TYPE_LABELS: Record<string, string> = {
@@ -86,6 +87,7 @@ export function FolioContent({
 	readOnly = false,
 	fetchAction,
 	exportAction,
+	onMutation,
 }: FolioContentProps) {
 	const queryClient = useQueryClient();
 	const router = useRouter();
@@ -151,6 +153,7 @@ export function FolioContent({
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["folio", bookingId] });
+			onMutation?.();
 			router.refresh();
 			toast.success("Folio entry voided successfully");
 			setVoidReason("");

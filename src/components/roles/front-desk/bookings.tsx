@@ -1808,7 +1808,10 @@ function BookingActionsCell({ booking }: { booking: BookingViewResponse }) {
 							View Folio
 						</DropdownMenuItem>
 					</DialogTrigger>
-					<FolioContent bookingId={booking.id} />
+					<FolioContent
+						bookingId={booking.id}
+						onMutation={() => revalidateRoute("/front-desk/bookings")}
+					/>
 				</Dialog>
 
 				{canAssignOrg && (
