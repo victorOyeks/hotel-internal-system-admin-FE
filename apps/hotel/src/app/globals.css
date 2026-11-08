@@ -1,0 +1,5 @@
+@import "../../../../packages/ui/src/styles/globals.css";
+
+/* Tailwind scans the shared kit and this app for class names. */
+@source "../../../../packages/ui/src";
+@source "../";

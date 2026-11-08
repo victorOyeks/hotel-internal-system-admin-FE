@@ -52,3 +52,8 @@ pnpm-lock.yaml
 .wrangler
 
 !.env.example
+
+apps/*/.next/
+apps/*/next-env.d.ts
+apps/*/tsconfig.tsbuildinfo
+.open-next/
