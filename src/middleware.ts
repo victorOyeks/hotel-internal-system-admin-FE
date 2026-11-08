@@ -25,9 +25,10 @@ export async function middleware(request: NextRequest) {
 	}
 	if (!session) {
 		const login = new URL("/auth", request.url);
-		login.searchParams.set("from", pathname);
+		if (pathname.startsWith(PREFIX)) login.searchParams.set("from", pathname + request.nextUrl.search);
 		return NextResponse.redirect(login);
 	}
+	if (pathname === "/") return NextResponse.redirect(new URL("/dashboard", request.url));
 
 	const role = request.cookies.get(COOKIES.role)?.value;
 	if (!role || !isHotelRole(role)) {
