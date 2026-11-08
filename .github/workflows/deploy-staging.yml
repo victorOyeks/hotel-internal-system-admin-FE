@@ -45,6 +45,10 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+          # First deploy to a fresh box: the target folder must exist before scp can write to it.
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 "${VPS_USER}@${VPS_HOST}" \
+            "mkdir -p /home/oyeks/apps/his-fe-staging"
+
           success=false
           for i in 1 2 3; do
             echo "SCP attempt $i..."
@@ -72,6 +76,21 @@ jobs:
           script: |
             set -e
             cd /home/oyeks/apps/his-fe-staging
+
+            # First deploy: create the staging service from the develop one (same app, port 3001).
+            if ! systemctl cat his-fe-staging.service >/dev/null 2>&1; then
+              echo "his-fe-staging.service not found - creating it from his-fe-develop.service"
+              if ! systemctl cat his-fe-develop.service >/dev/null 2>&1; then
+                echo "his-fe-develop.service is missing too; create the systemd unit by hand (see README)"
+                exit 1
+              fi
+              systemctl cat his-fe-develop.service \
+                | grep -v '^#' \
+                | sed -e 's#his-fe-develop#his-fe-staging#g' -e 's#PORT=3000#PORT=3001#g' -e 's#:3000#:3001#g' \
+                | sudo tee /etc/systemd/system/his-fe-staging.service >/dev/null
+              sudo systemctl daemon-reload
+              sudo systemctl enable his-fe-staging.service
+            fi
 
             # Backup current deployment
             if [ -d current ]; then
