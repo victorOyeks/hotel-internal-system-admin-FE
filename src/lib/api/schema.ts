@@ -160,15 +160,70 @@ export const Today = z.object({
 
 // ---- property & housekeeping ---------------------------------------------------------------------
 
+export const SpecialPrice = z.object({
+	id: z.string(),
+	roomTypeId: z.string().nullable().optional(),
+	name: z.string(),
+	price: z.number(),
+	fromDate: z.string(),
+	toDate: z.string(),
+});
+
+export const RoomType = z.object({
+	id: z.string(),
+	hotelId: z.string().nullable(),
+	name: z.string(),
+	description: z.string().nullable(),
+	basePrice: z.number(),
+	capacityAdults: z.number(),
+	capacityChildren: z.number(),
+	facilities: z.string().nullable(),
+	active: z.boolean(),
+	roomCount: z.number(),
+	specialPrices: z.array(SpecialPrice).nullable(),
+});
+
+export const RoomTypeRequest = z.object({
+	name: z.string(),
+	description: z.string().nullable().optional(),
+	basePrice: z.number(),
+	capacityAdults: z.number().optional(),
+	capacityChildren: z.number().optional(),
+	facilities: z.string().nullable().optional(),
+	active: z.boolean().optional(),
+});
+
+export const Area = z.object({
+	id: z.string(),
+	hotelId: z.string().nullable(),
+	name: z.string(),
+	kind: z.string().nullable(),
+	sortOrder: z.number().nullable(),
+});
+
 export const Room = z.object({
 	id: z.string(),
+	hotelId: z.string().nullable(),
 	number: z.string(),
 	floor: z.string().nullable(),
+	areaId: z.string().nullable(),
 	roomTypeId: z.string(),
 	roomTypeName: z.string().nullable(),
 	basePrice: z.number().nullable(),
+	capacityAdults: z.number().nullable(),
+	capacityChildren: z.number().nullable(),
 	status: z.string(),
 	outOfOrderReason: z.string().nullable(),
+	outOfOrderUntil: z.string().nullable(),
+	notes: z.string().nullable(),
+});
+
+export const RoomRequest = z.object({
+	number: z.string(),
+	roomTypeId: z.string(),
+	areaId: z.string().nullable().optional(),
+	floor: z.string().nullable().optional(),
+	notes: z.string().nullable().optional(),
 });
 
 export const RoomStatus = z.object({
@@ -300,7 +355,20 @@ export const schema = createSchema({
 	},
 
 	// property & housekeeping
-	"@get/property/rooms": { output: envelope(z.array(Room)) },
+	"@get/property/room-types": { output: envelope(z.array(RoomType)) },
+	"@post/property/room-types": { input: RoomTypeRequest, output: envelope(RoomType) },
+	"@put/property/room-types/:id": { input: RoomTypeRequest, output: envelope(RoomType) },
+	"@post/property/room-types/:id/special-prices": {
+		input: z.object({ name: z.string(), price: z.number(), fromDate: z.string(), toDate: z.string() }),
+		output: envelope(RoomType),
+	},
+	"@get/property/rooms": { output: envelope(z.array(Room)), query: z.object({ roomTypeId: z.string() }).partial().optional() },
+	"@get/property/rooms/:id": { output: envelope(Room) },
+	"@post/property/rooms": { input: RoomRequest, output: envelope(Room) },
+	"@put/property/rooms/:id": { input: RoomRequest, output: envelope(Room) },
+	"@post/property/rooms/:id/out-of-order": { input: z.object({ reason: z.string(), until: z.string().nullable().optional() }), output: envelope(Room) },
+	"@post/property/rooms/:id/back-in-service": { output: envelope(Room) },
+	"@get/property/areas": { output: envelope(z.array(Area)) },
 	"@get/housekeeping/room-status": { output: envelope(z.array(RoomStatus)) },
 
 	// finance

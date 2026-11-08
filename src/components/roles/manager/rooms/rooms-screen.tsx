@@ -12,7 +12,7 @@ import { RowActions } from "@/components/shared/row-actions";
 import { StatusPill } from "@/components/shared/status-pill";
 import { SearchBox } from "@/components/shared/toolbar";
 import { btn } from "@/components/shared/ui";
-import type { RoomRow, RoomState, RoomTypeRow, StaffRow } from "@/lib/data/types";
+import type { AreaRow, RoomRow, RoomState, RoomTypeRow, StaffRow } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { roomStateMeta, roomStateOrder } from "./room-state";
 import { AddRoomPanel, AssignCleaningPanel, OutOfOrderPanel, RoomDetailsPanel } from "./room-panels";
@@ -20,7 +20,7 @@ import { RoomTypesTab } from "./room-types";
 
 type Panel = null | "out-of-order" | "edit" | "assign" | "add";
 
-export function RoomsScreen({ hotelName, rooms: initial, types, attendants }: { hotelName: string; rooms: RoomRow[]; types: RoomTypeRow[]; attendants: StaffRow[] }) {
+export function RoomsScreen({ hotelName, rooms: initial, types, areas, attendants }: { hotelName: string; rooms: RoomRow[]; types: RoomTypeRow[]; areas: AreaRow[]; attendants: StaffRow[] }) {
 	const [tab, setTab] = useQueryState("tab", parseAsString.withDefault("board"));
 	const [openId, setOpenId] = useQueryState("open");
 	const [rooms, setRooms] = useState(initial);
@@ -131,7 +131,7 @@ export function RoomsScreen({ hotelName, rooms: initial, types, attendants }: { 
 									<section key={floor} className="rounded-card border border-line bg-card">
 										<button type="button" onClick={() => setCollapsed((c) => ({ ...c, [floor]: !isCollapsed }))} className="flex w-full items-center gap-4 px-5 py-4 text-left">
 											<div className="w-[180px] shrink-0">
-												<p className="text-sm font-bold text-ink">Wing {floor.replace(" · floor ", " · Floor ")}</p>
+												<p className="text-sm font-bold text-ink">{floor.replace(" · floor ", " · Floor ")}</p>
 												<p className="text-xs text-ink-3">{all[0]?.number}–{all[all.length - 1]?.number} · {plural(all.length, "room")}</p>
 											</div>
 											<div className="flex h-[10px] flex-1 gap-[2px] overflow-hidden rounded">
@@ -173,13 +173,15 @@ export function RoomsScreen({ hotelName, rooms: initial, types, attendants }: { 
 
 			<RoomDetailsPanel
 				room={panel === null ? selected : null}
+				areas={areas}
 				onClose={() => setOpenId(null)}
 				onAction={(p) => setPanel(p)}
 				onMarkReady={(id) => patch(id, { state: "ready" })}
+				onPatched={(id, changes) => patch(id, changes)}
 			/>
-			<OutOfOrderPanel room={panel === "out-of-order" ? selected : null} onClose={closePanel} onSaved={(id, changes) => patch(id, changes)} />
+			<OutOfOrderPanel room={panel === "out-of-order" ? selected : null} areas={areas} onClose={closePanel} onSaved={(id, changes) => patch(id, changes)} />
 			<AssignCleaningPanel room={panel === "assign" ? selected : null} attendants={attendants} onClose={closePanel} onSaved={(id, changes) => patch(id, changes)} />
-			<AddRoomPanel open={panel === "add" || panel === "edit"} room={panel === "edit" ? selected : null} types={types} onClose={closePanel} onSaved={(r) => (panel === "edit" ? patch(r.id, r) : setRooms((rs) => [...rs, r]))} />
+			<AddRoomPanel open={panel === "add" || panel === "edit"} room={panel === "edit" ? selected : null} types={types} areas={areas} onClose={closePanel} onSaved={(r) => (panel === "edit" ? patch(r.id, r) : setRooms((rs) => [...rs, r]))} />
 		</>
 	);
 }
