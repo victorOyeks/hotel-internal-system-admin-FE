@@ -1,567 +1,302 @@
-"use client";
-
 import {
 	ArrowLeftToLineIcon,
 	ArrowRightToLineIcon,
 	BedDoubleIcon,
-	BedIcon,
-	ClipboardCheckIcon,
-	DollarSignIcon,
-	PackageIcon,
-	ShirtIcon,
+	CalendarIcon,
+	ClipboardListIcon,
+	CreditCardIcon,
+	FlagIcon,
+	PlusIcon,
+	ReceiptIcon,
 	TrendingUpIcon,
-	UsersIcon,
-	UtensilsIcon,
-	WrenchIcon,
+	TruckIcon,
+	UserCheckIcon,
+	WalletIcon,
 } from "lucide-react";
-import {
-	Area,
-	AreaChart,
-	Bar,
-	BarChart,
-	type DotProps,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from "recharts";
-import type { ActiveShape } from "recharts/types/util/types";
-import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
-import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
-import { useSetAtom } from "jotai";
-import { useLayoutEffect, useMemo } from "react";
-import { useQueryState, parseAsString } from "nuqs";
-import { MonthYearPicker } from "@/components/shared/month-year-picker";
-import { BookingsData } from "./dashboard-table";
-import { StatCard, QuickStatCard } from "@/components/shared/stat-card";
-import { DonutChart } from "@/components/shared/donut-chart";
-import type { APIOutput } from "@/lib/action-utils";
-import type { ManagerBookingViewResponse } from "@/lib/fetch";
 import Link from "next/link";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
+import { naira, nairaShort, plural } from "@/components/shared/format";
+import { KpiCard } from "@/components/shared/kpi-card";
+import { PageHeader } from "@/components/shared/page-header";
+import { ProgressBar } from "@/components/shared/progress-bar";
+import { SectionCard } from "@/components/shared/section-card";
+import { StatusPill } from "@/components/shared/status-pill";
+import { btn } from "@/components/shared/ui";
+import type { Hotel, Me } from "@/lib/api/schema";
+import type { bookingBuckets } from "@/lib/data";
+import type { ApprovalRow, FolioRow, RepairRow, RoomRow, ShiftRow, StockItemRow } from "@/lib/data/types";
+import { GuestsTable } from "./guests-table";
 
-type OverviewData = APIOutput<"@get/api/managers/:hotelId/overview">["data"];
-type EarningsGraphData =
-	APIOutput<"@get/api/managers/dashboard/:hotelId/earnings-graph">["data"];
-type PerformanceData =
-	APIOutput<"@get/api/managers/dashboard-performance">["data"];
-
-// ==================== KPI Row ====================
-function KPIRow({ data }: { data: OverviewData }) {
-	const monthLabel = data.selectedMonth
-		? new Date(
-				Number(data.selectedMonth.split("-")[0]),
-				Number(data.selectedMonth.split("-")[1]) - 1,
-			).toLocaleString("en-US", { month: "short", year: "numeric" })
-		: "this month";
-
-	return (
-		<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
-			<StatCard
-				title="Total Revenue"
-				value={data.totalRevenue}
-				icon={DollarSignIcon}
-				isCurrency
-				subtitle={monthLabel}
-			/>
-			<StatCard
-				title="Occupancy Rate"
-				value={`${data.occupancyRate.toFixed(0)}%`}
-				icon={BedIcon}
-				subtitle={`${data.availableRooms} of ${data.totalRooms} available`}
-			/>
-			<StatCard
-				title="Check-ins"
-				value={data.totalCheckIns}
-				icon={ArrowRightToLineIcon}
-				subtitle={monthLabel}
-			/>
-			<StatCard
-				title="Check-outs"
-				value={data.totalCheckOuts}
-				icon={ArrowLeftToLineIcon}
-				subtitle={monthLabel}
-			/>
-			<StatCard
-				title="Pending Approvals"
-				value={data.pendingApprovals}
-				icon={ClipboardCheckIcon}
-				href="/dashboard/approvals"
-				iconBgClass="bg-amber-50"
-				iconColorClass="text-amber-600"
-			/>
-			<StatCard
-				title="Active Staff"
-				value={data.staffCount}
-				icon={UsersIcon}
-				href="/dashboard/staff-management"
-			/>
-		</div>
-	);
-}
-
-// ==================== Revenue Trend Chart ====================
-const CustomDot = (
-	props: DotProps & { payload: { month: string; totalEarnings: number } },
-) => {
-	const { cx, cy, payload } = props;
-	if (cx === undefined || cy === undefined) return null;
-	return (
-		<g>
-			<circle
-				cx={cx}
-				cy={cy}
-				r={6}
-				fill="white"
-				stroke="#22c55e"
-				strokeWidth={3}
-			/>
-			<foreignObject
-				x={cx - 25}
-				y={cy - 40}
-				width={payload.totalEarnings.toString().length * 24}
-				height={28}
-			>
-				<div className="flex justify-center">
-					<span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-						{formatCurrency(payload.totalEarnings, "short")}
-					</span>
-				</div>
-			</foreignObject>
-		</g>
-	);
+export type DashboardData = {
+	buckets: ReturnType<typeof bookingBuckets>;
+	rooms: RoomRow[];
+	money: { revenue: number; byMethod: Record<string, number>; paymentsCount: number; expenses: number; openTills: number; cashInTills: number };
+	approvals: ApprovalRow[];
+	repairs: RepairRow[];
+	items: StockItemRow[];
+	folios: FolioRow[];
+	shifts: ShiftRow[];
 };
 
-function getCurrentYearMonth() {
+function greeting() {
+	const h = new Date().getHours();
+	return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
+const quickActions = [
+	{ label: "Check in", href: "/dashboard/bookings?tab=arrivals", icon: ArrowRightToLineIcon },
+	{ label: "Check out", href: "/dashboard/bookings?tab=departures", icon: ArrowLeftToLineIcon },
+	{ label: "Record payment", href: "/dashboard/payments?new=1", icon: CreditCardIcon },
+	{ label: "Add expense", href: "/dashboard/financials?new=expense", icon: ReceiptIcon },
+	{ label: "Assign task", href: "/dashboard/tasks?new=1", icon: ClipboardListIcon },
+	{ label: "Report issue", href: "/dashboard/tasks?new=issue", icon: FlagIcon },
+];
+
+export function ManagerDashboard({ user, hotel, data }: { user: Me; hotel: Hotel | null; data: DashboardData }) {
+	const firstName = user.fullName.split(" ")[0];
 	const now = new Date();
-	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
+	const { buckets, rooms, money, approvals, repairs, items, folios, shifts } = data;
 
-function RevenueTrendChart({ graphData }: { graphData: EarningsGraphData }) {
-	const [selectedMonth] = useQueryState(
-		"selectedMonth",
-		parseAsString.withDefault(getCurrentYearMonth()),
-	);
+	// ---- derived numbers --------------------------------------------------------------------------
+	const totalRooms = rooms.length || hotel?.roomCount || 0;
+	const count = (state: RoomRow["state"]) => rooms.filter((r) => r.state === state).length;
+	const occupied = count("occupied");
+	const ready = count("ready");
+	const dirty = count("dirty") + count("inspecting");
+	const held = count("held");
+	const outOfOrder = count("out_of_order");
+	const occupancy = totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0;
+	const arrivedToday = buckets.arrivals.filter((b) => b.status === "CHECKED_IN").length;
+	const stillToArrive = buckets.arrivals.filter((b) => b.status === "BOOKED").length;
+	const unpaid = folios.filter((f) => f.status !== "CLOSED" && f.balance > 0);
+	const unpaidTotal = unpaid.reduce((sum, f) => sum + f.balance, 0);
+	const openRepairs = repairs.filter((r) => !["DONE", "CANCELLED"].includes(r.status));
+	const urgent = openRepairs.filter((r) => r.priority === "URGENT" || r.priority === "HIGH").length;
+	const lowStock = items
+		.filter((i) => i.minLevel > 0 && i.quantity <= i.minLevel)
+		.sort((a, b) => a.quantity / a.minLevel - b.quantity / b.minLevel)
+		.slice(0, 3);
+	const shiftsByRole = shifts.reduce<Record<string, number>>((acc, s) => {
+		acc[s.role] = (acc[s.role] ?? 0) + 1;
+		return acc;
+	}, {});
+	const pendingApprovals = approvals.filter((a) => a.status === "PENDING" && a.approverLevel === "MANAGER");
 
-	const {
-		selectedMonthEarnings,
-		selectedMonthName,
-		selectedMonthYear,
-		selectedMonthLabel,
-	} = useMemo(() => {
-		const [y, m] = selectedMonth.split("-").map(Number);
-		const monthDate = new Date(y, m - 1);
-		const name = monthDate
-			.toLocaleString("en-US", { month: "long" })
-			.toUpperCase();
-		const label = monthDate.toLocaleString("en-US", {
-			month: "long",
-			year: "numeric",
-		});
-		const earnings =
-			graphData.find(
-				(d) => d.month.toUpperCase() === name && d.year === y,
-			)?.totalEarnings ?? 0;
-		return {
-			selectedMonthEarnings: earnings,
-			selectedMonthName: name,
-			selectedMonthYear: y,
-			selectedMonthLabel: label,
-		};
-	}, [graphData, selectedMonth]);
-
-	const SelectedDot = useMemo(
-		() =>
-			function Dot(
-				props: DotProps & {
-					payload: { month: string; year: number; totalEarnings: number };
-					index: number;
-				},
-			) {
-				const { cx, cy, payload, index } = props;
-				if (cx === undefined || cy === undefined) return null;
-				if (
-					payload.month.toUpperCase() !== selectedMonthName ||
-					payload.year !== selectedMonthYear
-				)
-					return null;
-				return (
-					<g key={`dot-${index}`}>
-						<circle
-							cx={cx}
-							cy={cy}
-							r={5}
-							fill="#22c55e"
-							stroke="white"
-							strokeWidth={2}
-						/>
-					</g>
-				);
-			},
-		[selectedMonthName, selectedMonthYear],
-	);
+	// ---- "needs your action": approvals first, then urgent repairs, then overdue balances ----------
+	const actions: { key: string; title: string; detail: string; tone: "danger" | "warning" | "info" | "grey"; cta: string; href: string; primary?: boolean }[] = [
+		...pendingApprovals.slice(0, 3).map((a) => ({
+			key: `a-${a.id}`,
+			title: a.description,
+			detail: `${a.requesterName} · ${a.sourceModule.toLowerCase()}${a.amount ? ` · ${naira(a.amount)}` : ""}`,
+			tone: "info" as const,
+			cta: "Review",
+			href: `/dashboard/approvals?open=${a.id}`,
+			primary: true,
+		})),
+		...openRepairs.filter((r) => r.priority === "URGENT").slice(0, 2).map((r) => ({
+			key: `r-${r.id}`,
+			title: r.title,
+			detail: `${r.roomNumber ? `Room ${r.roomNumber}` : (r.area ?? "Maintenance")} · ${r.assignedTo ?? "unassigned"}`,
+			tone: "warning" as const,
+			cta: r.assignedTo ? "Open" : "Assign technician",
+			href: `/dashboard/tasks?open=${r.id}`,
+		})),
+		...unpaid.filter((f) => f.status === "CLOSED_WITH_BALANCE").slice(0, 2).map((f) => ({
+			key: `f-${f.id}`,
+			title: `${f.roomNumber ? `Room ${f.roomNumber} ` : ""}balance outstanding`,
+			detail: `${f.guestName} · ${naira(f.balance)}`,
+			tone: "warning" as const,
+			cta: "Collect",
+			href: `/dashboard/folios?open=${f.id}`,
+		})),
+	];
+	const toneBg = { danger: "bg-danger-soft text-danger", warning: "bg-warning-soft text-warning", info: "bg-info-soft text-info", grey: "bg-subtle text-ink-2" };
 
 	return (
-		<div className="bg-white py-4 px-2 md:py-6 md:px-5 rounded-2xl">
-			<div className="flex items-center justify-between mb-4">
-				<div>
-					<h3 className="text-sm font-medium text-gray-600">Revenue Trend</h3>
-					<p className="text-2xl font-semibold text-primary">
-						{formatCurrency(selectedMonthEarnings)}
-					</p>
-					<p className="text-xs text-gray-400">{selectedMonthLabel}</p>
-				</div>
-				<MonthYearPicker />
-			</div>
-			<div className="h-56 w-full">
-				<ResponsiveContainer width="100%" height="100%">
-					<AreaChart
-						data={graphData}
-						margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
-					>
-						<defs>
-							<linearGradient
-								id="revenueGradient"
-								x1="0"
-								y1="0"
-								x2="0"
-								y2="1"
-							>
-								<stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-								<stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-							</linearGradient>
-						</defs>
-						<XAxis
-							dataKey="month"
-							axisLine={false}
-							tickLine={false}
-							tick={(props: { x: number; y: number; payload: { value: string } }) => {
-								const { x, y, payload } = props;
-								const isSelected =
-									payload.value.toUpperCase() === selectedMonthName;
-								return (
-									<text
-										x={x}
-										y={y + 12}
-										textAnchor="middle"
-										fontSize={11}
-										fontWeight={isSelected ? 700 : 400}
-										fill={isSelected ? "#16a34a" : "#9ca3af"}
-									>
-										{payload.value.slice(0, 3)}
-									</text>
-								);
-							}}
-						/>
-						<YAxis
-							axisLine={false}
-							tickLine={false}
-							tick={{ fontSize: 11, fill: "#9ca3af" }}
-							tickFormatter={(v) => formatCurrency(v, "short")}
-						/>
-						<Tooltip
-							cursor={false}
-							formatter={(value: number) => [
-								formatCurrency(value),
-								"Revenue",
-							]}
-							contentStyle={{
-								backgroundColor: "#fff",
-								borderRadius: "8px",
-								border: "none",
-								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-								fontSize: "12px",
-							}}
-						/>
-						<Area
-							type="monotone"
-							dataKey="totalEarnings"
-							stroke="#22c55e"
-							strokeWidth={2.5}
-							fill="url(#revenueGradient)"
-							dot={SelectedDot as ActiveShape<DotProps>}
-							activeDot={CustomDot as ActiveShape<DotProps>}
-						/>
-					</AreaChart>
-				</ResponsiveContainer>
-			</div>
-		</div>
-	);
-}
+		<>
+			<PageHeader
+				title={`${greeting()}, ${firstName}`}
+				subtitle={[hotel?.name, hotel?.city, totalRooms ? `${totalRooms} rooms` : null, format(now, "EEEE, d MMM yyyy")].filter(Boolean).join(" · ")}
+			>
+				<span className="flex items-center gap-2 rounded-control border border-line bg-card px-3 py-[10px] text-[13px] font-medium text-ink">
+					<CalendarIcon className="size-4 text-ink-2" /> Today · {format(now, "EEE d MMM")}
+				</span>
+				<Button asChild className={btn.primary}>
+					<Link href="/dashboard/bookings?new=1">
+						<PlusIcon className="size-[15px]" /> New booking
+					</Link>
+				</Button>
+			</PageHeader>
 
-// ==================== Revenue By Department Donut ====================
-function RevenueDepartmentChart({ data }: { data: OverviewData }) {
-	const chartData = useMemo(
-		() =>
-			[
-				{
-					name: "Accommodation",
-					value: data.accommodationRevenue,
-					color: "#6366f1",
-				},
-				{
-					name: "F&B",
-					value: data.restaurantRevenue,
-					color: "#f59e0b",
-				},
-				{ name: "Laundry & Valet", value: data.laundryRevenue, color: "#06b6d4" },
-				{ name: "Guest Services", value: data.rentalRevenue, color: "#8b5cf6" },
-				{
-					name: "Other Income",
-					value: data.otherIncomeRevenue,
-					color: "#ec4899",
-				},
-			].filter((item) => item.value > 0),
-		[data],
-	);
-
-	return (
-		<DonutChart
-			data={chartData}
-			title="Revenue by Department"
-			centerValue={formatCurrency(data.totalRevenue, "short")}
-			centerLabel="Total Revenue"
-		/>
-	);
-}
-
-// ==================== Operations Quick Stats ====================
-function OperationsQuickStats({ data }: { data: OverviewData }) {
-	return (
-		<div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-			<QuickStatCard
-				title="F&B"
-				primaryValue={formatCurrency(data.restaurantTodaySales, "short")}
-				primaryLabel="today's sales"
-				secondaryValue={data.restaurantActiveOrders}
-				secondaryLabel="active orders"
-				icon={UtensilsIcon}
-				accentColor="bg-orange-50 text-orange-600"
-				href="/dashboard/operations"
-			/>
-			<QuickStatCard
-				title="Laundry & Valet"
-				primaryValue={data.laundryPendingOrders}
-				primaryLabel="pending orders"
-				secondaryValue={formatCurrency(data.laundryTodayRevenue, "short")}
-				secondaryLabel="today's revenue"
-				icon={ShirtIcon}
-				accentColor="bg-cyan-50 text-cyan-600"
-				href="/dashboard/operations"
-			/>
-			<QuickStatCard
-				title="Guest Services"
-				primaryValue={data.activeRentals}
-				primaryLabel="active rentals"
-				secondaryValue={data.overdueRentals}
-				secondaryLabel="overdue"
-				icon={PackageIcon}
-				accentColor="bg-violet-50 text-violet-600"
-				href="/dashboard/operations"
-			/>
-			<QuickStatCard
-				title="Inventory"
-				primaryValue={data.lowStockCount}
-				primaryLabel="low stock alerts"
-				secondaryValue={data.pendingRestockRequests}
-				secondaryLabel="pending restocks"
-				icon={WrenchIcon}
-				accentColor="bg-rose-50 text-rose-600"
-				href="/dashboard/inventory"
-			/>
-		</div>
-	);
-}
-
-// ==================== Branch Performance ====================
-function BranchPerformance({
-	dashboardPerformanceData,
-}: {
-	dashboardPerformanceData: PerformanceData;
-}) {
-	const data = useMemo(
-		() =>
-			dashboardPerformanceData
-				.sort((a, b) => b.performancePercentage - a.performancePercentage)
-				.slice(0, 5)
-				.map((item) => ({
-					name: item.hotelName,
-					shortName:
-						item.hotelName.length > 12
-							? `${item.hotelName.slice(0, 12)}…`
-							: item.hotelName,
-					value: item.performancePercentage,
-				})),
-		[dashboardPerformanceData],
-	);
-
-	return (
-		<div className="bg-white p-4 md:p-6 rounded-2xl">
-			<div className="flex items-center justify-between mb-3">
-				<h3 className="text-sm font-medium text-gray-600">
-					Branch Performance
-				</h3>
-				{dashboardPerformanceData.length > 5 && (
-					<span className="text-xs text-gray-400">Top 5</span>
-				)}
-			</div>
-			<div className="w-full" style={{ height: Math.max(140, data.length * 32 + 30) }}>
-				<ResponsiveContainer width="100%" height="100%">
-					<BarChart
-						data={data}
-						layout="vertical"
-						margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
-						barCategoryGap="25%"
-					>
-						<XAxis type="number" hide domain={[0, 100]} />
-						<YAxis
-							type="category"
-							dataKey="shortName"
-							axisLine={false}
-							tickLine={false}
-							tick={{ fontSize: 11, fill: "#6b7280" }}
-							width={100}
-						/>
-						<Bar
-							dataKey="value"
-							fill="var(--primary-5)"
-							radius={[0, 6, 6, 0]}
-							maxBarSize={16}
-							label={{
-								position: "right",
-								fontSize: 11,
-								fill: "#374151",
-								formatter: (v: number) => `${v}%`,
-							}}
-						/>
-						<Tooltip
-							contentStyle={{
-								backgroundColor: "#fff",
-								borderRadius: "8px",
-								border: "none",
-								boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-								fontSize: "12px",
-							}}
-							cursor={{ fill: "rgba(0,0,0,0.04)" }}
-							formatter={(value: number, _name: string, props: { payload: { name: string } }) => [
-								`${value}%`,
-								props.payload.name,
-							]}
-						/>
-					</BarChart>
-				</ResponsiveContainer>
-			</div>
-		</div>
-	);
-}
-
-// ==================== Today's Snapshot ====================
-function TodaySnapshot({ data }: { data: OverviewData }) {
-	return (
-		<div className="bg-white p-4 rounded-2xl">
-			<h3 className="text-sm font-medium text-gray-600 mb-3">
-				Today&apos;s Snapshot
-			</h3>
-			<div className="space-y-3">
-				<div className="flex items-center justify-between">
-					<span className="text-sm text-gray-500">Revenue</span>
-					<span className="text-sm font-semibold text-primary">
-						{formatCurrency(data.todayRevenue, "short")}
-					</span>
-				</div>
-				<div className="flex items-center justify-between">
-					<span className="text-sm text-gray-500">Available Rooms</span>
-					<span className="text-sm font-semibold text-primary">
-						{data.availableRooms}/{data.totalRooms}
-					</span>
-				</div>
-				<div className="flex items-center justify-between">
-					<span className="text-sm text-gray-500">Pending Approvals</span>
-					<span className="text-sm font-semibold text-amber-600">
-						{data.pendingApprovals}
-					</span>
-				</div>
-				<div className="flex items-center justify-between">
-					<span className="text-sm text-gray-500">Laundry Pending</span>
-					<span className="text-sm font-semibold text-cyan-600">
-						{data.laundryPendingOrders}
-					</span>
-				</div>
-				<div className="flex items-center justify-between">
-					<span className="text-sm text-gray-500">Overdue Rentals</span>
-					<span className="text-sm font-semibold text-red-500">
-						{data.overdueRentals}
-					</span>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-// ==================== Main Dashboard ====================
-export function ManagerDashboard({
-	breadcrumbs = [],
-	overviewData,
-	graphData,
-	dashboardPerformanceData,
-	bookingData,
-}: {
-	breadcrumbs: Breadcrumb[];
-	overviewData: OverviewData;
-	graphData: EarningsGraphData;
-	dashboardPerformanceData: PerformanceData;
-	bookingData: ManagerBookingViewResponse[];
-}) {
-	const setBreadCrumb = useSetAtom(breadcrumbAtom);
-
-	useLayoutEffect(() => {
-		setBreadCrumb({
-			title: "Dashboard",
-			breadcrumbs,
-		});
-	}, [breadcrumbs, setBreadCrumb]);
-
-	return (
-		<div className="p-4 md:p-6 space-y-3 md:space-y-4 pb-4">
-			{/* KPI Row */}
-			<KPIRow data={overviewData} />
-
-			{/* Charts Row: Revenue Trend + Revenue by Department */}
-			<div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-				<div className="lg:col-span-3">
-					<RevenueTrendChart graphData={graphData} />
-				</div>
-				<div className="lg:col-span-2">
-					<RevenueDepartmentChart data={overviewData} />
-				</div>
+			{/* Quick actions */}
+			<div className="grid grid-cols-2 gap-[10px] md:grid-cols-3 xl:grid-cols-6">
+				{quickActions.map(({ label, href, icon: Icon }) => (
+					<Link key={label} href={href} className="flex items-center gap-[10px] rounded-xl border border-line bg-card px-[14px] py-3 text-[13px] font-semibold text-ink transition-colors hover:bg-brand-soft/40">
+						<span className="flex size-[30px] shrink-0 items-center justify-center rounded-[9px] bg-brand-soft text-brand">
+							<Icon className="size-[15px]" />
+						</span>
+						{label}
+					</Link>
+				))}
 			</div>
 
-			{/* Operations Quick Stats */}
-			<OperationsQuickStats data={overviewData} />
+			{/* KPI row */}
+			<div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+				<KpiCard label="Occupancy tonight" value={`${occupancy}%`} icon={BedDoubleIcon} hint={`${occupied} of ${totalRooms} rooms`} />
+				<KpiCard label="Arrivals today" value={buckets.arrivals.length} icon={ArrowRightToLineIcon}
+					pill={arrivedToday > 0 ? <StatusPill tone="success">{arrivedToday} in</StatusPill> : undefined}
+					hint={`${stillToArrive} still to arrive`} />
+				<KpiCard label="Departures today" value={buckets.departures.length} icon={ArrowLeftToLineIcon} hint={`${buckets.departures.length} still to check out`} />
+				<KpiCard label="Revenue today" value={nairaShort(money.revenue)} icon={TrendingUpIcon}
+					hint={`${money.paymentsCount} payments · ${naira(money.expenses)} spent`} />
+				<KpiCard label="Unpaid balances" value={nairaShort(unpaidTotal)} icon={WalletIcon}
+					pill={unpaid.length > 0 ? <StatusPill tone="warning">{plural(unpaid.length, "guest")}</StatusPill> : undefined}
+					hint={unpaid.length === 0 ? "Everyone is paid up" : "Open folios with a balance"} />
+			</div>
 
-			{/* Two-Column: Bookings + Today's Snapshot & Branch Performance */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-				<section className="lg:col-span-2 bg-white p-3 rounded-2xl">
-					<div className="flex items-center justify-between mb-2">
-						<h3 className="text-sm font-medium text-gray-600">
-							Recent Bookings
-						</h3>
-						<Button variant="link" size="sm" asChild>
-							<Link href="/dashboard/bookings">View all</Link>
-						</Button>
-					</div>
-					<BookingsData bookings={bookingData} />
-				</section>
-
-				<div className="flex flex-col gap-3">
-					<TodaySnapshot data={overviewData} />
-					{dashboardPerformanceData.length > 0 && (
-						<BranchPerformance
-							dashboardPerformanceData={dashboardPerformanceData}
-						/>
+			{/* Needs your action + Room status */}
+			<div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+				<SectionCard title="Needs your action" subtitle={`${hotel?.name ?? "This hotel"} · sorted by urgency`} count={actions.length} action={{ label: "All approvals", href: "/dashboard/approvals" }}>
+					{actions.length === 0 ? (
+						<EmptyState title="Nothing waiting on you" hint="Approvals, urgent repairs and overdue balances will appear here." />
+					) : (
+						<ul>
+							{actions.map((a, i) => (
+								<li key={a.key} className={`flex items-center gap-3 py-[10px] ${i < actions.length - 1 ? "border-b border-line" : ""}`}>
+									<span className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] ${toneBg[a.tone]}`}>
+										<FlagIcon className="size-4" />
+									</span>
+									<div className="min-w-0 flex-1">
+										<p className="truncate text-[13px] font-semibold text-ink">{a.title}</p>
+										<p className="truncate text-xs text-ink-3">{a.detail}</p>
+									</div>
+									<Button asChild size="sm" variant={a.primary ? "default" : "outline"} className={a.primary ? btn.primary : btn.secondary}>
+										<Link href={a.href}>{a.cta}</Link>
+									</Button>
+								</li>
+							))}
+						</ul>
 					)}
-				</div>
+				</SectionCard>
+
+				<SectionCard title="Room status" subtitle={`Live · ${totalRooms} rooms`} action={{ label: "Open rooms", href: "/dashboard/rooms" }} bodyClassName="gap-[14px] pt-2">
+					{totalRooms === 0 ? (
+						<EmptyState title="No rooms yet" hint="Add room types and rooms in Hotel setup → Rooms & areas." />
+					) : (
+						<>
+							<div className="flex h-[14px] gap-[2px]">
+								{[
+									["bg-brand", occupied],
+									["bg-success", ready],
+									["bg-[#dbab00]", dirty],
+									["bg-info", held],
+									["bg-line-strong", outOfOrder],
+								].map(([cls, n], i) => (n as number) > 0 ? <div key={i} className={`${cls} rounded-[3px]`} style={{ width: `${((n as number) / totalRooms) * 100}%` }} /> : null)}
+							</div>
+							<ul className="flex flex-col">
+								{[
+									["Occupied", "bg-brand", occupied],
+									["Ready", "bg-success", ready],
+									["Needs cleaning", "bg-[#dbab00]", dirty],
+									["Arriving · held", "bg-info", held],
+									["Out of order", "bg-line-strong", outOfOrder],
+								].map(([label, cls, n]) => (
+									<li key={label as string} className="flex items-center gap-[10px] py-1">
+										<span className={`size-[10px] rounded-[3px] ${cls}`} />
+										<span className="flex-1 text-[13px] font-medium text-[#424242]">{label}</span>
+										<span className="text-sm font-bold text-ink">{n}</span>
+									</li>
+								))}
+							</ul>
+							{dirty > 0 && (
+								<p className="rounded-[10px] bg-warning-soft px-3 py-[10px] text-xs font-medium text-warning">
+									{plural(dirty, "room")} to clean{stillToArrive > 0 ? ` · ${Math.min(stillToArrive, dirty)} needed for arrivals` : ""}
+								</p>
+							)}
+						</>
+					)}
+				</SectionCard>
 			</div>
-		</div>
+
+			{/* Today's guests + Staff on shift */}
+			<div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+				<GuestsTable buckets={buckets} />
+
+				<SectionCard title="Staff on shift" subtitle={`${shifts.length} scheduled today`} action={{ label: "Open staff", href: "/dashboard/staff" }} bodyClassName="gap-[10px] pt-2">
+					{Object.keys(shiftsByRole).length === 0 ? (
+						<EmptyState title="No shifts today" hint="Build the rota in Staff → Rota so everyone knows who is in." />
+					) : (
+						Object.entries(shiftsByRole).map(([role, n]) => (
+							<div key={role} className="flex flex-col gap-[6px]">
+								<div className="flex items-center gap-2 text-[13px]">
+									<span className="flex-1 font-medium capitalize text-ink">{role.toLowerCase().replace(/_/g, " ")}</span>
+									<span className="font-bold text-ink">{n}</span>
+								</div>
+								<ProgressBar value={n} max={Math.max(...Object.values(shiftsByRole))} />
+							</div>
+						))
+					)}
+				</SectionCard>
+			</div>
+
+			{/* Tasks, money, stock */}
+			<div className="grid gap-4 md:grid-cols-3">
+				<SectionCard title="Tasks & maintenance" subtitle={`${openRepairs.length} open · ${urgent} urgent`} action={{ label: "Tasks", href: "/dashboard/tasks" }} bodyClassName="gap-[10px] pt-2">
+					{openRepairs.length === 0 ? (
+						<EmptyState title="No open repairs" />
+					) : (
+						openRepairs.slice(0, 4).map((r) => (
+							<Link key={r.id} href={`/dashboard/tasks?open=${r.id}`} className="flex items-center gap-[10px] rounded-lg py-1 hover:bg-subtle/60">
+								<UserCheckIcon className="size-4 shrink-0 text-ink-3" />
+								<div className="min-w-0 flex-1">
+									<p className="truncate text-[13px] font-semibold text-ink">{r.title}{r.roomNumber ? ` · Room ${r.roomNumber}` : ""}</p>
+									<p className={`truncate text-[11px] ${r.assignedTo ? "text-ink-3" : "text-danger"}`}>{r.assignedTo ?? "Unassigned"}</p>
+								</div>
+								<StatusPill dot={false} tone={r.priority === "URGENT" ? "danger" : r.status === "IN_PROGRESS" ? "info" : r.status === "WAITING_PARTS" ? "warning" : "grey"}>
+									{r.priority === "URGENT" ? "Urgent" : r.status === "IN_PROGRESS" ? "In progress" : r.status === "WAITING_PARTS" ? "Waiting parts" : "To do"}
+								</StatusPill>
+							</Link>
+						))
+					)}
+				</SectionCard>
+
+				<SectionCard title="Money today" subtitle={`Payments taken at ${hotel?.name ?? "this hotel"}`} action={{ label: "Financials", href: "/dashboard/financials" }} bodyClassName="gap-[10px] pt-2">
+					<p className="text-[26px] font-bold leading-none text-ink">{nairaShort(money.revenue)}</p>
+					<div className="flex gap-[6px]">
+						{(["CARD", "TRANSFER", "CASH"] as const).map((m) => (
+							<div key={m} className="flex min-w-0 flex-1 flex-col rounded-lg bg-[#fafafa] px-[10px] py-2">
+								<span className="text-[11px] font-medium capitalize text-ink-3">{m.toLowerCase()}</span>
+								<span className="truncate text-[13px] font-bold text-ink">{nairaShort(money.byMethod[m] ?? 0)}</span>
+							</div>
+						))}
+					</div>
+					<p className="text-xs text-ink-3">{plural(money.openTills, "open till")} · {naira(money.cashInTills)} cash in hand</p>
+				</SectionCard>
+
+				<SectionCard title="Stock alerts" subtitle={`${plural(lowStock.length, "item")} running low`} action={{ label: "Inventory", href: "/dashboard/inventory" }} bodyClassName="gap-[10px] pt-2">
+					{lowStock.length === 0 ? (
+						<EmptyState title="Stock is fine" hint="Items below their minimum level will show here." />
+					) : (
+						lowStock.map((item) => {
+							const critical = item.quantity <= item.minLevel * 0.4;
+							return (
+								<div key={item.id} className="flex flex-col gap-[6px]">
+									<div className="flex items-start gap-2">
+										<span className="flex-1 text-[13px] font-medium text-ink">{item.name}</span>
+										<span className={`text-xs font-semibold ${critical ? "text-danger" : "text-warning"}`}>{item.quantity} left · min {item.minLevel}</span>
+									</div>
+									<ProgressBar value={item.quantity} max={item.minLevel * 2} tone={critical ? "danger" : "warning"} />
+								</div>
+							);
+						})
+					)}
+					<p className="mt-auto flex items-center gap-[10px] rounded-[10px] bg-[#f6fafd] px-3 py-[10px] text-xs font-medium text-[#424242]">
+						<TruckIcon className="size-4 text-ink-2" /> Deliveries land in Inventory → Deliveries
+					</p>
+				</SectionCard>
+			</div>
+		</>
 	);
 }

@@ -1,52 +1,71 @@
 import "server-only";
+
 import { decodeJwt } from "jose";
 import { cookies } from "next/headers";
-import type { UserPayload } from "./types";
 import { env } from "@/env";
+import { isHotelRole, type HotelRole } from "./roles";
+import type { Session, SessionClaims } from "./types";
 
-export const tokenKey = "hms.jwt.session_token";
-export const activeRoleKey = "hms.user.active_role";
+export const COOKIES = {
+	token: "hms.session",
+	refresh: "hms.refresh",
+	role: "hms.role",
+	hotel: "hms.hotel",
+} as const;
 
-export function decrypt(session: string) {
+function cookieOptions(expires: Date) {
+	return {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		expires,
+		sameSite: "lax" as const,
+		path: "/",
+		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
+	};
+}
+
+/** Decode (not verify) the access token; the backend verifies it on every call. */
+export function decodeSession(token: string): Session | null {
 	try {
-		const payload = decodeJwt(session);
-		return payload as UserPayload;
-	} catch (error) {
-		console.error("Failed to decode JWT:", error);
+		const claims = decodeJwt(token) as unknown as SessionClaims;
+		if (!claims.sub || !claims.exp || claims.exp * 1000 < Date.now()) return null;
+		const roleSet: HotelRole[] = [];
+		const levels: Session["levels"] = {};
+		for (const entry of claims.roles ?? []) {
+			const [role, level] = entry.split(":");
+			if (isHotelRole(role)) {
+				roleSet.push(role);
+				levels[role] = (level as "FULL" | "EDIT" | "VIEW") ?? "FULL";
+			}
+		}
+		return { ...claims, hotels: claims.hotels ?? [], token, roleSet, levels };
+	} catch {
 		return null;
 	}
 }
 
-export async function createSession(session: string) {
-	const payload = decrypt(session);
+export async function createSession(accessToken: string, refreshToken: string, refreshDays = 30) {
+	const session = decodeSession(accessToken);
+	if (!session) throw new Error("The server returned a token we couldn't read");
+	const jar = await cookies();
+	jar.set(COOKIES.token, accessToken, cookieOptions(new Date(session.exp * 1000)));
+	jar.set(COOKIES.refresh, refreshToken, cookieOptions(new Date(Date.now() + refreshDays * 86_400_000)));
+	return session;
+}
 
-	if (!payload) {
-		throw new Error("Invalid session token");
-	}
+export async function setActiveRole(role: HotelRole) {
+	const jar = await cookies();
+	jar.set(COOKIES.role, role, cookieOptions(new Date(Date.now() + 12 * 3_600_000)));
+}
 
-	const expiresAt = new Date(payload.exp * 1000);
-	const cookieStore = await cookies();
-
-	cookieStore.set(tokenKey, session, {
-		httpOnly: true,
-		// secure: process.env.NODE_ENV === 'production',
-		expires: expiresAt,
-		sameSite: "lax",
-		path: "/",
-		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-	});
+export async function setActiveHotel(hotelId: string) {
+	const jar = await cookies();
+	jar.set(COOKIES.hotel, hotelId, cookieOptions(new Date(Date.now() + 30 * 86_400_000)));
 }
 
 export async function deleteSession() {
-	const cookieStore = await cookies();
-	const options = {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		expires: new Date(0),
-		sameSite: "lax",
-		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-	} as const;
-
-	cookieStore.set(tokenKey, "", options);
-	cookieStore.set(activeRoleKey, "", options);
+	const jar = await cookies();
+	for (const name of Object.values(COOKIES)) {
+		jar.set(name, "", cookieOptions(new Date(0)));
+	}
 }

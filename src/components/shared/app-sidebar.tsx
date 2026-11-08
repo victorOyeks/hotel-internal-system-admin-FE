@@ -1,96 +1,55 @@
-"use client";
-
 import Link from "next/link";
 import type * as React from "react";
 import {
 	Sidebar,
 	SidebarContent,
-	SidebarFooter,
 	SidebarHeader,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarRail,
 } from "@/components/ui/sidebar";
-import {
-	frontDeskLinks,
-	hotelOwnerLinks,
-	inventoryOfficerLinks,
-	managerOwnerLinks,
-	restaurantLinks,
-	rentalsLinks,
-	laundryLinks,
-	financialsLinks,
-} from "../links";
 import { HomeIcon } from "../svgs/home";
 import { NavMain } from "./nav-main";
-import type { HotelRole } from "@/lib/types";
-import { SidebarSwitchers } from "./sidebar-switchers";
+import { BranchSwitcher } from "./branch-switcher";
+import type { HotelRole } from "@/lib/roles";
+import type { Hotel } from "@/lib/api/schema";
 
 export function AppSidebar({
 	role,
 	hotels,
 	activeHotel,
-	availableRoles,
 	...props
 }: React.ComponentProps<typeof Sidebar> & {
 	role: HotelRole;
-	availableRoles: HotelRole[];
-	activeHotel?: { id: string; name: string };
-	hotels?: {
-		id: string;
-		name: string;
-	}[];
+	hotels: Hotel[];
+	activeHotel: Hotel | null;
 }) {
-
-	const links: Record<
-		HotelRole,
-		React.ComponentProps<typeof NavMain>["items"]
-	> = {
-		HOTEL_OWNER: hotelOwnerLinks,
-		FRONT_DESK: frontDeskLinks,
-		MARKETER: [],
-		INVENTORY: inventoryOfficerLinks,
-		RESTAURANT: restaurantLinks,
-		RENTALS: rentalsLinks,
-		MANAGER: managerOwnerLinks,
-		SUPER_ADMIN: [],
-		LAUNDRY: laundryLinks,
-		FINANCIALS: financialsLinks,
-	};
-
 	return (
-		<Sidebar {...props}>
-			<SidebarHeader>
+		<Sidebar {...props} className="border-r-0 bg-nav text-white [&_[data-sidebar=sidebar]]:bg-nav">
+			<SidebarHeader className="gap-2 px-4 pt-8">
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" className="p-4" asChild>
-							<Link href="/">
-								<div className="flex items-center justify-center gap-x-2">
-									<div className="size-8 flex items-center justify-center group-data-[state=collapsed]:p-1">
-										<HomeIcon />
-									</div>
-									<span className="font-bold text-xl self-baseline-last">
-										Hospio360
-									</span>
-								</div>
+						<SidebarMenuButton size="lg" asChild className="h-[46px] rounded-lg px-2 hover:bg-white/10 hover:text-white">
+							<Link href="/dashboard" className="flex items-center gap-[10px]">
+								<span className="flex size-7 items-center justify-center text-white">
+									<HomeIcon />
+								</span>
+								<span className="text-sm font-bold tracking-[0.2em] text-white group-data-[collapsible=icon]:hidden">
+									H.M.S
+								</span>
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
-
 				</SidebarMenu>
+				<div className="mx-2 h-px bg-white/10 group-data-[collapsible=icon]:hidden" />
+				<div className="pt-2">
+					<BranchSwitcher hotels={hotels} active={activeHotel} />
+				</div>
 			</SidebarHeader>
-			<SidebarContent className="scrollbar-hidden">
-				<NavMain items={links[role]} />
+			<SidebarContent className="scrollbar-hidden px-4">
+				<NavMain role={role} />
 			</SidebarContent>
-			<SidebarFooter>
-				<SidebarSwitchers
-					role={role}
-					availableRoles={availableRoles}
-					hotels={hotels}
-					activeHotel={activeHotel}
-				/>
-			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
 	);

@@ -1,410 +1,65 @@
 "use server";
 
-import {
-	$fetch,
-	type OnboardStaffRequest,
-	type OnboardHotelRequest,
-	type CreateStorageLocationRequest,
-} from "./fetch";
-import { createSession, deleteSession } from "./session";
-import { getUser, verifySession } from "./dal";
-import { revalidatePath } from "next/cache";
-import {
-	type ServerActionResponse,
-	type ServerActionResponseFromEndpoint,
-	parseError,
-} from "./action-utils";
+import { redirect } from "next/navigation";
+import { api, errorMessage } from "./api/client";
+import { withSession } from "./api/server";
+import { getHotels } from "./dal";
+import { BUSINESS_ID, demoHotels } from "./demo/fixtures/hotel";
+import { DEMO, demoDelay } from "./demo/mode";
+import { mintDemoToken, nameFromEmail } from "./demo/token";
+import { HOTEL_ROLES, isHotelRole, type HotelRole } from "./roles";
+import { createSession, deleteSession, setActiveHotel, setActiveRole } from "./session";
 
-export async function revalidateRoute(path: string) {
-	revalidatePath(path);
+export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
+
+export async function login(input: { email: string; password: string }): Promise<
+	ActionResult<{ mustChangePassword: boolean; roles: string[] }>
+> {
+	if (DEMO) {
+		// Any email and password sign in, with every role, so the whole UI can be walked through.
+		await demoDelay(400);
+		const token = mintDemoToken(input.email, nameFromEmail(input.email), BUSINESS_ID, demoHotels.map((h) => h.id));
+		await createSession(token, "demo-refresh");
+		await setActiveHotel(demoHotels[0].id);
+		return { ok: true, data: { mustChangePassword: false, roles: [...HOTEL_ROLES] } };
+	}
+	const { data, error } = await api("@post/identity/auth/sign-in", { body: input });
+	if (error || !data) return { ok: false, error: errorMessage(error, "Email or password is wrong") };
+	const session = await createSession(data.data.accessToken, data.data.refreshToken);
+	// One role: skip the picker. The chosen hotel defaults to the first granted.
+	if (session.roleSet.length === 1) await setActiveRole(session.roleSet[0]);
+	if (session.hotels.length >= 1) await setActiveHotel(session.hotels[0]);
+	return { ok: true, data: { mustChangePassword: data.data.mustChangePassword, roles: data.data.roles } };
 }
 
-// --- Authentication Actions ---
-
-export async function login(payload: {
-	email: string;
-	password: string;
-}): ServerActionResponse<{
-	message: string;
-	referenceId?: string;
-}> {
-		const existingUser = await getUser();
-		if (existingUser) {
-			return {
-				success: true,
-				data: { message: "User already logged in", ...existingUser },
-			};
-		}
-
-		const { data: response, error } = await $fetch(
-			"@post/api/auth/sign-in",
-			{
-				body: payload,
-			},
-		);
-
-		if (error) {
-			return {
-				success: false,
-				error: parseError(error)
-			}
-		}
-
-
-		const { data, message, referenceId } = response;
-
-		await createSession(data.accessToken);
-
-		return { success: true, data: { message, referenceId } };
-}
-
-export async function logout(): Promise<void> {
+export async function logout() {
+	const { auth } = await withSession();
+	if (auth && !DEMO) await api("@post/identity/auth/logout", { auth }).catch(() => undefined);
 	await deleteSession();
+	redirect("/auth");
 }
 
-export async function forceResetPassword(payload: {
-	newPassword: string;
-	confirmPassword: string;
-}) {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@post/api/users/force-reset-password", {
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return {
-			success: true,
-			data: response as { message: string; data: string },
-		};
-	} catch (error) {
-		return { success: false, error: parseError(error) };
+export async function selectRole(role: string) {
+	if (!isHotelRole(role)) return;
+	await setActiveRole(role as HotelRole);
+	redirect("/dashboard");
+}
+
+export async function selectHotel(hotelId: string) {
+	const hotels = await getHotels();
+	if (hotels.some((h) => h.id === hotelId)) await setActiveHotel(hotelId);
+	redirect("/dashboard");
+}
+
+export async function changePassword(input: { currentPassword: string; newPassword: string }): Promise<ActionResult> {
+	const { auth } = await withSession();
+	if (!auth) return { ok: false, error: "Sign in again" };
+	if (DEMO) {
+		await demoDelay(400);
+		return { ok: true, data: null };
 	}
+	const { error } = await api("@post/identity/auth/change-password", { auth, body: input });
+	if (error) return { ok: false, error: errorMessage(error, "Password could not be changed") };
+	await deleteSession();
+	return { ok: true, data: null };
 }
-
-export async function hotelSignup(payload: {
-	businessName: string;
-	businessRegistrationNumber: string;
-	businessType: string;
-	businessDescription?: string;
-	ownerFullName: string;
-	ownerPosition: string;
-	email: string;
-	phoneNumber: string;
-	alternativePhone?: string;
-	streetAddress: string;
-	city: string;
-	stateProvince: string;
-	country: string;
-	postalCode: string;
-	timezone: string;
-	currency: string;
-	websiteUrl?: string;
-	taxId?: string;
-	vatNumber?: string;
-	password: string;
-	confirmPassword: string;
-	acceptedTerms: boolean;
-	acceptedPrivacyPolicy: boolean;
-	subscribedToMarketing?: boolean;
-	referralCode?: string;
-	referralSource?: string;
-}): ServerActionResponse<{ message: string }> {
-	try {
-		const response = await $fetch("@post/api/auth/hotel-signup", {
-			body: payload,
-			throw: true,
-		});
-		return { success: true, data: { message: response.message } };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function forgotPassword(payload: {
-	email: string;
-}): ServerActionResponse<{ message: string; otp?: string }> {
-	try {
-		const response = await $fetch("@post/api/auth/reset-password", {
-			body: payload,
-			throw: true,
-		});
-		return {
-			success: true,
-			// The message field contains the OTP for testing (will be email-sent in production)
-			data: { message: response.message, otp: response.message },
-		};
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function verifyOtp(payload: {
-	otp: string;
-}): ServerActionResponse<{ resetToken: string; message: string }> {
-	try {
-		const response = await $fetch("@post/api/auth/verify-otp", {
-			body: payload,
-			throw: true,
-		});
-		return {
-			success: true,
-			data: response.data,
-		};
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function setNewPassword(payload: {
-	resetToken: string;
-	newPassword: string;
-	confirmPassword: string;
-}): ServerActionResponse<{ message: string }> {
-	try {
-		const response = await $fetch("@post/api/auth/set-new-password", {
-			body: payload,
-			throw: true,
-		});
-		return {
-			success: true,
-			data: { message: response.message },
-		};
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function updateProfile(payload: {
-	fullName: string;
-	phoneNumber?: string;
-}): ServerActionResponse<{ message: string }> {
-	try {
-		const sessionData = await verifySession();
-		await $fetch("@patch/api/users/me", {
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return { success: true, data: { message: "Profile updated successfully" } };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function changePassword(payload: {
-	oldPassword: string;
-	newPassword: string;
-	confirmPassword: string;
-}): ServerActionResponse<{ message: string; data: string }> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@post/api/users/change-password", {
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return {
-			success: true,
-			data: response as { message: string; data: string },
-		};
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-// --- Hotel Branch Actions ---
-
-export async function createHotelBranch(payload: OnboardHotelRequest) {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@post/api/hotel-owners/hotels", {
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return { success: true, data: response.data };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function deleteHotelBranch(
-	id: string,
-): ServerActionResponseFromEndpoint<"@delete/api/hotel-owners/hotels/:hotelId"> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@delete/api/hotel-owners/hotels/:hotelId", {
-			params: { hotelId: id },
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true, // Let's assume you want to throw here for consistency
-		});
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function editHotelBranch(
-	id: string,
-	payload: Omit<OnboardHotelRequest, "managerId">,
-): ServerActionResponseFromEndpoint<"@put/api/hotel-owners/hotels/:hotelId"> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@put/api/hotel-owners/hotels/:hotelId", {
-			params: { hotelId: id },
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-// --- Staff & Manager Actions ---
-
-export async function deleteStaffMember(
-	id: string,
-): ServerActionResponse<unknown> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@delete/api/hotel-owners/staff/:staffId", {
-			params: { staffId: id },
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function assignManagerToHotelBranch(
-	payload: { hotelId: string; managerId: string },
-	action: "ASSIGN" | "UNASSIGN",
-): ServerActionResponseFromEndpoint<"@post/api/hotel-owners/:hotelId/manager/:managerId"> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch(
-			"@post/api/hotel-owners/:hotelId/manager/:managerId",
-			{
-				params: payload,
-				query: { action },
-				auth: { type: "Bearer", token: sessionData.token },
-				throw: true,
-			},
-		);
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function onboardManagerToHotel(
-	payload: Omit<OnboardStaffRequest, "roles" | "staffId">,
-): ServerActionResponseFromEndpoint<"@post/api/hotel-owners/managers"> {
-	try {
-		const sessionData = await verifySession();
-		if (!sessionData.roles.includes("HOTEL_OWNER")) {
-			// Handle authorization as a returned error, not a thrown one
-			return {
-				success: false,
-				error:
-					"Unauthorized: You do not have permission to perform this action.",
-			};
-		}
-
-		const response = await $fetch("@post/api/hotel-owners/managers", {
-			auth: { type: "Bearer", token: sessionData.token },
-			body: { ...payload, role: "MANAGER" },
-			throw: true,
-		});
-
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function updateStaffDetailsByOwner({
-	staffId,
-	...payload
-}: {
-	staffId: string;
-	fullName: string;
-	email: string;
-	phoneNumber: string;
-	roles: string[];
-}): ServerActionResponse<string> {
-	try {
-		const sessionData = await verifySession();
-		if (!sessionData.roles.includes("HOTEL_OWNER")) {
-			return {
-				success: false,
-				error:
-					"Unauthorized: You do not have permission to perform this action.",
-			};
-		}
-
-		await $fetch("@put/api/hotel-owners/users/:staffId", {
-			params: { staffId },
-			auth: { type: "Bearer", token: sessionData.token },
-			body: payload,
-			throw: true,
-		});
-		// Successful update with no data to return
-		return { success: true, data: "Staff details updated successfully" };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-
-export async function uploadImage(payload: { file: File }) {
-	const { token } = await verifySession();
-
-	const formData = new FormData();
-	formData.append("file", payload.file);
-
-	const response = await $fetch("@post/api/upload", {
-		body: formData,
-		query: {},
-		auth: {
-			type: "Bearer",
-			token,
-		},
-	});
-
-	if (response.error) {
-		return {
-			success: false,
-			error: response.error.message || "An error occurred during file upload.",
-		};
-	}
-
-	return {
-		success: true,
-		data: (response.data as unknown as { data: { url: string } }).data,
-	};
-}
-
-// --- Inventory Actions ---
-
-export async function createStorageLocation(
-	payload: CreateStorageLocationRequest,
-): ServerActionResponseFromEndpoint<"@post/api/inventories/locations"> {
-	try {
-		const sessionData = await verifySession();
-		const response = await $fetch("@post/api/inventories/locations", {
-			body: payload,
-			auth: { type: "Bearer", token: sessionData.token },
-			throw: true,
-		});
-		revalidatePath("/inventory/locations");
-		return { success: true, data: response };
-	} catch (error) {
-		return { success: false, error: parseError(error) };
-	}
-}
-

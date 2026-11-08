@@ -1,39 +1,9 @@
-import { LaundryDashboard } from "@/components/roles/laundry/dashboard";
-import { $fetch } from "@/lib/fetch";
-import { getQueryClient } from "@/lib/queries";
-import { getCookieData } from "@/lib/server-fns";
-import { use } from "react";
+import { LaundryJobsScreen } from "@/components/roles/laundry/jobs";
+import { data } from "@/lib/data";
 
-const breadcrumbs = {
-	title: "Dashboard",
-	breadcrumbs: [
-		{
-			label: "Dashboard",
-			href: "/dashboard",
-		},
-	],
-};
+export const dynamic = "force-dynamic";
 
-export default function LaundryHomePage() {
-	const { token } = use(getCookieData())!;
-	const qc = getQueryClient();
-
-	const stats = use(
-		qc.ensureQueryData({
-			queryKey: ["laundry", "dashboard-stats"],
-			queryFn: async ({ signal }) => {
-				const response = await $fetch(
-					"@get/api/hotels/laundry/dashboard/stats",
-					{
-						auth: { type: "Bearer", token },
-						signal,
-						throw: true,
-					},
-				);
-				return response.data;
-			},
-		}),
-	);
-
-	return <LaundryDashboard stats={stats} breadcrumbs={breadcrumbs} />;
+export default async function LaundryHome() {
+	const [orders, buckets] = await Promise.all([data.laundry.orders(), data.bookings.buckets()]);
+	return <LaundryJobsScreen orders={orders} inHouse={buckets.inHouse} />;
 }

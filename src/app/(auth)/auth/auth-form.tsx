@@ -1,272 +1,107 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { login } from "@/lib/actions";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import {
-	CheckCircle2Icon,
-	EyeIcon,
-	EyeOffIcon,
-	Loader2Icon,
-	XCircleIcon,
-} from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { login } from "@/lib/actions";
 
-const VERIFICATION_ERRORS: Record<string, string> = {
-	missing_token: "No verification token was provided.",
-	server_error: "Something went wrong. Please try again.",
-};
-
-const formSchema = z.object({
-	email: z.email(),
-	password: z.string().nonempty("Password is required"),
+const schema = z.object({
+	email: z.email("Enter your email"),
+	password: z.string().min(1, "Enter your password"),
 });
 
-type Props = {
-	from?: string;
-	verified?: string;
-	error?: string;
-};
-
-export function AuthForm({ from, verified, error }: Props) {
+export function AuthForm({ from }: { from?: string }) {
 	const router = useRouter();
-	const [showPassword, setShowPassword] = useState(false);
+	const [show, setShow] = useState(false);
+	const [pending, startTransition] = useTransition();
+	const form = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
 
-	const loginMutation = useMutation({
-		mutationKey: ["login"],
-		mutationFn: async (data: z.infer<typeof formSchema>) => {
-			const response = await login(data);
-			if (!response.success) throw new Error(response.error);
-			return response.data;
-		},
-		onSettled: () => {
-			loginMutation.reset();
-		},
-		onSuccess: () => {
-			router.replace(from ?? "/dashboard");
-		},
-	});
-
-	const form = useForm({
-		resolver: zodResolver(formSchema),
-		defaultValues: { email: "", password: "" },
-		mode: "onSubmit",
-	});
-
-	const handleSubmit = useCallback(
-		async (data: z.infer<typeof formSchema>) => {
-			toast.promise(loginMutation.mutateAsync(data), {
-				loading: "Logging in, please wait...",
-				success: (data) => ({
-					message: data.message,
-					description: "Redirecting...",
-				}),
-				error: (error) => {
-					const isError = Error.isError(error);
-
-					console.error("Login error:", error);
-
-					if (isError) {
-						const isNetworkError = error.message === "fetch failed";
-						const cause = error.cause;
-						if (Error.isError(cause)) {
-							if (isNetworkError) {
-								return {
-									message: "Network error",
-									description:
-										"Please check your internet connection and try again.",
-								};
-							}
-							return {
-								message: "Login failed",
-								description:
-									cause.message ||
-									"An unexpected error occurred. Please try again.",
-							};
-						}
-
-						if (isNetworkError) {
-							return {
-								message: "Network error",
-								description:
-									"Please check your internet connection and try again.",
-							};
-						}
-
-						const errorMessage =
-							error.message === "400"
-								? "Invalid email or password."
-								: error.message;
-
-						return {
-							message: "Login failed",
-							description:
-								errorMessage ||
-								"An unexpected error occurred. Please try again.",
-						};
-					}
-
-					if (typeof error === "string") {
-						return {
-							message: "Login failed",
-							description:
-								error || "An unexpected error occurred. Please try again.",
-						};
-					}
-					return {
-						message: "Login failed",
-						description: "An unexpected error occurred. Please try again.",
-					};
-				},
-			});
-		},
-		[loginMutation],
-	);
+	function onSubmit(values: z.infer<typeof schema>) {
+		startTransition(async () => {
+			const result = await login(values);
+			if (!result.ok) {
+				form.setError("password", { message: result.error });
+				return;
+			}
+			toast.success("Signed in");
+			router.replace(result.data.mustChangePassword ? "/reset-password" : (from ?? "/dashboard"));
+		});
+	}
 
 	return (
-		<Card className="w-full h-full md:h-auto md:max-w-[400px]">
-			<CardHeader>
-				<CardTitle>
-					<h1 className="text-2xl font-bold font-inter">Login</h1>
-				</CardTitle>
-			</CardHeader>
-
-			<CardContent className="space-y-2">
-				{verified === "true" && (
-					<Alert variant="success">
-						<CheckCircle2Icon />
-						<AlertTitle>Email verified!</AlertTitle>
-						<AlertDescription>
-							Your account is active. You can now log in.
-						</AlertDescription>
-					</Alert>
-				)}
-				{error && (
-					<Alert variant="destructive">
-						<XCircleIcon />
-						<AlertTitle>Failed to verify email</AlertTitle>
-						<AlertDescription>
-							{VERIFICATION_ERRORS[error] ?? decodeURIComponent(error)}
-						</AlertDescription>
-					</Alert>
-				)}
-
-				<Form {...form}>
-					<form
-						id="auth-form"
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-2"
-					>
-						<FormField
-							name="email"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel className="text-base font-semibold text-dark-2">
-										Email
-									</FormLabel>
-									<FormControl>
-										<Input
-											type="email"
-											placeholder="Enter your email"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							name="password"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel className="text-base font-semibold text-dark-2">
-										Password
-									</FormLabel>
-									<div className="relative">
-										<FormControl>
-											<Input
-												type={showPassword ? "text" : "password"}
-												placeholder="Enter your password"
-												className="pr-10"
-												{...field}
-											/>
-										</FormControl>
-										<Button
-											type="button"
-											onClick={() => setShowPassword(!showPassword)}
-											variant="link"
-											size="icon"
-											className="absolute right-1 top-1/2 -translate-y-1/2"
-										>
-											{showPassword ? (
-												<EyeOffIcon className="h-5 w-5 text-gray-500" />
-											) : (
-												<EyeIcon className="h-5 w-5 text-gray-500" />
-											)}
-										</Button>
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</form>
-				</Form>
-
-				<div className="flex items-center justify-end">
-					<Button variant={"link"} className="text-info px-0" asChild>
-						<Link href="/forgot-password">Forgot Password?</Link>
-					</Button>
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+				<div>
+					<h1 className="text-[28px] font-bold text-ink">Sign in</h1>
+					<p className="mt-2 text-sm text-ink-3">Welcome back to Hospio360</p>
 				</div>
-			</CardContent>
 
-			<CardFooter className="flex flex-col gap-3">
-				<Button
-					type="submit"
-					form="auth-form"
-					className="w-full font-bold"
-					disabled={loginMutation.isPending}
-				>
-					{loginMutation.isPending ? (
-						<>
-							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							<span className="sr-only">Loading...</span>
-						</>
-					) : (
-						"Login"
+				<FormField
+					control={form.control}
+					name="email"
+					render={({ field }) => (
+						<FormItem className="gap-[6px]">
+							<FormLabel className="text-[13px] font-medium text-ink-2">Email or phone</FormLabel>
+							<FormControl>
+								<Input
+									{...field}
+									type="email"
+									autoComplete="username"
+									placeholder="you@hotel.com"
+									className="h-auto rounded-control border-line px-[14px] py-3 text-sm focus-visible:border-brand focus-visible:ring-0"
+								/>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
 					)}
+				/>
+
+				<FormField
+					control={form.control}
+					name="password"
+					render={({ field }) => (
+						<FormItem className="gap-[6px]">
+							<FormLabel className="text-[13px] font-medium text-ink-2">Password</FormLabel>
+							<FormControl>
+								<div className="relative">
+									<Input
+										{...field}
+										type={show ? "text" : "password"}
+										autoComplete="current-password"
+										placeholder="••••••••••"
+										className="h-auto rounded-control border-line px-[14px] py-3 pr-11 text-sm focus-visible:border-brand focus-visible:ring-0"
+									/>
+									<button
+										type="button"
+										onClick={() => setShow((s) => !s)}
+										className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+										aria-label={show ? "Hide password" : "Show password"}
+									>
+										{show ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+									</button>
+								</div>
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<Link href="/forgot-password" className="text-[13px] font-semibold text-brand hover:underline">
+					Forgot your password?
+				</Link>
+
+				<Button type="submit" disabled={pending} className="h-auto w-full rounded-control bg-brand py-[10px] text-[13px] font-semibold text-white hover:bg-brand/90">
+					{pending ? <Loader2Icon className="size-4 animate-spin" /> : "Sign in"}
 				</Button>
-				<p className="text-sm text-center text-muted-foreground">
-					New to Hospio360?{" "}
-					<Button variant="link" className="p-0 h-auto text-info" asChild>
-						<Link href="/signup">Register</Link>
-					</Button>
-				</p>
-			</CardFooter>
-		</Card>
+			</form>
+		</Form>
 	);
 }

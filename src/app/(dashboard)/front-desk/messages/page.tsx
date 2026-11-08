@@ -1,26 +1,9 @@
-import { redirect } from "next/navigation";
-import { use } from "react";
-import { verifySession, getUser } from "@/lib/dal";
-import { DynamicChatLayout } from "@/components/chat/chat-layout-dynamic";
+import { MessagesScreen } from "@/components/roles/front-office/messages";
+import { data } from "@/lib/data";
 
-export default function FrontDeskMessagesPage() {
-	const session = use(verifySession("FRONT_DESK"));
-	const user = use(getUser());
+export const dynamic = "force-dynamic";
 
-	if (!user || !user.hotels?.length) {
-		redirect("/dashboard");
-	}
-
-	const hotelId = user.hotels[0].id;
-
-	return (
-		<div className="h-[calc(100dvh-60px)]">
-			<DynamicChatLayout
-				token={session.token}
-				userId={session.userId}
-				hotelId={hotelId}
-				fullName={session.fullName}
-			/>
-		</div>
-	);
+export default async function FrontDeskMessagesPage() {
+	const [conversations, templates] = await Promise.all([data.messaging.conversations(), data.messaging.templates()]);
+	return <MessagesScreen conversations={conversations} templates={templates} />;
 }

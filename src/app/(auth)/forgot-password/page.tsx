@@ -1,143 +1,21 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { forgotPassword } from "@/lib/actions";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import z from "zod";
+import { Button } from "@/components/ui/button";
 
-const formSchema = z.object({
-	email: z.email("Invalid email address"),
-});
-
-function ForgotPassword() {
-	const form = useForm({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			email: "",
-		},
-		mode: "onSubmit",
-	});
-
-	const router = useRouter();
-
-	const { mutate, isPending } = useMutation({
-		mutationKey: ["forgot-password"],
-		mutationFn: async (payload: z.infer<typeof formSchema>) => {
-			const res = await forgotPassword(payload);
-
-			if (!res.success) {
-				throw Error(res.error || "Failed to send OTP, try again.");
-			}
-
-			return { ...res.data, email: payload.email };
-		},
-		onError: (error) => {
-			toast.error("Something went wrong", {
-				description: error.message,
-			});
-		},
-		onSuccess: (data) => {
-			toast.success("OTP Sent!", {
-				description: data.message || "Please check your email for the verification code.",
-			});
-			// Navigate to OTP verification with email in query params
-			router.push(
-				`/forgot-password/verify-otp?email=${encodeURIComponent(data.email)}`,
-			);
-		},
-	});
-
+/** Passwords are reset by a manager (or by H.M.S for an owner): a temporary one is issued and shown once. */
+export default function ForgotPasswordPage() {
 	return (
-		<Card className="w-full h-full md:h-auto md:max-w-[450px]">
-			<CardHeader>
-				<CardTitle>
-					<h1 className="text-2xl font-bold font-inter leading-tight">
-						Forgot Password
-					</h1>
-				</CardTitle>
-				<CardDescription>
-					Provide a registered email address, we'll send you an OTP to reset
-					your password
-				</CardDescription>
-			</CardHeader>
-
-			<CardContent className="space-y-3">
-				<Form {...form}>
-					<form
-						id="forgot-password-form"
-						onSubmit={form.handleSubmit((data) => {
-							mutate(data);
-						})}
-						className="space-y-4"
-					>
-						<FormField
-							name="email"
-							control={form.control}
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel className="text-base font-semibold text-dark-2">
-										Email
-									</FormLabel>
-									<FormControl>
-										<Input
-											type="email"
-											placeholder="Enter your email"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-					</form>
-				</Form>
-			</CardContent>
-
-			<CardFooter className="flex-col gap-y-2">
-				<Button
-					type="submit"
-					form="forgot-password-form"
-					className="w-full font-bold"
-					disabled={isPending}
-				>
-					{isPending ? (
-						<>
-							<Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-							<span className="sr-only">Loading...</span>
-						</>
-					) : (
-						"Send OTP"
-					)}
-				</Button>
-				<Button variant="link" asChild>
-					<Link href="/auth">Back to Login</Link>
-				</Button>
-			</CardFooter>
-		</Card>
+		<div className="flex flex-col gap-4">
+			<div>
+				<h1 className="text-[28px] font-bold text-ink">Forgot your password?</h1>
+				<p className="mt-2 text-sm text-ink-2">
+					Ask your manager to reset it from Staff → Reset password. You will get a temporary password that works
+					for 72 hours, and you choose a new one the first time you sign in.
+				</p>
+				<p className="mt-3 text-sm text-ink-2">Owners: ask Hospio360 support and we will send a temporary password.</p>
+			</div>
+			<Button asChild className="h-auto w-full rounded-control bg-brand py-[10px] text-[13px] font-semibold text-white hover:bg-brand/90">
+				<Link href="/auth">Back to sign in</Link>
+			</Button>
+		</div>
 	);
 }
-
-export default ForgotPassword;

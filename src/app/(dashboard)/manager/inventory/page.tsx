@@ -1,126 +1,20 @@
-import { ManagerInventoryPage } from "@/components/roles/manager/inventory";
-import { getManagerCurrentHotel } from "@/lib/dal";
-import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
-import { getQueryClient } from "@/lib/queries";
-import { getCookieData } from "@/lib/server-fns";
-import { parseAsString } from "nuqs/server";
-import {
-	createLoader,
-	parseAsStringLiteral,
-	type SearchParams,
-} from "nuqs/server";
-import { use } from "react";
+import { InventoryScreen } from "@/components/roles/manager/inventory/screen";
+import { getActiveHotel } from "@/lib/dal";
+import { data } from "@/lib/data";
 
-type PageProps = {
-	searchParams: Promise<SearchParams>;
-};
+export const dynamic = "force-dynamic";
 
-const loadSearchParams = createLoader({
-	...paginationSearchParams,
-	section: parseAsStringLiteral(["restock"]),
-	searchName: parseAsString,
-	customId: parseAsString,
-	category: parseAsStringLiteral([
-		"BAR",
-		"KITCHEN",
-		"HOUSEKEEPING",
-		"FRONT_DESK",
-		"MAINTENANCE",
-		"MANAGEMENT",
-		"INVENTORY",
-		"OTHER",
-	]),
-	unit: parseAsString,
-	availability: parseAsString,
-	approvalStatus: parseAsStringLiteral(["APPROVED", "PENDING", "REJECTED"]),
-	itemCustomId: parseAsString,
-});
-
-function Page({ searchParams }: PageProps) {
-	const breadcrumbs = {
-		title: "Inventory",
-		breadcrumbs: [
-			{
-				label: "Dashboard",
-				href: "/dashboard",
-			},
-			{
-				label: "Inventory",
-				href: "/dashboard/inventory",
-			},
-		],
-	};
-
-	const { id } = use(getManagerCurrentHotel())!;
-	const query = use(loadSearchParams(searchParams));
-	const cookieData = use(getCookieData())!;
-	const queryClient = getQueryClient();
-
-	const auth = { type: "Bearer" as const, token: cookieData.token };
-
-	// Create all promises first (parallel pattern)
-	const statPromise = queryClient.ensureQueryData({
-		queryKey: ["inventory-summary", id],
-		queryFn: async () => {
-			const response = await $fetch(
-				"@get/api/managers/:hotelId/inventories/summary",
-				{ params: { hotelId: id }, auth, throw: true },
-			);
-			return response.data;
-		},
-	});
-
-	const listPromise = queryClient.ensureQueryData({
-		queryKey: [query.section ?? "inventory", id, query],
-		queryFn: async ({ signal }) => {
-			if (query.section === "restock") {
-				const response = await $fetch(
-					"@get/api/managers/:hotelId/inventories/restock-requests",
-					{
-						params: { hotelId: id },
-						auth,
-						query: {
-							...query,
-							page: query.page ? query.page - 1 : 0,
-						},
-						throw: true,
-						signal,
-					},
-				);
-				return response.data;
-			}
-
-			const response = await $fetch(
-				"@get/api/managers/:hotelId/inventories",
-				{
-					params: { hotelId: id },
-					auth,
-					query: {
-						...query,
-						page: query.page ? query.page - 1 : 0,
-					},
-					throw: true,
-					signal,
-				},
-			);
-			return response.data;
-		},
-	});
-
-	// Await all in parallel
-	const statData = use(statPromise);
-	const { content, ...paginationMeta } = use(listPromise);
-
-	return (
-		<ManagerInventoryPage
-			section={query.section}
-			breadcrumbs={breadcrumbs}
-			statData={statData}
-			inventoryData={content}
-			paginationMeta={paginationMeta}
-		/>
-	);
+/** Manager · Inventory: stock, requests, purchase orders, deliveries, counts and suppliers. */
+export default async function InventoryPage() {
+	const [hotel, stores, items, requests, orders, deliveries, counts, suppliers] = await Promise.all([
+		getActiveHotel(),
+		data.inventory.stores(),
+		data.inventory.items(),
+		data.inventory.requests(),
+		data.inventory.purchaseOrders(),
+		data.inventory.deliveries(),
+		data.inventory.counts(),
+		data.inventory.suppliers(),
+	]);
+	return <InventoryScreen hotelName={hotel?.name ?? "This hotel"} stores={stores} items={items} requests={requests} orders={orders} deliveries={deliveries} counts={counts} suppliers={suppliers} />;
 }
-
-export default Page;
