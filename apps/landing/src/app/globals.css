@@ -3,3 +3,33 @@
 /* Tailwind scans the shared kit and this app for class names. */
 @source "../../../../packages/ui/src";
 @source "../";
+
+/*
+ * Landing-only tokens. The status colours alias the kit's Figma status tokens directly, because the
+ * kit's `text-success` / `text-warning` utilities resolve to the older alert palette, not the
+ * `status/*` tokens the landing design uses. The teal set is the "Hotel brand (example)" theme shown
+ * in the "Your brand" section.
+ */
+@theme inline {
+	--color-status-ok: var(--status-success-fg);
+	--color-status-ok-soft: var(--status-success-bg);
+	--color-status-warn: var(--status-warning-fg);
+	--color-status-warn-soft: var(--status-warning-bg);
+	--color-status-bad: var(--status-danger-fg);
+	--color-status-bad-soft: var(--status-danger-bg);
+	--color-status-note: var(--status-info-fg);
+	--color-status-note-soft: var(--status-info-bg);
+	--color-teal-nav: var(--landing-teal-nav);
+	--color-teal-brand: var(--landing-teal-brand);
+	--color-teal-page: var(--landing-teal-page);
+}
+
+:root {
+	--landing-teal-nav: #0b4f50;
+	--landing-teal-brand: #0e6b6b;
+	--landing-teal-page: #f5faf9;
+}
+
+html {
+	scroll-behavior: smooth;
+}
