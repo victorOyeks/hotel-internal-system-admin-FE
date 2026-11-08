@@ -10,7 +10,8 @@ export type HotelSummary = { id: Id; name: string; city: string; address: string
 export type RoomTypeRow = { id: Id; name: string; basePrice: number; capacityAdults: number; capacityChildren: number; rooms: number; facilities: string[]; specialPrices: { id: Id; name: string; price: number; fromDate: string; toDate: string }[] };
 
 export type RoomState = "occupied" | "ready" | "dirty" | "held" | "out_of_order" | "inspecting";
-export type RoomRow = { id: Id; number: string; floor: string; typeId: Id; typeName: string; price: number; state: RoomState; guestName?: string; checkOut?: string; note?: string; outOfOrderReason?: string; outOfOrderUntil?: string; lastCleaned?: string; attendant?: string };
+export type AreaRow = { id: Id; name: string; kind: string; sortOrder: number };
+export type RoomRow = { id: Id; number: string; floor: string; areaId?: Id; typeId: Id; typeName: string; price: number; state: RoomState; guestName?: string; checkOut?: string; note?: string; outOfOrderReason?: string; outOfOrderUntil?: string; lastCleaned?: string; attendant?: string };
 
 export type BookingStatus = "BOOKED" | "CHECKED_IN" | "CHECKED_OUT" | "CANCELLED" | "NO_SHOW";
 export type PaymentPlan = "PAY_IN_FULL" | "DEPOSIT_50" | "PAY_AT_CHECKOUT" | "ORGANIZATION";

@@ -11,6 +11,8 @@ import { ManagerMark, RowActions } from "@/components/shared/row-actions";
 import { PanelSection, SidePanel, WhatHappens } from "@/components/shared/side-panel";
 import { StatusPill } from "@/components/shared/status-pill";
 import { btn } from "@/components/shared/ui";
+import { addSpecialPrice, saveRoomType } from "@/lib/actions/property";
+import { useAction } from "@/lib/actions/use-action";
 import { useDemoAction } from "@/lib/demo/actions";
 import type { RoomTypeRow } from "@/lib/data/types";
 
@@ -72,7 +74,9 @@ export function RoomTypesTab({ types: initial, roomsByType }: { types: RoomTypeR
 }
 
 function ChangePriceModal({ item, onClose, onSaved }: { item: RoomTypeRow | null; onClose: () => void; onSaved: (id: string, price: number) => void }) {
-	const { run, pending } = useDemoAction();
+	const demo = useDemoAction();
+	const act = useAction();
+	const pending = demo.pending || act.pending;
 	const [price, setPrice] = useState<number | "">("");
 	useEffect(() => setPrice(item?.basePrice ?? ""), [item]);
 	const pct = item && price !== "" ? Math.round(((price - item.basePrice) / item.basePrice) * 100) : 0;
@@ -80,7 +84,7 @@ function ChangePriceModal({ item, onClose, onSaved }: { item: RoomTypeRow | null
 	return (
 		<Modal open={!!item} onOpenChange={(o) => !o && onClose()} title={`Change price · ${item?.name ?? ""}`} subtitle="Applies to new bookings from tonight" icon={TagIcon} size="confirm"
 			footerInfo={<span className="flex items-center gap-2"><ManagerMark /> logged</span>}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || price === ""} onClick={() => item && price !== "" && run(needsOwner ? "Sent to the owner for approval" : `${item.name} now ${naira(price)}`, () => { if (!needsOwner) onSaved(item.id, price); onClose(); }, needsOwner ? { tone: "info" } : undefined)}>{needsOwner ? "Send to owner" : "Change price"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || price === ""} onClick={() => item && price !== "" && (needsOwner ? demo.run("Sent to the owner for approval", onClose, { tone: "info" }) : act.run(() => saveRoomType({ name: item.name, basePrice: price, capacityAdults: item.capacityAdults, capacityChildren: item.capacityChildren, facilities: item.facilities }, item.id, { ...item, basePrice: price }), `${item.name} now ${naira(price)}`, (saved) => { onSaved(item.id, saved.basePrice); onClose(); }))}>{needsOwner ? "Send to owner" : "Change price"}</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<MoneyField label="New base price per night" value={price} onChange={setPrice} hint={item ? `Now ${naira(item.basePrice)}` : undefined} />
@@ -92,7 +96,7 @@ function ChangePriceModal({ item, onClose, onSaved }: { item: RoomTypeRow | null
 }
 
 function SpecialPricePanel({ item, onClose, onSaved }: { item: RoomTypeRow | null; onClose: () => void; onSaved: (id: string, sp: RoomTypeRow["specialPrices"][number]) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [name, setName] = useState("");
 	const [price, setPrice] = useState<number | "">("");
 	const [from, setFrom] = useState(new Date().toISOString().slice(0, 10));
@@ -100,7 +104,7 @@ function SpecialPricePanel({ item, onClose, onSaved }: { item: RoomTypeRow | nul
 	useEffect(() => { setName(""); setPrice(item?.basePrice ?? ""); }, [item]);
 	return (
 		<SidePanel open={!!item} onOpenChange={(o) => !o && onClose()} title={`Special price · ${item?.name ?? ""}`} subtitle="A price for a date range, e.g. Detty December or a weekend" icon={TagIcon}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => item && price !== "" && run(`${name} saved for ${item.name}`, () => { onSaved(item.id, { id: `sp-${Date.now()}`, name, price, fromDate: from, toDate: to }); onClose(); })}>Save special price</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => item && price !== "" && run(() => addSpecialPrice(item.id, { name, price, fromDate: from, toDate: to }), `${name} saved for ${item.name}`, (sp) => { onSaved(item.id, sp); onClose(); })}>Save special price</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<TextField label="Name" value={name} onChange={setName} placeholder="Weekend rate" required />
@@ -118,7 +122,7 @@ function SpecialPricePanel({ item, onClose, onSaved }: { item: RoomTypeRow | nul
 }
 
 function TypePanel({ open, item, onClose, onSaved }: { open: boolean; item: RoomTypeRow | null; onClose: () => void; onSaved: (t: RoomTypeRow) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [name, setName] = useState("");
 	const [price, setPrice] = useState<number | "">("");
 	const [adults, setAdults] = useState("2");
@@ -127,7 +131,7 @@ function TypePanel({ open, item, onClose, onSaved }: { open: boolean; item: Room
 	useEffect(() => { setName(item?.name ?? ""); setPrice(item?.basePrice ?? ""); setAdults(String(item?.capacityAdults ?? 2)); setChildren(String(item?.capacityChildren ?? 1)); setFacilities(item?.facilities.join(", ") ?? "AC, TV, Wi-Fi, Hot water"); }, [item]);
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title={item ? `Edit ${item.name}` : "Add a room type"} subtitle="Name, price, how many it sleeps and what is in the room" icon={TagIcon}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => price !== "" && run(item ? `${name} updated` : `${name} added`, () => { onSaved({ id: item?.id ?? `rt-${name.toLowerCase().replace(/\s+/g, "-")}`, name, basePrice: price, capacityAdults: Number(adults) || 2, capacityChildren: Number(children) || 0, rooms: item?.rooms ?? 0, facilities: facilities.split(",").map((f) => f.trim()).filter(Boolean), specialPrices: item?.specialPrices ?? [] }); onClose(); })}>{item ? "Save changes" : "Add room type"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => { if (price === "") return; const input = { name, basePrice: price, capacityAdults: Number(adults) || 2, capacityChildren: Number(children) || 0, facilities: facilities.split(",").map((f) => f.trim()).filter(Boolean) }; run(() => saveRoomType(input, item?.id, { id: item?.id ?? `rt-${name.toLowerCase().replace(/\s+/g, "-")}`, ...input, rooms: item?.rooms ?? 0, specialPrices: item?.specialPrices ?? [] }), item ? `${name} updated` : `${name} added`, (saved) => { onSaved({ ...saved, rooms: item?.rooms ?? saved.rooms, specialPrices: saved.specialPrices.length ? saved.specialPrices : (item?.specialPrices ?? []) }); onClose(); }); }}>{item ? "Save changes" : "Add room type"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<TextField label="Name" value={name} onChange={setName} placeholder="Deluxe" required />

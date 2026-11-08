@@ -1,14 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { api, errorMessage } from "./api/client";
-import { withSession } from "./api/server";
-import { getHotels } from "./dal";
-import { BUSINESS_ID, demoHotels } from "./demo/fixtures/hotel";
-import { DEMO_AUTH, demoDelay } from "./demo/mode";
-import { mintDemoToken, nameFromEmail } from "./demo/token";
-import { HOTEL_ROLES, isHotelRole, type HotelRole } from "./roles";
-import { createSession, deleteSession, setActiveHotel, setActiveRole } from "./session";
+import { api, errorMessage } from "@/lib/api/client";
+import { withSession } from "@/lib/api/server";
+import { getHotels } from "@/lib/dal";
+import { BUSINESS_ID, demoHotels } from "@/lib/demo/fixtures/hotel";
+import { DEMO_AUTH, demoDelay } from "@/lib/demo/mode";
+import { mintDemoToken, nameFromEmail } from "@/lib/demo/token";
+import { HOTEL_ROLES, isHotelRole, type HotelRole } from "@/lib/roles";
+import { createSession, deleteSession, setActiveHotel, setActiveRole } from "@/lib/session";
 
 export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
 
