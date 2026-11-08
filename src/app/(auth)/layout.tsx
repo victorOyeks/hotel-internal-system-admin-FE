@@ -8,9 +8,7 @@ export default function AuthLayout({ children }: PropsWithChildren) {
 				<p className="text-[22px] font-bold tracking-[0.2em]">H.M.S</p>
 				<div className="flex flex-col gap-[14px]">
 					<p className="text-[32px] font-bold leading-tight">Run your hotels from one place</p>
-					<p className="text-base text-white/75">
-						Managers and owners sign in here. Staff sign in on the hotel tablets with their PIN.
-					</p>
+					<p className="text-base text-white/75">Rooms, bookings, guests, money and your team, in one view.</p>
 				</div>
 			</aside>
 			<section className="flex min-h-full flex-1 flex-col items-center justify-center px-4 py-10">
