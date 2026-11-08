@@ -1,9 +1,9 @@
 name: Build & Deploy HIS Frontend (Develop)
 
+# The develop environment (his-fe-develop) was retired from the staging VPS on 2026-11-08; staging is the
+# maintained branch. This workflow stays for a manual run only, in case a develop box comes back.
 on:
-  push:
-    branches:
-      - develop
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
