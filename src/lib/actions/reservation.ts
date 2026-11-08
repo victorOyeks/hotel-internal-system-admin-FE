@@ -159,3 +159,20 @@ export async function searchGuests(q: string): Promise<GuestRow[]> {
 	const { data } = await api("@get/reservation/guests", { ...(await withSession()), query: { q } });
 	return (data?.data ?? []).map(toGuestRow);
 }
+
+export type GuestInput = { fullName: string; phone: string; email?: string; idType?: string; idNumber?: string; nationality?: string; preferences?: string; notes?: string };
+
+/** Add a guest without a booking, or update a guest's details and notes. */
+export async function saveGuest(input: GuestInput, id: string | undefined, fallback: GuestRow): Promise<ActionResult<GuestRow>> {
+	if (!live("reservation")) {
+		await demoDelay(400);
+		return { ok: true, data: fallback };
+	}
+	const body = { fullName: input.fullName, phone: input.phone || null, email: input.email ?? null, idType: input.idType ?? null, idNumber: input.idNumber ?? null, nationality: input.nationality ?? null, preferences: input.preferences ?? null, notes: input.notes ?? null };
+	const s = await withSession();
+	const { data, error } = id ? await api("@put/reservation/guests/:id", { ...s, params: { id }, body }) : await api("@post/reservation/guests", { ...s, body });
+	if (error || !data) return { ok: false, error: errorMessage(error, "The guest could not be saved") };
+	revalidatePath("/front-desk/guests");
+	revalidatePath("/manager/bookings");
+	return { ok: true, data: toGuestRow(data.data) };
+}

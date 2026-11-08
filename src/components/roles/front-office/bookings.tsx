@@ -19,6 +19,8 @@ import { SearchBox, Toolbar } from "@/components/shared/toolbar";
 import { btn } from "@/components/shared/ui";
 import type { bookingBuckets } from "@/lib/data";
 import type { BookingRow, FolioRow, GuestRow, OrganizationRow, PaymentPlan, PriceKind, RoomRow, RoomTypeRow, TerminalRow } from "@/lib/data/types";
+import { cancelBooking, changeBookingDates, checkIn, checkOut, createBooking } from "@/lib/actions/reservation";
+import { useAction } from "@/lib/actions/use-action";
 import { useDemoAction } from "@/lib/demo/actions";
 import { type PaymentTarget, TakePaymentPanel } from "./take-payment";
 
@@ -50,7 +52,7 @@ export function BookingsScreen({ buckets, all, rooms, roomTypes, guests, folios,
 	const [bookings, setBookings] = useState(all);
 	const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 	const [payOpen, setPayOpen] = useState(false);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 
 	const activeTab = (tab ?? "arrivals") as Tab;
 	const lists: Record<Tab, BookingRow[]> = {
@@ -91,7 +93,7 @@ export function BookingsScreen({ buckets, all, rooms, roomTypes, guests, folios,
 							<RowActions
 								actions={[
 									{ label: "Open booking", icon: CalendarCheckIcon, onClick: () => void setOpenId(b.id) },
-									{ label: "Record payment", icon: CreditCardIcon, onClick: () => { setPayTarget({ guestName: b.guestName, roomNumber: b.roomNumber, folioId: folios.find((f) => f.bookingId === b.id)?.id, amountDue: Math.max(0, b.totalAmount - b.paid), description: `Booking ${b.reference}` }); setPayOpen(true); } },
+									{ label: "Record payment", icon: CreditCardIcon, onClick: () => { setPayTarget({ guestName: b.guestName, roomNumber: b.roomNumber, folioId: folios.find((f) => f.bookingId === b.id)?.id, bookingId: b.id, guestPhone: b.guestPhone, guestEmail: b.guestEmail, amountDue: Math.max(0, b.totalAmount - b.paid), description: `Booking ${b.reference}` }); setPayOpen(true); } },
 									{ label: "Change dates", icon: CalendarIcon, onClick: () => { void setOpenId(b.id); void setAction("dates"); }, disabled: b.status !== "BOOKED" && b.status !== "CHECKED_IN" },
 									{ label: "Message guest", icon: MessageCircleIcon, onClick: () => { void setOpenId(b.id); void setAction("message"); } },
 									{ label: "Cancel booking", icon: XIcon, tone: "danger", separatorBefore: true, onClick: () => { void setOpenId(b.id); void setAction("cancel"); }, disabled: b.status !== "BOOKED", managerOnly: !canCancel },
@@ -118,11 +120,11 @@ export function BookingsScreen({ buckets, all, rooms, roomTypes, guests, folios,
 			/>
 			<DataTable columns={columns} data={lists[activeTab]} search={search} onRowClick={(b) => void setOpenId(b.id)} emptyTitle={`No ${activeTab === "in-house" ? "guests in house" : activeTab} right now`} />
 
-			<BookingPanel booking={selected} open={!!selected && !action} onOpenChange={(o) => !o && closeAll()} folio={selected ? folios.find((f) => f.bookingId === selected.id) ?? null : null} room={selected ? rooms.find((r) => r.id === selected.roomId) ?? null : null} onAction={(a) => void setAction(a)} onPay={() => { if (!selected) return; setPayTarget({ guestName: selected.guestName, roomNumber: selected.roomNumber, folioId: folios.find((f) => f.bookingId === selected.id)?.id, amountDue: Math.max(0, selected.totalAmount - selected.paid), description: `Booking ${selected.reference}` }); setPayOpen(true); }} />
+			<BookingPanel booking={selected} open={!!selected && !action} onOpenChange={(o) => !o && closeAll()} folio={selected ? folios.find((f) => f.bookingId === selected.id) ?? null : null} room={selected ? rooms.find((r) => r.id === selected.roomId) ?? null : null} onAction={(a) => void setAction(a)} onPay={() => { if (!selected) return; setPayTarget({ guestName: selected.guestName, roomNumber: selected.roomNumber, folioId: folios.find((f) => f.bookingId === selected.id)?.id, bookingId: selected.id, guestPhone: selected.guestPhone, guestEmail: selected.guestEmail, amountDue: Math.max(0, selected.totalAmount - selected.paid), description: `Booking ${selected.reference}` }); setPayOpen(true); }} />
 
-			<CheckInModal booking={selected} open={!!selected && action === "check-in"} onOpenChange={(o) => !o && closeAll()} rooms={rooms} onPay={(t) => { setPayTarget(t); setPayOpen(true); }} onDone={(roomNumber, roomId) => { if (selected) update(selected.id, { status: "CHECKED_IN", checkedInAt: new Date().toISOString(), roomNumber, roomId }); closeAll(); }} />
-			<CheckOutModal booking={selected} folio={selected ? folios.find((f) => f.bookingId === selected.id) ?? null : null} open={!!selected && action === "check-out"} onOpenChange={(o) => !o && closeAll()} onPay={(t) => { setPayTarget(t); setPayOpen(true); }} onDone={() => { if (selected) update(selected.id, { status: "CHECKED_OUT", checkedOutAt: new Date().toISOString() }); closeAll(); }} />
-			<ChangeDatesModal booking={selected} open={!!selected && action === "dates"} onOpenChange={(o) => !o && closeAll()} onDone={(ci, co) => { if (selected) update(selected.id, { checkInDate: ci, checkOutDate: co, nights: differenceInCalendarDays(new Date(co), new Date(ci)), totalAmount: selected.nightlyRate * differenceInCalendarDays(new Date(co), new Date(ci)) }); closeAll(); }} />
+			<CheckInModal booking={selected} open={!!selected && action === "check-in"} onOpenChange={(o) => !o && closeAll()} rooms={rooms} onPay={(t) => { setPayTarget(t); setPayOpen(true); }} onDone={(changes) => { if (selected) update(selected.id, changes); closeAll(); }} />
+			<CheckOutModal booking={selected} folio={selected ? folios.find((f) => f.bookingId === selected.id) ?? null : null} open={!!selected && action === "check-out"} onOpenChange={(o) => !o && closeAll()} onPay={(t) => { setPayTarget(t); setPayOpen(true); }} onDone={(changes) => { if (selected) update(selected.id, changes); closeAll(); }} />
+			<ChangeDatesModal booking={selected} open={!!selected && action === "dates"} onOpenChange={(o) => !o && closeAll()} onDone={(changes) => { if (selected) update(selected.id, changes); closeAll(); }} />
 			<MessageGuestModal booking={selected} open={!!selected && action === "message"} onOpenChange={(o) => !o && closeAll()} />
 			<ConfirmModal
 				open={!!selected && action === "cancel"}
@@ -133,13 +135,13 @@ export function BookingsScreen({ buckets, all, rooms, roomTypes, guests, folios,
 				confirmLabel="Cancel booking"
 				pending={pending}
 				alternative={{ label: "Change the dates instead", onClick: () => void setAction("dates") }}
-				onConfirm={() => void run("Booking cancelled · guest told by WhatsApp", () => { if (selected) update(selected.id, { status: "CANCELLED", cancelReason: "Cancelled at the desk" }); closeAll(); })}
+				onConfirm={() => { if (!selected) return; const b = selected; void run(() => cancelBooking(b, "Cancelled at the desk", b.paid > 0, { status: "CANCELLED", cancelReason: "Cancelled at the desk", roomId: undefined, roomNumber: undefined }), "Booking cancelled · guest told by WhatsApp", (changes) => { update(b.id, changes); closeAll(); }); }}
 			>
 				<WhatHappens tone="danger" items={[selected?.roomNumber ? `Room ${selected.roomNumber} is released for sale` : "The room type is freed up", selected && selected.paid > 0 ? `${naira(selected.paid)} already paid goes to the manager as a refund request` : "Nothing was paid, so nothing to refund", "The guest gets a cancellation message"]} />
 			</ConfirmModal>
 
 			<NewBookingPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} roomTypes={roomTypes} guests={guests} organizations={organizations} onCreated={(b) => { setBookings((xs) => [b, ...xs]); void setIsNew(null); void setOpenId(b.id); }} />
-			<TakePaymentPanel open={payOpen} onOpenChange={setPayOpen} target={payTarget} folios={folios} terminals={terminals} onDone={(p) => { const b = bookings.find((x) => x.guestName === p.guestName && x.status !== "CHECKED_OUT"); if (b) update(b.id, { paid: b.paid + p.amount }); }} />
+			<TakePaymentPanel open={payOpen} onOpenChange={setPayOpen} target={payTarget} folios={folios} terminals={terminals} onDone={(p) => { if (p.status !== "APPROVED") return; const b = bookings.find((x) => (p.bookingId ? x.id === p.bookingId : x.guestName === p.guestName && x.status !== "CHECKED_OUT")); if (b) update(b.id, { paid: b.paid + p.amount }); }} />
 		</>
 	);
 }
@@ -206,11 +208,11 @@ export function BookingPanel({ booking, open, onOpenChange, folio, room, onActio
 }
 
 /** 2.3 Check in. */
-function CheckInModal({ booking, open, onOpenChange, rooms, onPay, onDone }: { booking: BookingRow | null; open: boolean; onOpenChange: (o: boolean) => void; rooms: RoomRow[]; onPay: (t: PaymentTarget) => void; onDone: (roomNumber: string, roomId: string) => void }) {
+function CheckInModal({ booking, open, onOpenChange, rooms, onPay, onDone }: { booking: BookingRow | null; open: boolean; onOpenChange: (o: boolean) => void; rooms: RoomRow[]; onPay: (t: PaymentTarget) => void; onDone: (changes: Partial<BookingRow>) => void }) {
 	const [roomId, setRoomId] = useState("");
 	const [idSeen, setIdSeen] = useState(false);
 	const [collectLater, setCollectLater] = useState(false);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	useEffect(() => {
 		setRoomId(booking?.roomId ?? "");
 		setIdSeen(false);
@@ -233,7 +235,7 @@ function CheckInModal({ booking, open, onOpenChange, rooms, onPay, onDone }: { b
 			footer={
 				<>
 					<button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Not yet</button>
-					<button type="button" className={btn.primary} disabled={!canGo || pending} onClick={() => void run(`${b.guestName} checked in to ${chosen?.number}`, () => onDone(chosen?.number ?? "", chosen?.id ?? ""), { description: "Welcome message sent · housekeeping told" })}>
+					<button type="button" className={btn.primary} disabled={!canGo || pending} onClick={() => chosen && void run(() => checkIn(b, { roomId: chosen.id, withoutPayment: collectLater && due > 0, idChecked: idSeen }, { status: "CHECKED_IN", checkedInAt: new Date().toISOString(), roomNumber: chosen.number, roomId: chosen.id }), `${b.guestName} checked in to ${chosen.number}`, onDone)}>
 						Check in{chosen ? ` to ${chosen.number}` : ""}
 					</button>
 				</>
@@ -248,7 +250,7 @@ function CheckInModal({ booking, open, onOpenChange, rooms, onPay, onDone }: { b
 						<p className="text-[13px] font-semibold text-ink">{naira(due)} to collect before the key</p>
 						<p className="text-xs text-ink-2">{planLabel[b.paymentPlan]} · {naira(b.paid)} already paid</p>
 						<div className="mt-3 flex gap-2">
-							<button type="button" className={btn.primary} onClick={() => onPay({ guestName: b.guestName, roomNumber: chosen?.number ?? b.roomNumber, amountDue: due, description: `Check-in · ${b.reference}` })}>Take {naira(due)} now</button>
+							<button type="button" className={btn.primary} onClick={() => onPay({ guestName: b.guestName, roomNumber: chosen?.number ?? b.roomNumber, bookingId: b.id, guestPhone: b.guestPhone, guestEmail: b.guestEmail, amountDue: due, description: `Check-in · ${b.reference}` })}>Take {naira(due)} now</button>
 							<button type="button" className={btn.secondary} onClick={() => setCollectLater(true)}>Check in without payment</button>
 						</div>
 						{collectLater && <Note tone="warning" className="mt-3">Manager is told · the balance stays on the folio and must be settled before check-out.</Note>}
@@ -263,8 +265,8 @@ function CheckInModal({ booking, open, onOpenChange, rooms, onPay, onDone }: { b
 }
 
 /** 2.4 Check out. */
-function CheckOutModal({ booking, folio, open, onOpenChange, onPay, onDone }: { booking: BookingRow | null; folio: FolioRow | null; open: boolean; onOpenChange: (o: boolean) => void; onPay: (t: PaymentTarget) => void; onDone: () => void }) {
-	const { run, pending } = useDemoAction();
+function CheckOutModal({ booking, folio, open, onOpenChange, onPay, onDone }: { booking: BookingRow | null; folio: FolioRow | null; open: boolean; onOpenChange: (o: boolean) => void; onPay: (t: PaymentTarget) => void; onDone: (changes: Partial<BookingRow>) => void }) {
+	const { run, pending } = useAction();
 	if (!booking) return null;
 	const b = booking;
 	const balance = folio ? folio.balance : b.totalAmount - b.paid;
@@ -280,9 +282,9 @@ function CheckOutModal({ booking, folio, open, onOpenChange, onPay, onDone }: { 
 				<>
 					<button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Not yet</button>
 					{balance > 0 && !company ? (
-						<button type="button" className={btn.primary} onClick={() => onPay({ guestName: b.guestName, roomNumber: b.roomNumber, folioId: folio?.id, amountDue: balance, description: `Check-out · ${b.reference}` })}>Take {naira(balance)}</button>
+						<button type="button" className={btn.primary} onClick={() => onPay({ guestName: b.guestName, roomNumber: b.roomNumber, folioId: folio?.id, bookingId: b.id, guestPhone: b.guestPhone, guestEmail: b.guestEmail, amountDue: balance, description: `Check-out · ${b.reference}` })}>Take {naira(balance)}</button>
 					) : (
-						<button type="button" className={btn.primary} disabled={pending} onClick={() => void run(`${b.guestName} checked out · room ${b.roomNumber} to clean`, onDone, { description: company ? `${naira(balance)} to ${b.organizationName}'s account` : "Thank-you message sent" })}>
+						<button type="button" className={btn.primary} disabled={pending} onClick={() => void run(() => checkOut(b, { folioBalance: Math.max(0, balance), allowPendingPayment: company || balance > 0 }, { status: "CHECKED_OUT", checkedOutAt: new Date().toISOString() }), `${b.guestName} checked out · room ${b.roomNumber} to clean`, onDone)}>
 							Check out
 						</button>
 					)}
@@ -301,10 +303,10 @@ function CheckOutModal({ booking, folio, open, onOpenChange, onPay, onDone }: { 
 }
 
 /** 2.6 Change dates. */
-function ChangeDatesModal({ booking, open, onOpenChange, onDone }: { booking: BookingRow | null; open: boolean; onOpenChange: (o: boolean) => void; onDone: (ci: string, co: string) => void }) {
+function ChangeDatesModal({ booking, open, onOpenChange, onDone }: { booking: BookingRow | null; open: boolean; onOpenChange: (o: boolean) => void; onDone: (changes: Partial<BookingRow>) => void }) {
 	const [ci, setCi] = useState("");
 	const [co, setCo] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	useEffect(() => {
 		setCi(booking?.checkInDate ?? "");
 		setCo(booking?.checkOutDate ?? "");
@@ -314,7 +316,7 @@ function ChangeDatesModal({ booking, open, onOpenChange, onDone }: { booking: Bo
 	const newTotal = booking.priceKind === "COMPLIMENTARY" ? 0 : nights * booking.nightlyRate;
 	const diff = newTotal - booking.totalAmount;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title="Change dates" subtitle={`${booking.guestName} · ${booking.reference}`} icon={CalendarIcon} size="confirm" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={nights < 1 || pending} onClick={() => void run("Dates changed · guest told", () => onDone(ci, co))}>Save new dates</button></>}>
+		<Modal open={open} onOpenChange={onOpenChange} title="Change dates" subtitle={`${booking.guestName} · ${booking.reference}`} icon={CalendarIcon} size="confirm" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={nights < 1 || pending} onClick={() => void run(() => changeBookingDates(booking, ci, co, { checkInDate: ci, checkOutDate: co, nights, totalAmount: newTotal }), "Dates changed · guest told", onDone)}>Save new dates</button></>}>
 			<div className="flex flex-col gap-4">
 				<FieldRow>
 					<TextField label="Check-in" type="date" value={ci} onChange={setCi} disabled={booking.status === "CHECKED_IN"} />
@@ -365,7 +367,7 @@ export function NewBookingPanel({ open, onOpenChange, roomTypes, guests, organiz
 	const [plan, setPlan] = useState<PaymentPlan>("PAY_IN_FULL");
 	const [orgId, setOrgId] = useState("");
 	const [notes, setNotes] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 
 	const type = roomTypes.find((t) => t.id === typeId);
 	const nights = Math.max(0, differenceInCalendarDays(new Date(co), new Date(ci)));
@@ -392,7 +394,11 @@ export function NewBookingPanel({ open, onOpenChange, roomTypes, guests, organiz
 			roomTypeId: typeId, roomTypeName: type?.name ?? "", checkInDate: ci, checkOutDate: co, nights, adults: Number(adults) || 1, children: 0, eta: eta || undefined,
 			status: "BOOKED", priceKind, nightlyRate: rate, totalAmount: total, paid: 0, paymentPlan: plan, organizationId: orgId || undefined, organizationName: organizations.find((o) => o.id === orgId)?.name, source: "Front desk", notes: notes || undefined, createdAt: new Date().toISOString(),
 		};
-		void run(needsManager ? "Booking saved · sent to the manager to approve the price" : `Booking ${row.reference} saved · confirmation sent`, () => onCreated(row), needsManager ? { tone: "info" } : undefined);
+		void run(
+			() => createBooking({ guestId: guestId || undefined, guest: guestId ? undefined : { fullName: name, phone, email: email || undefined }, roomTypeId: typeId, checkInDate: ci, checkOutDate: co, adults: Number(adults) || 1, children: 0, priceKind, specialRate: priceKind === "SPECIAL" ? rate : undefined, paymentPlan: plan, organizationId: orgId || undefined, source: "Front desk", notes: notes || undefined }, row),
+			needsManager ? "Booking saved · sent to the manager to approve the price" : "Booking saved · confirmation sent",
+			(saved) => onCreated(saved),
+		);
 	}
 
 	return (
