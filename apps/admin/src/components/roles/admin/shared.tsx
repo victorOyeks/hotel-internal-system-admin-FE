@@ -13,7 +13,11 @@ export const can = {
 	settings: (r: AdminRole) => r === "SUPER_ADMIN",
 };
 
-export const adminRoleLabel: Record<AdminRole, string> = { SUPER_ADMIN: "Super admin", SUPPORT: "Support", FINANCE_ADMIN: "Finance admin" };
+export const adminRoleLabel: Record<AdminRole, string> = {
+	SUPER_ADMIN: "Super admin",
+	SUPPORT: "Support",
+	FINANCE_ADMIN: "Finance admin",
+};
 
 export const stageMeta: Record<string, { label: string; tone: PillTone }> = {
 	LEAD: { label: "Lead", tone: "grey" },
@@ -22,6 +26,7 @@ export const stageMeta: Record<string, { label: string; tone: PillTone }> = {
 	LIVE: { label: "Live", tone: "success" },
 	AT_RISK: { label: "At risk", tone: "warning" },
 	SUSPENDED: { label: "Suspended", tone: "danger" },
+	CHURNED: { label: "Churned", tone: "grey" },
 };
 
 export function StagePill({ stage }: { stage: string }) {
@@ -29,12 +34,22 @@ export function StagePill({ stage }: { stage: string }) {
 	return <StatusPill tone={m.tone}>{m.label}</StatusPill>;
 }
 
-export function HealthBar({ value, className }: { value: number; className?: string }) {
-	const tone = value >= 70 ? "bg-success" : value >= 40 ? "bg-warning" : "bg-danger";
+export function HealthBar({
+	value,
+	className,
+}: {
+	value: number;
+	className?: string;
+}) {
+	const tone =
+		value >= 70 ? "bg-success" : value >= 40 ? "bg-warning" : "bg-danger";
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
 			<div className="h-[6px] w-16 overflow-hidden rounded-full bg-subtle">
-				<div className={cn("h-full rounded-full", tone)} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+				<div
+					className={cn("h-full rounded-full", tone)}
+					style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+				/>
 			</div>
 			<span className="text-xs font-semibold text-ink">{value}</span>
 		</div>
@@ -50,7 +65,12 @@ export function ReadOnlyNote({ children }: { children: string }) {
 	);
 }
 
-export const ticketPriority: Record<string, PillTone> = { LOW: "grey", NORMAL: "info", HIGH: "warning", URGENT: "danger" };
+export const ticketPriority: Record<string, PillTone> = {
+	LOW: "grey",
+	NORMAL: "info",
+	HIGH: "warning",
+	URGENT: "danger",
+};
 export const ticketStatus: Record<string, { label: string; tone: PillTone }> = {
 	OPEN: { label: "Waiting on us", tone: "warning" },
 	IN_PROGRESS: { label: "In progress", tone: "info" },

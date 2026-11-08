@@ -37,7 +37,7 @@ jobs:
           NEXT_PUBLIC_ADMIN_APP_URL: ${{ vars.NEXT_PUBLIC_ADMIN_APP_URL || 'https://admin-staging.hospio360.com' }}
           NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
           NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || 'false' }}
-          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property,reservation,folio,payment' }}
+          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property,reservation,folio,payment,tenant,identity,hotel-config,platform' }}
 
       # The standalone bundle is rooted at the workspace: apps/hotel/server.js plus the hoisted node_modules.
       - name: Prepare standalone bundle

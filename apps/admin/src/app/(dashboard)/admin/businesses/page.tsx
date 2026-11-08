@@ -6,6 +6,18 @@ import { adminRole } from "../role";
 export const dynamic = "force-dynamic";
 
 export default async function BusinessesPage() {
-	const [role, businesses, marketers] = await Promise.all([getActiveRole(), data.platform.businesses(), data.platform.marketers()]);
-	return <BusinessesScreen role={adminRole(role)} businesses={businesses} marketers={marketers} />;
+	const [role, businesses, marketers, admins] = await Promise.all([
+		getActiveRole(),
+		data.platform.businesses(),
+		data.platform.marketers(),
+		data.platform.adminUsers(),
+	]);
+	return (
+		<BusinessesScreen
+			role={adminRole(role)}
+			businesses={businesses}
+			marketers={marketers}
+			admins={admins}
+		/>
+	);
 }

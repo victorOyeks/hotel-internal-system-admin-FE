@@ -7,16 +7,24 @@ import "server-only";
  */
 
 import { api } from "@hospio/api/api/client";
+import type { Business, Hotel, ListItem, SetupSection, UserSummary } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
+import { getActiveHotel, getBusiness, getHotels } from "@hospio/api/dal";
 import { demoDelay } from "@hospio/api/demo/mode";
+import { isHotelRole } from "@hospio/api/roles";
 import { live } from "./live";
+import { SETUP_LISTS, type SetupListName, toSetupSections } from "./mappers/hotel-config";
+import { toPortalUserRow, toStaffRow } from "./mappers/identity";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import { toBookingRow, toFolioRow, toGuestRow } from "./mappers/reservation";
+import { toBusinessRow, toBusinessRowFromBusiness, toHotelSummary, toOnboardingRow, toOwnerHotelRow, toSetupTemplateRow } from "./mappers/tenant";
 import * as hotel from "@hospio/api/demo/fixtures/hotel";
 import * as ops from "@hospio/api/demo/fixtures/ops";
+import * as owner from "@hospio/api/demo/fixtures/owner";
 import * as platform from "@hospio/api/demo/fixtures/platform";
+import * as platformExtra from "@hospio/api/demo/fixtures/platform-extra";
 import * as stay from "@hospio/api/demo/fixtures/stay";
-import type { AreaRow, BookingRow, BookingStatus, FolioRow, GuestRow, PaymentRow, RoomRow, RoomTypeRow } from "./types";
+import type { AreaRow, BookingRow, BookingStatus, BusinessRow, FolioRow, GuestRow, HotelSetupSection, HotelSummary, OnboardingRow, OwnerHotelRow, PaymentRow, PortalUserRow, RoomRow, RoomTypeRow, SetupTemplateRow, StaffRow, TerminalRow } from "./types";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -35,11 +43,108 @@ export function bookingBuckets(bookings: BookingRow[]) {
 	};
 }
 
+/** identity users for the caller's business, or a named business for platform callers. */
+async function listUsers(query: { businessId?: string; hotelId?: string; role?: string; q?: string } = {}): Promise<UserSummary[]> {
+	const q = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== "")) as Record<string, string>;
+	const { data: res, error } = await api("@get/identity/users", { ...(await withSession()), query: q });
+	if (error || !res) {
+		console.error("identity-service users:", error);
+		return [];
+	}
+	return res.data;
+}
+
+/** The hotels a business or the caller can see, as `id → name`. */
+const hotelNameMap = (hotels: { id: string; name: string }[]) => new Map(hotels.map((h) => [h.id, h.name]));
+
+/** Managers by hotel id and by user id, so hotel rows can show who runs them. Empty when identity is off. */
+async function managerNames(businessId?: string): Promise<Map<string, string>> {
+	const names = new Map<string, string>();
+	if (!live("identity")) return names;
+	for (const u of await listUsers({ businessId, role: "MANAGER" })) {
+		names.set(u.id, u.fullName);
+		for (const g of u.grants) if (g.role === "MANAGER" && g.hotelId && !g.paused && !names.has(g.hotelId)) names.set(g.hotelId, u.fullName);
+	}
+	return names;
+}
+
+/** The platform's hotels for one business (GET /tenant/businesses/{id}/hotels). */
+async function businessHotels(businessId: string): Promise<Hotel[]> {
+	const { data: res, error } = await api("@get/tenant/businesses/:id/hotels", { ...(await withSession()), params: { id: businessId } });
+	if (error || !res) {
+		console.error("tenant-service business hotels:", error);
+		return [];
+	}
+	return res.data;
+}
+
+const demoOwnerUsers = (query: { hotelId?: string; role?: string; q?: string } = {}) =>
+	owner.ownerPortalUsers.filter((u) => (!query.role || u.role === query.role) && (!query.hotelId || u.hotelIds.length === 0 || u.hotelIds.includes(query.hotelId)) && (!query.q || `${u.fullName} ${u.email}`.toLowerCase().includes(query.q.toLowerCase())));
+
+const demoBusinessUsers = (businessId: string): PortalUserRow[] =>
+	businessId === "biz-1" || businessId === hotel.BUSINESS_ID
+		? owner.ownerPortalUsers
+		: platformExtra.demoBusinessUsers
+				.filter((u) => u.businessId === businessId)
+				.map((u) => ({ id: u.id, userId: u.id, businessId: u.businessId, fullName: u.fullName, email: u.email, phone: "", role: isHotelRole(u.role) ? u.role : ("FRONT_OFFICE" as const), level: "FULL" as const, hotels: u.hotel ? [u.hotel] : ["All hotels"], hotelIds: [], hotel: u.hotel ?? "All hotels", grants: [{ id: `${u.id}-g0`, role: u.role, level: "FULL" as const, paused: u.status === "PAUSED" }], status: u.status, inviteStatus: u.status === "INVITED" ? ("PENDING" as const) : ("ACCEPTED" as const), mustChangePassword: u.status === "INVITED", twoStep: false, lastSignIn: u.lastSignIn }));
+
 export const data = {
+	business: {
+		/** The caller's business with hotels and onboarding state (GET /tenant/businesses/mine). */
+		mine: async (): Promise<Business | null> => {
+			if (!live("tenant")) return give(hotel.demoBusiness);
+			return getBusiness();
+		},
+	},
 	hotels: {
-		list: () => give(hotel.demoHotels),
-		summaries: () => give(hotel.demoHotelSummaries),
-		setup: () => give(ops.demoHotelSetup),
+		/** The owner's hotels as the Hotels screen lists them. Finance figures are 0 until finance-service is wired. */
+		list: async (): Promise<OwnerHotelRow[]> => {
+			if (!live("tenant")) return give(owner.ownerHotels);
+			const hotels = await getHotels();
+			const managers = await managerNames();
+			return hotels.map((h, i) => toOwnerHotelRow(h, i, managers));
+		},
+		get: async (id: string): Promise<OwnerHotelRow | null> => (await data.hotels.list()).find((h) => h.hotelId === id) ?? null,
+		summaries: async (): Promise<HotelSummary[]> => {
+			if (!live("tenant")) return give(hotel.demoHotelSummaries);
+			const [hotels, managers] = await Promise.all([getHotels(), managerNames()]);
+			return hotels.map((h) => toHotelSummary(h, managers));
+		},
+		/**
+		 * Hotel setup for the active hotel (or `hotelId`): GET /hotel-config/setup plus the lists, turned
+		 * into the sections the screen renders. The catalogue lives in mappers/hotel-config.
+		 */
+		setup: async (hotelId?: string): Promise<HotelSetupSection[]> => {
+			if (!live("hotel-config")) return give(ops.demoHotelSetup);
+			const s = await withSession(hotelId ? { hotelId } : undefined);
+			const [setup, active, ...lists] = await Promise.all([
+				api("@get/hotel-config/setup", s),
+				hotelId ? api("@get/tenant/hotels/:id", { ...s, params: { id: hotelId } }).then((r) => r.data?.data ?? null).catch(() => null) : getActiveHotel(),
+				...SETUP_LISTS.map((listName) => api("@get/hotel-config/setup/lists/:listName", { ...s, params: { listName }, query: {} }).catch(() => ({ data: null, error: null }))),
+			]);
+			if (setup.error || !setup.data) {
+				console.error("hotel-config setup:", setup.error);
+				return [];
+			}
+			const byName: Partial<Record<SetupListName, ListItem[]>> = {};
+			SETUP_LISTS.forEach((listName, i) => {
+				byName[listName] = lists[i]?.data?.data ?? [];
+			});
+			return toSetupSections(setup.data.data as SetupSection, byName, active);
+		},
+	},
+	users: {
+		/**
+		 * Portal users: the owner's business (or `businessId` for platform callers), narrowed by hotel,
+		 * role or a search. Hotel names come from the caller's hotels, or the business's for platform callers.
+		 */
+		list: async (query: { businessId?: string; hotelId?: string; role?: string; q?: string } = {}): Promise<PortalUserRow[]> => {
+			if (!live("identity")) return give(query.businessId && query.businessId !== hotel.BUSINESS_ID ? demoBusinessUsers(query.businessId) : demoOwnerUsers(query));
+			const [users, hotels] = await Promise.all([listUsers(query), query.businessId ? businessHotels(query.businessId) : getHotels()]);
+			const names = hotelNameMap(hotels);
+			return users.map((u) => toPortalUserRow(u, names)).sort((a, b) => a.fullName.localeCompare(b.fullName));
+		},
+		get: async (id: string, businessId?: string): Promise<PortalUserRow | null> => (await data.users.list({ businessId })).find((u) => u.id === id) ?? null,
 	},
 	rooms: {
 		list: async (): Promise<RoomRow[]> => {
@@ -164,7 +269,7 @@ export const data = {
 				description: p.description ?? "Payment",
 			}));
 		},
-		terminals: () => give(stay.demoTerminals),
+		terminals: (hotelId?: string) => data.terminals.list(hotelId),
 		refunds: () => give(stay.demoRefunds),
 		disputes: () => give(stay.demoDisputes),
 	},
@@ -175,8 +280,16 @@ export const data = {
 		invoices: (id?: string) => give(id ? stay.demoInvoices.filter((i) => i.organizationId === id) : stay.demoInvoices),
 	},
 	staff: {
-		list: () => give(hotel.demoStaff),
-		get: (id: string) => give(hotel.demoStaff.find((s) => s.id === id) ?? null),
+		/** The active hotel's people from identity (every grant on this hotel plus the business-wide owner). */
+		list: async (): Promise<StaffRow[]> => {
+			if (!live("identity")) return give(hotel.demoStaff);
+			const [active, hotels] = await Promise.all([getActiveHotel(), getHotels()]);
+			if (!active) return [];
+			const users = await listUsers({ hotelId: active.id });
+			const names = hotelNameMap(hotels);
+			return users.map((u) => toStaffRow(u, active.id, names)).sort((a, b) => a.fullName.localeCompare(b.fullName));
+		},
+		get: async (id: string): Promise<StaffRow | null> => (await data.staff.list()).find((s) => s.id === id) ?? null,
 		shifts: (from?: string, to?: string) => give(hotel.demoShifts.filter((s) => (!from || s.date >= from) && (!to || s.date <= to))),
 		leave: () => give(hotel.demoLeave),
 		shiftRequests: () => give(hotel.demoShiftRequests),
@@ -245,14 +358,95 @@ export const data = {
 		orders: () => give(ops.demoLaundry),
 	},
 	platform: {
-		businesses: () => give(platform.demoBusinesses),
-		business: (id: string) => give(platform.demoBusinesses.find((b) => b.id === id) ?? null),
+		/** Every business on the platform (GET /tenant/businesses, first 200). Health, MRR and tickets are 0 until platform-service is wired. */
+		businesses: async (query: { stage?: string; q?: string } = {}): Promise<BusinessRow[]> => {
+			if (!live("tenant")) return give(platform.demoBusinesses.filter((b) => (!query.stage || b.stage === query.stage) && (!query.q || b.name.toLowerCase().includes(query.q.toLowerCase()))));
+			const q: Record<string, string | number> = { page: 0, size: 200 };
+			if (query.stage) q.stage = query.stage;
+			if (query.q) q.q = query.q;
+			const { data: res, error } = await api("@get/tenant/businesses", { ...(await withSession()), query: q });
+			if (error || !res) {
+				console.error("tenant-service businesses:", error);
+				return [];
+			}
+			return res.data.content.map(toBusinessRow);
+		},
+		business: async (id: string): Promise<BusinessRow | null> => {
+			if (!live("tenant")) return give(platform.demoBusinesses.find((b) => b.id === id) ?? null);
+			const { data: res, error } = await api("@get/tenant/businesses/:id", { ...(await withSession()), params: { id } });
+			if (error || !res) {
+				console.error("tenant-service business:", error);
+				return null;
+			}
+			return toBusinessRowFromBusiness(res.data);
+		},
+		/** A business's hotels for the detail page and the wizard. */
+		businessHotels: async (id: string): Promise<HotelSummary[]> => {
+			if (!live("tenant")) {
+				if (id === "biz-1" || id === hotel.BUSINESS_ID) return give(hotel.demoHotelSummaries);
+				return give((platformExtra.demoOtherHotels[id] ?? []).map((h, i) => ({ id: `${id}-h${i + 1}`, name: h.name, city: h.city, address: "", rooms: h.rooms, timezone: "Africa/Lagos", occupancy: h.occupancy, manager: h.manager })));
+			}
+			const [hotels, managers] = await Promise.all([businessHotels(id), managerNames(id)]);
+			return hotels.map((h) => toHotelSummary(h, managers));
+		},
+		/** A business's people (identity users?businessId=). */
+		businessUsers: (id: string): Promise<PortalUserRow[]> => data.users.list({ businessId: id }),
 		marketers: () => give(platform.demoMarketers),
 		tickets: () => give(platform.demoTickets),
 		feeStatements: () => give(platform.demoFeeStatements),
 		changes: () => give(platform.demoPlatformChanges),
-		onboarding: () => give(platform.demoOnboarding),
+		/** The onboarding board (GET /tenant/onboarding). Admin names come from the demo team until identity lists platform staff. */
+		onboarding: async (status?: string): Promise<OnboardingRow[]> => {
+			if (!live("tenant")) return give(status ? platform.demoOnboarding.filter((o) => o.status === status) : platform.demoOnboarding);
+			const { data: res, error } = await api("@get/tenant/onboarding", { ...(await withSession()), query: status ? { status } : {} });
+			if (error || !res) {
+				console.error("tenant-service onboarding:", error);
+				return [];
+			}
+			const admins = new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName]));
+			return res.data.map((o) => toOnboardingRow(o, admins)).sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+		},
+		onboardingFor: async (businessId: string): Promise<OnboardingRow | null> => {
+			if (!live("tenant")) return give(platform.demoOnboarding.find((o) => o.businessId === businessId || o.id === businessId) ?? null);
+			const { data: res, error } = await api("@get/tenant/onboarding/:businessId", { ...(await withSession()), params: { businessId } });
+			if (error || !res) return null;
+			return toOnboardingRow(res.data, new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName])));
+		},
 		adminUsers: () => give(platform.demoAdminUsers),
+	},
+	onboarding: {
+		/** The owner's own self-serve draft (GET /tenant/onboarding/mine). */
+		mine: async (): Promise<OnboardingRow | null> => {
+			if (!live("tenant")) return give(null);
+			const { data: res, error } = await api("@get/tenant/onboarding/mine", await withSession());
+			if (error || !res) return null;
+			return toOnboardingRow(res.data);
+		},
+	},
+	setupTemplates: {
+		list: async (): Promise<SetupTemplateRow[]> => {
+			if (!live("tenant")) return give(platformExtra.demoSetupTemplates);
+			const { data: res, error } = await api("@get/tenant/setup-templates", await withSession());
+			if (error || !res) {
+				console.error("tenant-service setup templates:", error);
+				return [];
+			}
+			return res.data.filter((t) => t.active).map(toSetupTemplateRow);
+		},
+	},
+	terminals: {
+		/** POS terminals of the active hotel (or `hotelId`), retired ones left out. */
+		list: async (hotelId?: string): Promise<TerminalRow[]> => {
+			if (!live("payment")) return give(stay.demoTerminals);
+			const { data: res, error } = await api("@get/payment/terminals", await withSession(hotelId ? { hotelId } : undefined));
+			if (error || !res) {
+				console.error("payment-service terminals:", error);
+				return [];
+			}
+			return res.data
+				.filter((t) => t.status !== "RETIRED")
+				.map((t) => ({ id: t.id, name: t.name, provider: t.provider, ref: t.terminalRef, status: t.status === "ONLINE" ? ("ONLINE" as const) : ("OFFLINE" as const), roles: [], lastSeen: t.lastSeenAt ?? t.updatedAt ?? t.createdAt ?? "", todayCount: 0, todayAmount: 0 }));
+		},
 	},
 };
 

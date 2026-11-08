@@ -3,7 +3,78 @@
  * API switch is a mapping, not a redesign. Money is in naira, dates are ISO strings.
  */
 
+import type { HotelRole } from "@hospio/api/roles";
+
 export type Id = string;
+
+export type AccessLevel = "FULL" | "EDIT" | "VIEW";
+export type InviteState = "PENDING" | "ACCEPTED" | "EXPIRED" | "NONE";
+export type GrantRow = { id: Id; role: string; level: AccessLevel; hotelId?: Id; hotelName?: string; paused: boolean; expiresAt?: string };
+
+/**
+ * One hotel on the owner's Hotels screen. The API fills identity, status and counts; the finance
+ * figures come from finance-service when it is wired and are 0 until then.
+ */
+export type OwnerHotelRow = {
+	hotelId: Id;
+	name: string;
+	city: string;
+	code: string;
+	rooms: number;
+	occupancy: number;
+	manager: string;
+	managerUserId?: Id;
+	status: "ACTIVE" | "PAUSED" | "CLOSED" | "RENOVATION" | "INACTIVE";
+	address?: string;
+	timezone?: string;
+	checkInTime?: string;
+	checkOutTime?: string;
+	starRating?: number;
+	revenueToday: number;
+	revenueMonth: number;
+	expensesMonth: number;
+	payrollMonth: number;
+	revenueLastMonth: number;
+	onShift: number;
+	scheduled: number;
+	openIssues: number;
+	lastAction: string;
+	lastAt: string;
+	health: number;
+	posProvider: string;
+	grossSettled: number;
+	posFees: number;
+	nextPayout: string;
+	nextPayoutAmount: number;
+	phone: string;
+	email: string;
+};
+
+/** A portal user (owner's Users screen, platform People tab): one person, their grants and invite state. */
+export type PortalUserRow = {
+	id: Id;
+	userId: Id;
+	businessId: string;
+	fullName: string;
+	email: string;
+	phone: string;
+	role: HotelRole;
+	level: AccessLevel;
+	hotels: string[];
+	hotelIds: Id[];
+	/** The first hotel's name, for screens that show one. */
+	hotel?: string;
+	grants: GrantRow[];
+	status: "ACTIVE" | "INVITED" | "PAUSED" | "SUSPENDED";
+	inviteStatus: InviteState;
+	mustChangePassword: boolean;
+	twoStep: boolean;
+	lastSignIn?: string;
+	createdAt?: string;
+};
+
+/** A setup template (tenant `/setup-templates`): sections and lists applied to a new hotel. */
+export type SetupTemplateRow = { id: Id; name: string; description: string; settings: Record<string, unknown>; active: boolean };
 
 export type HotelSummary = { id: Id; name: string; city: string; address: string; rooms: number; timezone: string; occupancy: number; manager: string };
 
@@ -37,7 +108,7 @@ export type TerminalRow = { id: Id; name: string; provider: string; ref: string;
 export type RefundRow = { id: Id; paymentId: Id; guestName: string; amount: number; reason: string; status: "PENDING_APPROVAL" | "APPROVED" | "DECLINED"; requestedBy: string; createdAt: string };
 export type DisputeRow = { id: Id; paymentId: Id; guestName: string; amount: number; reason: string; status: "OPEN" | "RESOLVED"; openedAt: string; resolution?: string };
 
-export type StaffRow = { id: Id; fullName: string; email: string; phone: string; role: string; level: "FULL" | "EDIT" | "VIEW"; department: string; jobTitle: string; status: "ACTIVE" | "PAUSED" | "SUSPENDED" | "ON_LEAVE"; shift: string; startedOn: string; lastSignIn?: string; hotelId: Id; photo?: string };
+export type StaffRow = { id: Id; fullName: string; email: string; phone: string; role: string; level: AccessLevel; department: string; jobTitle: string; status: "ACTIVE" | "PAUSED" | "SUSPENDED" | "ON_LEAVE"; shift: string; startedOn: string; lastSignIn?: string; hotelId: Id; hotelName?: string; photo?: string; userId?: Id; grants?: GrantRow[]; inviteStatus?: InviteState; mustChangePassword?: boolean };
 export type ShiftRow = { id: Id; staffId: Id; staffName: string; role: string; date: string; starts: string; ends: string; status: "SCHEDULED" | "SWAPPED" | "COVERED" | "CANCELLED" | "ABSENT" | "PRESENT" };
 export type LeaveRow = { id: Id; staffId: Id; staffName: string; role: string; from: string; to: string; days: number; reason: string; status: "PENDING" | "APPROVED" | "DECLINED" | "CHANGE_REQUESTED"; note?: string };
 export type ShiftRequestRow = { id: Id; staffName: string; role: string; kind: "SWAP" | "COVER"; date: string; shift: string; withName?: string; reason?: string; status: "PENDING" | "APPROVED" | "DECLINED" };
@@ -82,10 +153,11 @@ export type LostFoundRow = { id: Id; description: string; foundWhere: string; fo
 
 export type HotelSetupSection = { key: string; title: string; description: string; icon: string; ownerOnly?: boolean; fields: { key: string; label: string; type: "text" | "number" | "toggle" | "select" | "time" | "list" | "money" | "percent"; value: unknown; options?: string[]; help?: string }[] };
 
-export type BusinessRow = { id: Id; name: string; ownerName: string; ownerEmail: string; stage: "LEAD" | "ONBOARDING" | "HANDED_OVER" | "LIVE" | "AT_RISK" | "SUSPENDED"; hotels: number; rooms: number; city: string; accountManager: string; health: number; feeModel: string; feeValue: number; mrr: number; since: string; lastActive?: string; marketer?: string; adoption: number; openTickets: number; dueFees: number };
+export type BusinessStageKey = "LEAD" | "ONBOARDING" | "HANDED_OVER" | "LIVE" | "AT_RISK" | "SUSPENDED" | "CHURNED";
+export type BusinessRow = { id: Id; name: string; ownerName: string; ownerEmail: string; ownerPhone?: string; stage: BusinessStageKey; source?: "SELF_SERVE" | "BACK_OFFICE"; hotels: number; rooms: number; city: string; accountManager: string; accountManagerId?: Id; health: number; feeModel: string; feeModelKey?: string; feeValue: number; mrr: number; since: string; lastActive?: string; marketer?: string; marketerId?: Id; adoption: number; openTickets: number; dueFees: number; legalName?: string; registrationNumber?: string; businessType?: string; address?: string; email?: string; phone?: string; currency?: string; timezone?: string; country?: string; logoUrl?: string; brandColour?: string; contractStartsOn?: string; contractNotes?: string; onboarding?: { status: "IN_PROGRESS" | "READY_FOR_HANDOVER" | "DONE"; step: number; completedSteps: string[] } };
 export type MarketerRow = { id: Id; fullName: string; email: string; phone: string; status: "PENDING" | "ACTIVE" | "ENDED"; sharePct: number; months: number; businesses: number; earnedTotal: number; due: number; joined: string };
 export type TicketRow = { id: Id; businessName: string; subject: string; body: string; priority: "LOW" | "NORMAL" | "HIGH" | "URGENT"; status: "OPEN" | "IN_PROGRESS" | "RESOLVED"; openedBy: string; openedAt: string; assignedTo?: string; resolution?: string };
 export type FeeStatementRow = { id: Id; businessName: string; month: string; base: number; fee: number; paid: number; status: "DUE" | "PART_PAID" | "PAID" | "OVERDUE" };
 export type PlatformChangeRow = { id: Id; businessName: string; area: string; description: string; reason: string; madeBy: string; at: string; undoUntil: string; undone?: boolean };
-export type OnboardingRow = { id: Id; businessName: string; step: number; totalSteps: number; assignedTo: string; startedAt: string; status: "IN_PROGRESS" | "READY_FOR_HANDOVER" | "DONE"; nextAction: string };
+export type OnboardingRow = { id: Id; businessId: Id; businessName: string; source: "SELF_SERVE" | "BACK_OFFICE"; step: number; totalSteps: number; completedSteps: string[]; assignedTo: string; assignedToId?: Id; startedAt: string; updatedAt?: string; status: "IN_PROGRESS" | "READY_FOR_HANDOVER" | "DONE"; nextAction: string; data: Record<string, unknown> };
 export type AdminUserRow = { id: Id; fullName: string; email: string; role: "SUPER_ADMIN" | "SUPPORT" | "FINANCE_ADMIN"; status: "ACTIVE" | "PAUSED"; lastSignIn?: string; twoStep: boolean };

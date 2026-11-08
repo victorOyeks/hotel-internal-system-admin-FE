@@ -102,5 +102,5 @@ export function DeltaPill({ value, suffix = "%", invert = false }: { value: numb
 	);
 }
 
-export const hotelStatusTone = { ACTIVE: "success", RENOVATION: "warning", INACTIVE: "grey" } as const;
-export const hotelStatusLabel = { ACTIVE: "Active", RENOVATION: "Renovation", INACTIVE: "Inactive" } as const;
+export const hotelStatusTone = { ACTIVE: "success", PAUSED: "warning", CLOSED: "grey", RENOVATION: "warning", INACTIVE: "grey" } as const;
+export const hotelStatusLabel = { ACTIVE: "Active", PAUSED: "Paused", CLOSED: "Closed", RENOVATION: "Renovation", INACTIVE: "Inactive" } as const;

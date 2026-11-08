@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { api } from "./api/client";
 import { withSession } from "./api/server";
-import type { Hotel, Me } from "./api/schema";
-import { demoHotels, demoMe } from "./demo/fixtures/hotel";
+import type { Business, Hotel, Me } from "./api/schema";
+import { live } from "./data/live";
+import { demoBusiness, demoHotels, demoMe } from "./demo/fixtures/hotel";
 import { DEMO_AUTH } from "./demo/mode";
 import { isAppRole } from "./app";
 import type { HotelRole } from "./roles";
@@ -40,6 +41,19 @@ export const getHotels = cache(async (): Promise<Hotel[]> => {
 	if (DEMO_AUTH) return demoHotels;
 	const { data } = await api("@get/tenant/hotels", await withSession());
 	return data?.data ?? [];
+});
+
+/**
+ * The business the user belongs to (GET /tenant/businesses/mine), with its hotels and onboarding
+ * state. Platform staff have none. Null when the call fails so the shell can still render.
+ */
+export const getBusiness = cache(async (): Promise<Business | null> => {
+	const session = await getSession();
+	if (session.scope === "platform") return null;
+	if (DEMO_AUTH || !live("tenant")) return demoBusiness;
+	const { data, error } = await api("@get/tenant/businesses/mine", await withSession());
+	if (error || !data) return null;
+	return data.data;
 });
 
 export const getActiveRole = cache(async (): Promise<HotelRole | null> => {

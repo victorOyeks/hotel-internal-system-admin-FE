@@ -5,6 +5,18 @@ import { loadSetup } from "./load";
 export const dynamic = "force-dynamic";
 
 export default async function HotelSetupPage() {
-	const [hotel, role, sections] = await Promise.all([getActiveHotel(), getActiveRole(), loadSetup()]);
-	return <HotelSetupScreen sections={sections} activeKey="basics" hotelName={hotel?.name ?? "This hotel"} isOwner={role === "OWNER"} />;
+	const [hotel, role, sections] = await Promise.all([
+		getActiveHotel(),
+		getActiveRole(),
+		loadSetup(),
+	]);
+	return (
+		<HotelSetupScreen
+			sections={sections}
+			activeKey="basics"
+			hotelName={hotel?.name ?? "This hotel"}
+			hotelId={hotel?.id}
+			isOwner={role === "OWNER"}
+		/>
+	);
 }
