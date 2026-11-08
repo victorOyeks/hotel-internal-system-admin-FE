@@ -46,7 +46,9 @@ this script writes to the real staging database and shows up for every role.
 - Change dates on an upcoming booking → nights and total recalculate and persist.
 - Cancel an upcoming booking (manager) with a reason → status Cancelled; the room type is free again.
 - Record payment on an in-house booking by Transfer → Approved; by Card → "sent to the POS" and stays
-  Processing (no real terminal on staging).
+  Processing until the POS confirms (staging has logging-only terminals).
+- As front office, "Check in without payment" is shown but disabled (manager only); the manager has it on
+  their own Bookings screen.
 - Payments → request a refund on a payment → it appears for the manager under Payments → Refunds.
 
 ## What to report

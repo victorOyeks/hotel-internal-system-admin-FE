@@ -1,0 +1,331 @@
+"use client";
+
+import { BanknoteIcon, CheckCircle2Icon, CreditCardIcon, LandmarkIcon, Loader2Icon, MailIcon, MessageCircleIcon, XCircleIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ChoiceCards, Field, MoneyField, SelectField, TextField } from "@hospio/ui/shared/field";
+import { naira } from "@hospio/ui/shared/format";
+import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
+import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
+import { StatusPill } from "@hospio/ui/shared/status-pill";
+import { btn } from "@hospio/ui/shared/ui";
+import { recordPayment } from "@hospio/api/actions/payment";
+import type { FolioRow, PaymentMethod, PaymentStatus, TerminalRow } from "@hospio/api/data/types";
+import { cn } from "@hospio/ui/utils";
+
+export type PaymentTarget = { guestName: string; roomNumber?: string; folioId?: string; bookingId?: string; amountDue: number; description?: string; guestPhone?: string; guestEmail?: string };
+export type TakenPayment = { id: string; amount: number; method: PaymentMethod; guestName: string; status: PaymentStatus; folioId?: string; bookingId?: string };
+
+type Step = "who" | "method" | "card" | "transfer" | "cash" | "receipt" | "done";
+type CardState = "waiting" | "paying" | "sent" | "approved" | "declined" | "no_response";
+
+/**
+ * Front office 8.1–8.12 · Taking payment. One panel, one step at a time: who is paying and how much,
+ * the method, the terminal / transfer / cash step, the receipt, done. Card goes to payment-service as
+ * soon as the step opens and the panel shows what the service answered: approved, declined, no
+ * response, or still processing (the POS confirms later; the payment sits in My payments until then).
+ * Transfer and cash are recorded when the desk confirms them.
+ */
+export function TakePaymentPanel({
+	open,
+	onOpenChange,
+	target,
+	folios = [],
+	terminals = [],
+	onDone,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	target?: PaymentTarget | null;
+	folios?: FolioRow[];
+	terminals?: TerminalRow[];
+	onDone?: (payment: TakenPayment) => void;
+}) {
+	const [step, setStep] = useState<Step>("who");
+	const [folioId, setFolioId] = useState("");
+	const [guestName, setGuestName] = useState("");
+	const [amount, setAmount] = useState<number | "">("");
+	const [description, setDescription] = useState("Room charges");
+	const [method, setMethod] = useState<PaymentMethod>("CARD");
+	const [terminal, setTerminal] = useState(terminals.find((t) => t.status === "ONLINE")?.id ?? "");
+	const [card, setCard] = useState<CardState>("waiting");
+	const [attempt, setAttempt] = useState(0);
+	const [tendered, setTendered] = useState<number | "">("");
+	const [receipt, setReceipt] = useState<"WHATSAPP" | "EMAIL" | "NONE">("WHATSAPP");
+	const [contact, setContact] = useState("");
+	const [sending, setSending] = useState(false);
+	const [recorded, setRecorded] = useState<TakenPayment | null>(null);
+	const [cardError, setCardError] = useState<string | null>(null);
+
+	// Reset whenever the panel opens for a new target.
+	useEffect(() => {
+		if (!open) return;
+		setStep(target ? "method" : "who");
+		setFolioId(target?.folioId ?? "");
+		setGuestName(target?.guestName ?? "");
+		setAmount(target?.amountDue ?? "");
+		setDescription(target?.description ?? "Room charges");
+		setMethod("CARD");
+		setCard("waiting");
+		setAttempt(0);
+		setTendered("");
+		setReceipt("WHATSAPP");
+		setContact("");
+		setRecorded(null);
+		setCardError(null);
+	}, [open, target]);
+
+	// Card: send the request to payment-service and show what the terminal answered.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt re-sends; the other values are read once per attempt
+	useEffect(() => {
+		if (step !== "card") return;
+		let cancelled = false;
+		setCard("waiting");
+		setCardError(null);
+		const n = typeof amount === "number" ? amount : 0;
+		const t = setTimeout(() => !cancelled && setCard("paying"), 700);
+		recordPayment({ method: "CARD", amount: n, folioId: folioId || target?.folioId, bookingId: target?.bookingId, guestName, guestPhone: target?.guestPhone, guestEmail: target?.guestEmail, description, receipt: "WHATSAPP" }).then((r) => {
+			if (cancelled) return;
+			if (!r.ok) {
+				setCardError(r.error);
+				setCard("no_response");
+				return;
+			}
+			setRecorded({ ...r.data, guestName, folioId: folioId || target?.folioId, bookingId: target?.bookingId });
+			if (r.data.status === "APPROVED") setCard("approved");
+			else if (r.data.status === "DECLINED" || r.data.status === "FAILED") setCard("declined");
+			else if (r.data.status === "NO_RESPONSE") setCard("no_response");
+			else setCard("sent");
+		});
+		return () => {
+			cancelled = true;
+			clearTimeout(t);
+		};
+	}, [step, attempt]);
+
+	const amt = typeof amount === "number" ? amount : 0;
+	const folio = folios.find((f) => f.id === folioId);
+	const title = { who: "Take a payment", method: "How is the guest paying?", card: card === "approved" ? "Approved on the terminal" : card === "declined" ? "Declined on the terminal" : card === "no_response" ? "No response from the terminal" : card === "sent" ? "Sent to the POS" : "Waiting for the guest on the POS", transfer: "Bank transfer", cash: "Cash", receipt: "Send a receipt", done: recorded && recorded.status !== "APPROVED" ? "Payment sent" : "Payment recorded" }[step];
+	const subtitle = guestName ? `${guestName}${folio?.roomNumber ? ` · Room ${folio.roomNumber}` : target?.roomNumber ? ` · Room ${target.roomNumber}` : ""} · ${naira(amt)}` : "Choose who is paying";
+
+	async function finish() {
+		setSending(true);
+		let payment = recorded;
+		if (!payment) {
+			// Transfer and cash are recorded when the desk confirms them.
+			const r = await recordPayment({ method, amount: amt, folioId: folioId || target?.folioId, bookingId: target?.bookingId, guestName, guestPhone: target?.guestPhone, guestEmail: target?.guestEmail, description: contact ? `${description} · ${contact}` : description, receipt });
+			if (!r.ok) {
+				setSending(false);
+				toast.error(r.error);
+				return;
+			}
+			payment = { ...r.data, guestName, folioId: folioId || target?.folioId, bookingId: target?.bookingId };
+			setRecorded(payment);
+		}
+		setSending(false);
+		const label = method === "CARD" ? "by card" : method === "TRANSFER" ? "by transfer" : "in cash";
+		if (payment.status === "APPROVED") toast.success(`${naira(amt)} ${label} recorded`, { description: receipt === "NONE" ? "No receipt sent" : `Receipt sent by ${receipt === "WHATSAPP" ? "WhatsApp" : "email"}` });
+		else toast.info(`${naira(amt)} ${label} is processing`, { description: method === "TRANSFER" ? "Finance matches it to the bank line" : "The POS confirms it; see My payments" });
+		onDone?.(payment);
+		setStep("done");
+	}
+
+	const footer = (() => {
+		switch (step) {
+			case "who":
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button>
+						<button type="button" className={btn.primary} disabled={!guestName || amt <= 0} onClick={() => setStep("method")}>Continue · {naira(amt)}</button>
+					</>
+				);
+			case "method":
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => (target ? onOpenChange(false) : setStep("who"))}>Back</button>
+						<button type="button" className={btn.primary} disabled={method === "CARD" && !terminal} onClick={() => setStep(method === "CARD" ? "card" : method === "TRANSFER" ? "transfer" : "cash")}>
+							{method === "CARD" ? "Send to POS" : method === "TRANSFER" ? "Show transfer details" : "Count cash"}
+						</button>
+					</>
+				);
+			case "card":
+				if (card === "approved" || card === "sent") return <button type="button" className={btn.primary} onClick={() => setStep("receipt")}>Continue to receipt</button>;
+				if (card === "declined" || card === "no_response")
+					return (
+						<>
+							<button type="button" className={btn.secondary} onClick={() => { setRecorded(null); setStep("method"); }}>Try another way</button>
+							<button type="button" className={btn.primary} onClick={() => { setRecorded(null); setAttempt((a) => a + 1); }}>Try again on POS</button>
+						</>
+					);
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => { setRecorded(null); setStep("method"); }}>Cancel payment</button>
+						<button type="button" className={btn.primary} onClick={() => onOpenChange(false)}>Minimize</button>
+					</>
+				);
+			case "transfer":
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => setStep("method")}>Back</button>
+						<button type="button" className={btn.primary} onClick={() => setStep("receipt")}>I've confirmed the transfer</button>
+					</>
+				);
+			case "cash":
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => setStep("method")}>Back</button>
+						<button type="button" className={btn.primary} disabled={typeof tendered !== "number" || tendered < amt} onClick={() => setStep("receipt")}>Cash received</button>
+					</>
+				);
+			case "receipt":
+				return (
+					<>
+						<button type="button" className={btn.secondary} onClick={() => { setReceipt("NONE"); void finish(); }} disabled={sending}>Skip receipt</button>
+						<button type="button" className={btn.primary} onClick={() => void finish()} disabled={sending}>
+							{sending ? <Loader2Icon className="size-4 animate-spin" /> : receipt === "NONE" ? "Record payment" : "Send receipt & record"}
+						</button>
+					</>
+				);
+			case "done":
+				return <button type="button" className={btn.primary} onClick={() => onOpenChange(false)}>Done</button>;
+		}
+	})();
+
+	return (
+		<SidePanel open={open} onOpenChange={onOpenChange} title={title} subtitle={subtitle} icon={CreditCardIcon} footer={footer} footerInfo={step === "card" && card !== "approved" ? "You can keep working · find it in My payments" : undefined}>
+			{step === "who" && (
+				<div className="flex flex-col gap-4">
+					<SelectField
+						label="Guest folio"
+						value={folioId}
+						onChange={(v) => {
+							setFolioId(v);
+							const f = folios.find((x) => x.id === v);
+							if (f) {
+								setGuestName(f.guestName);
+								setAmount(Math.max(0, f.balance));
+							}
+						}}
+						placeholder="Pick an open folio…"
+						options={folios.filter((f) => f.status === "OPEN" || f.status === "CLOSED_WITH_BALANCE").map((f) => ({ value: f.id, label: `${f.guestName} · Room ${f.roomNumber}`, hint: `${f.balance > 0 ? `${naira(f.balance)} due` : "Paid up"} · ${f.reference}` }))}
+					/>
+					<p className="text-center text-xs text-ink-3">or a walk-in / someone without a folio</p>
+					<TextField label="Who is paying" value={guestName} onChange={setGuestName} placeholder="Name on the receipt" />
+					<MoneyField label="Amount" value={amount} onChange={setAmount} required />
+					<TextField label="What for" value={description} onChange={setDescription} />
+				</div>
+			)}
+
+			{step === "method" && (
+				<div className="flex flex-col gap-4">
+					<TotalsList rows={[{ label: "Taking", value: naira(amt), strong: true }]} />
+					<ChoiceCards
+						label="Method"
+						value={method}
+						onChange={setMethod}
+						options={[
+							{ value: "CARD", label: "Card on the POS", hint: "Guest taps or inserts · result comes back on its own" },
+							{ value: "TRANSFER", label: "Bank transfer", hint: "Show the account · confirm when it lands" },
+							{ value: "CASH", label: "Cash", hint: "Goes into your till" },
+						]}
+					/>
+					{method === "CARD" && (
+						<SelectField label="Terminal" value={terminal} onChange={setTerminal} options={terminals.map((t) => ({ value: t.id, label: `${t.name} · ${t.provider}`, hint: t.status === "ONLINE" ? "Online" : "Offline · last seen yesterday" }))} setupLink="terminals" />
+					)}
+					{method === "CARD" && terminals.find((t) => t.id === terminal)?.status === "OFFLINE" && <Note tone="danger">That terminal is offline. Pick another or take cash/transfer.</Note>}
+				</div>
+			)}
+
+			{step === "card" && (
+				<div className="flex flex-col items-center gap-4 py-6 text-center">
+					{card === "approved" ? (
+						<CheckCircle2Icon className="size-16 text-success" />
+					) : card === "declined" || card === "no_response" ? (
+						<XCircleIcon className="size-16 text-danger" />
+					) : (
+						<span className="relative flex size-16 items-center justify-center">
+							<span className="absolute inset-0 animate-ping rounded-full bg-brand-soft" />
+							<Loader2Icon className="relative size-10 animate-spin text-brand" />
+						</span>
+					)}
+					<div>
+						<p className="text-lg font-bold text-ink">
+							{card === "waiting" ? "Sending to the terminal…" : card === "paying" ? "Processing on the terminal…" : card === "approved" ? `${naira(amt)} approved` : card === "sent" ? `${naira(amt)} sent to the POS` : card === "declined" ? "The bank declined this card" : "The terminal didn't answer"}
+						</p>
+						<p className="mt-1 max-w-sm text-[13px] text-ink-3">
+							{card === "approved"
+								? `${recorded?.id ? `Payment ${recorded.id.slice(0, 8).toUpperCase()} · ` : ""}posted to the folio.`
+								: card === "sent"
+									? "The guest taps or inserts the card. The payment stays as processing in My payments until the POS confirms it; the folio updates on its own."
+									: card === "declined"
+										? "Nothing was charged. Ask the guest for another card, or take a transfer or cash."
+										: card === "no_response"
+											? (cardError ?? "Check the terminal is on and connected, then try again. Nothing was charged.")
+											: `Hand ${terminals.find((t) => t.id === terminal)?.name ?? "the POS"} to the guest. This updates when the POS answers.`}
+						</p>
+					</div>
+					<div className="flex gap-2">
+						<StatusPill tone={card === "waiting" ? "grey" : "success"}>Sent to POS</StatusPill>
+						<StatusPill tone={card === "waiting" ? "grey" : card === "sent" ? "info" : "warning"}>Guest paying</StatusPill>
+						<StatusPill tone={card === "approved" ? "success" : card === "paying" || card === "waiting" || card === "sent" ? "grey" : "danger"}>Result</StatusPill>
+					</div>
+				</div>
+			)}
+
+			{step === "transfer" && (
+				<div className="flex flex-col gap-4">
+					<PanelSection title="Guest transfers to">
+						<div className="rounded-xl border border-line bg-subtle/60 p-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">GTBank</p>
+							<p className="text-2xl font-bold tracking-wide text-ink">0123456789</p>
+							<p className="text-[13px] text-ink-2">Simpas Hotels Ltd</p>
+							<p className="mt-2 text-[13px] font-semibold text-ink">{naira(amt)} · reference {folio?.reference ?? guestName.split(" ")[0].toUpperCase()}</p>
+						</div>
+					</PanelSection>
+					<Note tone="info">Finance matches the bank line to this payment. It shows as “processing” in My payments until then.</Note>
+					<TextField label="Sender's name or bank reference" value={contact} onChange={setContact} placeholder="As it shows on the alert" />
+				</div>
+			)}
+
+			{step === "cash" && (
+				<div className="flex flex-col gap-4">
+					<TotalsList rows={[{ label: "Amount due", value: naira(amt), strong: true }]} />
+					<MoneyField label="Cash received" value={tendered} onChange={setTendered} required />
+					{typeof tendered === "number" && tendered >= amt && <Note tone="success">Change to give: {naira(tendered - amt)}</Note>}
+					{typeof tendered === "number" && tendered > 0 && tendered < amt && <Note tone="danger">{naira(amt - tendered)} short — take the rest another way or record a part payment.</Note>}
+				</div>
+			)}
+
+			{step === "receipt" && (
+				<div className="flex flex-col gap-4">
+					<TotalsList rows={[{ label: "Paid", value: naira(amt) }, { label: "Method", value: method === "CARD" ? "Card" : method === "TRANSFER" ? "Transfer" : "Cash" }, { label: "Guest", value: guestName, strong: true }]} />
+					<Field label="Send the receipt by">
+						<div className="grid grid-cols-3 gap-2">
+							{(
+								[
+									["WHATSAPP", "WhatsApp", MessageCircleIcon],
+									["EMAIL", "Email", MailIcon],
+									["NONE", "Don't send", BanknoteIcon],
+								] as const
+							).map(([key, label, Icon]) => (
+								<button key={key} type="button" onClick={() => setReceipt(key)} className={cn("flex flex-col items-center gap-2 rounded-control border px-3 py-3 text-[13px] font-semibold", receipt === key ? "border-brand bg-brand-soft/50 text-brand" : "border-line text-ink-2 hover:bg-subtle")}>
+									<Icon className="size-5" /> {label}
+								</button>
+							))}
+						</div>
+					</Field>
+					{receipt !== "NONE" && <TextField label={receipt === "WHATSAPP" ? "WhatsApp number" : "Email"} value={contact} onChange={setContact} placeholder={receipt === "WHATSAPP" ? "+234 …" : "guest@email.com"} />}
+				</div>
+			)}
+
+			{step === "done" && (
+				<div className="flex flex-col items-center gap-3 py-8 text-center">
+					<CheckCircle2Icon className="size-16 text-success" />
+					<p className="text-lg font-bold text-ink">{naira(amt)} {recorded && recorded.status !== "APPROVED" ? "processing" : "recorded"}</p>
+					<p className="max-w-sm text-[13px] text-ink-3">{recorded && recorded.status !== "APPROVED" ? `It shows in My payments as processing until it is confirmed; ${guestName}'s folio updates then.` : `${guestName}'s folio is updated and the payment is in My payments.`} {method === "CASH" ? "The cash is counted in your till." : method === "TRANSFER" ? "Finance will match the transfer." : ""}</p>
+					<LandmarkIcon className="hidden" />
+				</div>
+			)}
+		</SidePanel>
+	);
+}

@@ -1,0 +1,10 @@
+{
+	"name": "@hospio/landing",
+	"version": "0.2.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --turbopack -p 3003",
+		"build": "next build",
+		"start": "next start -p 3003"
+	}
+}

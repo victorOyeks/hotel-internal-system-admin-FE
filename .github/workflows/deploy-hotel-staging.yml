@@ -1,0 +1,118 @@
+name: Deploy Hotel app (staging)
+
+# One deploy per app. A change under apps/hotel or packages/ redeploys this app; the other apps have their own workflow.
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "apps/hotel/**"
+      - "packages/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/deploy-hotel-staging.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hotel-staging
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build apps/hotel
+        working-directory: apps/hotel
+        run: bun run build
+        env:
+          DOMAIN_URL: ${{ secrets.STAGING_DOMAIN_URL }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api-staging.hospio360.com' }}
+          NEXT_PUBLIC_ADMIN_APP_URL: ${{ vars.NEXT_PUBLIC_ADMIN_APP_URL || 'https://admin-staging.hospio360.com' }}
+          NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
+          NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || 'false' }}
+          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property,reservation,folio,payment' }}
+
+      # The standalone bundle is rooted at the workspace: apps/hotel/server.js plus the hoisted node_modules.
+      - name: Prepare standalone bundle
+        run: |
+          out=apps/hotel/.next/standalone
+          mkdir -p "$out/apps/hotel/.next"
+          cp -r apps/hotel/.next/static "$out/apps/hotel/.next/static"
+          [ -d apps/hotel/public ] && cp -r apps/hotel/public "$out/apps/hotel/public"
+          tar -czf bundle.tar.gz -C "$out" .
+
+      - name: Copy bundle to server
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          remote() { for i in 1 2 3; do "$@" && return 0; echo "attempt $i failed, retrying in $((i*8))s"; sleep $((i*8)); done; return 1; }
+          remote ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 "$VPS_USER@$VPS_HOST" "mkdir -p apps/his-fe-staging"
+          remote scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 bundle.tar.gz "$VPS_USER@$VPS_HOST:apps/his-fe-staging/bundle.tar.gz"
+          rm -f ~/.ssh/deploy_key
+
+      - uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            APP_DIR="$HOME/apps/his-fe-staging"
+            cd "$APP_DIR"
+
+            # The unit is (re)written on every deploy so a layout change ships with the code.
+            NODE_BIN="$(command -v node || true)"
+            [ -n "$NODE_BIN" ] || { echo "node is not on PATH for $USER"; exit 1; }
+            printf '%s\n' \
+              "[Unit]" \
+              "Description=Hospio360 Hotel app (staging)" \
+              "After=network.target" \
+              "" \
+              "[Service]" \
+              "Type=simple" \
+              "User=$USER" \
+              "WorkingDirectory=$APP_DIR/current/apps/hotel" \
+              "Environment=NODE_ENV=production" \
+              "Environment=PORT=3001" \
+              "Environment=HOSTNAME=0.0.0.0" \
+              "Environment=DOMAIN_URL=web-staging.hospio360.com" \
+              "ExecStart=$NODE_BIN $APP_DIR/current/apps/hotel/server.js" \
+              "Restart=always" \
+              "RestartSec=5" \
+              "" \
+              "[Install]" \
+              "WantedBy=multi-user.target" \
+              | sudo tee /etc/systemd/system/his-fe-staging.service >/dev/null
+            sudo systemctl daemon-reload
+            sudo systemctl enable -q his-fe-staging.service
+
+            if [ -d current ]; then rm -rf previous; mv current previous; fi
+            mkdir -p current
+            tar -xzf bundle.tar.gz -C current
+            rm -f bundle.tar.gz
+
+            sudo systemctl stop his-fe-staging.service || true
+            sleep 1
+            sudo fuser -k 3001/tcp 2>/dev/null || true
+            sudo systemctl start his-fe-staging.service
+            for i in $(seq 1 20); do
+              sleep 2
+              if curl -fsS -o /dev/null "http://127.0.0.1:3001/"; then echo "Hotel app is up on :3001"; rm -rf previous; exit 0; fi
+            done
+            echo "Hotel app did not answer on :3001 — rolling back"
+            journalctl -u his-fe-staging.service -n 40 --no-pager || true
+            if [ -d previous ]; then rm -rf current; mv previous current; sudo systemctl restart his-fe-staging.service; fi
+            exit 1

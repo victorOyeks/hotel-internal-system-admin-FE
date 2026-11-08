@@ -1,0 +1,9 @@
+{
+	"name": "@hospio/ui",
+	"version": "0.2.0",
+	"private": true,
+	"description": "The shared design kit: tokens, shadcn primitives, panels, modals, tables, fields, navigation.",
+	"sideEffects": [
+		"**/*.css"
+	]
+}

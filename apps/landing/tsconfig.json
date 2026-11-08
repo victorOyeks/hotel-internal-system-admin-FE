@@ -1,0 +1,35 @@
+{
+	"extends": "../../packages/config/tsconfig.base.json",
+	"compilerOptions": {
+		"plugins": [
+			{
+				"name": "next"
+			}
+		],
+		"baseUrl": ".",
+		"paths": {
+			"@/*": [
+				"./src/*"
+			],
+			"@hospio/ui/*": [
+				"../../packages/ui/src/*"
+			],
+			"@hospio/api/*": [
+				"../../packages/api/src/*"
+			]
+		}
+	},
+	"include": [
+		"next-env.d.ts",
+		"**/*.ts",
+		"**/*.tsx",
+		".next/types/**/*.ts",
+		"../../packages/ui/src/**/*.ts",
+		"../../packages/ui/src/**/*.tsx",
+		"../../packages/api/src/**/*.ts",
+		"../../packages/api/src/**/*.tsx"
+	],
+	"exclude": [
+		"node_modules"
+	]
+}

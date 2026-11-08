@@ -1,0 +1,9 @@
+{
+	"name": "@hospio/api",
+	"version": "0.2.0",
+	"private": true,
+	"description": "The backend contract: Zod schemas, the gateway client, session, data seam, server actions, demo fixtures.",
+	"sideEffects": [
+		"**/*.css"
+	]
+}
