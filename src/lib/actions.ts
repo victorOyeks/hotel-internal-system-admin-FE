@@ -5,7 +5,7 @@ import { api, errorMessage } from "./api/client";
 import { withSession } from "./api/server";
 import { getHotels } from "./dal";
 import { BUSINESS_ID, demoHotels } from "./demo/fixtures/hotel";
-import { DEMO, demoDelay } from "./demo/mode";
+import { DEMO_AUTH, demoDelay } from "./demo/mode";
 import { mintDemoToken, nameFromEmail } from "./demo/token";
 import { HOTEL_ROLES, isHotelRole, type HotelRole } from "./roles";
 import { createSession, deleteSession, setActiveHotel, setActiveRole } from "./session";
@@ -15,7 +15,7 @@ export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error:
 export async function login(input: { email: string; password: string }): Promise<
 	ActionResult<{ mustChangePassword: boolean; roles: string[] }>
 > {
-	if (DEMO) {
+	if (DEMO_AUTH) {
 		// Any email and password sign in, with every role, so the whole UI can be walked through.
 		await demoDelay(400);
 		const token = mintDemoToken(input.email, nameFromEmail(input.email), BUSINESS_ID, demoHotels.map((h) => h.id));
@@ -34,7 +34,7 @@ export async function login(input: { email: string; password: string }): Promise
 
 export async function logout() {
 	const { auth } = await withSession();
-	if (auth && !DEMO) await api("@post/identity/auth/logout", { auth }).catch(() => undefined);
+	if (auth && !DEMO_AUTH) await api("@post/identity/auth/logout", { auth }).catch(() => undefined);
 	await deleteSession();
 	redirect("/auth");
 }
@@ -54,7 +54,7 @@ export async function selectHotel(hotelId: string) {
 export async function changePassword(input: { currentPassword: string; newPassword: string }): Promise<ActionResult> {
 	const { auth } = await withSession();
 	if (!auth) return { ok: false, error: "Sign in again" };
-	if (DEMO) {
+	if (DEMO_AUTH) {
 		await demoDelay(400);
 		return { ok: true, data: null };
 	}

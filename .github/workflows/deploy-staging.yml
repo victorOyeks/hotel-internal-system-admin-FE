@@ -21,11 +21,13 @@ jobs:
       - name: Build
         run: bun run build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.STAGING_NEXT_PUBLIC_APP_URL }}
+          # The hospio-backend gateway on the staging box (a repo variable overrides it).
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api-staging.hospio360.com' }}
           DOMAIN_URL: ${{ secrets.STAGING_DOMAIN_URL }}
           # Demo mode is on until the backend is wired in; set the repo variable NEXT_PUBLIC_DEMO_MODE=false to turn it off.
           NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
+          # Real sign-in against identity-service (seeded test accounts) while screens stay on sample data.
+          NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || 'false' }}
 
       - name: Prepare standalone bundle
         run: |
