@@ -27,7 +27,7 @@ jobs:
           # Demo mode is on until the backend is wired in; set the repo variable NEXT_PUBLIC_DEMO_MODE=false to turn it off.
           NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
           # Domains the screens read/write for real (comma-separated); the rest stay on sample data.
-          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property' }}
+          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property,reservation,folio,payment' }}
           NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
 
       - name: Prepare standalone bundle

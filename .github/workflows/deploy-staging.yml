@@ -28,7 +28,7 @@ jobs:
           NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
           # Real sign-in against identity-service (seeded test accounts) while screens stay on sample data.
           # Domains the screens read/write for real (comma-separated); the rest stay on sample data.
-          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property' }}
+          NEXT_PUBLIC_LIVE_DOMAINS: ${{ vars.NEXT_PUBLIC_LIVE_DOMAINS || 'property,reservation,folio,payment' }}
           NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || 'false' }}
 
       - name: Prepare standalone bundle
