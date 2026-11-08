@@ -11,11 +11,12 @@ import { withSession } from "@/lib/api/server";
 import { demoDelay } from "@/lib/demo/mode";
 import { live } from "./live";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
+import { toBookingRow, toFolioRow, toGuestRow } from "./mappers/reservation";
 import * as hotel from "@/lib/demo/fixtures/hotel";
 import * as ops from "@/lib/demo/fixtures/ops";
 import * as platform from "@/lib/demo/fixtures/platform";
 import * as stay from "@/lib/demo/fixtures/stay";
-import type { AreaRow, BookingRow, BookingStatus, RoomRow, RoomTypeRow } from "./types";
+import type { AreaRow, BookingRow, BookingStatus, FolioRow, GuestRow, PaymentRow, RoomRow, RoomTypeRow } from "./types";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -83,20 +84,86 @@ export const data = {
 		},
 	},
 	bookings: {
-		list: (status?: BookingStatus) => give(status ? stay.demoBookings.filter((b) => b.status === status) : stay.demoBookings),
-		buckets: () => give(bookingBuckets(stay.demoBookings)),
-		get: (id: string) => give(stay.demoBookings.find((b) => b.id === id || b.reference === id) ?? null),
+		list: async (status?: BookingStatus): Promise<BookingRow[]> => {
+			if (!live("reservation")) return give(status ? stay.demoBookings.filter((b) => b.status === status) : stay.demoBookings);
+			const s = await withSession();
+			const [res, guests, folios] = await Promise.all([
+				api("@get/reservation/bookings", { ...s, query: status ? { status } : {} }),
+				data.guests.list(),
+				data.folios.list(),
+			]);
+			if (res.error || !res.data) {
+				console.error("reservation-service bookings:", res.error);
+				return [];
+			}
+			const guestsById = new Map(guests.map((g) => [g.id, g]));
+			const foliosByBooking = new Map(folios.filter((f) => f.bookingId).map((f) => [f.bookingId, f]));
+			return res.data.data.map((b) => toBookingRow(b, guestsById, foliosByBooking)).sort((a, b) => a.checkInDate.localeCompare(b.checkInDate) || a.guestName.localeCompare(b.guestName));
+		},
+		buckets: async () => bookingBuckets(await data.bookings.list()),
+		get: async (id: string): Promise<BookingRow | null> => {
+			const all = await data.bookings.list();
+			return all.find((b) => b.id === id || b.reference === id) ?? null;
+		},
 	},
 	guests: {
-		list: () => give(stay.demoGuests),
-		get: (id: string) => give(stay.demoGuests.find((g) => g.id === id) ?? null),
+		list: async (): Promise<GuestRow[]> => {
+			if (!live("reservation")) return give(stay.demoGuests);
+			const { data: res, error } = await api("@get/reservation/guests", { ...(await withSession()), query: {} });
+			if (error || !res) {
+				console.error("reservation-service guests:", error);
+				return [];
+			}
+			return res.data.map(toGuestRow);
+		},
+		get: async (id: string): Promise<GuestRow | null> => (await data.guests.list()).find((g) => g.id === id) ?? null,
 	},
 	folios: {
-		list: () => give(stay.demoFolios),
-		get: (id: string) => give(stay.demoFolios.find((f) => f.id === id || f.bookingId === id) ?? null),
+		/** Open folios (folio-service lists the open ones; closed folios come with the booking they belong to). */
+		list: async (): Promise<FolioRow[]> => {
+			if (!live("folio")) return give(stay.demoFolios);
+			const { data: res, error } = await api("@get/folio/folios", await withSession());
+			if (error || !res) {
+				console.error("folio-service folios:", error);
+				return [];
+			}
+			return res.data.map(toFolioRow);
+		},
+		get: async (id: string): Promise<FolioRow | null> => {
+			if (!live("folio")) return give(stay.demoFolios.find((f) => f.id === id || f.bookingId === id) ?? null);
+			const s = await withSession();
+			const direct = await api("@get/folio/folios/:id", { ...s, params: { id } });
+			if (direct.data) return toFolioRow(direct.data.data);
+			const byBooking = await api("@get/folio/folios/by-booking/:bookingId", { ...s, params: { bookingId: id } });
+			return byBooking.data ? toFolioRow(byBooking.data.data) : null;
+		},
 	},
 	payments: {
-		list: () => give(stay.demoPayments),
+		list: async (): Promise<PaymentRow[]> => {
+			if (!live("payment")) return give(stay.demoPayments);
+			const { data: res, error } = await api("@get/payment/payments", await withSession());
+			if (error || !res) {
+				console.error("payment-service payments:", error);
+				return [];
+			}
+			return res.data.map((p) => ({
+				id: p.id,
+				reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`,
+				folioId: p.folioId ?? undefined,
+				guestName: p.guestName ?? "Walk-in",
+				role: p.role ?? "FRONT_OFFICE",
+				takenBy: p.requestedByName ?? p.requestedBy ?? "—",
+				method: p.method === "ORGANIZATION" ? "TRANSFER" : p.method,
+				amount: Number(p.amount),
+				status: p.status,
+				terminal: p.terminalId ?? undefined,
+				providerRef: p.providerRef ?? undefined,
+				createdAt: p.createdAt,
+				resolvedAt: p.resolvedAt ?? undefined,
+				receiptSent: "NONE" as const,
+				description: p.description ?? "Payment",
+			}));
+		},
 		terminals: () => give(stay.demoTerminals),
 		refunds: () => give(stay.demoRefunds),
 		disputes: () => give(stay.demoDisputes),

@@ -9,7 +9,8 @@ import { fmtDay, naira, plural } from "@/components/shared/format";
 import { PanelSection, SidePanel } from "@/components/shared/side-panel";
 import { StatusPill } from "@/components/shared/status-pill";
 import { btn } from "@/components/shared/ui";
-import { useDemoAction } from "@/lib/demo/actions";
+import { createBooking } from "@/lib/actions/reservation";
+import { useAction } from "@/lib/actions/use-action";
 import type { BookingRow, GuestRow, OrganizationRow, PaymentPlan, PriceKind, RoomRow, RoomTypeRow } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { planLabels } from "./booking-helpers";
@@ -18,7 +19,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 const nightsBetween = (a: string, b: string) => Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000));
 
 export function NewBookingPanel({ open, guests, types, rooms, organizations, onClose, onSaved }: { open: boolean; guests: GuestRow[]; types: RoomTypeRow[]; rooms: RoomRow[]; organizations: OrganizationRow[]; onClose: () => void; onSaved: (b: BookingRow) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [guestQuery, setGuestQuery] = useState("");
 	const [guest, setGuest] = useState<GuestRow | null>(null);
 	const [newGuest, setNewGuest] = useState(false);
@@ -56,14 +57,16 @@ export function NewBookingPanel({ open, guests, types, rooms, organizations, onC
 	function save() {
 		if (!type) return;
 		const id = `bk-${Date.now()}`;
-		run(needsOwner ? "Booking saved · sent to the owner for approval" : `Booking saved for ${guestName}`, () => {
-			onSaved({
-				id, reference: `HB${String(Date.now()).slice(-4)}XK`, guestId: guest?.id ?? `g-${id}`, guestName, guestPhone: guest?.phone ?? phone, guestEmail: guest?.email ?? (email || undefined),
-				roomTypeId: type.id, roomTypeName: type.name, checkInDate: checkIn, checkOutDate: checkOut, nights, adults: Number(adults) || 1, children: Number(children) || 0, eta: eta || undefined,
-				status: "BOOKED", priceKind, nightlyRate: rate, totalAmount: total, paid: 0, paymentPlan: plan, organizationId: org?.id, organizationName: org?.name, source: "Front desk", notes: notes || undefined, createdAt: new Date().toISOString(),
-			});
-			onClose();
-		}, needsOwner ? { tone: "info" } : undefined);
+		const fallback: BookingRow = {
+			id, reference: `HB${String(Date.now()).slice(-4)}XK`, guestId: guest?.id ?? `g-${id}`, guestName, guestPhone: guest?.phone ?? phone, guestEmail: guest?.email ?? (email || undefined),
+			roomTypeId: type.id, roomTypeName: type.name, checkInDate: checkIn, checkOutDate: checkOut, nights, adults: Number(adults) || 1, children: Number(children) || 0, eta: eta || undefined,
+			status: "BOOKED", priceKind, nightlyRate: rate, totalAmount: total, paid: 0, paymentPlan: plan, organizationId: org?.id, organizationName: org?.name, source: "Front desk", notes: notes || undefined, createdAt: new Date().toISOString(),
+		};
+		run(
+			() => createBooking({ guestId: guest?.id, guest: guest ? undefined : { fullName: name, phone, email: email || undefined }, roomTypeId: type.id, checkInDate: checkIn, checkOutDate: checkOut, adults: Number(adults) || 1, children: Number(children) || 0, priceKind, specialRate: priceKind === "SPECIAL" && specialRate !== "" ? specialRate : undefined, paymentPlan: plan, organizationId: org?.id, source: "Front desk", notes: notes || undefined }, fallback),
+			needsOwner ? "Booking saved · sent to the owner for approval" : `Booking saved for ${guestName}`,
+			(saved) => { onSaved(saved); onClose(); },
+		);
 	}
 
 	return (

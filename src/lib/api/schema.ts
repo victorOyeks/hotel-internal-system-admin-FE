@@ -130,6 +130,7 @@ export const Business = z.object({
 export const Booking = z.object({
 	id: z.string(),
 	reference: z.string(),
+	hotelId: z.string().nullable(),
 	guestId: z.string(),
 	guestName: z.string(),
 	roomTypeId: z.string(),
@@ -141,15 +142,58 @@ export const Booking = z.object({
 	nights: z.number(),
 	adults: z.number(),
 	children: z.number(),
-	status: z.string(),
-	priceKind: z.string(),
+	status: z.enum(["BOOKED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED", "NO_SHOW"]),
+	priceKind: z.enum(["NORMAL", "SPECIAL", "COMPLIMENTARY"]),
 	nightlyRate: z.number(),
 	totalAmount: z.number(),
-	paymentPlan: z.string(),
+	paymentPlan: z.enum(["PAY_IN_FULL", "DEPOSIT_50", "PAY_AT_CHECKOUT", "ORGANIZATION"]),
 	amountDueNow: z.number(),
 	organizationId: z.string().nullable(),
+	source: z.string().nullable(),
+	notes: z.string().nullable(),
 	checkedInAt: z.string().nullable(),
 	checkedOutAt: z.string().nullable(),
+	lateCheckoutUntil: z.string().nullable(),
+	cancelledAt: z.string().nullable(),
+	cancellationReason: z.string().nullable(),
+	createdAt: z.string().nullable(),
+});
+
+export const Guest = z.object({
+	id: z.string(),
+	fullName: z.string(),
+	phone: z.string().nullable(),
+	email: z.string().nullable(),
+	idType: z.string().nullable(),
+	idNumber: z.string().nullable(),
+	nationality: z.string().nullable(),
+	preferences: z.string().nullable(),
+	notes: z.string().nullable(),
+	blacklisted: z.boolean(),
+	stays: z.number(),
+	createdAt: z.string().nullable().optional(),
+	updatedAt: z.string().nullable().optional(),
+});
+
+export const GuestRequest = z.object({
+	fullName: z.string(),
+	phone: z.string().nullable().optional(),
+	email: z.string().nullable().optional(),
+	idType: z.string().nullable().optional(),
+	idNumber: z.string().nullable().optional(),
+	nationality: z.string().nullable().optional(),
+	preferences: z.string().nullable().optional(),
+	notes: z.string().nullable().optional(),
+});
+
+export const Availability = z.object({
+	roomTypeId: z.string(),
+	roomTypeName: z.string().nullable(),
+	roomsOfType: z.number(),
+	booked: z.number(),
+	available: z.number(),
+	nightlyRate: z.number().nullable(),
+	freeRoomIds: z.array(z.string()),
 });
 
 export const Today = z.object({
@@ -301,14 +345,65 @@ export const StockLevel = z.object({
 	quantity: z.number(),
 });
 
+export const FolioLine = z.object({
+	id: z.string(),
+	folioId: z.string().nullable(),
+	kind: z.enum(["CHARGE", "PAYMENT", "DISCOUNT", "REFUND"]),
+	sourceModule: z.string().nullable(),
+	sourceRef: z.string().nullable(),
+	category: z.string().nullable(),
+	description: z.string().nullable(),
+	amount: z.number(),
+	taxAmount: z.number().nullable(),
+	postedBy: z.string().nullable(),
+	postedByName: z.string().nullable(),
+	postedAt: z.string().nullable(),
+	voided: z.boolean(),
+	voidReason: z.string().nullable(),
+	voidedBy: z.string().nullable(),
+	movedFrom: z.string().nullable(),
+});
+
 export const Folio = z.object({
 	id: z.string(),
 	bookingId: z.string().nullable(),
+	guestId: z.string().nullable(),
 	guestName: z.string(),
+	guestPhone: z.string().nullable(),
+	guestEmail: z.string().nullable(),
+	roomId: z.string().nullable(),
 	roomNumber: z.string().nullable(),
-	status: z.string(),
+	organizationId: z.string().nullable(),
+	status: z.enum(["OPEN", "CLOSED", "CLOSED_WITH_BALANCE"]),
+	totalCharges: z.number(),
+	totalTax: z.number(),
+	totalDiscounts: z.number(),
+	totalPayments: z.number(),
 	balance: z.number(),
 	openedAt: z.string(),
+	closedAt: z.string().nullable(),
+	lines: z.array(FolioLine).nullable(),
+});
+
+export const PaymentResponse = z.object({
+	id: z.string(),
+	folioId: z.string().nullable(),
+	bookingId: z.string().nullable(),
+	guestName: z.string().nullable(),
+	role: z.string().nullable(),
+	method: z.enum(["CARD", "TRANSFER", "CASH", "ORGANIZATION"]),
+	amount: z.number(),
+	currency: z.string().nullable(),
+	status: z.enum(["PENDING", "PROCESSING", "APPROVED", "DECLINED", "NO_RESPONSE", "FAILED", "REFUNDED"]),
+	terminalId: z.string().nullable(),
+	providerRef: z.string().nullable(),
+	description: z.string().nullable(),
+	failureReason: z.string().nullable(),
+	requestedBy: z.string().nullable(),
+	requestedByName: z.string().nullable(),
+	createdAt: z.string(),
+	resolvedAt: z.string().nullable(),
+	verifiedAt: z.string().nullable(),
 });
 
 export const Notification = z.object({
@@ -353,6 +448,49 @@ export const schema = createSchema({
 		query: z.object({ from: z.string(), to: z.string(), status: z.string() }).partial().optional(),
 		output: envelope(z.array(Booking)),
 	},
+	"@get/reservation/bookings/availability": {
+		query: z.object({ roomTypeId: z.string(), from: z.string(), to: z.string() }),
+		output: envelope(Availability),
+	},
+	"@get/reservation/bookings/:id": { output: envelope(Booking) },
+	"@post/reservation/bookings": {
+		input: z.object({
+			guestId: z.string().nullable().optional(),
+			guest: GuestRequest.nullable().optional(),
+			roomTypeId: z.string(),
+			roomId: z.string().nullable().optional(),
+			checkInDate: z.string(),
+			checkOutDate: z.string(),
+			adults: z.number().optional(),
+			children: z.number().optional(),
+			priceKind: z.string().optional(),
+			specialRate: z.number().nullable().optional(),
+			paymentPlan: z.string().optional(),
+			organizationId: z.string().nullable().optional(),
+			source: z.string().nullable().optional(),
+			notes: z.string().nullable().optional(),
+		}),
+		output: envelope(Booking),
+	},
+	"@put/reservation/bookings/:id": {
+		input: z.object({ checkInDate: z.string().nullable().optional(), checkOutDate: z.string().nullable().optional(), roomId: z.string().nullable().optional(), roomTypeId: z.string().nullable().optional(), reason: z.string().nullable().optional() }),
+		output: envelope(Booking),
+	},
+	"@post/reservation/bookings/:id/check-in": {
+		input: z.object({ roomId: z.string().nullable().optional(), guestEmail: z.string().nullable().optional(), guestPhone: z.string().nullable().optional(), withoutPayment: z.boolean().optional(), idType: z.string().nullable().optional(), idNumber: z.string().nullable().optional() }),
+		output: envelope(Booking),
+	},
+	"@post/reservation/bookings/:id/check-out": {
+		input: z.object({ folioBalance: z.number().nullable().optional(), allowPendingPayment: z.boolean().optional(), summaryChannels: z.array(z.string()).optional() }),
+		output: envelope(Booking),
+	},
+	"@post/reservation/bookings/:id/late-check-out": { input: z.object({ until: z.string().nullable().optional(), fee: z.number().nullable().optional() }).optional(), output: envelope(Booking) },
+	"@post/reservation/bookings/:id/cancel": { input: z.object({ reason: z.string(), refundable: z.boolean().optional() }), output: envelope(Booking) },
+	"@get/reservation/guests": { query: z.object({ q: z.string() }).partial().optional(), output: envelope(z.array(Guest)) },
+	"@get/reservation/guests/:id": { output: envelope(Guest) },
+	"@get/reservation/guests/:id/stays": { output: envelope(z.array(Booking)) },
+	"@post/reservation/guests": { input: GuestRequest, output: envelope(Guest) },
+	"@put/reservation/guests/:id": { input: GuestRequest, output: envelope(Guest) },
 
 	// property & housekeeping
 	"@get/property/room-types": { output: envelope(z.array(RoomType)) },
@@ -399,6 +537,19 @@ export const schema = createSchema({
 		output: envelope(z.array(StockLevel)),
 	},
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
+	"@get/folio/folios/:id": { output: envelope(Folio) },
+	"@get/folio/folios/by-booking/:bookingId": { output: envelope(Folio) },
+	"@post/folio/folios/:id/charges": { input: z.object({ description: z.string(), amount: z.number(), taxAmount: z.number().nullable().optional(), category: z.string().nullable().optional() }), output: envelope(Folio) },
+	"@post/folio/folios/:id/discount": { input: z.object({ amount: z.number(), reason: z.string() }), output: envelope(Folio) },
+	"@post/folio/folios/:id/lines/:lineId/void": { input: z.object({ reason: z.string() }), output: envelope(Folio) },
+	"@get/payment/payments": { output: envelope(z.array(PaymentResponse)) },
+	"@get/payment/payments/:id": { output: envelope(PaymentResponse) },
+	"@post/payment/payments": {
+		input: z.object({ method: z.string(), amount: z.number(), folioId: z.string().nullable().optional(), bookingId: z.string().nullable().optional(), guestName: z.string().nullable().optional(), guestPhone: z.string().nullable().optional(), guestEmail: z.string().nullable().optional(), description: z.string().nullable().optional(), receiptPreference: z.string().nullable().optional() }),
+		output: envelope(PaymentResponse),
+	},
+	"@post/payment/payments/:id/verify": { output: envelope(PaymentResponse) },
+	"@post/payment/payments/:id/cancel": { output: envelope(PaymentResponse) },
 
 	// messaging
 	"@get/messaging/notifications": {

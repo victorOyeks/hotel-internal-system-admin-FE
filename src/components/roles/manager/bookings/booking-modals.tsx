@@ -10,6 +10,9 @@ import { ConfirmModal, Modal } from "@/components/shared/modal";
 import { ManagerMark } from "@/components/shared/row-actions";
 import { WhatHappens } from "@/components/shared/side-panel";
 import { btn } from "@/components/shared/ui";
+import { recordPayment } from "@/lib/actions/payment";
+import { cancelBooking, changeBookingDates, checkIn, checkOut } from "@/lib/actions/reservation";
+import { useAction } from "@/lib/actions/use-action";
 import { useDemoAction } from "@/lib/demo/actions";
 import type { BookingRow, FolioRow, PaymentMethod, RoomRow } from "@/lib/data/types";
 import { balance } from "./booking-helpers";
@@ -36,7 +39,7 @@ export function BookingModals({ booking: b, action, rooms, folio, onClose, onPat
 }
 
 function CheckInModal({ b, rooms, onClose, onPatch }: { b: BookingRow; rooms: RoomRow[]; onClose: () => void; onPatch: (id: string, c: Partial<BookingRow>) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const ready = rooms.filter((r) => (r.state === "ready" || r.state === "held") && r.typeName === b.roomTypeName);
 	const anyReady = rooms.filter((r) => r.state === "ready");
 	const [roomId, setRoomId] = useState(b.roomId ?? ready[0]?.id ?? anyReady[0]?.id ?? "");
@@ -50,7 +53,7 @@ function CheckInModal({ b, rooms, onClose, onPatch }: { b: BookingRow; rooms: Ro
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title={`Check in ${b.guestName}`} subtitle={`${b.reference} · ${plural(b.nights, "night")} · ${b.roomTypeName}`} icon={ArrowRightToLineIcon} size="form"
 			footerInfo={skip ? <span className="flex items-center gap-2"><ManagerMark /> check-in without payment is logged</span> : "Welcome message goes to the guest on WhatsApp"}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !room || !idChecked} onClick={() => room && run(`${b.guestName} checked in to ${room.number}`, () => { onPatch(b.id, { status: "CHECKED_IN", roomId: room.id, roomNumber: room.number, checkedInAt: new Date().toISOString(), paid: collectNow && !skip ? b.totalAmount : b.paid }); onClose(); })}>{collectNow && !skip ? `Collect ${naira(due)} & check in` : "Check in"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !room || !idChecked} onClick={() => room && run(() => checkIn(b, { roomId: room.id, withoutPayment: skip, idChecked, collect: collectNow && !skip ? { method, amount: due } : undefined }, { status: "CHECKED_IN", roomId: room.id, roomNumber: room.number, checkedInAt: new Date().toISOString(), paid: collectNow && !skip ? b.totalAmount : b.paid }), `${b.guestName} checked in to ${room.number}`, (changes) => { onPatch(b.id, changes); onClose(); })}>{collectNow && !skip ? `Collect ${naira(due)} & check in` : "Check in"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<SelectField label="Room" value={roomId} onChange={setRoomId} options={options} hint={ready.length === 0 ? `No ${b.roomTypeName} room is ready · pick another type or ask housekeeping` : `${ready.length} ${b.roomTypeName} ready`} />
@@ -69,7 +72,7 @@ function CheckInModal({ b, rooms, onClose, onPatch }: { b: BookingRow; rooms: Ro
 }
 
 function CheckOutModal({ b, folio, onClose, onPatch }: { b: BookingRow; folio: FolioRow | null; onClose: () => void; onPatch: (id: string, c: Partial<BookingRow>) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const bal = folio ? folio.balance : balance(b);
 	const onAccount = b.paymentPlan === "ORGANIZATION";
 	const [settle, setSettle] = useState<"now" | "later">(bal > 0 && !onAccount ? "now" : "later");
@@ -79,7 +82,7 @@ function CheckOutModal({ b, folio, onClose, onPatch }: { b: BookingRow; folio: F
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title={`Check out ${b.guestName}`} subtitle={`Room ${b.roomNumber} · ${plural(b.nights, "night")}${folio ? ` · folio ${folio.reference}` : ""}`} icon={ArrowLeftToLineIcon} size="form"
 			footerInfo={settle === "later" && bal > 0 && !onAccount ? <span className="flex items-center gap-2"><ManagerMark /> check-out with a balance is logged</span> : "Receipt goes to the guest on WhatsApp"}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run(`${b.guestName} checked out of ${b.roomNumber}`, () => { onPatch(b.id, { status: "CHECKED_OUT", checkedOutAt: new Date().toISOString(), paid: settle === "now" ? b.totalAmount : b.paid }); onClose(); })}>{settle === "now" && bal > 0 ? `Collect ${naira(bal + (late && lateFee !== "" ? lateFee : 0))} & check out` : "Check out"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => { const fee = late && lateFee !== "" ? lateFee : 0; const toCollect = settle === "now" && !onAccount ? Math.max(0, bal + fee) : 0; run(() => checkOut(b, { folioBalance: Math.max(0, bal + fee), allowPendingPayment: settle === "later", collect: toCollect > 0 ? { method, amount: toCollect, folioId: folio?.id } : undefined, lateCheckoutFee: fee || undefined }, { status: "CHECKED_OUT", checkedOutAt: new Date().toISOString(), paid: settle === "now" ? b.totalAmount : b.paid }), `${b.guestName} checked out of ${b.roomNumber}`, (changes) => { onPatch(b.id, changes); onClose(); }); }}>{settle === "now" && bal > 0 ? `Collect ${naira(bal + (late && lateFee !== "" ? lateFee : 0))} & check out` : "Check out"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<TotalsList rows={[
@@ -103,7 +106,7 @@ function CheckOutModal({ b, folio, onClose, onPatch }: { b: BookingRow; folio: F
 }
 
 export function RecordPaymentModal({ b, onClose, onPatch }: { b: BookingRow; onClose: () => void; onPatch: (id: string, c: Partial<BookingRow>) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const due = balance(b);
 	const [amount, setAmount] = useState<number | "">(due || "");
 	const [method, setMethod] = useState<PaymentMethod>("CARD");
@@ -112,7 +115,7 @@ export function RecordPaymentModal({ b, onClose, onPatch }: { b: BookingRow; onC
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Record payment" subtitle={`${b.guestName} · ${b.reference}${b.roomNumber ? ` · Room ${b.roomNumber}` : ""}`} icon={CreditCardIcon} size="form"
 			footerInfo={due > 0 ? `${naira(due)} outstanding` : "Nothing outstanding · this will be a credit"}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || amount === "" || amount <= 0} onClick={() => amount !== "" && run(`${naira(amount)} recorded by ${method.toLowerCase()}`, () => { onPatch(b.id, { paid: b.paid + amount }); onClose(); }, { description: receipt === "NONE" ? undefined : `Receipt sent by ${receipt === "WHATSAPP" ? "WhatsApp" : "email"}` })}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || amount === "" || amount <= 0} onClick={() => amount !== "" && run(() => recordPayment({ method, amount, bookingId: b.id, guestName: b.guestName, guestPhone: b.guestPhone, guestEmail: b.guestEmail, description: ref ? `${b.reference} · ${ref}` : `Room charges · ${b.reference}`, receipt }), method === "CARD" ? `${naira(amount)} sent to the POS` : `${naira(amount)} recorded by ${method.toLowerCase()}`, (p) => { if (p.status === "APPROVED") onPatch(b.id, { paid: b.paid + amount }); onClose(); })}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<ChoiceCards label="Paid by" value={method} onChange={setMethod} columns={3} options={methodOptions} />
@@ -128,7 +131,7 @@ export function RecordPaymentModal({ b, onClose, onPatch }: { b: BookingRow; onC
 }
 
 function ChangeDatesModal({ b, onClose, onPatch }: { b: BookingRow; onClose: () => void; onPatch: (id: string, c: Partial<BookingRow>) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [checkIn, setCheckIn] = useState(b.checkInDate);
 	const [checkOut, setCheckOut] = useState(b.checkOutDate);
 	const nights = nightsBetween(checkIn, checkOut);
@@ -137,7 +140,7 @@ function ChangeDatesModal({ b, onClose, onPatch }: { b: BookingRow; onClose: () 
 	const locked = b.status === "CHECKED_IN";
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Change dates" subtitle={`${b.guestName} · ${b.reference}`} icon={CalendarIcon} size="form"
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || checkOut <= checkIn} onClick={() => run(`Dates changed · ${fmtDay(checkIn)} → ${fmtDay(checkOut)}`, () => { onPatch(b.id, { checkInDate: checkIn, checkOutDate: checkOut, nights, totalAmount: total }); onClose(); })}>Save new dates</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || checkOut <= checkIn} onClick={() => run(() => changeBookingDates(b, checkIn, checkOut, { checkInDate: checkIn, checkOutDate: checkOut, nights, totalAmount: total }), `Dates changed · ${fmtDay(checkIn)} → ${fmtDay(checkOut)}`, (changes) => { onPatch(b.id, changes); onClose(); })}>Save new dates</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<FieldRow>
@@ -152,12 +155,12 @@ function ChangeDatesModal({ b, onClose, onPatch }: { b: BookingRow; onClose: () 
 }
 
 function CancelModal({ b, onClose, onPatch }: { b: BookingRow; onClose: () => void; onPatch: (id: string, c: Partial<BookingRow>) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [reason, setReason] = useState("");
 	const [refund, setRefund] = useState(b.paid > 0);
 	return (
 		<ConfirmModal open onOpenChange={(o) => !o && onClose()} title={`Cancel ${b.guestName}'s booking?`} subtitle={`${b.reference} · ${fmtDay(b.checkInDate)} · ${b.roomTypeName}`} tone="danger" confirmLabel="Cancel booking" pending={pending || !reason}
-			onConfirm={() => run(`Booking ${b.reference} cancelled`, () => { onPatch(b.id, { status: "CANCELLED", cancelReason: reason, roomId: undefined, roomNumber: undefined }); onClose(); })}
+			onConfirm={() => run(() => cancelBooking(b, reason, refund, { status: "CANCELLED", cancelReason: reason, roomId: undefined, roomNumber: undefined }), `Booking ${b.reference} cancelled`, (changes) => { onPatch(b.id, changes); onClose(); })}
 			alternative={{ label: "Change the dates instead", onClick: onClose }}
 		>
 			<div className="flex flex-col gap-4">
