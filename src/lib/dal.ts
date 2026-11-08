@@ -1,137 +1,57 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { cache } from "react";
-import { getCookieData } from "./server-fns";
-import { activeRoleKey, decrypt, tokenKey } from "./session";
 import { redirect } from "next/navigation";
-import { $fetch } from "./fetch";
-import type { HotelRole } from "./types";
-import { env } from "@/env";
+import { cache } from "react";
+import { api } from "./api/client";
+import { withSession } from "./api/server";
+import type { Hotel, Me } from "./api/schema";
+import { demoHotels, demoMe } from "./demo/fixtures/hotel";
+import { DEMO } from "./demo/mode";
+import { isHotelRole, type HotelRole } from "./roles";
+import { COOKIES, decodeSession } from "./session";
 
-export const verifySession = cache(async (role?: HotelRole) => {
-	const cookie = (await cookies()).get(tokenKey)?.value;
-
-	if (!cookie) {
-		redirect("/auth");
-	}
-
-	const session = decrypt(cookie);
-
-	if (!session?.userId) {
-		redirect("/login");
-	}
-
-	if (role && !session.roles.includes(role)) {
-		redirect("/unauthorized");
-	}
-
-	return {
-		...session,
-		token: cookie,
-	};
+/** The signed-in session from the cookie, or a redirect to sign-in. */
+export const getSession = cache(async () => {
+	const jar = await cookies();
+	const token = jar.get(COOKIES.token)?.value;
+	const session = token ? decodeSession(token) : null;
+	if (!session) redirect("/auth");
+	return session;
 });
 
-export const getUser = cache(async () => {
-	const cookieData = await getCookieData();
-
-	if (!cookieData) {
-		return null;
+export const getUser = cache(async (): Promise<Me | null> => {
+	if (DEMO) {
+		const session = await getSession();
+		return demoMe(session.email, session.name, session.roleSet);
 	}
-
-	const { data, error } = await $fetch("@get/api/users/me", {
-		auth: {
-			type: "Bearer",
-			token: cookieData.token,
-		},
-	});
-
-	if (error) {
-		console.error(error);
-		return null;
-	}
-
+	const { auth } = await withSession();
+	if (!auth) return null;
+	const { data, error } = await api("@get/identity/users/me", { auth });
+	if (error || !data) return null;
 	return data.data;
 });
 
-export const getManagerCurrentHotel = cache(async () => {
-	const user = await getUser();
+/** Hotels the user can see. Platform staff have none of their own. */
+export const getHotels = cache(async (): Promise<Hotel[]> => {
+	const session = await getSession();
+	if (session.scope === "platform") return [];
+	if (DEMO) return demoHotels;
+	const { data } = await api("@get/tenant/hotels", await withSession());
+	return data?.data ?? [];
+});
 
-	if (!user) {
-		return null;
-	}
-
-	if (!user.roles.includes("MANAGER")) {
-		return null;
-	}
-
-	if (!user.hotels || user.hotels.length === 0) {
-		return null;
-	}
-
+export const getActiveRole = cache(async (): Promise<HotelRole | null> => {
 	const jar = await cookies();
-	const hotelId = jar.get(`${user.id}:currentHotel`)?.value;
-
-	const currentHotel = user.hotels.find((hotel) => hotel.id === hotelId);
-
-	if (!currentHotel) {
-		const firstHotel = user.hotels[0];
-		return firstHotel;
-	}
-	return currentHotel;
+	const role = jar.get(COOKIES.role)?.value;
+	return role && isHotelRole(role) ? role : null;
 });
 
-export const getOwnerCurrentHotel = cache(async () => {
-	const user = await getUser();
-
-	if (!user) {
-		return null;
-	}
-
-	if (!user.roles.includes("HOTEL_OWNER")) {
-		return null;
-	}
-
-	if (!user.hotels || user.hotels.length === 0) {
-		return null;
-	}
-
+/** The hotel the user is working in: the chosen one, or the first they are granted. */
+export const getActiveHotel = cache(async (): Promise<Hotel | null> => {
+	const hotels = await getHotels();
+	if (hotels.length === 0) return null;
 	const jar = await cookies();
-	const hotelId = jar.get(`${user.id}:currentOwnerHotel`)?.value;
-
-	const currentHotel = user.hotels.find((hotel) => hotel.id === hotelId);
-
-	if (!currentHotel) {
-		const firstHotel = user.hotels[0];
-		return firstHotel;
-	}
-	return currentHotel;
-});
-
-export const setActiveRole = cache(async (role: HotelRole) => {
-	const session = await verifySession();
-	if (!session) {
-		return null;
-	}
-
-	const userHasRole = session.roles.includes(role);
-
-	if (!userHasRole) {
-		return null;
-	}
-
-	const cookieStore = await cookies();
-	cookieStore.set(activeRoleKey, role, {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		expires: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
-		sameSite: "lax",
-		domain: process.env.NODE_ENV === "production" ? env.DOMAIN_URL : undefined,
-	});
-});
-
-export const getActiveRole = cache(async () => {
-	await verifySession();
-	const cookieStore = await cookies();
-	return cookieStore.get(activeRoleKey)?.value;
+	const chosen = jar.get(COOKIES.hotel)?.value;
+	return hotels.find((h) => h.id === chosen) ?? hotels[0];
 });

@@ -1,51 +1,29 @@
 import { redirect } from "next/navigation";
-import { type PropsWithChildren, use } from "react";
+import type { PropsWithChildren } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Provider as JotaiProvider } from "jotai";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { Header } from "@/components/shared/header";
-import { ChatGlobalProvider } from "@/components/shared/chat-notifications";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { Provider as JotaiProvider } from "jotai";
-import { getActiveRole, getManagerCurrentHotel, getOwnerCurrentHotel, getUser } from "@/lib/dal";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { throttle } from "nuqs/server";
-import type { HotelRole } from "@/lib/types";
+import { data } from "@/lib/data";
+import { getActiveHotel, getActiveRole, getHotels, getUser } from "@/lib/dal";
 
-export default function DashboardLayout({ children }: PropsWithChildren) {
-	const user = use(getUser());
-	if (!user) {
-		redirect("/auth");
-	}
+export default async function DashboardLayout({ children }: PropsWithChildren) {
+	const [user, role, hotels, activeHotel] = await Promise.all([getUser(), getActiveRole(), getHotels(), getActiveHotel()]);
+	if (!user) redirect("/auth");
+	if (!user.changedPassword) redirect("/reset-password");
+	if (!role) redirect("/select-role");
 
-	if (!user.changedPassword) {
-		redirect("/reset-password");
-	}
+	const unread = await data.notifications.unreadCount().catch(() => 0);
 
-	const managerHotel = use(getManagerCurrentHotel());
-	const ownerHotel = use(getOwnerCurrentHotel());
-	const activeRole = use(getActiveRole());
-	const activeHotel = activeRole === "HOTEL_OWNER" ? ownerHotel : managerHotel;
-	const hotelId = activeHotel?.id ?? user.hotels?.[0]?.id;
 	return (
-		<NuqsAdapter
-			defaultOptions={{
-				clearOnDefault: true,
-				limitUrlUpdates: throttle(500),
-				shallow: false,
-			}}
-		>
+		<NuqsAdapter>
 			<JotaiProvider>
-				{hotelId && <ChatGlobalProvider hotelId={hotelId} />}
 				<SidebarProvider>
-					<AppSidebar
-						collapsible="icon"
-						role={activeRole as HotelRole}
-						hotels={user.hotels}
-						activeHotel={activeHotel ?? undefined}
-						availableRoles={user.roles}
-					/>
-					<SidebarInset className="bg-background-blue">
-						<Header user={user} />
-						{children}
+					<AppSidebar collapsible="icon" role={role} hotels={hotels} activeHotel={activeHotel} />
+					<SidebarInset className="bg-page">
+						<Header user={user} role={role} hotelCount={hotels.length} unread={unread} />
+						<div className="flex flex-1 flex-col gap-5 px-8 py-6">{children}</div>
 					</SidebarInset>
 				</SidebarProvider>
 			</JotaiProvider>

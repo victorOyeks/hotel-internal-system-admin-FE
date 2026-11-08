@@ -1,36 +1,21 @@
-import Providers from "@/components/react-query";
-import { NewVersionBanner } from "@/components/new-version-banner";
-import { cn } from "@/lib/utils";
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Inter } from "next/font/google";
-import "./globals.css";
+import { DM_Sans } from "next/font/google";
+import Providers from "@/components/react-query";
 import { Toaster } from "@/components/ui/sonner";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { cn } from "@/lib/utils";
+import "./globals.css";
 
-const inter = Inter({
-	variable: "--font-inter",
-	subsets: ["latin"],
-	display: "swap",
-	fallback: ["system-ui", "sans-serif"],
-	preload: true,
-	adjustFontFallback: true,
-	weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-	style: ["normal", "italic"],
-});
-
+/** DM Sans is the one typeface in the design system; the variable font covers every weight. */
 const dmSans = DM_Sans({
 	variable: "--font-dm-sans",
 	subsets: ["latin"],
 	display: "swap",
 	fallback: ["system-ui", "sans-serif"],
-	preload: true,
-	adjustFontFallback: true,
-	weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-	style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
 	title: "Hospio360",
+	description: "Run your hotels from one place",
 };
 
 export const viewport: Viewport = {
@@ -38,27 +23,13 @@ export const viewport: Viewport = {
 	interactiveWidget: "resizes-content",
 };
 
-export default function RootLayout({
-	children,
-}: Readonly<{
-	children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html lang="en">
-			<body
-				className={cn(
-					"min-h-screen bg-background font-sans antialiased",
-					inter.variable,
-					dmSans.variable,
-					"text-foreground",
-				)}
-			>
+			<body className={cn("min-h-screen bg-background font-sans text-foreground antialiased", dmSans.variable)}>
 				<Providers>
 					{children}
-
-					<NewVersionBanner />
-					<Toaster richColors theme="light" duration={5000} />
-					<ReactQueryDevtools initialIsOpen={false} />
+					<Toaster richColors theme="light" duration={5000} position="bottom-right" />
 				</Providers>
 			</body>
 		</html>

@@ -1,71 +1,19 @@
-import { BookingsPage } from "@/components/roles//manager/bookings";
-import { getManagerCurrentHotel } from "@/lib/dal";
-import { $fetch, BookingStatus } from "@/lib/fetch";
-import { getQueryClient } from "@/lib/queries";
-import { getCookieData } from "@/lib/server-fns";
-import { use } from "react";
-import z from "zod";
+import { BookingsScreen } from "@/components/roles/manager/bookings/bookings-screen";
+import { getActiveHotel } from "@/lib/dal";
+import { data } from "@/lib/data";
 
-const ParamsSchema = z
-	.object({
-		bookingStatus: BookingStatus,
-		search: z.string(),
-		page: z.coerce.number().default(0),
-		size: z.coerce.number().default(10),
-	})
-	.partial();
+export const dynamic = "force-dynamic";
 
-function Page({
-	searchParams,
-}: {
-	searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-	const cookieData = use(getCookieData())!;
-	const currentHotel = use(getManagerCurrentHotel())!;
-	const searchParamsObj = use(searchParams);
-	const queryClient = getQueryClient();
-	const validatedParams = ParamsSchema.parse(searchParamsObj);
-
-	const { content, ...paginationMeta } = use(
-		queryClient.ensureQueryData({
-			queryKey: ["hotel-owner-bookings", validatedParams],
-			queryFn: async () => {
-				const response = await $fetch(
-					"@get/api/managers/hotels/:hotelId/bookings",
-					{
-						params: {
-							hotelId: currentHotel.id,
-						},
-						query: {
-							...validatedParams,
-							page: validatedParams.page ? validatedParams.page - 1 : 0,
-						},
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
-						throw: true,
-					},
-				);
-
-				return response.data;
-			},
-		}),
-	);
-
-	return (
-		<BookingsPage
-			bookings={content}
-			paginationMeta={paginationMeta}
-			breadcrumb={{
-				title: "Reservations",
-				breadcrumbs: [
-					{ label: "Dashboard", href: "/dashboard" },
-					{ label: "Reservations", href: "/dashboard/bookings" },
-				],
-			}}
-		/>
-	);
+/** Manager · Bookings: list by tab, details, new booking, check in / out, payments, changes. */
+export default async function BookingsPage() {
+	const [hotel, bookings, rooms, types, guests, folios, organizations] = await Promise.all([
+		getActiveHotel(),
+		data.bookings.list(),
+		data.rooms.list(),
+		data.rooms.types(),
+		data.guests.list(),
+		data.folios.list(),
+		data.organizations.list(),
+	]);
+	return <BookingsScreen hotelName={hotel?.name ?? "This hotel"} bookings={bookings} rooms={rooms} types={types} guests={guests} folios={folios} organizations={organizations} />;
 }
-
-export default Page;

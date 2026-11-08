@@ -1,256 +1,104 @@
 "use client";
 
-import { formatDate } from "date-fns";
-import {
-	FileIcon,
-	ImageIcon,
-	Link2,
-	LogOutIcon,
-
-	SettingsIcon,
-	Trash2Icon,
-	XIcon,
-} from "lucide-react";
-// import { Separator } from "@/components/ui/separator";
-import { Fragment } from "react";
-// import { Input } from "../ui/input";
-import { Button } from "@/components/ui/button";
-import { breadcrumbAtom } from "@/lib/store";
-import { useAtomValue } from "jotai";
+import { BellIcon, ChevronDownIcon, CircleHelpIcon, LogOutIcon, SearchIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { useTransition } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-	Breadcrumb,
-	BreadcrumbItem,
-	BreadcrumbList,
-	BreadcrumbSeparator,
-	BreadcrumbLink,
-	BreadcrumbPage,
-} from "../ui/breadcrumb";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Separator } from "../ui/separator";
-import { SidebarTrigger } from "../ui/sidebar";
-import { Skeleton } from "../ui/skeleton";
-import { PopoverClose } from "@radix-ui/react-popover";
-import type { UserInfoResponse } from "@/lib/fetch";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import type { Me } from "@/lib/api/schema";
 import { logout } from "@/lib/actions";
-import { toast } from "sonner";
-import { NotificationsPopover } from "../notification-popover";
+import { roleLabels, type HotelRole } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
-function getInitials(name: string) {
-	return name
-		.split(" ")
-		.filter(Boolean)
-		.map((w) => w[0])
-		.slice(0, 2)
-		.join("")
-		.toUpperCase();
+function initials(name: string) {
+	return name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
 
-function ProfilePopover({ user }: { user: UserInfoResponse }) {
-	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<Button size="icon" variant="ghost" className="rounded-full p-2">
-					<Avatar>
-						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">{getInitials(user.fullName!!)}</span>
-						</AvatarFallback>
-					</Avatar>
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent
-				align="end"
-				sideOffset={16}
-				className="rounded-4xl bg-white border border-popover w-xs space-y-2 py-2 px-3"
-			>
-				<div className="flex items-center justify-between">
-					<p className="font-medium text-lg">Profile</p>
+const iconButton = "flex size-[42px] items-center justify-center rounded-xl border border-line bg-card text-ink-2 transition-colors hover:bg-subtle";
 
-					<PopoverClose asChild>
-						<Button variant="ghost" size="icon" className="rounded-full">
-							<XIcon />
-						</Button>
-					</PopoverClose>
-				</div>
-
-				<div className="max-w-[content] mx-auto flex items-center space-x-3">
-					<Avatar className="size-12 rounded-full">
-						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">{getInitials(user.fullName!)}</span>
-						</AvatarFallback>
-					</Avatar>
-
-					<div className="">
-						<p className="text-lg font-medium leading-tight">{user.fullName!}</p>
-						<p className="text-sm text-gray-600">{user.email}</p>
-					</div>
-				</div>
-
-				<div className="space-y-2 [&_svg]:text-gray-400">
-					<Button
-						variant={"ghost"}
-						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
-						asChild
-					>
-						<Link href="/profile">
-							<SettingsIcon />
-							<span>Profile settings</span>
-						</Link>
-					</Button>
-
-
-
-					<Button
-						variant={"destructive"}
-						className="w-full rounded-full justify-baseline font-medium [&_svg]:text-primary-3"
-						onClick={() => {
-							toast.promise(logout(), {
-								loading: "Logging out...",
-								success: "Logged out successfully",
-							});
-						}}
-					>
-						<LogOutIcon />
-						<span>Log out</span>
-					</Button>
-				</div>
-			</PopoverContent>
-		</Popover>
-	);
-}
-
-export function ChatProfilePopover({ user }: { user: UserInfoResponse }) {
-	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<Button size="icon" variant="ghost" className="rounded-full p-2">
-					<Avatar>
-						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-xs">{getInitials(user.fullName!)}</span>
-						</AvatarFallback>
-					</Avatar>
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent
-				align="end"
-				sideOffset={16}
-				className="rounded-4xl bg-white border border-popover w-xs space-y-2 py-2 px-3"
-			>
-				<div className="flex items-center justify-between">
-					<p className="font-medium text-lg">Profile</p>
-
-					<PopoverClose asChild>
-						<Button variant="ghost" size="icon" className="rounded-full">
-							<XIcon />
-						</Button>
-					</PopoverClose>
-				</div>
-
-				<div className="max-w-[content] mx-auto flex flex-col items-center justify-center space-y-3">
-					<Avatar className="size-21 rounded-full">
-						<AvatarFallback className="bg-primary-1 text-white">
-							<span className="text-2xl">{getInitials(user.fullName!)}</span>
-						</AvatarFallback>
-					</Avatar>
-
-					<div className="text-center space-y-0.5">
-						<p className="text-2xl font-medium leading-tight">
-							{user.fullName!}
-						</p>
-						<p className="text-sm text-gray-600">{user.email}</p>
-					</div>
-				</div>
-
-				<div className="space-y-2 [&_svg]:text-gray-400">
-					<Button
-						variant={"ghost"}
-						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
-					>
-						<ImageIcon />
-						<span>Media</span>
-					</Button>
-					<Button
-						variant={"ghost"}
-						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
-					>
-						<FileIcon />
-						<span>Files</span>
-					</Button>
-					<Button
-						variant={"ghost"}
-						className="w-full rounded-full bg-background-blue justify-baseline font-medium"
-					>
-						<Link2 />
-						<span>Links</span>
-					</Button>
-
-					<Button
-						variant={"destructive"}
-						className="w-full rounded-full justify-baseline font-medium [&_svg]:text-primary-3"
-					>
-						<Trash2Icon />
-						<span>Clear chats</span>
-					</Button>
-				</div>
-			</PopoverContent>
-		</Popover>
-	);
-}
-
-export function Header({ user }: { user: UserInfoResponse }) {
-	const breadcrumb = useAtomValue(breadcrumbAtom);
+export function Header({
+	user,
+	role,
+	hotelCount,
+	unread,
+}: {
+	user: Me;
+	role: HotelRole;
+	hotelCount: number;
+	unread: number;
+}) {
+	const [pending, startTransition] = useTransition();
+	const subtitle = `${roleLabels[role]}${hotelCount > 0 ? ` · ${hotelCount} ${hotelCount === 1 ? "branch" : "branches"}` : ""}`;
 
 	return (
-		<header className="flex shrink-0 items-center justify-between py-2 px-2">
-			<div className="flex items-center space-x-1 md:space-x-2">
-				<SidebarTrigger className="-ml-1" />
-				<Separator
-					orientation="vertical"
-					className="data-[orientation=vertical]:h-4"
-				/>
-				<div className="md:self-baseline-last">
-					{breadcrumb ? (
-						<>
-							<Breadcrumb className="mx-auto w-fit hidden md:flex">
-								<BreadcrumbList>
-									{breadcrumb.breadcrumbs.map((b, i) => (
-										<Fragment key={b.label}>
-											{i < breadcrumb.breadcrumbs.length - 1 ? (
-												<>
-													<BreadcrumbItem>
-														<BreadcrumbLink asChild>
-															<Link href={b.href}>{b.label}</Link>
-														</BreadcrumbLink>
-													</BreadcrumbItem>
-													<BreadcrumbSeparator />
-												</>
-											) : (
-												<BreadcrumbPage>{b.label}</BreadcrumbPage>
-											)}
-										</Fragment>
-									))}
-								</BreadcrumbList>
-							</Breadcrumb>
-
-							<h1 className="text-xl font-medium block">{breadcrumb.title}</h1>
-						</>
-					) : (
-						<Skeleton className="bg-primary-5/20 w-[200px] p-6" />
-					)}
-				</div>
+		<header className="flex items-center justify-between gap-4 px-8 pt-6">
+			<div className="flex items-center gap-3">
+				<SidebarTrigger className="md:hidden" />
+				<label className="hidden h-[42px] w-[380px] items-center gap-[10px] rounded-xl border border-line bg-card pl-[14px] pr-[10px] md:flex">
+					<SearchIcon className="size-[18px] text-ink-3" />
+					<input
+						type="search"
+						placeholder="Search bookings, guests, branches…"
+						className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-3"
+					/>
+					<kbd className="rounded-md bg-subtle px-[6px] py-[2px] text-[11px] font-medium text-ink-2">⌘ K</kbd>
+				</label>
 			</div>
 
-			<div>
-				<div className="bg-white shadow rounded-full p-1 flex items-center space-x-2">
-					<div className="bg-gray-100 py-2 px-3 rounded-full text-sm hidden md:block">
-						{formatDate(new Date(), "PPP")}
-					</div>
-
-					<NotificationsPopover />
-
-					<ProfilePopover user={user} />
-				</div>
+			<div className="flex items-center gap-3">
+				<Link href="/dashboard/help" className={iconButton} aria-label="Help">
+					<CircleHelpIcon className="size-5" />
+				</Link>
+				<Link href="/dashboard/notifications" className={cn(iconButton, "relative")} aria-label="Notifications">
+					<BellIcon className="size-5" />
+					{unread > 0 && <span className="absolute right-[9px] top-[9px] size-2 rounded-full bg-danger ring-2 ring-card" />}
+				</Link>
+				<span className="h-7 w-px bg-line-strong/60" />
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button type="button" className="flex items-center gap-[10px] rounded-xl py-1 pl-1 pr-2 text-left hover:bg-subtle">
+							<Avatar className="size-10">
+								<AvatarFallback className="bg-brand text-sm font-semibold text-white">{initials(user.fullName)}</AvatarFallback>
+							</Avatar>
+							<span className="hidden flex-col lg:flex">
+								<span className="text-sm font-semibold text-ink">{user.fullName}</span>
+								<span className="text-xs text-ink-3">{subtitle}</span>
+							</span>
+							<ChevronDownIcon className="size-4 text-ink-3" />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-60 rounded-xl">
+						<DropdownMenuLabel>
+							<p className="text-sm font-semibold text-ink">{user.fullName}</p>
+							<p className="text-xs font-normal text-ink-3">{user.email}</p>
+						</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem asChild className="rounded-lg">
+							<Link href="/dashboard/profile">
+								<UserIcon /> My profile & security
+							</Link>
+						</DropdownMenuItem>
+						<DropdownMenuItem asChild className="rounded-lg">
+							<Link href="/select-role">Switch role</Link>
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							className="rounded-lg text-danger focus:text-danger"
+							disabled={pending}
+							onSelect={() => startTransition(() => logout())}
+						>
+							<LogOutIcon /> Sign out
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</div>
 		</header>
 	);

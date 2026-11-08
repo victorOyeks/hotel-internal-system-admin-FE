@@ -1,76 +1,56 @@
 "use client";
 
-import * as sidebar from "@/components/ui/sidebar";
-import { createPathMatcher } from "@/lib/utils";
-import { Loader2Icon } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, type ReactNode } from "react";
-import { toast } from "sonner";
-import { useAtomValue } from "jotai";
-import { totalUnreadCountAtom } from "@/lib/chat-store";
+import { Loader2Icon } from "lucide-react";
+import * as sidebar from "@/components/ui/sidebar";
+import { linksByRole, type NavLink } from "@/components/links";
+import type { HotelRole } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 
-function IconLoader({ children }: { children: ReactNode }) {
+function LinkIcon({ icon: Icon }: { icon: NavLink["icon"] }) {
 	const { pending } = useLinkStatus();
-
-	useEffect(() => {
-		let toastId: string | number;
-		if (pending) {
-			toastId = toast.loading("Loading, please wait...", {
-				position: "top-center",
-			});
-		}
-
-		return () => {
-			if (pending) {
-				toast.dismiss(toastId);
-			}
-		};
-	}, [pending]);
-
-	return pending ? <Loader2Icon className="animate-spin" /> : children;
+	return pending ? <Loader2Icon className="size-[18px] animate-spin" /> : <Icon className="size-[18px]" />;
 }
 
-export function NavMain({
-	items,
-}: {
-	items: {
-		title: string;
-		url: string;
-		icon?: ReactNode;
-		isActive?: boolean;
-	}[];
-}) {
+/** Which link owns the current path: the longest matching prefix. */
+function activeUrl(pathname: string, items: NavLink[]) {
+	return items
+		.filter((i) => pathname === i.url || pathname.startsWith(`${i.url}/`))
+		.sort((a, b) => b.url.length - a.url.length)[0]?.url;
+}
+
+export function NavMain({ role }: { role: HotelRole }) {
+	const items = linksByRole[role];
 	const pathname = usePathname();
-	const totalUnread = useAtomValue(totalUnreadCountAtom);
-	const pathMatcher = useMemo(
-		() => createPathMatcher(items.map((item) => item.url)),
-		[items],
-	);
+	const active = activeUrl(pathname, items);
 
 	return (
-		<sidebar.SidebarGroup>
-			<sidebar.SidebarMenu className="gap-y-2">
-				{items.map((item) => (
-					<sidebar.SidebarMenuItem key={item.title}>
-						<sidebar.SidebarMenuButton
-							tooltip={item.title}
-							className="py-3 gap-x-2 text-base rounded-md data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-							asChild
-							isActive={pathMatcher.match(pathname)?.path === item.url}
-						>
-							<Link href={item.url} className="flex items-center w-full">
-								<IconLoader>{item.icon}</IconLoader>
-								<span className="flex-1">{item.title}</span>
-								{item.title === "Messages" && totalUnread > 0 && (
-									<span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-white/90 px-1.5 text-[10px] font-bold leading-none text-primary-1 tabular-nums">
-										{totalUnread > 99 ? "99+" : totalUnread}
-									</span>
+		<sidebar.SidebarGroup className="px-0 py-3">
+			<sidebar.SidebarMenu className="gap-y-[10px]">
+				{items.map((item) => {
+					const isActive = active === item.url;
+					return (
+						<sidebar.SidebarMenuItem key={item.url}>
+							<sidebar.SidebarMenuButton
+								tooltip={item.title}
+								asChild
+								isActive={isActive}
+								className={cn(
+									"h-10 rounded-[14px] px-2 text-sm text-white transition-opacity",
+									"hover:bg-white/10 hover:text-white",
+									"data-[active=true]:bg-white/10 data-[active=true]:font-medium data-[active=true]:text-white",
+									!isActive && "opacity-70 hover:opacity-100",
 								)}
-							</Link>
-						</sidebar.SidebarMenuButton>
-					</sidebar.SidebarMenuItem>
-				))}
+							>
+								<Link href={item.url} className="flex w-full items-center gap-2">
+									<LinkIcon icon={item.icon} />
+									<span className="truncate">{item.title}</span>
+								</Link>
+							</sidebar.SidebarMenuButton>
+						</sidebar.SidebarMenuItem>
+					);
+				})}
 			</sidebar.SidebarMenu>
 		</sidebar.SidebarGroup>
 	);

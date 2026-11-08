@@ -1,69 +1,11 @@
-import { OrganizationsPage } from "@/components/roles/manager/organizations";
-import { getManagerCurrentHotel, verifySession } from "@/lib/dal";
-import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
-import { getQueryClient } from "@/lib/queries";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
-import { use } from "react";
+import { OrganizationsScreen } from "@/components/roles/manager/organizations/organizations-screen";
+import { getActiveHotel } from "@/lib/dal";
+import { data } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-const loadSearchParams = createLoader({
-	...paginationSearchParams,
-	search: parseAsString.withDefault(""),
-});
-
-type PageProps = {
-	searchParams: Promise<SearchParams>;
-};
-
-function ManagerOrganizationsPage({ searchParams }: PageProps) {
-	const session = use(verifySession("MANAGER"));
-	const currentHotel = use(getManagerCurrentHotel())!;
-	const query = use(loadSearchParams(searchParams));
-	const queryClient = getQueryClient();
-
-	const breadcrumb = {
-		title: "Organizations",
-		breadcrumbs: [
-			{ label: "Dashboard", href: "/dashboard" },
-			{ label: "Organizations", href: "/dashboard/organizations" },
-		],
-	};
-
-	const { content, ...paginationMeta } = use(
-		queryClient.ensureQueryData({
-			queryKey: ["organizations", currentHotel.id, query],
-			queryFn: async () => {
-				const response = await $fetch(
-					"@get/api/corporate/organizations",
-					{
-						query: {
-							hotelId: currentHotel.id,
-							page: query.page ? query.page - 1 : 0,
-							size: query.size,
-							search: query.search || undefined,
-						},
-						auth: { type: "Bearer", token: session.token },
-						throw: true,
-					},
-				);
-				return response.data;
-			},
-		}),
-	);
-
-	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<OrganizationsPage
-				breadcrumb={breadcrumb}
-				organizations={content}
-				paginationMeta={paginationMeta}
-				hotelId={currentHotel.id}
-			/>
-		</HydrationBoundary>
-	);
+/** Manager · Organizations: company accounts, outstanding balances, new organization. */
+export default async function OrganizationsPage() {
+	const [hotel, organizations, invoices] = await Promise.all([getActiveHotel(), data.organizations.list(), data.organizations.invoices()]);
+	return <OrganizationsScreen hotelName={hotel?.name ?? "This hotel"} organizations={organizations} invoices={invoices} />;
 }
-
-export default ManagerOrganizationsPage;

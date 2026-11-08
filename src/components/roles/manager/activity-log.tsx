@@ -1,544 +1,120 @@
 "use client";
 
-import { SearchIcon, RotateCcwIcon } from "lucide-react";
-import { useQueryStates, parseAsString } from "nuqs";
-import { useCallback, useLayoutEffect, useState, useMemo } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { BookOpenIcon, DownloadIcon } from "lucide-react";
+import Link from "next/link";
+import { parseAsString, useQueryState } from "nuqs";
+import { useMemo, useState } from "react";
+import { DataTable, TwoLine } from "@/components/shared/data-table";
+import { DetailList } from "@/components/shared/detail-list";
+import { ChoiceCards, SelectField } from "@/components/shared/field";
+import { fmtWhen, humanize } from "@/components/shared/format";
+import { Modal } from "@/components/shared/modal";
+import { PageHeader } from "@/components/shared/page-header";
+import { PanelSection, SidePanel } from "@/components/shared/side-panel";
+import { StatusPill } from "@/components/shared/status-pill";
+import { ExportButton, FilterSelect, SearchBox, Toolbar } from "@/components/shared/toolbar";
+import { btn } from "@/components/shared/ui";
+import { useDemoAction } from "@/lib/demo/actions";
+import type { ActivityRow } from "@/lib/data/types";
 import { Button } from "@/components/ui/button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import {
-	type ColumnFiltersState,
-	createColumnHelper,
-	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
-	type Table as TableType,
-} from "@tanstack/react-table";
-import { DataTablePagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
-import {
-	TableHeader,
-	TableRow,
-	TableHead,
-	TableBody,
-	TableCell,
-	TableFooter,
-	Table,
-} from "@/components/ui/table";
-import type { ManagerActivityLog, Pagination } from "@/lib/fetch";
-import { usePaginationSearchParams } from "@/lib/search-params.pagination";
-import { type Breadcrumb, breadcrumbAtom } from "@/lib/store";
-import { atom, useSetAtom } from "jotai";
-import {
-	type ExportData,
-	ExportDialog,
-} from "@/components/shared/shared-dialogs";
 
-const successDialogAtom = atom({
-	show: false,
-	message: "",
-});
-
-const _ActivityFilter = ({
-	queryState,
-	setQueryState,
-}: {
-	queryState: {
-		search: string | null;
-		role: string | null;
-		activity: string | null;
-	};
-	setQueryState: (state: Partial<typeof queryState>) => void;
-}) => {
-	const [tempFilters, setTempFilters] = useState({
-		role: queryState.role || null,
-		activity: queryState.activity || null,
-	});
-
-	// Memoized callback functions to prevent unnecessary re-renders
-	const applyFilters = useCallback(() => {
-		setQueryState({
-			...queryState,
-			role: tempFilters.role,
-			activity: tempFilters.activity,
-		});
-	}, [queryState, tempFilters.role, tempFilters.activity, setQueryState]);
-
-	const clearFilters = useCallback(() => {
-		const clearedFilters = {
-			role: null,
-			activity: null,
-		};
-		setTempFilters(clearedFilters);
-		setQueryState({
-			search: queryState.search,
-			role: null,
-			activity: null,
-		});
-	}, [queryState.search, setQueryState]);
-
-	// Memoize filter state computations
-	const filterStates = useMemo(() => {
-		const hasActiveFilters = !!(tempFilters.role || tempFilters.activity);
-		const hasAppliedFilters = !!(queryState.role || queryState.activity);
-		const appliedFiltersCount = [queryState.role, queryState.activity].filter(
-			Boolean,
-		).length;
-
-		return {
-			hasActiveFilters,
-			hasAppliedFilters,
-			appliedFiltersCount,
-		};
-	}, [
-		tempFilters.role,
-		tempFilters.activity,
-		queryState.role,
-		queryState.activity,
-	]);
-
-	const roleOptions = useMemo(
-		() => [
-			{ value: "MANAGER", label: "Manager" },
-			{ value: "FRONT_DESK", label: "Front Desk" },
-			{ value: "INVENTORY_MANAGER", label: "Inventory Manager" },
-			{ value: "HOTEL_OWNER", label: "Hotel Owner" },
-		],
-		[],
-	);
-
-	const activityOptions = useMemo(
-		() => [
-			{ value: "LOGIN", label: "Login" },
-			{ value: "LOGOUT", label: "Logout" },
-			{ value: "CREATE_BOOKING", label: "Create Booking" },
-			{ value: "UPDATE_BOOKING", label: "Update Booking" },
-			{ value: "DELETE_BOOKING", label: "Delete Booking" },
-			{ value: "CHECK_IN", label: "Check In" },
-			{ value: "CHECK_OUT", label: "Check Out" },
-			{ value: "INVENTORY_UPDATE", label: "Inventory Update" },
-			{ value: "STAFF_MANAGEMENT", label: "Staff Management" },
-		],
-		[],
-	);
-
-	return (
-		<div className="space-y-4 w-80">
-			<div className="flex items-center justify-between">
-				<h4 className="font-semibold text-sm">Filter Activity Logs</h4>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={clearFilters}
-					className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
-				>
-					<RotateCcwIcon className="h-3 w-3 mr-1" />
-					Clear all
-				</Button>
-			</div>
-
-			{/* Role Filter */}
-			<div className="space-y-2">
-				<Label className="text-sm font-medium">Staff Role</Label>
-				<Select
-					value={tempFilters.role || "all"}
-					onValueChange={(value) =>
-						setTempFilters({
-							...tempFilters,
-							role: value === "all" ? null : value,
-						})
-					}
-				>
-					<SelectTrigger className="w-full">
-						<SelectValue placeholder="All Roles" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Roles</SelectItem>
-						{roleOptions.map((option) => (
-							<SelectItem key={option.value} value={option.value}>
-								{option.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
-
-			{/* Activity Type Filter */}
-			<div className="space-y-2">
-				<Label className="text-sm font-medium">Activity Type</Label>
-				<Select
-					value={tempFilters.activity || "all"}
-					onValueChange={(value) =>
-						setTempFilters({
-							...tempFilters,
-							activity: value === "all" ? null : value,
-						})
-					}
-				>
-					<SelectTrigger className="w-full">
-						<SelectValue placeholder="All Activities" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All Activities</SelectItem>
-						{activityOptions.map((option) => (
-							<SelectItem key={option.value} value={option.value}>
-								{option.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
-
-			{/* Filter Summary */}
-			{filterStates.hasActiveFilters && (
-				<div className="pt-2 border-t">
-					<p className="text-xs text-muted-foreground mb-2">Active filters:</p>
-					<div className="flex flex-wrap gap-1">
-						{tempFilters.role && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
-								Role:{" "}
-								{roleOptions.find((r) => r.value === tempFilters.role)?.label}
-							</span>
-						)}
-						{tempFilters.activity && (
-							<span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-xs">
-								Activity:{" "}
-								{
-									activityOptions.find((a) => a.value === tempFilters.activity)
-										?.label
-								}
-							</span>
-						)}
-					</div>
-				</div>
-			)}
-
-			{/* Action Buttons */}
-			<div className="flex gap-2 pt-2">
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={clearFilters}
-					className="flex-1"
-				>
-					Clear
-				</Button>
-				<Button size="sm" onClick={applyFilters} className="flex-1">
-					Apply Filters
-				</Button>
-			</div>
-		</div>
-	);
+const linkFor = (a: ActivityRow) => {
+	const t = a.eventType;
+	if (t.startsWith("payment") || t.startsWith("refund")) return "/dashboard/payments";
+	if (t.startsWith("booking")) return "/dashboard/bookings";
+	if (t.startsWith("room")) return "/dashboard/rooms";
+	if (t.startsWith("repair")) return "/dashboard/tasks";
+	if (t.startsWith("po") || t.startsWith("stock")) return "/dashboard/inventory";
+	if (t.startsWith("till") || t.startsWith("night_audit")) return "/dashboard/financials";
+	if (t.startsWith("staff")) return "/dashboard/staff";
+	if (t.startsWith("setup")) return "/dashboard/hotel-setup";
+	return "/dashboard";
 };
 
-type ExportAuditLogsAction = (filters: {
-	search?: string;
-	startDate?: string;
-	endDate?: string;
-	format: "CSV" | "PDF" | "EXCEL";
-}) => Promise<{ success: boolean; data?: { base64: string; filename: string }; error?: string }>;
+/** Manager · Activity log: every action by every person, with an entry panel and export. */
+export function ActivityLogScreen({ rows, hotelName }: { rows: ActivityRow[]; hotelName: string }) {
+	const [search, setSearch] = useState("");
+	const [department, setDepartment] = useQueryState("department", parseAsString.withDefault(""));
+	const [range, setRange] = useState("today");
+	const [open, setOpen] = useQueryState("open");
+	const [exporting, setExporting] = useState(false);
+	const [exportRange, setExportRange] = useState("7");
+	const [format, setFormat] = useState<"CSV" | "PDF">("CSV");
+	const { run, pending } = useDemoAction();
 
-function ListToolbar({ exportAction }: { table: TableType<ManagerActivityLog>; exportAction?: ExportAuditLogsAction }) {
-	const [searchParam, setSearchParam] = useQueryStates({
-		search: parseAsString,
+	const departments = useMemo(() => Array.from(new Set(rows.map((r) => r.department))).map((d) => ({ value: d, label: d })), [rows]);
+	const filtered = rows.filter((r) => {
+		if (department && r.department !== department) return false;
+		const today = new Date().toISOString().slice(0, 10);
+		if (range === "today" && r.at.slice(0, 10) !== today) return false;
+		if (range === "yesterday") {
+			const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+			if (r.at.slice(0, 10) !== y) return false;
+		}
+		return true;
 	});
+	const entry = rows.find((r) => r.id === open) ?? null;
 
-	const [exportDialogOpen, setExportDialogOpen] = useState(false);
-	const setSuccessDialogOpen = useSetAtom(successDialogAtom);
+	const columns: ColumnDef<ActivityRow, unknown>[] = [
+		{ accessorKey: "at", header: "When", cell: ({ row }) => <span className="whitespace-nowrap text-ink-2">{fmtWhen(row.original.at)}</span>, size: 150 },
+		{ accessorKey: "actor", header: "Who", cell: ({ row }) => <TwoLine primary={row.original.actor} secondary={humanize(row.original.actorRole)} /> },
+		{ accessorKey: "department", header: "Department", cell: ({ row }) => <span className="text-ink-2">{row.original.department}</span> },
+		{ accessorKey: "action", header: "Action", cell: ({ row }) => <TwoLine primary={row.original.action} secondary={row.original.summary} /> },
+		{ id: "flag", header: "", cell: ({ row }) => (row.original.byPlatform ? <StatusPill tone="info" dot={false}>by H.M.S</StatusPill> : null), size: 90 },
+	];
 
-	const handleExport = useCallback(
-		async (data: ExportData) => {
-			if (!exportAction) return;
-			try {
-				const result = await exportAction({
-					search: searchParam.search || undefined,
-					format: data.export_type.toUpperCase() as "CSV" | "PDF" | "EXCEL",
-				});
+	return (
+		<>
+			<PageHeader title="Activity log" subtitle={`${hotelName} · every action by every person, newest first · nothing here can be edited`}>
+				<ExportButton onClick={() => setExporting(true)} />
+			</PageHeader>
 
-				if (result.success && result.data) {
-					const byteCharacters = atob(result.data.base64);
-					const byteNumbers = new Array(byteCharacters.length);
-					for (let i = 0; i < byteCharacters.length; i++) {
-						byteNumbers[i] = byteCharacters.charCodeAt(i);
-					}
-					const byteArray = new Uint8Array(byteNumbers);
-					const mimeType =
-						data.export_type === "csv"
-							? "text/csv"
-							: data.export_type === "pdf"
-								? "application/pdf"
-								: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-					const blob = new Blob([byteArray], { type: mimeType });
-					const url = window.URL.createObjectURL(blob);
-					const a = document.createElement("a");
-					a.href = url;
-					a.download = result.data.filename;
-					document.body.appendChild(a);
-					a.click();
-					window.URL.revokeObjectURL(url);
-					document.body.removeChild(a);
-					setExportDialogOpen(false);
-					setSuccessDialogOpen({
-						show: true,
-						message: "Audit logs exported successfully!",
-					});
-				} else {
-					setSuccessDialogOpen({
-						show: true,
-						message: result.error || "Failed to export audit logs",
-					});
+			<Toolbar
+				left={
+					<>
+						<SearchBox value={search} onChange={setSearch} placeholder="Search people, rooms, amounts…" />
+						<FilterSelect value={department} onChange={(v) => void setDepartment(v || null)} options={departments} all="All departments" />
+						<FilterSelect value={range === "all" ? "" : range} onChange={(v) => setRange(v || "all")} options={[{ value: "today", label: "Today" }, { value: "yesterday", label: "Yesterday" }]} all="All dates" />
+					</>
 				}
-			} catch {
-				setSuccessDialogOpen({
-					show: true,
-					message: "An error occurred during export",
-				});
-			}
-		},
-		[exportAction, searchParam, setSuccessDialogOpen],
-	);
+				right={<span className="text-xs text-ink-3">{filtered.length} entries</span>}
+			/>
 
-	return (
-		<div className="flex flex-row-reverse items-center justify-between space-x-2 border border-primary-5/20 p-1 md:p-2 rounded-xl md:rounded-3xl bg-card">
-			<div className="flex items-center gap-x-2 ">
-				<div className="relative">
-					<input
-						type="text"
-						placeholder="Search"
-						value={searchParam.search ?? ""}
-						onChange={(e) =>
-							setSearchParam((prev) => ({
-								...prev,
-								search: e.target.value,
-							}))
-						}
-						className="w-full pl-9 py-2 bg-primary-5/15 text-primary-1 placeholder:text-sm md:placeholder:text-base placeholder:text-primary-1/80 rounded-md md:rounded-full"
-					/>
-					<SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" />
+			<DataTable columns={columns} data={filtered} search={search} pageSize={12} onRowClick={(r) => void setOpen(r.id)} emptyTitle="No activity matches" emptyHint="Try another department or date." />
+
+			<SidePanel open={!!entry} onOpenChange={(o) => !o && void setOpen(null)} title={entry?.action ?? ""} subtitle={entry ? `${entry.actor} · ${fmtWhen(entry.at)}` : undefined} icon={BookOpenIcon}
+				footer={entry && <Link href={linkFor(entry)} className={btn.primary}>Open in {humanize(linkFor(entry).split("/").pop() ?? "")}</Link>}
+				footerInfo={entry?.byPlatform ? "Made by Hospio support on your behalf · you can undo within 7 days from Notifications" : "Entries are kept for 2 years and cannot be edited"}>
+				{entry && (
+					<div className="flex flex-col gap-5">
+						<PanelSection title="Entry">
+							<DetailList columns={2} items={[{ label: "Who", value: entry.actor }, { label: "Role", value: humanize(entry.actorRole) }, { label: "Department", value: entry.department }, { label: "When", value: fmtWhen(entry.at) }, { label: "Event", value: <code className="text-xs">{entry.eventType}</code> }, { label: "Source", value: entry.byPlatform ? "H.M.S support" : "This hotel" }]} />
+						</PanelSection>
+						<PanelSection title="What changed">
+							<p className="rounded-xl bg-subtle px-4 py-3 text-[13px] text-ink">{entry.summary}</p>
+						</PanelSection>
+						{entry.payload && (
+							<PanelSection title="Details">
+								<DetailList items={Object.entries(entry.payload).map(([k, v]) => ({ label: humanize(k), value: String(v) }))} />
+							</PanelSection>
+						)}
+					</div>
+				)}
+			</SidePanel>
+
+			<Modal open={exporting} onOpenChange={setExporting} title="Export activity log" subtitle="Everything in the range, one row per entry" icon={DownloadIcon} size="confirm"
+				footer={
+					<>
+						<Button variant="outline" className={btn.secondary} onClick={() => setExporting(false)}>Cancel</Button>
+						<Button className={btn.primary} disabled={pending} onClick={() => run(`Activity log exported as ${format}`, () => setExporting(false), { description: "The file is in your downloads and was emailed to you." })}>Download {format}</Button>
+					</>
+				}>
+				<div className="flex flex-col gap-4">
+					<SelectField label="Range" value={exportRange} onChange={setExportRange} options={[{ value: "1", label: "Today" }, { value: "7", label: "Last 7 days" }, { value: "30", label: "Last 30 days" }, { value: "90", label: "Last 90 days" }]} />
+					<ChoiceCards label="Format" value={format} onChange={setFormat} columns={2} options={[{ value: "CSV", label: "CSV", hint: "Opens in Excel" }, { value: "PDF", label: "PDF", hint: "For printing or the owner" }]} />
 				</div>
-
-				{/* <div className="flex items-center gap-2">
-          <TableFilter>
-            <ActivityFilter
-              queryState={searchParam}
-              setQueryState={setSearchParam}
-            />
-          </TableFilter>
-          
-          {/* Applied Filters Display */}
-				{/* {(searchParam.role || searchParam.activity) && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {searchParam.role && (
-                <div className="flex items-center gap-1">
-                  <span>Role:</span>
-                  <span className="bg-secondary px-2 py-1 rounded-md font-medium">
-                    {searchParam.role}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setSearchParam({ role: null })}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-              {searchParam.activity && (
-                <div className="flex items-center gap-1">
-                  <span>Activity:</span>
-                  <span className="bg-secondary px-2 py-1 rounded-md font-medium">
-                    {searchParam.activity}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setSearchParam({ activity: null })}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div> */}
-
-				<ExportDialog
-					open={exportDialogOpen}
-					setOpenAction={setExportDialogOpen}
-					onSubmitAction={handleExport}
-				/>
-			</div>
-		</div>
-	);
-}
-
-function ActivityLogTable({ table }: { table: TableType<ManagerActivityLog> }) {
-	return (
-		<div className="overflow-hidden rounded-md border bg-card">
-			<Table>
-				<TableHeader className="bg-gray-100">
-					{table.getHeaderGroups().map((headerGroup) => (
-						<TableRow key={headerGroup.id}>
-							{headerGroup.headers.map((header) => {
-								return (
-									<TableHead key={header.id} className="text-gray-500">
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-									</TableHead>
-								);
-							})}
-						</TableRow>
-					))}
-				</TableHeader>
-
-				<TableBody>
-					{table.getRowModel().rows?.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id} className="hover:bg-gray-50">
-								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id} className="text-gray-600">
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
-								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell colSpan={columns.length} className="h-24 text-center">
-								No results.
-							</TableCell>
-						</TableRow>
-					)}
-				</TableBody>
-
-				<TableFooter>
-					<TableRow>
-						<TableCell colSpan={columns.length}>
-							<div className="w-full flex items-center justify-between">
-								<span className="text-sm text-gray-500">
-									Page {table.getState().pagination.pageIndex + 1} of{" "}
-									{table.getPageCount()}
-								</span>
-								<DataTablePagination table={table} />
-							</div>
-						</TableCell>
-					</TableRow>
-				</TableFooter>
-			</Table>
-		</div>
-	);
-}
-
-const columnHelper = createColumnHelper<ManagerActivityLog>();
-
-const columns = [
-	columnHelper.accessor("customId", {
-		header: "ID",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("staffName", {
-		header: "Staff Name",
-		cell: (info) => info.getValue(),
-		filterFn: "equalsString",
-	}),
-	columnHelper.accessor("staffEmail", {
-		header: "Staff Email",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("role", {
-		header: "Role",
-		cell: (info) => {
-			const status = info.getValue();
-			const statusToLabel = status.replace(/_/g, " ").toLowerCase();
-			return (
-				<Badge className="capitalize " variant={"outline"}>
-					{statusToLabel}
-				</Badge>
-			);
-		},
-	}),
-	columnHelper.accessor("activity", {
-		header: "Activity",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("hotelName", {
-		header: "Hotel",
-		cell: (info) => info.getValue(),
-	}),
-	columnHelper.accessor("createdAt", {
-		header: "Timestamp",
-		cell: (info) =>
-			new Date(info.getValue()).toLocaleString(
-				Intl.DateTimeFormat().resolvedOptions().locale,
-				{
-					year: "numeric",
-					month: "short",
-					day: "2-digit",
-					hour: "2-digit",
-					minute: "2-digit",
-				},
-			),
-	}),
-];
-
-export function ManagerActivityLogPage({
-	breadcrumbs,
-	data = [],
-	paginationMeta,
-	exportAction,
-}: {
-	breadcrumbs: {
-		title: string;
-		breadcrumbs: Breadcrumb[];
-	};
-	data: ManagerActivityLog[];
-	paginationMeta: Pagination;
-	exportAction?: ExportAuditLogsAction;
-}) {
-	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const [pagination, onPaginationChange] = usePaginationSearchParams();
-
-	const table = useReactTable({
-		data,
-		columns,
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		onColumnFiltersChange: setColumnFilters,
-		onPaginationChange,
-		manualPagination: true,
-		pageCount: paginationMeta.totalPages,
-		state: {
-			columnFilters,
-			pagination,
-		},
-	});
-	const setBreadcrumb = useSetAtom(breadcrumbAtom);
-	useLayoutEffect(() => {
-		setBreadcrumb(breadcrumbs);
-		return () => setBreadcrumb(null);
-	}, [setBreadcrumb, breadcrumbs]);
-
-	return (
-		<div className="h-full w-full p-4 space-y-2 md:space-y-4">
-			<ListToolbar table={table} exportAction={exportAction} />
-			<ActivityLogTable table={table} />
-		</div>
+			</Modal>
+		</>
 	);
 }

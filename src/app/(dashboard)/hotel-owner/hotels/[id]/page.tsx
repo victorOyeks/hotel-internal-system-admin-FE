@@ -1,95 +1,17 @@
-import { ViewSingleHotelPage } from "@/components/roles/hotel-owner/view-single-hotel";
-import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
-import { getQueryClient } from "@/lib/queries";
-import { getCookieData } from "@/lib/server-fns";
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import {
-	createLoader,
-	parseAsStringEnum,
-	parseAsString,
-	type SearchParams,
-} from "nuqs/server";
-import { use } from "react";
+import { notFound } from "next/navigation";
+import { OwnerHotelDetail } from "@/components/roles/owner/hotel-detail";
+import { data } from "@/lib/data";
+import { ownerHotels } from "@/lib/demo/fixtures/owner";
 
-type PageProps = {
-	searchParams: Promise<SearchParams>;
-	params: Promise<{ id: string }>;
-};
+export const dynamic = "force-dynamic";
 
-enum RoomStatus {
-	CHECKED_IN = "CHECKED_IN",
-	CHECKED_OUT = "CHECKED_OUT",
-	RESERVED = "RESERVED",
-	CANCELLED = "CANCELLED",
-	AVAILABLE = "AVAILABLE",
-}
-
-const loadSearchParams = createLoader({
-	...paginationSearchParams,
-	roomType: parseAsString,
-	status: parseAsStringEnum(Object.values(RoomStatus)),
-	search: parseAsString,
-});
-
-export default function Page({ params, searchParams }: PageProps) {
-	const { id } = use(params);
-	const query = use(loadSearchParams(searchParams));
-	const cookieData = use(getCookieData())!;
-	const queryClient = getQueryClient();
-
-	const { content, ...paginationMeta } = use(
-		queryClient.ensureQueryData({
-			queryKey: ["hotel", id, query],
-			queryFn: async () => {
-				const response = await $fetch(
-					"@get/api/hotel-owners/hotels/:hotelId/rooms",
-					{
-						params: {
-							hotelId: id,
-						},
-						auth: {
-							type: "Bearer",
-							token: cookieData.token,
-						},
-						query: {
-							...query,
-							page: query.page ? query.page - 1 : 0,
-						},
-						throw: true,
-					},
-				);
-
-				return response.data;
-			},
-		}),
-	);
-
-	const breadcrumbs = {
-		title: "Hotel Details",
-		breadcrumbs: [
-			{
-				label: "Dashboard",
-				href: "/home",
-			},
-			{
-				label: "Properties",
-				href: "/hotels",
-			},
-			{
-				label: content.length > 0 ? content[0].hotelName : "Property",
-				href: `/dashboard/hotels/${id}`,
-			},
-		],
-	};
-
-	return (
-		<HydrationBoundary state={dehydrate(queryClient)}>
-			<ViewSingleHotelPage
-				breadcrumbs={breadcrumbs}
-				rooms={content}
-				paginationMeta={paginationMeta}
-			/>
-		</HydrationBoundary>
-	);
+/** Hotel Owner · 03 Hotel details & rooms. */
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+	const { id } = await params;
+	const hotel = ownerHotels.find((h) => h.hotelId === id);
+	if (!hotel) notFound();
+	const [rooms, types, staff] = await Promise.all([data.rooms.list(), data.rooms.types(), data.staff.list()]);
+	// The fixtures describe Ikeja; other branches show a slice sized to their room count.
+	const scaled = rooms.slice(0, hotel.rooms).map((r) => ({ ...r, id: `${hotel.hotelId}-${r.id}` }));
+	return <OwnerHotelDetail hotel={hotel} rooms={scaled} types={types} staff={staff.filter((s) => s.role !== "OWNER")} />;
 }

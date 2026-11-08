@@ -1,117 +1,70 @@
 import { type NextRequest, NextResponse } from "next/server";
-import type { HotelRole } from "./lib/types";
-import { tokenKey, decrypt, createSession, activeRoleKey } from "./lib/session";
+import { DEMO } from "./lib/demo/mode";
+import { isHotelRole, rolePaths } from "./lib/roles";
+import { COOKIES, decodeSession } from "./lib/session";
 
-const PREFIX_PATH = "/dashboard";
+const PREFIX = "/dashboard";
+/** Screens every role shares (Figma "Everywhere" / Staff · Shared): served from /shared/* for any role. */
+const SHARED = ["/notifications", "/profile", "/help", "/shifts"];
+const PUBLIC = ["/auth", "/forgot-password", "/reset-password"];
+const ROLE_FREE = ["/select-role"];
 
-const roleToPath: Record<HotelRole, string> = {
-	RESTAURANT: "/restaurant",
-	FRONT_DESK: "/front-desk",
-	HOTEL_OWNER: "/hotel-owner",
-	MANAGER: "/manager",
-	INVENTORY: "/inventory",
-	MARKETER: "/marketer",
-	RENTALS: "/rentals",
-	SUPER_ADMIN: "/admin",
-	LAUNDRY: "/laundry",
-	FINANCIALS: "/financials",
-};
-
-const publicPaths = ["/auth", "/verify-email", "/signup", "/forgot-password", "/reset-password"];
-
-const protectedRoleIndependentRoute = ["/select-role"];
+function startsWithAny(pathname: string, paths: string[]) {
+	return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
+	const token = request.cookies.get(COOKIES.token)?.value;
+	const session = token ? decodeSession(token) : null;
 
-	// 1. Check if public route
-	const isPublicRoute = publicPaths.some(
-		(path) => pathname === path || pathname.startsWith(`${path}/`),
-	);
-	const isProtectedRoleIndependentRoute = protectedRoleIndependentRoute.some(
-		(path) => pathname === path || pathname.startsWith(`${path}/`),
-	);
-
-	// 2. Initialize Redirect URL
-	const loginUrl = new URL("/auth", request.url);
-	loginUrl.searchParams.set("from", pathname);
-	const selectRoleUrl = new URL("/select-role", request.url);
-
-	// 3. Get Tokens
-	const accessToken = request.cookies.get(tokenKey)?.value;
-
-	// 4. Verify Access Token (Decrypt returns null if expired/invalid)
-	const session = accessToken ? decrypt(accessToken) : null;
-
-	// 6. Allow public routes to pass if they have no session
-	if (isPublicRoute && !session) {
-		return NextResponse.next();
+	if (startsWithAny(pathname, PUBLIC)) {
+		return session && pathname !== "/reset-password"
+			? NextResponse.redirect(new URL("/dashboard", request.url))
+			: NextResponse.next();
 	}
-
-	// 7. If no session, redirect to login
 	if (!session) {
-		return NextResponse.redirect(loginUrl);
+		const login = new URL("/auth", request.url);
+		login.searchParams.set("from", pathname);
+		return NextResponse.redirect(login);
 	}
 
-	// --- RBAC & REWRITES (Only runs if we have a valid session) ---
-
-	const userRole = request.cookies.get(activeRoleKey)?.value;
-
-	if (!userRole && !isPublicRoute && !isProtectedRoleIndependentRoute) {
-		// Before showing role selection, check if user needs to change password first
-		const resetPasswordUrl = new URL("/reset-password", request.url);
+	const role = request.cookies.get(COOKIES.role)?.value;
+	if (!role || !isHotelRole(role)) {
+		if (startsWithAny(pathname, ROLE_FREE)) return NextResponse.next();
+		if (DEMO) return NextResponse.redirect(new URL("/select-role", request.url));
+		// First sign-in with a temporary password: change it before anything else.
 		try {
-			const res = await fetch(
-				`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`,
-				{
-					headers: { Authorization: `Bearer ${accessToken}` },
-				},
-			);
+			const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/identity/users/me`, {
+				headers: { Authorization: `Bearer ${token}` },
+			});
 			if (res.ok) {
-				const { data } = await res.json();
-				if (!data.changedPassword) {
-					return NextResponse.redirect(resetPasswordUrl);
+				const body = await res.json();
+				if (body?.data?.changedPassword === false) {
+					return NextResponse.redirect(new URL("/reset-password", request.url));
 				}
 			}
 		} catch {
-			// If fetch fails, fall through to role selection
+			// fall through to the role picker
 		}
-		return NextResponse.redirect(selectRoleUrl);
+		return NextResponse.redirect(new URL("/select-role", request.url));
 	}
 
-	const expectedPath = roleToPath[userRole as HotelRole];
-
-	// Handle Rewrite Logic
-	if (pathname.startsWith(PREFIX_PATH)) {
-		const actualPath = pathname.slice(PREFIX_PATH.length) || "/";
-		const query = request.nextUrl.search;
-		const hashed = request.nextUrl.hash;
-
-		const rewriteUrl = new URL(expectedPath + actualPath, request.nextUrl);
-		rewriteUrl.search = query;
-		rewriteUrl.hash = hashed;
-
-		console.log("Rewriting to:", rewriteUrl.toString());
-		return NextResponse.rewrite(rewriteUrl);
+	const rolePath = rolePaths[role];
+	if (pathname.startsWith(PREFIX)) {
+		const rest = pathname.slice(PREFIX.length) || "/";
+		const base = SHARED.some((p) => rest === p || rest.startsWith(`${p}/`)) ? "/shared" : rolePath;
+		const target = new URL(base + (rest === "/" ? "" : rest), request.nextUrl);
+		target.search = request.nextUrl.search;
+		return NextResponse.rewrite(target);
 	}
-	// Handle 404 for direct access to protected paths
-	else if (expectedPath && pathname.startsWith(expectedPath)) {
-		// If user tries to visit /restaurant directly instead of /dashboard/restaurant
-		// You might want to allow this or rewrite, currently you 404 it.
-		return new NextResponse(null, {
-			status: 404,
-			statusText: "Not Found",
-		});
+	if ([...Object.values(rolePaths), "/shared"].some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+		// Role areas are only reachable through /dashboard.
+		return new NextResponse(null, { status: 404 });
 	}
-
-	// 8. FINAL STEP: Attach new cookies if we refreshed
-	if (accessToken) {
-		await createSession(accessToken);
-	}
-
 	return NextResponse.next();
 }
 
 export const config = {
-	matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+	matcher: ["/((?!api|_next/static|_next/image|icon|.*\\.(?:png|svg|ico)$).*)"],
 };

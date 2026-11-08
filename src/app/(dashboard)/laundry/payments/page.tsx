@@ -1,70 +1,9 @@
-import { LaundryPaymentsPage } from "@/components/roles/laundry/laundry-payments";
-import { $fetch } from "@/lib/fetch";
-import { paginationSearchParams } from "@/lib/nuqs.server";
-import { getQueryClient } from "@/lib/queries";
-import { getCookieData } from "@/lib/server-fns";
-import { createLoader, type SearchParams } from "nuqs/server";
-import { use } from "react";
+import { MyPaymentsScreen } from "@/components/roles/shared-staff/my-payments";
+import { data } from "@/lib/data";
 
-type PageProps = {
-	searchParams: Promise<SearchParams>;
-};
+export const dynamic = "force-dynamic";
 
-const loadSearchParams = createLoader(paginationSearchParams);
-
-const breadcrumbs = {
-	title: "Laundry Payments",
-	breadcrumbs: [
-		{ label: "Dashboard", href: "/dashboard" },
-		{ label: "Payments", href: "/dashboard/payments" },
-	],
-};
-
-export default function LaundryPaymentsPageRoute({ searchParams }: PageProps) {
-	const { token } = use(getCookieData())!;
-	const query = use(loadSearchParams(searchParams));
-	const qc = getQueryClient();
-
-	const { content: payments, ...paginationMeta } = use(
-		qc.ensureQueryData({
-			queryKey: ["laundry", "payments", query],
-			queryFn: async ({ signal }) => {
-				const response = await $fetch("@get/api/hotels/laundry/payments", {
-					query: {
-						page: query.page < 1 ? query.page : query.page - 1,
-						size: query.size,
-					},
-					auth: { type: "Bearer", token },
-					signal,
-					throw: true,
-				});
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return (response as any).data as any;
-			},
-		}),
-	);
-
-	const stats = use(
-		qc.ensureQueryData({
-			queryKey: ["laundry", "dashboard", "stats"],
-			queryFn: async ({ signal }) => {
-				const response = await $fetch("@get/api/hotels/laundry/dashboard/stats", {
-					auth: { type: "Bearer", token },
-					signal,
-					throw: true,
-				});
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return response.data as any;
-			},
-		}),
-	);
-
-	return (
-		<LaundryPaymentsPage
-			payments={payments}
-			paginationMeta={paginationMeta}
-			breadcrumbs={breadcrumbs}
-			stats={stats}
-		/>
-	);
+export default async function LaundryPaymentsPage() {
+	const payments = await data.payments.list();
+	return <MyPaymentsScreen payments={payments.filter((p) => p.role === "LAUNDRY")} roleTitle="Laundry" />;
 }
