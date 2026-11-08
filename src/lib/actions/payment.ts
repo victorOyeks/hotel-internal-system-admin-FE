@@ -56,3 +56,22 @@ export async function recordPayment(input: RecordPaymentInput): Promise<ActionRe
 	for (const p of ["/manager/bookings", "/manager/folios", "/manager/payments", "/front-desk", "/front-desk/bookings", "/front-desk/folios", "/front-desk/payments", "/manager"]) revalidatePath(p);
 	return { ok: true, data: { id: data.data.id, status: data.data.status, amount: Number(data.data.amount), method: data.data.method as PaymentMethod } };
 }
+
+/** Ask for a refund on a payment; the manager approves it in Payments → Refunds. */
+export async function requestRefund(paymentId: string, amount: number, reason: string): Promise<ActionResult<{ id: string; status: string }>> {
+	if (!live("payment")) {
+		await demoDelay(400);
+		return { ok: true, data: { id: `rf-${Date.now()}`, status: "PENDING_APPROVAL" } };
+	}
+	const s = await withSession();
+	const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment/payments/${paymentId}/refunds`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json", ...(s.auth ? { Authorization: `Bearer ${s.auth.token}` } : {}), ...(s.headers ?? {}) },
+		body: JSON.stringify({ amount, reason }),
+	});
+	const json = (await res.json().catch(() => null)) as { status?: boolean; message?: string; data?: { id: string; status: string } } | null;
+	if (!res.ok || !json?.status || !json.data) return { ok: false, error: json?.message ?? "The refund could not be requested" };
+	revalidatePath("/manager/payments");
+	revalidatePath("/front-desk/payments");
+	return { ok: true, data: { id: json.data.id, status: json.data.status } };
+}

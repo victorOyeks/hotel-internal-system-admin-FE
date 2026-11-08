@@ -3,10 +3,10 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { CreditCardIcon, MailIcon, PercentIcon, PlusIcon, PrinterIcon, ReceiptIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@/components/shared/data-table";
 import { Note, Timeline, TotalsList } from "@/components/shared/detail-list";
-import { ChoiceCards, MoneyField, SelectField, TextField } from "@/components/shared/field";
+import { ChoiceCards, MoneyField, SelectField, TextField, TextareaField } from "@/components/shared/field";
 import { fmtWhen, naira, plural } from "@/components/shared/format";
 import { Modal } from "@/components/shared/modal";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,6 +17,8 @@ import { StatusPill } from "@/components/shared/status-pill";
 import { SearchBox, Toolbar } from "@/components/shared/toolbar";
 import { btn } from "@/components/shared/ui";
 import type { FolioLine, FolioRow, TerminalRow } from "@/lib/data/types";
+import { giveDiscount, postCharge, staySummary, voidLine } from "@/lib/actions/folio";
+import { useAction } from "@/lib/actions/use-action";
 import { useDemoAction } from "@/lib/demo/actions";
 import { cn } from "@/lib/utils";
 import { type PaymentTarget, TakePaymentPanel } from "./take-payment";
@@ -67,7 +69,7 @@ export function FoliosScreen({ folios: initial, terminals, isManager = false, ti
 		<>
 			<PageHeader title={title} subtitle={`${lists.open.length} open · ${naira(lists.balance.reduce((s, f) => s + f.balance, 0))} outstanding across ${plural(lists.balance.length, "folio")}`} />
 			<Toolbar left={<PillTabs value={active} onChange={(k) => void setTab(k === "open" ? null : k)} tabs={[{ key: "open", label: "Open", count: lists.open.length }, { key: "balance", label: "With balance", count: lists.balance.length }, { key: "closed", label: "Closed", count: lists.closed.length }, { key: "all", label: "All", count: folios.length }]} />} right={<SearchBox value={search} onChange={setSearch} placeholder="Guest, room, reference…" />} />
-			<DataTable columns={columns} data={lists[active]} search={search} onRowClick={(f) => void setOpenId(f.id)} />
+			<DataTable columns={columns} data={lists[active]} search={search} onRowClick={(f) => void setOpenId(f.id)} emptyTitle={active === "closed" ? "No closed folios in this list" : active === "balance" ? "Nobody owes anything" : "No open folios"} emptyHint={active === "closed" ? "This list shows the folios open right now; a closed folio is on its booking under Bookings → Past." : active === "open" ? "A folio opens when a guest checks in." : undefined} />
 
 			<SidePanel
 				open={!!folio}
@@ -120,8 +122,8 @@ export function FoliosScreen({ folios: initial, terminals, isManager = false, ti
 				)}
 			</SidePanel>
 
-			{folio && <PostChargeModal folio={folio} open={modal === "charge"} onOpenChange={(o) => !o && setModal(null)} onPosted={(line) => patch(folio.id, (f) => ({ ...f, lines: [...f.lines, line], charges: f.charges + line.amount, tax: f.tax + line.tax, balance: f.balance + line.amount + line.tax }))} />}
-			{folio && <DiscountVoidModal folio={folio} open={modal === "discount"} onOpenChange={(o) => !o && setModal(null)} isManager={isManager} onApplied={(line) => patch(folio.id, (f) => ({ ...f, lines: [...f.lines, line], discounts: f.discounts + line.amount, balance: f.balance - line.amount }))} />}
+			{folio && <PostChargeModal folio={folio} open={modal === "charge"} onOpenChange={(o) => !o && setModal(null)} onPosted={(updated) => patch(folio.id, () => updated)} />}
+			{folio && <DiscountVoidModal folio={folio} open={modal === "discount"} onOpenChange={(o) => !o && setModal(null)} isManager={isManager} onApplied={(updated) => patch(folio.id, () => updated)} />}
 			{folio && <SendFolioModal folio={folio} open={modal === "send"} onOpenChange={(o) => !o && setModal(null)} />}
 			<TakePaymentPanel open={payOpen} onOpenChange={setPayOpen} target={payTarget} folios={folios} terminals={terminals} onDone={(p) => { if (payTarget?.folioId) patch(payTarget.folioId, (f) => ({ ...f, payments: f.payments + p.amount, balance: f.balance - p.amount, lines: [...f.lines, { id: `l-${Date.now()}`, kind: "PAYMENT", description: `Payment by ${p.method.toLowerCase()}`, category: "Payment", amount: p.amount, tax: 0, postedAt: new Date().toISOString(), postedBy: "You", source: "PAYMENT" }] })); }} />
 		</>
@@ -131,15 +133,15 @@ export function FoliosScreen({ folios: initial, terminals, isManager = false, ti
 const categories = ["Restaurant", "Bar", "Laundry", "Minibar", "Late check-out", "Extra bed", "Damage", "Other"];
 
 /** 4.3 Post charge. */
-function PostChargeModal({ folio, open, onOpenChange, onPosted }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void; onPosted: (l: FolioLine) => void }) {
+function PostChargeModal({ folio, open, onOpenChange, onPosted }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void; onPosted: (updated: FolioRow) => void }) {
 	const [category, setCategory] = useState("");
 	const [desc, setDesc] = useState("");
 	const [amount, setAmount] = useState<number | "">("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const amt = typeof amount === "number" ? amount : 0;
 	const vat = ["Restaurant", "Bar"].includes(category) ? Math.round(amt * 0.075) : 0;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title="Post a charge" subtitle={`${folio.guestName} · Room ${folio.roomNumber}`} icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!category || amt <= 0 || pending} onClick={() => void run(`${naira(amt + vat)} posted to ${folio.guestName}'s folio`, () => { onPosted({ id: `l-${Date.now()}`, kind: "CHARGE", description: desc || category, category, amount: amt, tax: vat, postedAt: new Date().toISOString(), postedBy: "You", source: "FRONT_OFFICE" }); setDesc(""); setAmount(""); onOpenChange(false); })}>Post {naira(amt + vat)}</button></>}>
+		<Modal open={open} onOpenChange={onOpenChange} title="Post a charge" subtitle={`${folio.guestName} · Room ${folio.roomNumber}`} icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!category || amt <= 0 || pending} onClick={() => { const line: FolioLine = { id: `l-${Date.now()}`, kind: "CHARGE", description: desc || category, category, amount: amt, tax: vat, postedAt: new Date().toISOString(), postedBy: "You", source: "FRONT_OFFICE" }; void run(() => postCharge(folio.id, { description: desc || category, amount: amt, tax: vat, category }, { ...folio, lines: [...folio.lines, line], charges: folio.charges + amt, tax: folio.tax + vat, balance: folio.balance + amt + vat }), `${naira(amt + vat)} posted to ${folio.guestName}'s folio`, (updated) => { onPosted(updated); setDesc(""); setAmount(""); onOpenChange(false); }); }}>Post {naira(amt + vat)}</button></>}>
 			<div className="flex flex-col gap-4">
 				<SelectField label="Category" value={category} onChange={setCategory} options={categories} setupLink="charge categories" />
 				<TextField label="Description" value={desc} onChange={setDesc} placeholder="e.g. Late check-out to 3pm" />
@@ -150,17 +152,28 @@ function PostChargeModal({ folio, open, onOpenChange, onPosted }: { folio: Folio
 }
 
 /** 4.4 Discount / void — manager-only; others send a request. */
-function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void; isManager: boolean; onApplied: (l: FolioLine) => void }) {
+function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void; isManager: boolean; onApplied: (updated: FolioRow) => void }) {
 	const [kind, setKind] = useState<"DISCOUNT" | "VOID">("DISCOUNT");
 	const [lineId, setLineId] = useState("");
 	const [amount, setAmount] = useState<number | "">("");
 	const [reason, setReason] = useState("");
-	const { run, pending } = useDemoAction();
+	const demo = useDemoAction();
+	const act = useAction();
+	const pending = demo.pending || act.pending;
 	const amt = typeof amount === "number" ? amount : 0;
 	const line = folio.lines.find((l) => l.id === lineId);
 	const needsOwner = amt > 50000;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title={kind === "DISCOUNT" ? "Give a discount" : "Void a line"} subtitle={`${folio.guestName} · Folio ${folio.reference}`} icon={PercentIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || (kind === "DISCOUNT" ? amt <= 0 : !lineId) || pending} onClick={() => void run(isManager && !needsOwner ? (kind === "DISCOUNT" ? `${naira(amt)} discount applied` : "Line voided") : `Sent to the ${needsOwner ? "owner" : "manager"} to approve`, () => { if (isManager && !needsOwner) onApplied({ id: `l-${Date.now()}`, kind: "DISCOUNT", description: kind === "DISCOUNT" ? `Discount · ${reason}` : `Void · ${line?.description} · ${reason}`, category: "Adjustment", amount: kind === "DISCOUNT" ? amt : (line?.amount ?? 0) + (line?.tax ?? 0), tax: 0, postedAt: new Date().toISOString(), postedBy: "Manager", source: "MANAGER" }); setReason(""); setAmount(""); onOpenChange(false); }, isManager && !needsOwner ? undefined : { tone: "info" })}>{isManager && !needsOwner ? (kind === "DISCOUNT" ? "Apply discount" : "Void line") : "Send for approval"}</button></>} footerInfo={<span className="flex items-center gap-2"><ManagerMark /> {needsOwner ? "Over ₦50,000 goes to the owner" : "Logged in the activity log"}</span>}>
+		<Modal open={open} onOpenChange={onOpenChange} title={kind === "DISCOUNT" ? "Give a discount" : "Void a line"} subtitle={`${folio.guestName} · Folio ${folio.reference}`} icon={PercentIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || (kind === "DISCOUNT" ? amt <= 0 : !lineId) || pending} onClick={() => {
+					const done = () => { setReason(""); setAmount(""); onOpenChange(false); };
+					if (!isManager) { void demo.run(`Sent to the ${needsOwner ? "owner" : "manager"} to approve`, done, { tone: "info" }); return; }
+					if (kind === "VOID" && line) {
+						void act.run(() => voidLine(folio.id, line.id, reason, { ...folio, charges: folio.charges - line.amount, tax: folio.tax - line.tax, balance: folio.balance - (line.amount + line.tax), lines: folio.lines.map((l) => (l.id === line.id ? { ...l, voided: true, voidReason: reason } : l)) }), "Line voided", (updated) => { onApplied(updated); done(); });
+						return;
+					}
+					const discountLine: FolioLine = { id: `l-${Date.now()}`, kind: "DISCOUNT", description: `Discount · ${reason}`, category: "Adjustment", amount: amt, tax: 0, postedAt: new Date().toISOString(), postedBy: "Manager", source: "MANAGER" };
+					void act.run(() => giveDiscount(folio.id, amt, reason, needsOwner ? folio : { ...folio, lines: [...folio.lines, discountLine], discounts: folio.discounts + amt, balance: folio.balance - amt }), needsOwner ? "Discount sent to the owner for approval" : `${naira(amt)} discount applied`, (updated) => { onApplied(updated); done(); });
+				}}>{isManager && !needsOwner ? (kind === "DISCOUNT" ? "Apply discount" : "Void line") : "Send for approval"}</button></>} footerInfo={<span className="flex items-center gap-2"><ManagerMark /> {needsOwner ? "Over ₦50,000 goes to the owner" : "Logged in the activity log"}</span>}>
 			<div className="flex flex-col gap-4">
 				<ChoiceCards value={kind} onChange={setKind} columns={2} options={[{ value: "DISCOUNT", label: "Discount", hint: "Take an amount off the bill" }, { value: "VOID", label: "Void a line", hint: "Posted by mistake" }]} />
 				{kind === "VOID" ? <SelectField label="Line" value={lineId} onChange={setLineId} options={folio.lines.filter((l) => l.kind === "CHARGE" && !l.voided).map((l) => ({ value: l.id, label: `${l.description} · ${naira(l.amount + l.tax)}` }))} /> : <MoneyField label="Discount amount" value={amount} onChange={setAmount} required />}
@@ -171,16 +184,26 @@ function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: 
 	);
 }
 
-/** 4.6 Print or email. */
+/** 4.6 Print or email: the stay summary comes from folio-service; sending stays a demo until messaging is live. */
 function SendFolioModal({ folio, open, onOpenChange }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void }) {
-	const [how, setHow] = useState<"PRINT" | "EMAIL" | "WHATSAPP">("WHATSAPP");
+	const [how, setHow] = useState<"PRINT" | "EMAIL" | "WHATSAPP">("PRINT");
 	const [to, setTo] = useState(folio.guestEmail ?? folio.guestPhone ?? "");
-	const { run, pending } = useDemoAction();
+	const [summary, setSummary] = useState<string | null>(null);
+	const [copied, setCopied] = useState(false);
+	const demo = useDemoAction();
+	const act = useAction();
+	useEffect(() => {
+		if (!open) return;
+		setCopied(false);
+		void act.run(() => staySummary(folio.id), "Stay summary ready", (text) => setSummary(text));
+	}, [open, folio.id, act.run]);
+	const pending = demo.pending || act.pending;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title="Print or send the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="confirm" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={pending} onClick={() => void run(how === "PRINT" ? "Folio sent to the desk printer" : `Folio sent by ${how === "EMAIL" ? "email" : "WhatsApp"}`, () => onOpenChange(false))}>{how === "PRINT" ? "Print" : "Send"}</button></>}>
+		<Modal open={open} onOpenChange={onOpenChange} title="Print or send the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="form" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Close</button>{how === "PRINT" ? <button type="button" className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</button> : <button type="button" className={btn.primary} disabled={pending} onClick={() => void demo.run(`Folio sent by ${how === "EMAIL" ? "email" : "WhatsApp"}`, () => onOpenChange(false), { tone: "info" })}>Send</button>}</>}>
 			<div className="flex flex-col gap-4">
-				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "WHATSAPP", label: "WhatsApp" }, { value: "EMAIL", label: "Email" }, { value: "PRINT", label: "Print" }]} />
+				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "PRINT", label: "Print / copy" }, { value: "WHATSAPP", label: "WhatsApp" }, { value: "EMAIL", label: "Email" }]} />
 				{how !== "PRINT" && <TextField label={how === "EMAIL" ? "Email" : "WhatsApp number"} value={to} onChange={setTo} />}
+				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} onChange={() => undefined} rows={10} hint={how === "PRINT" ? "Copy it to the desk printer or a document" : "Messaging is not connected yet · sending is a demo"} />
 			</div>
 		</Modal>
 	);

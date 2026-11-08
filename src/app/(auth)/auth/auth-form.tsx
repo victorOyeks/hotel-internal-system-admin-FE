@@ -33,7 +33,7 @@ export function AuthForm({ from }: { from?: string }) {
 			}
 			toast.success("Signed in");
 			// Only return to an app page; "/" and anything outside the app go to the dashboard.
-			const back = from && from.startsWith("/dashboard") ? from : "/dashboard";
+			const back = from?.startsWith("/dashboard") ? from : "/dashboard";
 			router.replace(result.data.mustChangePassword ? "/reset-password" : back);
 		});
 	}

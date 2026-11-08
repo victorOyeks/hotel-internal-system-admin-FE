@@ -15,7 +15,8 @@ import { StatusPill } from "@/components/shared/status-pill";
 import { SearchBox, Toolbar } from "@/components/shared/toolbar";
 import { btn } from "@/components/shared/ui";
 import type { BookingRow, GuestRow } from "@/lib/data/types";
-import { useDemoAction } from "@/lib/demo/actions";
+import { saveGuest } from "@/lib/actions/reservation";
+import { useAction } from "@/lib/actions/use-action";
 import { statusPill } from "./bookings";
 
 /** Front office 5.1 · Guests directory + guest panel. */
@@ -27,7 +28,7 @@ export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]
 	const [adding, setAdding] = useState(false);
 	const [note, setNote] = useState("");
 	const [form, setForm] = useState({ name: "", phone: "", email: "" });
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const active = tab ?? "all";
 	const inHouseIds = new Set(bookings.filter((b) => b.status === "CHECKED_IN").map((b) => b.guestId));
 	const shown = guests.filter((g) => (active === "all" ? true : active === "in-house" ? inHouseIds.has(g.id) : active === "repeat" ? g.stays > 1 : g.blacklisted));
@@ -62,7 +63,7 @@ export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]
 						</PanelSection>
 						<PanelSection title="Add a note">
 							<TextareaField label="" value={note} onChange={setNote} rows={2} placeholder="Allergies, likes a quiet room…" />
-							<button type="button" className={`${btn.secondary} self-start`} disabled={!note || pending} onClick={() => void run("Note saved", () => { setGuests((xs) => xs.map((g) => (g.id === guest.id ? { ...g, notes: [g.notes, note].filter(Boolean).join(" · ") } : g))); setNote(""); })}>Save note</button>
+							<button type="button" className={`${btn.secondary} self-start`} disabled={!note || pending} onClick={() => { const notes = [guest.notes, note].filter(Boolean).join(" · "); void run(() => saveGuest({ fullName: guest.fullName, phone: guest.phone, email: guest.email, idType: guest.idType, idNumber: guest.idNumber, nationality: guest.nationality, preferences: guest.preferences, notes }, guest.id, { ...guest, notes }), "Note saved", (saved) => { setGuests((xs) => xs.map((g) => (g.id === guest.id ? { ...g, ...saved } : g))); setNote(""); }); }}>Save note</button>
 						</PanelSection>
 						<PanelSection title={`Stays (${stays.length})`}>
 							{stays.length === 0 ? <p className="text-[13px] text-ink-3">No bookings on record.</p> : (
@@ -81,7 +82,7 @@ export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]
 				)}
 			</SidePanel>
 
-			<SidePanel open={adding} onOpenChange={setAdding} title="Add a guest" subtitle="Without a booking · for walk-ins and companies" icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => setAdding(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!form.name || !form.phone || pending} onClick={() => void run("Guest added", () => { setGuests((xs) => [{ id: `g-${Date.now()}`, fullName: form.name, phone: form.phone, email: form.email || undefined, stays: 0, blacklisted: false }, ...xs]); setForm({ name: "", phone: "", email: "" }); setAdding(false); })}>Save guest</button></>}>
+			<SidePanel open={adding} onOpenChange={setAdding} title="Add a guest" subtitle="Without a booking · for walk-ins and companies" icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => setAdding(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!form.name || !form.phone || pending} onClick={() => void run(() => saveGuest({ fullName: form.name, phone: form.phone, email: form.email || undefined }, undefined, { id: `g-${Date.now()}`, fullName: form.name, phone: form.phone, email: form.email || undefined, stays: 0, blacklisted: false }), "Guest added", (saved) => { setGuests((xs) => [saved, ...xs]); setForm({ name: "", phone: "", email: "" }); setAdding(false); })}>Save guest</button></>}>
 				<div className="flex flex-col gap-4">
 					<TextField label="Full name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} required />
 					<TextField label="Phone" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} required placeholder="+234 …" />

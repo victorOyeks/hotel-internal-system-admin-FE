@@ -79,9 +79,9 @@ export function FoliosScreen({ hotelName, folios: initial, inHouse }: { hotelNam
 				left={<PillTabs param="tab" defaultValue="open" tabs={[{ key: "open", label: "Open", count: open.length }, { key: "balance", label: "Closed with balance", count: folios.filter((f) => inTab(f, "balance")).length }, { key: "closed", label: "Closed", count: folios.filter((f) => inTab(f, "closed")).length }]} />}
 				right={<SearchBox value={search} onChange={setSearch} placeholder="Guest, room, ref…" />}
 			/>
-			<DataTable columns={columns} data={folios.filter((f) => inTab(f, active))} search={search} onRowClick={(f) => setOpenId(f.id)} emptyTitle="No folios here" footer={<Link href="/dashboard/bookings?tab=in-house" className="font-semibold text-brand">In-house guests →</Link>} />
+			<DataTable columns={columns} data={folios.filter((f) => inTab(f, active))} search={search} onRowClick={(f) => setOpenId(f.id)} emptyTitle={active === "open" ? "No open folios" : "No closed folios in this list"} emptyHint={active === "open" ? "A folio opens when a guest checks in." : "This list shows the folios open right now; a closed folio is on its booking under Bookings → Past."} footer={<Link href="/dashboard/bookings?tab=in-house" className="font-semibold text-brand">In-house guests →</Link>} />
 
-			<FolioPanel folio={action ? null : selected} onClose={() => setOpenId(null)} onAction={(a) => setAction(a)} onVoid={(lineId, reason) => selected && patch(selected.id, (f) => { const line = f.lines.find((l) => l.id === lineId); const amt = line && line.kind === "CHARGE" ? line.amount + line.tax : 0; return { ...f, charges: f.charges - (line?.amount ?? 0), tax: f.tax - (line?.tax ?? 0), balance: f.balance - amt, lines: f.lines.map((l) => (l.id === lineId ? { ...l, voided: true, voidReason: reason } : l)) }; })} />
+			<FolioPanel folio={action ? null : selected} onClose={() => setOpenId(null)} onAction={(a) => setAction(a)} onReplace={(updated) => patch(updated.id, () => updated)} />
 			<FolioModals folio={selected} action={(action as FolioAction | null) ?? null} others={folios.filter((f) => f.status === "OPEN" && f.id !== selected?.id)} onClose={() => setAction(null)} onPatch={patch} />
 		</>
 	);

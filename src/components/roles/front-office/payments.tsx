@@ -18,7 +18,8 @@ import { StatusPill } from "@/components/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@/components/shared/toolbar";
 import { btn } from "@/components/shared/ui";
 import type { FolioRow, PaymentRow, PaymentStatus, TerminalRow } from "@/lib/data/types";
-import { useDemoAction } from "@/lib/demo/actions";
+import { requestRefund } from "@/lib/actions/payment";
+import { useAction } from "@/lib/actions/use-action";
 import { TakePaymentPanel } from "./take-payment";
 
 export const payTone: Record<PaymentStatus, { label: string; tone: "success" | "warning" | "danger" | "info" | "grey" }> = {
@@ -99,7 +100,7 @@ export function MyPaymentsScreen({ payments: initial, folios, terminals, me, rol
 			</SidePanel>
 
 			<RefundRequestModal payment={refundFor} onOpenChange={(o) => !o && setRefundFor(null)} />
-			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={folios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: `p-${Date.now()}`, reference: `PAY-${String(xs.length + 1).padStart(5, "0")}`, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.method === "TRANSFER" ? "PROCESSING" : "APPROVED", terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.method === "TRANSFER" ? undefined : new Date().toISOString(), receiptSent: "WHATSAPP", description: "Room charges" }, ...xs])} />
+			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={folios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: p.id, reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`, folioId: p.folioId, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.status, terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.status === "APPROVED" ? new Date().toISOString() : undefined, receiptSent: "WHATSAPP", description: "Room charges" }, ...xs])} />
 		</>
 	);
 }
@@ -109,10 +110,10 @@ export function RefundRequestModal({ payment, onOpenChange }: { payment: Payment
 	const [amount, setAmount] = useState<number | "">("");
 	const [reason, setReason] = useState("");
 	const [note, setNote] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	if (!payment) return null;
 	return (
-		<Modal open={!!payment} onOpenChange={onOpenChange} title="Request a refund" subtitle={`${payment.guestName} · ${naira(payment.amount)} by ${payment.method.toLowerCase()}`} icon={RotateCcwIcon} size="confirm" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || pending} onClick={() => void run("Refund request sent to the manager", () => onOpenChange(false), { tone: "info" })}>Send to manager</button></>} footerInfo={<span className="flex items-center gap-2"><ManagerMark /> Refunds need a manager</span>}>
+		<Modal open={!!payment} onOpenChange={onOpenChange} title="Request a refund" subtitle={`${payment.guestName} · ${naira(payment.amount)} by ${payment.method.toLowerCase()}`} icon={RotateCcwIcon} size="confirm" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || pending} onClick={() => void run(() => requestRefund(payment.id, amount === "" ? payment.amount : amount, note ? `${reason} · ${note}` : reason), "Refund request sent to the manager", () => onOpenChange(false))}>Send to manager</button></>} footerInfo={<span className="flex items-center gap-2"><ManagerMark /> Refunds need a manager</span>}>
 			<div className="flex flex-col gap-4">
 				<MoneyField label="Amount to refund" value={amount === "" ? payment.amount : amount} onChange={setAmount} hint={`Up to ${naira(payment.amount)}`} />
 				<SelectField label="Reason" value={reason} onChange={setReason} options={["Charged twice", "Guest left early", "Service issue", "Booking cancelled", "Other"]} setupLink="reasons" />

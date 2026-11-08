@@ -9,18 +9,22 @@ import { Note, TotalsList } from "@/components/shared/detail-list";
 import { PanelSection, SidePanel } from "@/components/shared/side-panel";
 import { StatusPill } from "@/components/shared/status-pill";
 import { btn } from "@/components/shared/ui";
-import type { FolioRow, PaymentMethod, TerminalRow } from "@/lib/data/types";
+import { recordPayment } from "@/lib/actions/payment";
+import type { FolioRow, PaymentMethod, PaymentStatus, TerminalRow } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 
-export type PaymentTarget = { guestName: string; roomNumber?: string; folioId?: string; amountDue: number; description?: string };
+export type PaymentTarget = { guestName: string; roomNumber?: string; folioId?: string; bookingId?: string; amountDue: number; description?: string; guestPhone?: string; guestEmail?: string };
+export type TakenPayment = { id: string; amount: number; method: PaymentMethod; guestName: string; status: PaymentStatus; folioId?: string; bookingId?: string };
 
 type Step = "who" | "method" | "card" | "transfer" | "cash" | "receipt" | "done";
-type CardState = "waiting" | "paying" | "approved" | "declined" | "no_response";
+type CardState = "waiting" | "paying" | "sent" | "approved" | "declined" | "no_response";
 
 /**
  * Front office 8.1–8.12 · Taking payment. One panel, one step at a time: who is paying and how much,
- * the method, the terminal / transfer / cash step, the receipt, done. The POS result is simulated:
- * the first attempt is approved unless the amount ends in 999 (declined) or 777 (no response).
+ * the method, the terminal / transfer / cash step, the receipt, done. Card goes to payment-service as
+ * soon as the step opens and the panel shows what the service answered: approved, declined, no
+ * response, or still processing (the POS confirms later; the payment sits in My payments until then).
+ * Transfer and cash are recorded when the desk confirms them.
  */
 export function TakePaymentPanel({
 	open,
@@ -35,7 +39,7 @@ export function TakePaymentPanel({
 	target?: PaymentTarget | null;
 	folios?: FolioRow[];
 	terminals?: TerminalRow[];
-	onDone?: (payment: { amount: number; method: PaymentMethod; guestName: string }) => void;
+	onDone?: (payment: TakenPayment) => void;
 }) {
 	const [step, setStep] = useState<Step>("who");
 	const [folioId, setFolioId] = useState("");
@@ -50,6 +54,8 @@ export function TakePaymentPanel({
 	const [receipt, setReceipt] = useState<"WHATSAPP" | "EMAIL" | "NONE">("WHATSAPP");
 	const [contact, setContact] = useState("");
 	const [sending, setSending] = useState(false);
+	const [recorded, setRecorded] = useState<TakenPayment | null>(null);
+	const [cardError, setCardError] = useState<string | null>(null);
 
 	// Reset whenever the panel opens for a new target.
 	useEffect(() => {
@@ -65,36 +71,62 @@ export function TakePaymentPanel({
 		setTendered("");
 		setReceipt("WHATSAPP");
 		setContact("");
+		setRecorded(null);
+		setCardError(null);
 	}, [open, target]);
 
-	// Simulated terminal: sent → guest paying → result.
+	// Card: send the request to payment-service and show what the terminal answered.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt re-sends; the other values are read once per attempt
 	useEffect(() => {
 		if (step !== "card") return;
+		let cancelled = false;
 		setCard("waiting");
-		const t1 = setTimeout(() => setCard("paying"), 900);
-		const t2 = setTimeout(() => {
-			const n = typeof amount === "number" ? amount : 0;
-			if (attempt === 0 && n % 1000 === 999) setCard("declined");
-			else if (attempt === 0 && n % 1000 === 777) setCard("no_response");
-			else setCard("approved");
-		}, 2600);
+		setCardError(null);
+		const n = typeof amount === "number" ? amount : 0;
+		const t = setTimeout(() => !cancelled && setCard("paying"), 700);
+		recordPayment({ method: "CARD", amount: n, folioId: folioId || target?.folioId, bookingId: target?.bookingId, guestName, guestPhone: target?.guestPhone, guestEmail: target?.guestEmail, description, receipt: "WHATSAPP" }).then((r) => {
+			if (cancelled) return;
+			if (!r.ok) {
+				setCardError(r.error);
+				setCard("no_response");
+				return;
+			}
+			setRecorded({ ...r.data, guestName, folioId: folioId || target?.folioId, bookingId: target?.bookingId });
+			if (r.data.status === "APPROVED") setCard("approved");
+			else if (r.data.status === "DECLINED" || r.data.status === "FAILED") setCard("declined");
+			else if (r.data.status === "NO_RESPONSE") setCard("no_response");
+			else setCard("sent");
+		});
 		return () => {
-			clearTimeout(t1);
-			clearTimeout(t2);
+			cancelled = true;
+			clearTimeout(t);
 		};
-	}, [step, attempt, amount]);
+	}, [step, attempt]);
 
 	const amt = typeof amount === "number" ? amount : 0;
 	const folio = folios.find((f) => f.id === folioId);
-	const title = { who: "Take a payment", method: "How is the guest paying?", card: card === "approved" ? "Approved on the terminal" : card === "declined" ? "Declined on the terminal" : card === "no_response" ? "No response from the terminal" : "Waiting for the guest on the POS", transfer: "Bank transfer", cash: "Cash", receipt: "Send a receipt", done: "Payment recorded" }[step];
+	const title = { who: "Take a payment", method: "How is the guest paying?", card: card === "approved" ? "Approved on the terminal" : card === "declined" ? "Declined on the terminal" : card === "no_response" ? "No response from the terminal" : card === "sent" ? "Sent to the POS" : "Waiting for the guest on the POS", transfer: "Bank transfer", cash: "Cash", receipt: "Send a receipt", done: recorded && recorded.status !== "APPROVED" ? "Payment sent" : "Payment recorded" }[step];
 	const subtitle = guestName ? `${guestName}${folio?.roomNumber ? ` · Room ${folio.roomNumber}` : target?.roomNumber ? ` · Room ${target.roomNumber}` : ""} · ${naira(amt)}` : "Choose who is paying";
 
 	async function finish() {
 		setSending(true);
-		await new Promise((r) => setTimeout(r, 500));
+		let payment = recorded;
+		if (!payment) {
+			// Transfer and cash are recorded when the desk confirms them.
+			const r = await recordPayment({ method, amount: amt, folioId: folioId || target?.folioId, bookingId: target?.bookingId, guestName, guestPhone: target?.guestPhone, guestEmail: target?.guestEmail, description: contact ? `${description} · ${contact}` : description, receipt });
+			if (!r.ok) {
+				setSending(false);
+				toast.error(r.error);
+				return;
+			}
+			payment = { ...r.data, guestName, folioId: folioId || target?.folioId, bookingId: target?.bookingId };
+			setRecorded(payment);
+		}
 		setSending(false);
-		toast.success(`${naira(amt)} ${method === "CARD" ? "by card" : method === "TRANSFER" ? "by transfer" : "in cash"} recorded`, { description: receipt === "NONE" ? "No receipt sent" : `Receipt sent by ${receipt === "WHATSAPP" ? "WhatsApp" : "email"}` });
-		onDone?.({ amount: amt, method, guestName });
+		const label = method === "CARD" ? "by card" : method === "TRANSFER" ? "by transfer" : "in cash";
+		if (payment.status === "APPROVED") toast.success(`${naira(amt)} ${label} recorded`, { description: receipt === "NONE" ? "No receipt sent" : `Receipt sent by ${receipt === "WHATSAPP" ? "WhatsApp" : "email"}` });
+		else toast.info(`${naira(amt)} ${label} is processing`, { description: method === "TRANSFER" ? "Finance matches it to the bank line" : "The POS confirms it; see My payments" });
+		onDone?.(payment);
 		setStep("done");
 	}
 
@@ -117,17 +149,17 @@ export function TakePaymentPanel({
 					</>
 				);
 			case "card":
-				if (card === "approved") return <button type="button" className={btn.primary} onClick={() => setStep("receipt")}>Continue to receipt</button>;
+				if (card === "approved" || card === "sent") return <button type="button" className={btn.primary} onClick={() => setStep("receipt")}>Continue to receipt</button>;
 				if (card === "declined" || card === "no_response")
 					return (
 						<>
-							<button type="button" className={btn.secondary} onClick={() => setStep("method")}>Try another way</button>
-							<button type="button" className={btn.primary} onClick={() => setAttempt((a) => a + 1)}>Try again on POS</button>
+							<button type="button" className={btn.secondary} onClick={() => { setRecorded(null); setStep("method"); }}>Try another way</button>
+							<button type="button" className={btn.primary} onClick={() => { setRecorded(null); setAttempt((a) => a + 1); }}>Try again on POS</button>
 						</>
 					);
 				return (
 					<>
-						<button type="button" className={btn.secondary} onClick={() => setStep("method")}>Cancel payment</button>
+						<button type="button" className={btn.secondary} onClick={() => { setRecorded(null); setStep("method"); }}>Cancel payment</button>
 						<button type="button" className={btn.primary} onClick={() => onOpenChange(false)}>Minimize</button>
 					</>
 				);
@@ -218,22 +250,24 @@ export function TakePaymentPanel({
 					)}
 					<div>
 						<p className="text-lg font-bold text-ink">
-							{card === "waiting" ? "Sending to the terminal…" : card === "paying" ? "Processing on the terminal…" : card === "approved" ? `${naira(amt)} approved` : card === "declined" ? "The bank declined this card" : "The terminal didn't answer"}
+							{card === "waiting" ? "Sending to the terminal…" : card === "paying" ? "Processing on the terminal…" : card === "approved" ? `${naira(amt)} approved` : card === "sent" ? `${naira(amt)} sent to the POS` : card === "declined" ? "The bank declined this card" : "The terminal didn't answer"}
 						</p>
 						<p className="mt-1 max-w-sm text-[13px] text-ink-3">
 							{card === "approved"
-								? `Provider ref MP-${Math.floor(10000 + Math.random() * 89999)} · posted to the folio.`
-								: card === "declined"
-									? "Nothing was charged. Ask the guest for another card, or take a transfer or cash."
-									: card === "no_response"
-										? "Check the terminal is on and connected, then try again. Nothing was charged."
-										: `Hand ${terminals.find((t) => t.id === terminal)?.name ?? "the POS"} to the guest. This updates on its own when the POS says approved or declined.`}
+								? `${recorded?.id ? `Payment ${recorded.id.slice(0, 8).toUpperCase()} · ` : ""}posted to the folio.`
+								: card === "sent"
+									? "The guest taps or inserts the card. The payment stays as processing in My payments until the POS confirms it; the folio updates on its own."
+									: card === "declined"
+										? "Nothing was charged. Ask the guest for another card, or take a transfer or cash."
+										: card === "no_response"
+											? (cardError ?? "Check the terminal is on and connected, then try again. Nothing was charged.")
+											: `Hand ${terminals.find((t) => t.id === terminal)?.name ?? "the POS"} to the guest. This updates when the POS answers.`}
 						</p>
 					</div>
 					<div className="flex gap-2">
-						<StatusPill tone="success">Sent to POS</StatusPill>
-						<StatusPill tone={card === "waiting" ? "grey" : "warning"}>Guest paying</StatusPill>
-						<StatusPill tone={card === "approved" ? "success" : card === "paying" || card === "waiting" ? "grey" : "danger"}>Result</StatusPill>
+						<StatusPill tone={card === "waiting" ? "grey" : "success"}>Sent to POS</StatusPill>
+						<StatusPill tone={card === "waiting" ? "grey" : card === "sent" ? "info" : "warning"}>Guest paying</StatusPill>
+						<StatusPill tone={card === "approved" ? "success" : card === "paying" || card === "waiting" || card === "sent" ? "grey" : "danger"}>Result</StatusPill>
 					</div>
 				</div>
 			)}
@@ -287,8 +321,8 @@ export function TakePaymentPanel({
 			{step === "done" && (
 				<div className="flex flex-col items-center gap-3 py-8 text-center">
 					<CheckCircle2Icon className="size-16 text-success" />
-					<p className="text-lg font-bold text-ink">{naira(amt)} recorded</p>
-					<p className="max-w-sm text-[13px] text-ink-3">{guestName}'s folio is updated and the payment is in My payments. {method === "CASH" ? "The cash is counted in your till." : method === "TRANSFER" ? "Finance will match the transfer." : ""}</p>
+					<p className="text-lg font-bold text-ink">{naira(amt)} {recorded && recorded.status !== "APPROVED" ? "processing" : "recorded"}</p>
+					<p className="max-w-sm text-[13px] text-ink-3">{recorded && recorded.status !== "APPROVED" ? `It shows in My payments as processing until it is confirmed; ${guestName}'s folio updates then.` : `${guestName}'s folio is updated and the payment is in My payments.`} {method === "CASH" ? "The cash is counted in your till." : method === "TRANSFER" ? "Finance will match the transfer." : ""}</p>
 					<LandmarkIcon className="hidden" />
 				</div>
 			)}

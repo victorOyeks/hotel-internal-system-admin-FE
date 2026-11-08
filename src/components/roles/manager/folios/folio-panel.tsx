@@ -12,16 +12,17 @@ import { ManagerMark } from "@/components/shared/row-actions";
 import { PanelSection, SidePanel, WhatHappens } from "@/components/shared/side-panel";
 import { StatusPill } from "@/components/shared/status-pill";
 import { btn } from "@/components/shared/ui";
-import { useDemoAction } from "@/lib/demo/actions";
+import { voidLine } from "@/lib/actions/folio";
+import { useAction } from "@/lib/actions/use-action";
 import type { FolioLine, FolioRow } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import type { FolioAction } from "./folio-modals";
 import { folioStatus } from "./folios-screen";
 
-export function FolioPanel({ folio: f, onClose, onAction, onVoid }: { folio: FolioRow | null; onClose: () => void; onAction: (a: FolioAction) => void; onVoid: (lineId: string, reason: string) => void }) {
+export function FolioPanel({ folio: f, onClose, onAction, onReplace }: { folio: FolioRow | null; onClose: () => void; onAction: (a: FolioAction) => void; onReplace: (updated: FolioRow) => void }) {
 	const [voiding, setVoiding] = useState<FolioLine | null>(null);
 	const [reason, setReason] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	if (!f) return null;
 	const status = folioStatus(f);
 	const isOpen = f.status === "OPEN";
@@ -82,7 +83,7 @@ export function FolioPanel({ folio: f, onClose, onAction, onVoid }: { folio: Fol
 			</SidePanel>
 
 			<ConfirmModal open={!!voiding} onOpenChange={(o) => !o && setVoiding(null)} title={`Void "${voiding?.description}"?`} subtitle={`${naira((voiding?.amount ?? 0) + (voiding?.tax ?? 0))} comes off the folio · manager only`} tone="danger" confirmLabel="Void line" pending={pending || !reason}
-				onConfirm={() => voiding && run("Line voided", () => { onVoid(voiding.id, reason); setVoiding(null); })}
+				onConfirm={() => voiding && run(() => voidLine(f.id, voiding.id, reason, { ...f, charges: f.charges - voiding.amount, tax: f.tax - voiding.tax, balance: f.balance - (voiding.amount + voiding.tax), lines: f.lines.map((l) => (l.id === voiding.id ? { ...l, voided: true, voidReason: reason } : l)) }), "Line voided", (updated) => { onReplace(updated); setVoiding(null); })}
 			>
 				<div className="flex flex-col gap-4">
 					<SelectField label="Reason" value={reason} onChange={setReason} setupLink="reasons" options={["Posted twice", "Wrong room", "Guest disputes it", "Comp by manager", "Other"]} />

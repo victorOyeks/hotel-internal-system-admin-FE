@@ -1,15 +1,18 @@
 "use client";
 
 import { ArrowRightLeftIcon, CreditCardIcon, PlusIcon, PrinterIcon, ReceiptIcon, ScissorsIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Note, TotalsList } from "@/components/shared/detail-list";
-import { ChoiceCards, FieldRow, MoneyField, SelectField, TextField, ToggleField } from "@/components/shared/field";
+import { ChoiceCards, FieldRow, MoneyField, SelectField, TextField, TextareaField, ToggleField } from "@/components/shared/field";
 import { naira } from "@/components/shared/format";
 import { Modal } from "@/components/shared/modal";
 import { ManagerMark } from "@/components/shared/row-actions";
 import { WhatHappens } from "@/components/shared/side-panel";
 import { btn } from "@/components/shared/ui";
+import { giveDiscount, moveLines, postCharge, staySummary } from "@/lib/actions/folio";
+import { recordPayment } from "@/lib/actions/payment";
+import { useAction } from "@/lib/actions/use-action";
 import { useDemoAction } from "@/lib/demo/actions";
 import type { FolioLine, FolioRow, PaymentMethod } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
@@ -29,7 +32,7 @@ export function FolioModals({ folio, action, others, onClose, onPatch }: { folio
 		case "charge": return <PostChargeModal f={folio} onClose={onClose} onPatch={onPatch} />;
 		case "discount": return <DiscountModal f={folio} onClose={onClose} onPatch={onPatch} />;
 		case "payment": return <FolioPaymentModal f={folio} onClose={onClose} onPatch={onPatch} />;
-		case "split": return <SplitModal f={folio} onClose={onClose} />;
+		case "split": return <SplitModal f={folio} onClose={onClose} onPatch={onPatch} />;
 		case "transfer": return <TransferModal f={folio} others={others} onClose={onClose} onPatch={onPatch} />;
 		case "print": return <PrintModal f={folio} onClose={onClose} />;
 	}
@@ -38,7 +41,7 @@ export function FolioModals({ folio, action, others, onClose, onPatch }: { folio
 const categories = ["Accommodation", "Food", "Bar", "Laundry", "Minibar", "Late check-out", "Damage", "Other"];
 
 function PostChargeModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => void; onPatch: Patch }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [category, setCategory] = useState("Other");
 	const [desc, setDesc] = useState("");
 	const [amount, setAmount] = useState<number | "">("");
@@ -46,7 +49,7 @@ function PostChargeModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => 
 	const tax = vat && amount !== "" ? Math.round(amount * 0.075) : 0;
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Post a charge" subtitle={`${f.guestName} · ${f.roomNumber} · folio ${f.reference}`} icon={PlusIcon} size="form"
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !desc || amount === ""} onClick={() => amount !== "" && run(`${naira(amount + tax)} posted to ${f.roomNumber}`, () => { onPatch(f.id, (x) => addLine(x, { id: `l-${Date.now()}`, kind: "CHARGE", description: desc, category, amount, tax, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" })); onClose(); })}>Post charge</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !desc || amount === ""} onClick={() => amount !== "" && run(() => postCharge(f.id, { description: desc, amount, tax, category }, addLine(f, { id: `l-${Date.now()}`, kind: "CHARGE", description: desc, category, amount, tax, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" })), `${naira(amount + tax)} posted to ${f.roomNumber}`, (updated) => { onPatch(f.id, () => updated); onClose(); })}>Post charge</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<SelectField label="Category" value={category} onChange={setCategory} setupLink="charge categories" options={categories} />
@@ -59,7 +62,7 @@ function PostChargeModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => 
 }
 
 function DiscountModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => void; onPatch: Patch }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [mode, setMode] = useState<"amount" | "percent">("amount");
 	const [amount, setAmount] = useState<number | "">("");
 	const [pct, setPct] = useState("10");
@@ -69,7 +72,7 @@ function DiscountModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => vo
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Add a discount" subtitle={`${f.guestName} · charges ${naira(f.charges + f.tax)}`} icon={ReceiptIcon} size="form"
 			footerInfo={<span className="flex items-center gap-2"><ManagerMark /> {needsOwner ? "over ₦50,000 · owner approves" : "logged"}</span>}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || value <= 0 || !reason} onClick={() => run(needsOwner ? "Discount sent to the owner for approval" : `${naira(value)} discount applied`, () => { if (!needsOwner) onPatch(f.id, (x) => addLine(x, { id: `l-${Date.now()}`, kind: "DISCOUNT", description: `Discount · ${reason}`, category: "Discount", amount: value, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" })); onClose(); }, needsOwner ? { tone: "info" } : undefined)}>{needsOwner ? "Send to owner" : "Apply discount"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || value <= 0 || !reason} onClick={() => run(() => giveDiscount(f.id, value, reason, needsOwner ? f : addLine(f, { id: `l-${Date.now()}`, kind: "DISCOUNT", description: `Discount · ${reason}`, category: "Discount", amount: value, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" })), needsOwner ? "Discount sent to the owner for approval" : `${naira(value)} discount applied`, (updated) => { onPatch(f.id, () => updated); onClose(); })}>{needsOwner ? "Send to owner" : "Apply discount"}</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<ChoiceCards value={mode} onChange={setMode} columns={2} options={[{ value: "amount", label: "Fixed amount" }, { value: "percent", label: "Percent of charges" }]} />
@@ -83,13 +86,13 @@ function DiscountModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => vo
 }
 
 function FolioPaymentModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => void; onPatch: Patch }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [amount, setAmount] = useState<number | "">(f.balance > 0 ? f.balance : "");
 	const [method, setMethod] = useState<PaymentMethod>("CARD");
 	const [receipt, setReceipt] = useState<"WHATSAPP" | "EMAIL" | "NONE">("WHATSAPP");
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Record payment" subtitle={`${f.guestName} · ${f.roomNumber} · ${naira(f.balance)} due`} icon={CreditCardIcon} size="form"
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || amount === "" || amount <= 0} onClick={() => amount !== "" && run(`${naira(amount)} recorded by ${method.toLowerCase()}`, () => { onPatch(f.id, (x) => addLine(x, { id: `l-${Date.now()}`, kind: "PAYMENT", description: `Payment by ${method.toLowerCase()}`, category: "Payment", amount, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "PAYMENT" })); onClose(); })}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || amount === "" || amount <= 0} onClick={() => amount !== "" && run(() => recordPayment({ method, amount, folioId: f.id, bookingId: f.bookingId || undefined, guestName: f.guestName, guestPhone: f.guestPhone, guestEmail: f.guestEmail, description: `Folio ${f.reference} · ${f.roomNumber}`, receipt }), method === "CARD" ? `${naira(amount)} sent to the POS` : `${naira(amount)} recorded by ${method.toLowerCase()}`, (p) => { if (p.status === "APPROVED") onPatch(f.id, (x) => addLine(x, { id: p.id, kind: "PAYMENT", description: `Payment by ${method.toLowerCase()}`, category: "Payment", amount, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "PAYMENT" })); onClose(); })}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<ChoiceCards label="Paid by" value={method} onChange={setMethod} columns={3} options={[{ value: "CARD", label: "Card · POS" }, { value: "TRANSFER", label: "Transfer" }, { value: "CASH", label: "Cash" }]} />
@@ -100,8 +103,8 @@ function FolioPaymentModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () =
 	);
 }
 
-function SplitModal({ f, onClose }: { f: FolioRow; onClose: () => void }) {
-	const { run, pending } = useDemoAction();
+function SplitModal({ f, onClose, onPatch }: { f: FolioRow; onClose: () => void; onPatch: Patch }) {
+	const { run, pending } = useAction();
 	const charges = f.lines.filter((l) => l.kind === "CHARGE" && !l.voided);
 	const [picked, setPicked] = useState<string[]>([]);
 	const [payer, setPayer] = useState("");
@@ -109,7 +112,7 @@ function SplitModal({ f, onClose }: { f: FolioRow; onClose: () => void }) {
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Split folio" subtitle="Move some lines to a second folio with its own payer" icon={ScissorsIcon} size="large"
 			footerInfo={`${picked.length} lines · ${naira(total)}`}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || picked.length === 0 || !payer} onClick={() => run(`New folio opened for ${payer} · ${naira(total)}`, onClose)}>Split</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || picked.length === 0 || !payer} onClick={() => run(() => moveLines(f.id, picked, {}, { ...f, lines: f.lines.filter((l) => !picked.includes(l.id)), charges: f.charges - charges.filter((l) => picked.includes(l.id)).reduce((s, l) => s + l.amount, 0), tax: f.tax - charges.filter((l) => picked.includes(l.id)).reduce((s, l) => s + l.tax, 0), balance: f.balance - total }), `New folio opened for ${payer} · ${naira(total)}`, (updated) => { onPatch(f.id, () => updated); onClose(); })}>Split</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<TextField label="Second folio is paid by" value={payer} onChange={setPayer} placeholder="e.g. Shell Nigeria or a second guest" required />
@@ -127,35 +130,45 @@ function SplitModal({ f, onClose }: { f: FolioRow; onClose: () => void }) {
 }
 
 function TransferModal({ f, others, onClose, onPatch }: { f: FolioRow; others: FolioRow[]; onClose: () => void; onPatch: Patch }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [target, setTarget] = useState("");
 	const [whole, setWhole] = useState(true);
 	const to = others.find((o) => o.id === target);
+	const moving = f.lines.filter((l) => l.kind === "CHARGE" && !l.voided);
+	const movingTotal = moving.reduce((s, l) => s + l.amount + l.tax, 0);
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Transfer charges" subtitle={`From ${f.guestName} · ${f.roomNumber}`} icon={ArrowRightLeftIcon} size="form"
 			footerInfo={<span className="flex items-center gap-2"><ManagerMark /> logged</span>}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !to} onClick={() => to && run(`${naira(f.balance)} moved to ${to.guestName} · ${to.roomNumber}`, () => { onPatch(f.id, (x) => ({ ...x, balance: 0, payments: x.payments + f.balance, lines: [...x.lines, { id: `l-${Date.now()}`, kind: "PAYMENT" as const, description: `Transferred to ${to.guestName} · ${to.roomNumber}`, category: "Transfer", amount: f.balance, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" }] })); onPatch(to.id, (x) => addLine(x, { id: `l-${Date.now() + 1}`, kind: "CHARGE", description: `Transferred from ${f.guestName} · ${f.roomNumber}`, category: "Transfer", amount: f.balance, tax: 0, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" })); onClose(); })}>Transfer {naira(f.balance)}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !to} onClick={() => to && run(() => moveLines(f.id, moving.map((l) => l.id), { folioId: to.id }, { ...f, lines: f.lines.filter((l) => !moving.includes(l)), charges: 0, tax: 0, balance: f.balance - movingTotal }), `${naira(movingTotal)} moved to ${to.guestName} · ${to.roomNumber}`, (updated) => { onPatch(f.id, () => updated); onPatch(to.id, (x) => moving.reduce((acc, l) => addLine(acc, { ...l, id: `${l.id}-moved`, description: `${l.description} · from ${f.roomNumber}`, postedAt: now(), postedBy: "Tunde Bakare", source: "MANAGER" }), x)); onClose(); })}>Transfer {naira(movingTotal)}</Button></>}
 		>
 			<div className="flex flex-col gap-4">
 				<SelectField label="To folio" value={target} onChange={setTarget} options={others.map((o) => ({ value: o.id, label: `${o.guestName} · ${o.roomNumber}`, hint: `${naira(o.balance)} balance${o.organizationName ? ` · ${o.organizationName}` : ""}` }))} placeholder="Choose a guest in house" />
-				<ChoiceCards value={whole ? "all" : "some"} onChange={(v) => setWhole(v === "all")} columns={2} options={[{ value: "all", label: "Whole balance", hint: naira(f.balance) }, { value: "some", label: "Pick lines", hint: "Use Split for that" , disabled: true }]} />
-				<WhatHappens items={[`${f.guestName}'s folio balance goes to ₦0`, `${to?.guestName ?? "The other guest"} pays it at check-out`, "Both guests see it on their bill"]} />
+				<ChoiceCards value={whole ? "all" : "some"} onChange={(v) => setWhole(v === "all")} columns={2} options={[{ value: "all", label: "All charges", hint: `${moving.length} lines · ${naira(movingTotal)}` }, { value: "some", label: "Pick lines", hint: "Use Split for that" , disabled: true }]} />
+				<WhatHappens items={[`${f.guestName}'s charges move off this folio`, `${to?.guestName ?? "The other guest"} pays them at check-out`, "Both guests see it on their bill"]} />
 			</div>
 		</Modal>
 	);
 }
 
 function PrintModal({ f, onClose }: { f: FolioRow; onClose: () => void }) {
-	const { run, pending } = useDemoAction();
+	const demo = useDemoAction();
+	const act = useAction();
 	const [how, setHow] = useState<"print" | "email" | "whatsapp">("print");
 	const [detail, setDetail] = useState(true);
+	const [summary, setSummary] = useState<string | null>(null);
+	const [copied, setCopied] = useState(false);
+	useEffect(() => {
+		act.run(() => staySummary(f.id), "Stay summary ready", (text) => setSummary(text));
+	}, [f.id, act.run]);
+	const pending = demo.pending || act.pending;
 	return (
-		<Modal open onOpenChange={(o) => !o && onClose()} title="Print or send the folio" subtitle={`${f.guestName} · ${f.reference}`} icon={PrinterIcon} size="confirm"
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run(how === "print" ? "Sent to the front desk printer" : `Folio sent by ${how === "email" ? "email" : "WhatsApp"}`, onClose)}>{how === "print" ? "Print" : "Send"}</Button></>}
+		<Modal open onOpenChange={(o) => !o && onClose()} title="Print or send the folio" subtitle={`${f.guestName} · ${f.reference}`} icon={PrinterIcon} size="form"
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Close</Button>{how === "print" ? <Button className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</Button> : <Button className={btn.primary} disabled={pending} onClick={() => demo.run(`Folio sent by ${how === "email" ? "email" : "WhatsApp"}`, onClose, { tone: "info" })}>Send</Button>}</>}
 		>
 			<div className="flex flex-col gap-4">
-				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "print", label: "Print", hint: "Front desk" }, { value: "email", label: "Email", hint: f.guestEmail ?? "No email", disabled: !f.guestEmail }, { value: "whatsapp", label: "WhatsApp", hint: f.guestPhone ?? "No phone", disabled: !f.guestPhone }]} />
+				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "print", label: "Print / copy", hint: "Front desk" }, { value: "email", label: "Email", hint: f.guestEmail ?? "No email", disabled: !f.guestEmail }, { value: "whatsapp", label: "WhatsApp", hint: f.guestPhone ?? "No phone", disabled: !f.guestPhone }]} />
 				<ToggleField label="Show every line" hint="Off = totals by category only" checked={detail} onChange={setDetail} />
+				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} onChange={() => undefined} rows={10} hint={how === "print" ? "Copy it to the desk printer or a document" : "Messaging is not connected yet · sending is a demo"} />
 			</div>
 		</Modal>
 	);
