@@ -45,15 +45,14 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # First deploy to a fresh box: the target folder must exist before scp can write to it.
-          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 "${VPS_USER}@${VPS_HOST}" \
-            "mkdir -p /home/oyeks/apps/his-fe-staging"
+          # The app lives under the deploy user's home: ~/apps/his-fe-staging. Create it on a fresh box.
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 "${VPS_USER}@${VPS_HOST}" "mkdir -p apps/his-fe-staging"
 
           success=false
           for i in 1 2 3; do
             echo "SCP attempt $i..."
             if scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-              standalone.tar.gz "${VPS_USER}@${VPS_HOST}:/home/oyeks/apps/his-fe-staging/"; then
+              standalone.tar.gz "${VPS_USER}@${VPS_HOST}:apps/his-fe-staging/"; then
               success=true
               break
             fi
@@ -75,18 +74,39 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd /home/oyeks/apps/his-fe-staging
+            APP_DIR="$HOME/apps/his-fe-staging"
+            cd "$APP_DIR"
 
-            # First deploy: create the staging service from the develop one (same app, port 3001).
+            # First deploy on a box: create the systemd unit that runs the standalone server on port 3001.
             if ! systemctl cat his-fe-staging.service >/dev/null 2>&1; then
-              echo "his-fe-staging.service not found - creating it from his-fe-develop.service"
-              if ! systemctl cat his-fe-develop.service >/dev/null 2>&1; then
-                echo "his-fe-develop.service is missing too; create the systemd unit by hand (see README)"
+              echo "his-fe-staging.service not found - creating it"
+              if ss -ltn 2>/dev/null | grep -q ':3001 '; then
+                echo "Port 3001 is already in use by another process; stop it or change the port in the workflow"
                 exit 1
               fi
-              systemctl cat his-fe-develop.service \
-                | grep -v '^#' \
-                | sed -e 's#his-fe-develop#his-fe-staging#g' -e 's#PORT=3000#PORT=3001#g' -e 's#:3000#:3001#g' \
+              NODE_BIN="$(command -v node || true)"
+              if [ -z "$NODE_BIN" ]; then
+                echo "node is not on PATH for $USER; install Node or add it to PATH"
+                exit 1
+              fi
+              printf '%s\n' \
+                "[Unit]" \
+                "Description=HIS frontend (staging)" \
+                "After=network.target" \
+                "" \
+                "[Service]" \
+                "Type=simple" \
+                "User=$USER" \
+                "WorkingDirectory=$APP_DIR/current" \
+                "Environment=NODE_ENV=production" \
+                "Environment=PORT=3001" \
+                "Environment=HOSTNAME=0.0.0.0" \
+                "ExecStart=$NODE_BIN server.js" \
+                "Restart=always" \
+                "RestartSec=5" \
+                "" \
+                "[Install]" \
+                "WantedBy=multi-user.target" \
                 | sudo tee /etc/systemd/system/his-fe-staging.service >/dev/null
               sudo systemctl daemon-reload
               sudo systemctl enable his-fe-staging.service
