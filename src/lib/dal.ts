@@ -7,7 +7,7 @@ import { api } from "./api/client";
 import { withSession } from "./api/server";
 import type { Hotel, Me } from "./api/schema";
 import { demoHotels, demoMe } from "./demo/fixtures/hotel";
-import { DEMO } from "./demo/mode";
+import { DEMO_AUTH } from "./demo/mode";
 import { isHotelRole, type HotelRole } from "./roles";
 import { COOKIES, decodeSession } from "./session";
 
@@ -21,7 +21,7 @@ export const getSession = cache(async () => {
 });
 
 export const getUser = cache(async (): Promise<Me | null> => {
-	if (DEMO) {
+	if (DEMO_AUTH) {
 		const session = await getSession();
 		return demoMe(session.email, session.name, session.roleSet);
 	}
@@ -36,7 +36,7 @@ export const getUser = cache(async (): Promise<Me | null> => {
 export const getHotels = cache(async (): Promise<Hotel[]> => {
 	const session = await getSession();
 	if (session.scope === "platform") return [];
-	if (DEMO) return demoHotels;
+	if (DEMO_AUTH) return demoHotels;
 	const { data } = await api("@get/tenant/hotels", await withSession());
 	return data?.data ?? [];
 });

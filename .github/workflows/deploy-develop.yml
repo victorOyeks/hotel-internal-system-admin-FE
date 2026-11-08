@@ -21,11 +21,12 @@ jobs:
       - name: Build
         run: bun run build
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.DEV_NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || secrets.DEV_NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.DEV_NEXT_PUBLIC_APP_URL }}
           DOMAIN_URL: ${{ secrets.DEV_DOMAIN_URL }}
           # Demo mode is on until the backend is wired in; set the repo variable NEXT_PUBLIC_DEMO_MODE=false to turn it off.
           NEXT_PUBLIC_DEMO_MODE: ${{ vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
+          NEXT_PUBLIC_DEMO_AUTH: ${{ vars.NEXT_PUBLIC_DEMO_AUTH || vars.NEXT_PUBLIC_DEMO_MODE || 'true' }}
 
       - name: Prepare standalone bundle
         run: |

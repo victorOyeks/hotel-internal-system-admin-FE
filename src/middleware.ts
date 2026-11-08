@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { DEMO } from "./lib/demo/mode";
+import { DEMO_AUTH } from "./lib/demo/mode";
 import { isHotelRole, rolePaths } from "./lib/roles";
 import { COOKIES, decodeSession } from "./lib/session";
 
@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
 	const role = request.cookies.get(COOKIES.role)?.value;
 	if (!role || !isHotelRole(role)) {
 		if (startsWithAny(pathname, ROLE_FREE)) return NextResponse.next();
-		if (DEMO) return NextResponse.redirect(new URL("/select-role", request.url));
+		if (DEMO_AUTH) return NextResponse.redirect(new URL("/select-role", request.url));
 		// First sign-in with a temporary password: change it before anything else.
 		try {
 			const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/identity/users/me`, {
