@@ -65,7 +65,13 @@ import {
 } from "@hospio/api/actions/reservation";
 import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
-import { type PaymentTarget, TakePaymentPanel } from "./take-payment";
+import { dueAtCheckIn, useSaveFlow } from "./save-flow";
+import {
+	type PaymentTarget,
+	type TakenPayment,
+	TakePaymentPanel,
+	usePaymentSteps,
+} from "./take-payment";
 
 type Tab = "arrivals" | "departures" | "in-house" | "upcoming" | "all";
 
@@ -126,6 +132,8 @@ export function BookingsScreen({
 	const [bookings, setBookings] = useState(all);
 	const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 	const [payOpen, setPayOpen] = useState(false);
+	// Card payments the POS has not confirmed yet, per booking: the summary shows them instead of a paid amount.
+	const [onPos, setOnPos] = useState<Record<string, number>>({});
 	const { run, pending } = useAction();
 
 	const activeTab = (tab ?? "arrivals") as Tab;
@@ -145,6 +153,24 @@ export function BookingsScreen({
 	const selected = bookings.find((b) => b.id === openId) ?? null;
 	const update = (id: string, patch: Partial<BookingRow>) =>
 		setBookings((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+	/** A payment was recorded for a booking: approved ones count as paid, the rest wait on the POS. */
+	const paymentTaken = (bookingId: string, p: TakenPayment) => {
+		if (p.status === "APPROVED") {
+			setBookings((xs) =>
+				xs.map((x) =>
+					x.id === bookingId ? { ...x, paid: x.paid + p.amount } : x,
+				),
+			);
+			return;
+		}
+		setOnPos((m) => ({ ...m, [bookingId]: (m[bookingId] ?? 0) + p.amount }));
+	};
+	/** A flow ended: land on the booking summary. */
+	const openSummary = (id: string) => {
+		void setIsNew(null);
+		void setAction(null);
+		void setOpenId(id);
+	};
 	const closeAll = () => {
 		void setOpenId(null);
 		void setAction(null);
@@ -261,7 +287,9 @@ export function BookingsScreen({
 												bookingId: b.id,
 												guestPhone: b.guestPhone,
 												guestEmail: b.guestEmail,
-												amountDue: dueOnBooking(b) || Math.max(0, b.totalAmount - b.paid),
+												amountDue:
+													dueOnBooking(b) ||
+													Math.max(0, b.totalAmount - b.paid),
 												description: `Booking ${b.reference}`,
 											});
 											setPayOpen(true);
@@ -369,8 +397,9 @@ export function BookingsScreen({
 
 			<BookingPanel
 				booking={selected}
-				open={!!selected && !action}
+				open={!!selected && !action && !payOpen}
 				onOpenChange={(o) => !o && closeAll()}
+				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
 				folio={
 					selected
 						? (folios.find((f) => f.bookingId === selected.id) ?? null)
@@ -391,22 +420,24 @@ export function BookingsScreen({
 						bookingId: selected.id,
 						guestPhone: selected.guestPhone,
 						guestEmail: selected.guestEmail,
-						amountDue: dueOnBooking(selected) || Math.max(0, selected.totalAmount - selected.paid),
+						amountDue:
+							dueOnBooking(selected) ||
+							Math.max(0, selected.totalAmount - selected.paid),
 						description: `Booking ${selected.reference}`,
 					});
 					setPayOpen(true);
 				}}
 			/>
 
-			<CheckInModal
+			<CheckInPanel
 				booking={selected}
 				open={!!selected && action === "check-in"}
 				onOpenChange={(o) => !o && closeAll()}
 				rooms={rooms}
-				onPay={(t) => {
-					setPayTarget(t);
-					setPayOpen(true);
-				}}
+				folios={folios}
+				terminals={terminals}
+				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
+				onPaid={paymentTaken}
 				onDone={(changes) => {
 					if (selected) update(selected.id, changes);
 					closeAll();
@@ -495,26 +526,15 @@ export function BookingsScreen({
 				open={isNew === "1"}
 				onOpenChange={(o) => !o && void setIsNew(null)}
 				roomTypes={roomTypes}
+				rooms={rooms}
 				guests={guests}
 				organizations={organizations}
-				onCreated={(b) => {
-					setBookings((xs) => [b, ...xs]);
-					void setIsNew(null);
-					void setOpenId(b.id);
-					const due = dueOnBooking(b);
-					if (due > 0) {
-						setPayTarget({
-							guestName: b.guestName,
-							roomNumber: b.roomNumber,
-							bookingId: b.id,
-							guestPhone: b.guestPhone,
-							guestEmail: b.guestEmail,
-							amountDue: due,
-							description: `${b.paymentPlan === "DEPOSIT_50" ? "Deposit" : "Payment"} · ${b.reference}`,
-						});
-						setPayOpen(true);
-					}
-				}}
+				folios={folios}
+				terminals={terminals}
+				onCreated={(b) => setBookings((xs) => [b, ...xs])}
+				onPaid={paymentTaken}
+				onCheckedIn={update}
+				onFinish={openSummary}
 			/>
 			<TakePaymentPanel
 				open={payOpen}
@@ -523,13 +543,12 @@ export function BookingsScreen({
 				folios={folios}
 				terminals={terminals}
 				onDone={(p) => {
-					if (p.status !== "APPROVED") return;
 					const b = bookings.find((x) =>
 						p.bookingId
 							? x.id === p.bookingId
 							: x.guestName === p.guestName && x.status !== "CHECKED_OUT",
 					);
-					if (b) update(b.id, { paid: b.paid + p.amount });
+					if (b) paymentTaken(b.id, p);
 				}}
 			/>
 		</>
@@ -545,6 +564,7 @@ export function BookingPanel({
 	room,
 	onAction,
 	onPay,
+	onPos = 0,
 }: {
 	booking: BookingRow | null;
 	open: boolean;
@@ -553,6 +573,8 @@ export function BookingPanel({
 	room: RoomRow | null;
 	onAction: (a: string) => void;
 	onPay: () => void;
+	/** Card payments sent to the POS and not confirmed yet. */
+	onPos?: number;
 }) {
 	if (!booking) return null;
 	const b = booking;
@@ -669,6 +691,12 @@ export function BookingPanel({
 						]}
 					/>
 				</PanelSection>
+				{onPos > 0 && (
+					<Note tone="info">
+						{naira(onPos)} was sent to the POS and is waiting for the guest. It
+						shows as paid here once the POS confirms it (see My payments).
+					</Note>
+				)}
 				{b.notes && <Note tone="info">{b.notes}</Note>}
 				{b.cancelReason && (
 					<Note tone="danger">Cancelled · {b.cancelReason}</Note>
@@ -733,34 +761,54 @@ export function BookingPanel({
 }
 
 /** 2.3 Check in. */
-function CheckInModal({
+function CheckInPanel({
 	booking,
 	open,
 	onOpenChange,
 	rooms,
-	onPay,
+	folios,
+	terminals,
+	onPos,
+	onPaid,
 	onDone,
 }: {
 	booking: BookingRow | null;
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	rooms: RoomRow[];
-	onPay: (t: PaymentTarget) => void;
+	folios: FolioRow[];
+	terminals: TerminalRow[];
+	onPos: number;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 	onDone: (changes: Partial<BookingRow>) => void;
 }) {
 	const [roomId, setRoomId] = useState("");
 	const [idSeen, setIdSeen] = useState(false);
+	const [paying, setPaying] = useState(false);
 	const { run, pending } = useAction();
+	// The payment steps run inside this panel and hand it back when they finish.
+	const pay = usePaymentSteps(
+		{
+			terminals,
+			folios,
+			onDone: (p) => booking && onPaid(booking.id, p),
+			onFinish: () => setPaying(false),
+			onBack: () => setPaying(false),
+			doneLabel: "Back to check-in",
+		},
+		false,
+	);
 	useEffect(() => {
 		setRoomId(booking?.roomId ?? "");
 		setIdSeen(false);
+		setPaying(false);
 	}, [booking?.id]);
+	useEffect(() => {
+		if (!open) setPaying(false);
+	}, [open]);
 	if (!booking) return null;
 	const b = booking;
-	const due =
-		b.paymentPlan === "PAY_AT_CHECKOUT" || b.paymentPlan === "ORGANIZATION"
-			? 0
-			: b.totalAmount - b.paid;
+	const due = dueAtCheckIn(b);
 	const candidates = rooms.filter(
 		(r) =>
 			r.typeName === b.roomTypeName &&
@@ -770,8 +818,35 @@ function CheckInModal({
 	const roomOk =
 		chosen && (chosen.state === "ready" || chosen.state === "held");
 	const canGo = roomOk && idSeen && due <= 0;
+	const paymentTarget: PaymentTarget = {
+		guestName: b.guestName,
+		roomNumber: chosen?.number ?? b.roomNumber,
+		bookingId: b.id,
+		guestPhone: b.guestPhone,
+		guestEmail: b.guestEmail,
+		amountDue: due,
+		description: `Check-in · ${b.reference}`,
+	};
+
+	if (paying) {
+		const v = pay.view;
+		return (
+			<SidePanel
+				open={open}
+				onOpenChange={onOpenChange}
+				title={v.title}
+				subtitle={v.subtitle}
+				icon={CreditCardIcon}
+				footer={v.footer}
+				footerInfo={v.footerInfo}
+			>
+				{v.body}
+			</SidePanel>
+		);
+	}
+
 	return (
-		<Modal
+		<SidePanel
 			open={open}
 			onOpenChange={onOpenChange}
 			title={`Check in ${b.guestName}`}
@@ -861,23 +936,22 @@ function CheckInModal({
 						<p className="text-xs text-ink-2">
 							{planLabel[b.paymentPlan]} · {naira(b.paid)} already paid
 						</p>
+						{onPos > 0 && (
+							<p className="mt-2 text-xs text-ink-2">
+								{naira(onPos)} is with the POS. Check the guest in once it is
+								confirmed.
+							</p>
+						)}
 						<div className="mt-3 flex gap-2">
 							<button
 								type="button"
 								className={btn.primary}
-								onClick={() =>
-									onPay({
-										guestName: b.guestName,
-										roomNumber: chosen?.number ?? b.roomNumber,
-										bookingId: b.id,
-										guestPhone: b.guestPhone,
-										guestEmail: b.guestEmail,
-										amountDue: due,
-										description: `Check-in · ${b.reference}`,
-									})
-								}
+								onClick={() => {
+									pay.begin(paymentTarget);
+									setPaying(true);
+								}}
 							>
-								Take {naira(due)} now
+								Take {naira(due)}
 							</button>
 							<button
 								type="button"
@@ -889,7 +963,7 @@ function CheckInModal({
 							</button>
 						</div>
 						<p className="mt-3 text-xs text-ink-3">
-							Take the payment now, or ask the manager to check the guest in
+							Take the payment here, or ask the manager to check the guest in
 							without payment from their Bookings screen.
 						</p>
 					</div>
@@ -897,9 +971,10 @@ function CheckInModal({
 					<Note tone="success">
 						{b.paymentPlan === "ORGANIZATION"
 							? `${b.organizationName} pays on their account`
-							: b.paymentPlan === "PAY_AT_CHECKOUT"
-								? "Guest pays at check-out · nothing to collect now"
-								: "Fully paid · nothing to collect"}
+							: b.paymentPlan === "PAY_AT_CHECKOUT" ||
+									b.priceKind === "COMPLIMENTARY"
+								? "Nothing to collect now"
+								: `Fully paid · ${naira(b.paid)} received`}
 					</Note>
 				)}
 				<ToggleField
@@ -909,7 +984,7 @@ function CheckInModal({
 					onChange={setIdSeen}
 				/>
 			</div>
-		</Modal>
+		</SidePanel>
 	);
 }
 
@@ -1265,16 +1340,30 @@ export function NewBookingPanel({
 	open,
 	onOpenChange,
 	roomTypes,
+	rooms,
 	guests,
 	organizations,
+	folios,
+	terminals,
 	onCreated,
+	onPaid,
+	onCheckedIn,
+	onFinish,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	roomTypes: RoomTypeRow[];
+	rooms: RoomRow[];
 	guests: GuestRow[];
 	organizations: OrganizationRow[];
+	folios: FolioRow[];
+	terminals: TerminalRow[];
+	/** The booking was saved: add it to the list. */
 	onCreated: (b: BookingRow) => void;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
+	onCheckedIn: (bookingId: string, changes: Partial<BookingRow>) => void;
+	/** The flow is over: close this panel and open the booking summary. */
+	onFinish: (bookingId: string) => void;
 }) {
 	const today = format(new Date(), "yyyy-MM-dd");
 	const [guestId, setGuestId] = useState("");
@@ -1291,7 +1380,28 @@ export function NewBookingPanel({
 	const [plan, setPlan] = useState<PaymentPlan>("PAY_IN_FULL");
 	const [orgId, setOrgId] = useState("");
 	const [notes, setNotes] = useState("");
+	const [walkIn, setWalkIn] = useState(false);
+	const [roomId, setRoomId] = useState("");
+	const [idSeen, setIdSeen] = useState(false);
 	const { run, pending } = useAction();
+	const flow = useSaveFlow({
+		terminals,
+		folios,
+		onCreated,
+		onPaid,
+		onCheckedIn,
+		onFinish,
+		onClose: () => onOpenChange(false),
+	});
+	const resetFlow = flow.reset;
+	useEffect(() => {
+		if (!open) {
+			resetFlow();
+			setWalkIn(false);
+			setRoomId("");
+			setIdSeen(false);
+		}
+	}, [open, resetFlow]);
 
 	const type = roomTypes.find((t) => t.id === typeId);
 	const nights = Math.max(
@@ -1311,6 +1421,20 @@ export function NewBookingPanel({
 			: plan === "DEPOSIT_50"
 				? Math.round(total / 2)
 				: 0;
+	// Checking in now is only for a stay that starts today; the rooms offered are ready ones of the chosen type.
+	const checkingInNow = walkIn && ci === today;
+	const readyRooms = rooms.filter(
+		(r) => r.typeId === typeId && r.state === "ready",
+	);
+	const chosenRoom = readyRooms.find((r) => r.id === roomId);
+	// A walk-in owes the whole balance before the key; the deposit plan's half is due at booking, the rest at check-in.
+	const takeNow = checkingInNow
+		? plan === "PAY_AT_CHECKOUT" ||
+			plan === "ORGANIZATION" ||
+			priceKind === "COMPLIMENTARY"
+			? 0
+			: total
+		: dueNow;
 	const discount =
 		type && priceKind === "SPECIAL" ? (type.basePrice - rate) * nights : 0;
 	const needsManager = priceKind === "COMPLIMENTARY" || discount > 50000;
@@ -1325,7 +1449,7 @@ export function NewBookingPanel({
 		}
 	}
 
-	function create() {
+	function create(later = false) {
 		const id = `bk-${Date.now().toString().slice(-5)}`;
 		const row: BookingRow = {
 			id,
@@ -1379,239 +1503,319 @@ export function NewBookingPanel({
 			needsManager
 				? "Booking saved · sent to the manager to approve the price"
 				: "Booking saved · confirmation sent",
-			(saved) => onCreated(saved),
+			(saved) =>
+				void flow.start(saved, {
+					take: later ? 0 : takeNow,
+					walkIn:
+						!later && checkingInNow && chosenRoom
+							? { room: chosenRoom, idSeen }
+							: undefined,
+				}),
 		);
 	}
+
+	const canSave =
+		!!name &&
+		!!phone &&
+		nights >= 1 &&
+		!pending &&
+		!flow.busy &&
+		(plan !== "ORGANIZATION" || !!orgId);
+	const formFooter = (
+		<>
+			<button
+				type="button"
+				className={btn.secondary}
+				onClick={() => onOpenChange(false)}
+			>
+				Cancel
+			</button>
+			{takeNow > 0 && (
+				<button
+					type="button"
+					className={btn.secondary}
+					disabled={!canSave}
+					onClick={() => create(true)}
+				>
+					Save, take payment later
+				</button>
+			)}
+			<button
+				type="button"
+				className={btn.primary}
+				disabled={!canSave || (checkingInNow && (!chosenRoom || !idSeen))}
+				onClick={() => create()}
+			>
+				{checkingInNow
+					? takeNow > 0
+						? `Save, take ${naira(takeNow)} & check in`
+						: "Save & check in"
+					: takeNow > 0
+						? `Save & take ${naira(takeNow)}`
+						: "Save booking"}
+			</button>
+		</>
+	);
+	const paying = flow.phase === "pay";
 
 	return (
 		<SidePanel
 			open={open}
-			onOpenChange={onOpenChange}
-			title="New booking"
-			subtitle="One form · the guest gets a confirmation on save"
-			icon={CalendarCheckIcon}
-			width="lg"
-			footer={
-				<>
-					<button
-						type="button"
-						className={btn.secondary}
-						onClick={() => onOpenChange(false)}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						className={btn.primary}
-						disabled={
-							!name ||
-							!phone ||
-							nights < 1 ||
-							pending ||
-							(plan === "ORGANIZATION" && !orgId)
-						}
-						onClick={create}
-					>
-						{dueNow > 0 ? `Save & collect ${naira(dueNow)}` : "Save booking"}
-					</button>
-				</>
+			onOpenChange={(o) =>
+				o ? onOpenChange(true) : paying ? flow.close() : onOpenChange(false)
 			}
+			title={paying ? flow.view.title : "New booking"}
+			subtitle={
+				paying
+					? flow.view.subtitle
+					: "One form · the guest gets a confirmation on save"
+			}
+			icon={paying ? CreditCardIcon : CalendarCheckIcon}
+			width="lg"
+			footer={paying ? flow.view.footer : formFooter}
 			footerInfo={
-				needsManager
-					? "Needs the manager · they're told on save"
-					: nights >= 1
-						? `${plural(nights, "night")} · ${naira(total)}`
-						: undefined
+				paying
+					? flow.view.footerInfo
+					: needsManager
+						? "Needs the manager · they're told on save"
+						: nights >= 1
+							? `${plural(nights, "night")} · ${naira(total)}`
+							: undefined
 			}
 		>
-			<div className="flex flex-col gap-6">
-				<PanelSection title="Guest">
-					<SelectField
-						label="Returning guest"
-						value={guestId}
-						onChange={pickGuest}
-						placeholder="Search past guests…"
-						options={guests.map((g) => ({
-							value: g.id,
-							label: g.fullName,
-							hint: `${g.phone} · ${plural(g.stays, "stay")}${g.blacklisted ? " · BLACKLISTED" : ""}`,
-						}))}
-					/>
-					{guests.find((g) => g.id === guestId)?.blacklisted && (
-						<Note tone="danger">
-							This guest is blacklisted:{" "}
-							{guests.find((g) => g.id === guestId)?.notes}. The manager must
-							approve.
-						</Note>
-					)}
-					<FieldRow>
-						<TextField
-							label="Full name"
-							value={name}
-							onChange={setName}
-							required
-						/>
-						<TextField
-							label="Phone"
-							value={phone}
-							onChange={setPhone}
-							required
-							placeholder="+234 …"
-						/>
-					</FieldRow>
-					<TextField
-						label="Email"
-						value={email}
-						onChange={setEmail}
-						placeholder="For the receipt (optional)"
-					/>
-				</PanelSection>
-				<PanelSection title="Stay">
-					<SelectField
-						label="Room type"
-						value={typeId}
-						onChange={setTypeId}
-						options={roomTypes.map((t) => ({
-							value: t.id,
-							label: t.name,
-							hint: `${naira(t.basePrice)}/night · ${t.capacityAdults} adults`,
-						}))}
-						setupLink="room types"
-					/>
-					<FieldRow>
-						<TextField
-							label="Check-in"
-							type="date"
-							value={ci}
-							onChange={setCi}
-						/>
-						<TextField
-							label="Check-out"
-							type="date"
-							value={co}
-							onChange={setCo}
-						/>
-					</FieldRow>
-					<FieldRow>
-						<TextField
-							label="Adults"
-							type="number"
-							value={adults}
-							onChange={setAdults}
-						/>
-						<TextField
-							label="Arrives around"
-							value={eta}
-							onChange={setEta}
-							placeholder="e.g. 3:30pm"
-						/>
-					</FieldRow>
-				</PanelSection>
-				<PanelSection title="Price">
-					<ChoiceCards
-						value={priceKind}
-						onChange={setPriceKind}
-						columns={3}
-						options={[
-							{
-								value: "NORMAL",
-								label: "Normal",
-								hint: type ? `${naira(type.basePrice)}/night` : "",
-							},
-							{
-								value: "SPECIAL",
-								label: "Special rate",
-								hint: "Over ₦50k off needs the manager",
-							},
-							{
-								value: "COMPLIMENTARY",
-								label: "Complimentary",
-								hint: "Manager approves",
-							},
-						]}
-					/>
-					{priceKind === "SPECIAL" && (
-						<TextField
-							label="Rate per night"
-							value={special}
-							onChange={setSpecial}
-							prefix="₦"
-							placeholder={String(type?.basePrice ?? 0)}
-							hint={
-								discount > 0
-									? `${naira(discount)} off over the stay`
-									: undefined
-							}
-						/>
-					)}
-				</PanelSection>
-				<PanelSection title="Payment">
-					<ChoiceCards
-						value={plan}
-						onChange={setPlan}
-						columns={2}
-						options={[
-							{
-								value: "PAY_IN_FULL",
-								label: "Pay in full now",
-								hint: naira(total),
-							},
-							{
-								value: "DEPOSIT_50",
-								label: "50% deposit",
-								hint: `${naira(Math.round(total / 2))} now · rest at check-in`,
-							},
-							{
-								value: "PAY_AT_CHECKOUT",
-								label: "Pay at check-out",
-								hint: "Room held without payment",
-							},
-							{
-								value: "ORGANIZATION",
-								label: "Company account",
-								hint: "Billed monthly",
-							},
-						]}
-					/>
-					{plan === "ORGANIZATION" && (
+			{paying ? (
+				flow.view.body
+			) : (
+				<div className="flex flex-col gap-6">
+					<PanelSection title="Guest">
 						<SelectField
-							label="Organization"
-							value={orgId}
-							onChange={setOrgId}
-							options={organizations.map((o) => ({
-								value: o.id,
-								label: o.name,
-								hint:
-									o.status === "ON_HOLD"
-										? "ON HOLD · cannot book"
-										: `${naira(o.creditLimit - o.outstanding)} credit left`,
+							label="Returning guest"
+							value={guestId}
+							onChange={pickGuest}
+							placeholder="Search past guests…"
+							options={guests.map((g) => ({
+								value: g.id,
+								label: g.fullName,
+								hint: `${g.phone} · ${plural(g.stays, "stay")}${g.blacklisted ? " · BLACKLISTED" : ""}`,
 							}))}
 						/>
-					)}
-					{plan === "ORGANIZATION" &&
-						organizations.find((o) => o.id === orgId)?.status === "ON_HOLD" && (
+						{guests.find((g) => g.id === guestId)?.blacklisted && (
 							<Note tone="danger">
-								This account is on hold until their invoice is paid. Take a
-								personal payment instead.
+								This guest is blacklisted:{" "}
+								{guests.find((g) => g.id === guestId)?.notes}. The manager must
+								approve.
 							</Note>
 						)}
-					<TotalsList
-						rows={[
-							{
-								label: `${plural(nights, "night")} × ${naira(rate)}`,
-								value: naira(total),
-							},
-							{ label: "Due now", value: naira(dueNow), strong: true },
-						]}
+						<FieldRow>
+							<TextField
+								label="Full name"
+								value={name}
+								onChange={setName}
+								required
+							/>
+							<TextField
+								label="Phone"
+								value={phone}
+								onChange={setPhone}
+								required
+								placeholder="+234 …"
+							/>
+						</FieldRow>
+						<TextField
+							label="Email"
+							value={email}
+							onChange={setEmail}
+							placeholder="For the receipt (optional)"
+						/>
+					</PanelSection>
+					<PanelSection title="Stay">
+						<SelectField
+							label="Room type"
+							value={typeId}
+							onChange={setTypeId}
+							options={roomTypes.map((t) => ({
+								value: t.id,
+								label: t.name,
+								hint: `${naira(t.basePrice)}/night · ${t.capacityAdults} adults`,
+							}))}
+							setupLink="room types"
+						/>
+						<FieldRow>
+							<TextField
+								label="Check-in"
+								type="date"
+								value={ci}
+								onChange={setCi}
+							/>
+							<TextField
+								label="Check-out"
+								type="date"
+								value={co}
+								onChange={setCo}
+							/>
+						</FieldRow>
+						<FieldRow>
+							<TextField
+								label="Adults"
+								type="number"
+								value={adults}
+								onChange={setAdults}
+							/>
+							<TextField
+								label="Arrives around"
+								value={eta}
+								onChange={setEta}
+								placeholder="e.g. 3:30pm"
+							/>
+						</FieldRow>
+					</PanelSection>
+					{ci === today && (
+						<PanelSection title="Arrival">
+							<ToggleField
+								label="Checking in now"
+								hint="A walk-in: save, take the payment and give the key in one go"
+								checked={walkIn}
+								onChange={setWalkIn}
+							/>
+							{checkingInNow && (
+								<>
+									<SelectField
+										label="Room"
+										value={roomId}
+										onChange={setRoomId}
+										placeholder="Pick a ready room"
+										options={readyRooms.map((r) => ({
+											value: r.id,
+											label: `${r.number} · ${r.typeName}`,
+											hint: "Ready",
+										}))}
+										hint={
+											readyRooms.length === 0
+												? "No ready rooms of this type · pick another type or ask housekeeping"
+												: undefined
+										}
+									/>
+									<ToggleField
+										label="ID seen and captured"
+										hint="NIN, passport or driver's licence · photo kept on the guest's record"
+										checked={idSeen}
+										onChange={setIdSeen}
+									/>
+								</>
+							)}
+						</PanelSection>
+					)}
+					<PanelSection title="Price">
+						<ChoiceCards
+							value={priceKind}
+							onChange={setPriceKind}
+							columns={3}
+							options={[
+								{
+									value: "NORMAL",
+									label: "Normal",
+									hint: type ? `${naira(type.basePrice)}/night` : "",
+								},
+								{
+									value: "SPECIAL",
+									label: "Special rate",
+									hint: "Over ₦50k off needs the manager",
+								},
+								{
+									value: "COMPLIMENTARY",
+									label: "Complimentary",
+									hint: "Manager approves",
+								},
+							]}
+						/>
+						{priceKind === "SPECIAL" && (
+							<TextField
+								label="Rate per night"
+								value={special}
+								onChange={setSpecial}
+								prefix="₦"
+								placeholder={String(type?.basePrice ?? 0)}
+								hint={
+									discount > 0
+										? `${naira(discount)} off over the stay`
+										: undefined
+								}
+							/>
+						)}
+					</PanelSection>
+					<PanelSection title="Payment">
+						<ChoiceCards
+							value={plan}
+							onChange={setPlan}
+							columns={2}
+							options={[
+								{
+									value: "PAY_IN_FULL",
+									label: "Pay in full now",
+									hint: naira(total),
+								},
+								{
+									value: "DEPOSIT_50",
+									label: "50% deposit",
+									hint: `${naira(Math.round(total / 2))} now · rest at check-in`,
+								},
+								{
+									value: "PAY_AT_CHECKOUT",
+									label: "Pay at check-out",
+									hint: "Room held without payment",
+								},
+								{
+									value: "ORGANIZATION",
+									label: "Company account",
+									hint: "Billed monthly",
+								},
+							]}
+						/>
+						{plan === "ORGANIZATION" && (
+							<SelectField
+								label="Organization"
+								value={orgId}
+								onChange={setOrgId}
+								options={organizations.map((o) => ({
+									value: o.id,
+									label: o.name,
+									hint:
+										o.status === "ON_HOLD"
+											? "ON HOLD · cannot book"
+											: `${naira(o.creditLimit - o.outstanding)} credit left`,
+								}))}
+							/>
+						)}
+						{plan === "ORGANIZATION" &&
+							organizations.find((o) => o.id === orgId)?.status ===
+								"ON_HOLD" && (
+								<Note tone="danger">
+									This account is on hold until their invoice is paid. Take a
+									personal payment instead.
+								</Note>
+							)}
+						<TotalsList
+							rows={[
+								{
+									label: `${plural(nights, "night")} × ${naira(rate)}`,
+									value: naira(total),
+								},
+								{
+									label: checkingInNow ? "Due at check-in" : "Due now",
+									value: naira(takeNow),
+									strong: true,
+								},
+							]}
+						/>
+					</PanelSection>
+					<TextareaField
+						label="Notes for the desk"
+						value={notes}
+						onChange={setNotes}
+						placeholder="High floor, late arrival, fruit basket…"
 					/>
-				</PanelSection>
-				<TextareaField
-					label="Notes for the desk"
-					value={notes}
-					onChange={setNotes}
-					placeholder="High floor, late arrival, fruit basket…"
-				/>
-			</div>
+				</div>
+			)}
 		</SidePanel>
 	);
 }

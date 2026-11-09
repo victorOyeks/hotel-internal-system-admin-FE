@@ -1,6 +1,4 @@
 "use client";
-import { dueOnBooking } from "@hospio/api/data/types";
-
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	ArrowLeftToLineIcon,
@@ -31,7 +29,9 @@ import type {
 	OrganizationRow,
 	RoomRow,
 	RoomTypeRow,
+	TerminalRow,
 } from "@hospio/api/data/types";
+import type { TakenPayment } from "../../front-office/take-payment";
 import { BookingDetailsPanel } from "./booking-details";
 import {
 	balance,
@@ -87,6 +87,7 @@ export function BookingsScreen({
 	guests,
 	folios,
 	organizations,
+	terminals,
 }: {
 	hotelName: string;
 	bookings: BookingRow[];
@@ -95,6 +96,7 @@ export function BookingsScreen({
 	guests: GuestRow[];
 	folios: FolioRow[];
 	organizations: OrganizationRow[];
+	terminals: TerminalRow[];
 }) {
 	const [tab, setTab] = useQueryState(
 		"tab",
@@ -106,6 +108,8 @@ export function BookingsScreen({
 	const [bookings, setBookings] = useState(initial);
 	const [search, setSearch] = useState("");
 	const { run } = useDemoAction();
+	// Card payments the POS has not confirmed yet, per booking.
+	const [onPos, setOnPos] = useState<Record<string, number>>({});
 
 	const active = (TABS.includes(tab as Tab) ? tab : "arrivals") as Tab;
 	const rows = bookings.filter((b) => bucket(b, active));
@@ -114,6 +118,19 @@ export function BookingsScreen({
 		setBookings((bs) =>
 			bs.map((b) => (b.id === id ? { ...b, ...changes } : b)),
 		);
+
+	/** A payment was recorded: approved ones count as paid, the rest wait on the POS. */
+	const paymentTaken = (bookingId: string, p: TakenPayment) => {
+		if (p.status === "APPROVED") {
+			setBookings((bs) =>
+				bs.map((b) =>
+					b.id === bookingId ? { ...b, paid: b.paid + p.amount } : b,
+				),
+			);
+			return;
+		}
+		setOnPos((m) => ({ ...m, [bookingId]: (m[bookingId] ?? 0) + p.amount }));
+	};
 
 	const arrivals = bookings.filter((b) => bucket(b, "arrivals"));
 	const departures = bookings.filter((b) => bucket(b, "departures"));
@@ -390,6 +407,7 @@ export function BookingsScreen({
 				}
 				onClose={() => setOpenId(null)}
 				onAction={(a) => setAction(a)}
+				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
 			/>
 			<BookingModals
 				booking={selected}
@@ -400,8 +418,11 @@ export function BookingsScreen({
 						? (folios.find((f) => f.bookingId === selected.id) ?? null)
 						: null
 				}
+				folios={folios}
+				terminals={terminals}
 				onClose={() => setAction(null)}
 				onPatch={patch}
+				onPaid={paymentTaken}
 			/>
 			<NewBookingPanel
 				open={!!isNew}
@@ -410,10 +431,18 @@ export function BookingsScreen({
 				rooms={rooms}
 				organizations={organizations}
 				onClose={() => setIsNew(null)}
+				folios={folios}
+				terminals={terminals}
 				onSaved={(b) => {
 					setBookings((bs) => [b, ...bs]);
 					setTab(b.checkInDate === today() ? "arrivals" : "upcoming");
-					if (dueOnBooking(b) > 0) openAction(b.id, "payment");
+				}}
+				onPaid={paymentTaken}
+				onCheckedIn={patch}
+				onFinish={(id) => {
+					setIsNew(null);
+					setAction(null);
+					setOpenId(id);
 				}}
 			/>
 		</>
