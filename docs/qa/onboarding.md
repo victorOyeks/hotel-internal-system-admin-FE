@@ -20,14 +20,27 @@ there and show up for every role, so name them after yourself (e.g. "QA Ada Hote
   password and invite link once, with Copy buttons and a "Send on WhatsApp" button that opens WhatsApp
   with the message ready. Write them down during the test.
 
+## Deliveries
+
+Email and SMS are not connected on staging. Whenever the platform would have sent something (the phone
+code at sign-up, an invite, a temporary password, a handover pack), a yellow **"What we would have
+sent"** card appears top-centre of the hotel app with the channel (Email, SMS), the recipient, the
+subject and the full text, each with a Copy button; it stays until you press Close and several can
+stack. The invite card inside the panel still shows the password and link as before; the notice is in
+addition. Steps marked **(delivery)** must show it: sign-up (the phone code), the phone-check page
+when the code is sent or re-sent, Invite user, Resend invite, Reset password, the wizard's manager
+step and the manager sub-step of Add new hotel. If it does not appear, that is a bug.
+
 ## Self-serve path (an owner signs up on the web)
 
 ### 1 · Create the account
 
 1. Open the web app signed out → sign-in page → "New here? Create your hotel account" → `/sign-up`.
 2. Fill full name, a **new** work email, phone (`+234…`), password (8+ characters), business name,
-   city → "Create account" → you land on "Check your phone".
-3. Try the same email again in another window → "An account with this email already exists".
+   city → "Create account" → you land on "Check your phone" **(delivery)**: the notice shows the SMS
+   with the code.
+3. Try the same email again in another window → under Work email: "Someone already signs in with
+   <email>. Sign in instead".
 
 ### 2 · Phone check
 
@@ -79,9 +92,10 @@ there and show up for every role, so name them after yourself (e.g. "QA Ada Hote
 3. Row menu → Pause new bookings / Reopen hotel / Close hotel (close offers "Pause instead").
 4. Hotel row → Details & rooms → the detail page opens for that hotel.
 5. **Users**: the business's portal users from identity. "Invite user": name, email, phone, role
-   (Manager / Finance / Inventory), hotel → "Create login" → the invite card. Row menu → Resend invite
-   (pending invites only) → a new password and link; Reset password → confirm → a new temporary
-   password shown once; Pause access → status Paused, Resume access → Active; Change role & hotels →
+   (Manager / Finance / Inventory), hotel → "Create login" → the invite card **(delivery)**. Row menu →
+   Resend invite (pending invites only) → a new password and link **(delivery)**; the earlier
+   temporary password stops working. Reset password → confirm → a new temporary password shown once
+   **(delivery)**; Pause access → status Paused, Resume access → Active; Change role & hotels →
    tick another hotel → Save → the Hotels column lists both; Remove access → the user is gone (or
    "Pause access instead").
 6. **Settings → Company**: pre-filled from the business; change the RC number and address → Save →
@@ -134,8 +148,9 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
    `Abuja`, fee model "% of payments" with `1.5`, leave the marketer empty → "Create business" is
    enabled.
 4. Click "Create business" → toast "QA Palms <date> created · onboarding started" and the browser
-   lands on `/dashboard/onboarding/<businessId>` at **Step 1 of 10 · Business & legal**. The header
-   reads "Set up QA Palms <date>" with the Onboarding pill; the left rail shows 10 steps, none done.
+   lands on `/dashboard/onboarding/<businessId>` with a full page load, at **Step 1 of 10 · Business
+   & legal**. The header reads "Set up QA Palms <date>" with the Onboarding pill; the left rail shows
+   10 steps, none done. After each step is saved its subtitle reads "saved just now".
 5. Sidebar → Onboarding → the board shows the new business under "In progress" as "H.M.S · <you> ·
    Step 1 of 10 · Business & legal". Click the card → back in the wizard.
 
@@ -226,7 +241,9 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
     `qa-owner+<date>@example.com` with the temporary password from step 19 → the app asks for a new
     password (must change on first sign-in). Set `QaOwner-2026!` → the handover screen opens
     ("/handover"): it lists the two hotels, the logins H.M.S made and the settings.
-23. "Accept and continue" → the owner dashboard opens; the branch switcher lists both hotels.
+23. "Accept and continue" → the owner dashboard opens; the branch switcher lists both hotels. Back in
+    the admin wizard, "Send handover" is now refused with "The owner has already accepted the
+    handover; reset their password from People instead".
 24. Back in the admin portal → Hotel businesses → QA Palms → the stage is **Live** (reload if the page
     was open); the People tab shows the owner as "active" with a last sign-in.
 

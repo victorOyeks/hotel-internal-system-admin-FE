@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { BusinessPage } from "@/components/roles/admin/business-page";
 import { getActiveRole } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { adminData } from "@hospio/api/data/admin";
 import { adminRole } from "../../role";
 
 export const dynamic = "force-dynamic";
@@ -16,16 +17,15 @@ export default async function BusinessDetailPage({
 		getActiveRole(),
 		data.platform.business(id),
 	]);
+	// Null means tenant-service answered 404; any other failure threw and error.tsx offers a retry.
 	if (!business) notFound();
-	// Hotels and people are live (tenant, identity); fee statements, tickets and changes stay on
-	// fixtures until platform-service lands, matched by business name since the fixtures carry no id.
 	const [hotels, users, admins, fees, tickets, changes] = await Promise.all([
 		data.platform.businessHotels(business.id),
 		data.platform.businessUsers(business.id),
-		data.platform.adminUsers(),
-		data.platform.feeStatements(),
-		data.platform.tickets(),
-		data.platform.changes(),
+		adminData.team.list(),
+		adminData.fees.statements({ businessId: business.id, size: 24 }),
+		adminData.support.tickets({ businessId: business.id, size: 50 }),
+		adminData.changes.list({ businessId: business.id, size: 50 }),
 	]);
 	return (
 		<BusinessPage
@@ -34,9 +34,9 @@ export default async function BusinessDetailPage({
 			hotels={hotels}
 			users={users}
 			admins={admins}
-			fees={fees.filter((f) => f.businessName === business.name)}
-			tickets={tickets.filter((t) => t.businessName === business.name)}
-			changes={changes.filter((c) => c.businessName === business.name)}
+			fees={fees.content}
+			tickets={tickets.content}
+			changes={changes.content}
 		/>
 	);
 }

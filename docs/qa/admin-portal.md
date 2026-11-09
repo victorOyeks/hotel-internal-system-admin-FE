@@ -131,7 +131,14 @@ Sign in as each account once and check the buttons match the table (the read-onl
 
 ## 9 · Business detail tabs (any admin)
 
-Open Businesses → Royal Suites Ltd, then edit the URL (or use the strip once the overview links to them):
+Open Businesses → Royal Suites Ltd. The business page carries the strip Usage · Money · Support · Contract &
+activity on the right of its own tabs, and each hotel row has "Today →" for the hotel page. The page's Fees,
+Support and Contract & activity tabs now read platform-service (statements, tickets and changes for this
+business); the header's "View as owner" is the real support access (section 11); **Edit as H.M.S** (row menu ⋯)
+is the business form with a required reason: change the phone → "Save change" → toast "Change saved and logged"
+and the change appears at once under Contract & activity → Changes by H.M.S as "Phone changed" with the reason
+and your name (and on `/activity` and on the Changes screen, with Undo). Saving without changing anything is
+refused with "Nothing has changed yet".
 
 1. `/dashboard/businesses/<id>/usage` → active users 7/30 days, bookings, payments, messages, the 8-week bars, feature
    adoption and the health score with its factors. **Recompute health** updates the score now.
@@ -139,9 +146,24 @@ Open Businesses → Royal Suites Ltd, then edit the URL (or use the strip once t
 3. `/support` → this business's tickets; a row opens it on the Support screen; **New ticket** is pre-filled.
 4. `/activity` → the contract fields, the activity log for the business, changes by H.M.S (undo), and "Viewed as owner".
 5. `/hotels/<hotelId>` → today for one hotel: occupancy, arrivals, departures, open folios, payments today, manager.
-6. **View as owner** (on the activity tab, and on the business page once mounted): a reason of at least 8 characters
-   and a time box → "Open as owner" → a new tab opens the hotel app at `/auth/support?token=…` read only; the grant
-   appears under "Viewed as owner" with your name, the reason and the end time.
+6. **View as owner** (on the activity tab and in the business page header): see section 11.
+
+## 11 · View as owner (support access, any admin)
+
+1. On a business page (or its Contract & activity tab) → **View as owner** → a reason of at least 8 characters and a
+   time box (15, 30 or 60 minutes) → "Open as owner" → a new tab opens the hotel app at `/auth/support?token=…`,
+   shows "Opening the hotel app as the owner…" for a moment and lands on the owner dashboard.
+2. An orange bar is fixed across the top: **"Viewing as H.M.S support · read only · ends at HH:MM"** (the end of the
+   time box) with a **Leave** button. The sidebar and the page sit below it. Hotels, Users, Settings and the rest
+   render as the owner sees them.
+3. Try to save something (Settings → Company → change the address → Save) → the toast reads **"Read-only support
+   access cannot change anything"**; nothing changes.
+4. Back in the admin portal the grant appears under Contract & activity → "Viewed as owner" with your name, the reason
+   and the end time; the owner sees the visit in their activity log as "H.M.S · <your name>".
+5. **Leave** signs the tab out and returns to the hotel app's sign-in. Opening the same link again after the time box
+   (or any mangled token) shows "This support link has expired. Ask for a new one from the admin portal."
+6. If the browser already held an owner or manager session in that profile, the support link replaces it with the
+   read-only view; sign in again afterwards.
 
 ## 10 · Marketer portal (as `ese@hospio360.com`)
 

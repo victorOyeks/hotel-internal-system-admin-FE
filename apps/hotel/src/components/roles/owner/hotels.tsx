@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createUser } from "@hospio/api/actions/identity";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { createRoomsBulk, createRoomType } from "@hospio/api/actions/property";
 import {
 	createHotel,
@@ -659,14 +660,17 @@ export function AddHotelWizard({
 					out.roomsSkipped = bulk.data.skipped;
 				}
 				if (wantsManager) {
-					const user = await createUser({
-						fullName: manager.trim(),
-						email: managerEmail.trim(),
-						phone: managerPhone.trim() || null,
-						role: "MANAGER",
-						level: "FULL",
-						hotelId: hotel.data.id,
-					});
+					const user = await withDeliveries(
+						createUser({
+							fullName: manager.trim(),
+							email: managerEmail.trim(),
+							phone: managerPhone.trim() || null,
+							role: "MANAGER",
+							level: "FULL",
+							hotelId: hotel.data.id,
+						}),
+						`Invite for ${manager.trim()}`,
+					);
 					if (!user.ok) return user;
 					out.manager = {
 						fullName: manager.trim(),

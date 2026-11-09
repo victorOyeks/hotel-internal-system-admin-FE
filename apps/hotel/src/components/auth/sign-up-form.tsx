@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { signUp } from "@hospio/api/actions/onboarding";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { Button } from "@hospio/ui/primitives/button";
 import {
 	Form,
@@ -62,10 +63,13 @@ export function SignUpForm() {
 
 	function onSubmit(values: z.infer<typeof schema>) {
 		startTransition(async () => {
-			const result = await signUp({
-				...values,
-				city: values.city || undefined,
-			});
+			const result = await withDeliveries(
+				signUp({
+					...values,
+					city: values.city || undefined,
+				}),
+				`Phone code for ${values.fullName.trim()}`,
+			);
 			if (!result.ok) {
 				// A taken address comes back as "Someone already signs in with …": that belongs under the email.
 				form.setError(

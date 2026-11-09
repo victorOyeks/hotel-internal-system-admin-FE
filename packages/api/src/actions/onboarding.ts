@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { ActionResult } from "@hospio/api/actions/auth";
 import { api, errorMessage } from "@hospio/api/api/client";
+import type { Delivery } from "@hospio/api/api/routes-admin";
 import type { Business, Invite } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
 import { APP_ROLES, isAppRole } from "@hospio/api/app";
@@ -71,7 +72,7 @@ export type SignUpInput = {
 /** POST /identity/auth/sign-up: the owner account and business are created and the owner is signed in. */
 export async function signUp(
 	input: SignUpInput,
-): Promise<ActionResult<{ roles: string[] }>> {
+): Promise<ActionResult<{ roles: string[]; deliveries?: Delivery[] | null }>> {
 	if (DEMO_AUTH) {
 		await demoDelay(500);
 		const token = mintDemoToken(
@@ -100,12 +101,15 @@ export async function signUp(
 			),
 		};
 	await settleSession(data.data.accessToken, data.data.refreshToken);
-	return { ok: true, data: { roles: data.data.roles } };
+	return {
+		ok: true,
+		data: { roles: data.data.roles, deliveries: data.data.deliveries },
+	};
 }
 
 /** POST /identity/auth/phone/send-code: a 6-digit code (logged on the service; staging accepts 123456). */
 export async function sendPhoneCode(): Promise<
-	ActionResult<{ expiresAt: string }>
+	ActionResult<{ expiresAt: string; deliveries?: Delivery[] | null }>
 > {
 	const { auth } = await withSession();
 	if (!auth) return { ok: false, error: "Sign in again" };

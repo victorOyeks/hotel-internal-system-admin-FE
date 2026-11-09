@@ -24,6 +24,7 @@ import type { UserCreated } from "@hospio/api/api/schema";
 import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
 import { AvatarName, DetailList, Note } from "@hospio/ui/shared/detail-list";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import {
 	ChoiceCards,
 	FieldRow,
@@ -421,14 +422,17 @@ export function StaffFormPanel({
 		if (!hotelId) return;
 		run(
 			() =>
-				createUser({
-					fullName: form.fullName.trim(),
-					email: form.email.trim(),
-					phone: form.phone.trim() || null,
-					role: form.role,
-					level: form.level,
-					hotelId,
-				}),
+				withDeliveries(
+					createUser({
+						fullName: form.fullName.trim(),
+						email: form.email.trim(),
+						phone: form.phone.trim() || null,
+						role: form.role,
+						level: form.level,
+						hotelId,
+					}),
+					`Invite for ${form.fullName.trim()}`,
+				),
 			`${form.fullName.trim()} added`,
 			setCreated,
 		);
@@ -742,7 +746,11 @@ export function ResetPasswordModal({
 			onConfirm={() =>
 				staff &&
 				run(
-					() => resetPassword(staff.userId ?? staff.id),
+					() =>
+						withDeliveries(
+							resetPassword(staff.userId ?? staff.id),
+							`New password for ${staff.fullName}`,
+						),
 					"Temporary password ready",
 					setCreated,
 				)

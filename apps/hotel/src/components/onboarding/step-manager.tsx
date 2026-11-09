@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createUser } from "@hospio/api/actions/identity";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { saveMyOnboardingStep } from "@hospio/api/actions/onboarding";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { Business, Me } from "@hospio/api/api/schema";
@@ -57,14 +58,17 @@ export function ManagerStep({
 		const phone = form.phone.trim() || null;
 		run(
 			async () => {
-				const r = await createUser({
-					fullName,
-					email,
-					phone,
-					role: "MANAGER",
-					level: "FULL",
-					hotelId: hotel.hotelId,
-				});
+				const r = await withDeliveries(
+					createUser({
+						fullName,
+						email,
+						phone,
+						role: "MANAGER",
+						level: "FULL",
+						hotelId: hotel.hotelId,
+					}),
+					`Invite for ${fullName}`,
+				);
 				if (!r.ok) return r;
 				const step = await saveMyOnboardingStep("manager", {
 					userId: r.data.userId,

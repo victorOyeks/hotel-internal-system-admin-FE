@@ -9,7 +9,7 @@ import { DEMO_AUTH, demoDelay } from "@hospio/api/demo/mode";
 import { mintDemoToken, nameFromEmail } from "@hospio/api/demo/token";
 import { APP_ROLES, isAppRole } from "@hospio/api/app";
 import type { HotelRole } from "@hospio/api/roles";
-import { createSession, deleteSession, setActiveHotel, setActiveRole } from "@hospio/api/session";
+import { createSession, decodeSession, deleteSession, setActiveHotel, setActiveRole } from "@hospio/api/session";
 
 export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -64,4 +64,19 @@ export async function changePassword(input: { currentPassword: string; newPasswo
 	if (error) return { ok: false, error: errorMessage(error, "Password could not be changed") };
 	await deleteSession();
 	return { ok: true, data: null };
+}
+
+/**
+ * "View as owner" from the admin portal: the hotel app is opened at /auth/support?token=… with a
+ * support-access token (`act` = the admin, roles OWNER:VIEW, expiring with the grant). The token
+ * becomes the session as it is, with no refresh token, the owner role and the first hotel; the
+ * dashboard shows the read-only bar while `actedBy` is set.
+ */
+export async function startSupportSession(token: string): Promise<ActionResult<null>> {
+	const session = decodeSession(token);
+	if (!session || !session.actedBy) return { ok: false, error: "This support link has expired. Ask for a new one from the admin portal." };
+	await createSession(token, null);
+	await setActiveRole("OWNER");
+	if (session.hotels.length >= 1) await setActiveHotel(session.hotels[0]);
+	redirect("/dashboard");
 }

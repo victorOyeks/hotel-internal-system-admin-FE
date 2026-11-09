@@ -18,6 +18,8 @@ export type SessionClaims = {
 	/** "ROLE:LEVEL", e.g. "FRONT_OFFICE:EDIT" */
 	roles: string[];
 	scope: "hotel" | "business" | "platform" | "marketer";
+	/** Support access ("View as owner"): the platform admin acting as the business's owner, read only. */
+	act?: string;
 	iat: number;
 	exp: number;
 };
@@ -26,6 +28,8 @@ export type Session = SessionClaims & {
 	token: string;
 	roleSet: HotelRole[];
 	levels: Partial<Record<HotelRole, "FULL" | "EDIT" | "VIEW">>;
+	/** Set when the session is a support view: the admin id from the token's `act` claim. */
+	actedBy?: string;
 };
 
 // ---- onboarding wizards ----------------------------------------------------------------------------

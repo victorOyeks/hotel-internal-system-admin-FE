@@ -1,6 +1,6 @@
 import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
-import { adminRoutes } from "./routes-admin";
+import { adminRoutes, Deliveries } from "./routes-admin";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -64,6 +64,8 @@ export const AuthResponse = z.object({
 	roles: z.array(z.string()),
 	mustChangePassword: z.boolean(),
 	twoStepRequired: z.boolean(),
+	/** Sign-up echoes the phone code while SMS is not connected (DELIVERIES_ECHO on staging). */
+	deliveries: Deliveries,
 });
 
 export const Me = z.object({
@@ -121,6 +123,8 @@ export const UserCreated = z.object({
 	temporaryPasswordExpiresAt: z.string().nullable(),
 	inviteToken: z.string().nullable().optional(),
 	inviteExpiresAt: z.string().nullable().optional(),
+	/** The invite email and SMS the platform would have sent (echoed while no provider is connected). */
+	deliveries: Deliveries,
 });
 
 export const Invite = z.object({
@@ -822,7 +826,7 @@ export const schema = createSchema({
 	},
 	"@post/identity/auth/phone/send-code": {
 		input: z.object({}).optional(),
-		output: envelope(z.object({ expiresAt: z.string() })),
+		output: envelope(z.object({ expiresAt: z.string(), deliveries: Deliveries })),
 	},
 	"@post/identity/auth/phone/verify": {
 		input: z.object({ code: z.string() }),

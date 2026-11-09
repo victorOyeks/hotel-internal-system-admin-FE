@@ -28,6 +28,7 @@ import type { OwnerHotelRow, PortalUserRow } from "@hospio/api/data/types";
 import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable } from "@hospio/ui/shared/data-table";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { AvatarName, DetailList, Note } from "@hospio/ui/shared/detail-list";
 import {
 	ChoiceCards,
@@ -122,7 +123,7 @@ export function OwnerUsers({
 		);
 	const resend = (u: PortalUserRow) =>
 		run(
-			() => resendInvite(u.userId),
+			() => withDeliveries(resendInvite(u.userId), `Invite for ${u.fullName}`),
 			"New invite ready",
 			(created) =>
 				setCreds({ user: u, created, title: `New invite for ${u.fullName}` }),
@@ -416,7 +417,11 @@ export function OwnerUsers({
 				onConfirm={() =>
 					reset &&
 					run(
-						() => resetPassword(reset.userId),
+						() =>
+							withDeliveries(
+								resetPassword(reset.userId),
+								`New password for ${reset.fullName}`,
+							),
 						"Temporary password ready",
 						(created) => {
 							setCreds({
@@ -589,14 +594,17 @@ function InvitePanel({
 							onClick={() =>
 								run(
 									() =>
-										createUser({
-											fullName: name.trim(),
-											email: email.trim(),
-											phone: phone.trim() || null,
-											role,
-											level: "FULL",
-											hotelId: hotel,
-										}),
+										withDeliveries(
+											createUser({
+												fullName: name.trim(),
+												email: email.trim(),
+												phone: phone.trim() || null,
+												role,
+												level: "FULL",
+												hotelId: hotel,
+											}),
+											`Invite for ${name.trim()}`,
+										),
 									`${name.trim()} invited`,
 									setCreated,
 								)

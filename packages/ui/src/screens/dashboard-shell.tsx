@@ -5,6 +5,7 @@ import { Provider as JotaiProvider } from "jotai";
 import { AppSidebar } from "@hospio/ui/shared/app-sidebar";
 import { Header } from "@hospio/ui/shared/header";
 import { SidebarInset, SidebarProvider } from "@hospio/ui/primitives/sidebar";
+import { SupportBar } from "@hospio/ui/shared/support-bar";
 import { APP } from "@hospio/api/app";
 import { data } from "@hospio/api/data";
 import {
@@ -12,16 +13,21 @@ import {
 	getActiveRole,
 	getBusiness,
 	getHotels,
+	getSession,
 	getUser,
 } from "@hospio/api/dal";
+import { cn } from "@hospio/ui/utils";
 
 export async function DashboardShell({ children }: PropsWithChildren) {
-	const [user, role, hotels, activeHotel] = await Promise.all([
+	const [session, user, role, hotels, activeHotel] = await Promise.all([
+		getSession(),
 		getUser(),
 		getActiveRole(),
 		getHotels(),
 		getActiveHotel(),
 	]);
+	// "View as owner" from the admin portal: a read-only session with the admin in `act`.
+	const support = session.actedBy ? { endsAt: session.exp } : null;
 	if (!user) redirect("/auth");
 	if (!user.changedPassword) redirect("/reset-password");
 	if (!role) redirect("/select-role");
@@ -39,7 +45,13 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 	return (
 		<NuqsAdapter>
 			<JotaiProvider>
-				<SidebarProvider>
+				{support && <SupportBar endsAt={support.endsAt} />}
+				<SidebarProvider
+					className={cn(
+						support &&
+							"pt-10 [&_[data-slot=sidebar-container]]:top-10 [&_[data-slot=sidebar-container]]:h-[calc(100svh-2.5rem)]",
+					)}
+				>
 					<AppSidebar
 						collapsible="icon"
 						role={role}

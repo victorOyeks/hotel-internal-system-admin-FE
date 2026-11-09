@@ -371,12 +371,14 @@ export const data = {
 			}
 			return res.data.content.map(toBusinessRow);
 		},
+		/** One business. Null only when tenant-service says it does not exist (404); any other failure throws so the page's error boundary offers a retry instead of a wrong "not found". */
 		business: async (id: string): Promise<BusinessRow | null> => {
 			if (!live("tenant")) return give(platform.demoBusinesses.find((b) => b.id === id) ?? null);
 			const { data: res, error } = await api("@get/tenant/businesses/:id", { ...(await withSession()), params: { id } });
 			if (error || !res) {
+				if (error?.status === 404) return null;
 				console.error("tenant-service business:", error);
-				return null;
+				throw new Error(error?.message?.trim() || `The business could not be loaded (${error?.status ?? "no response"})`);
 			}
 			return toBusinessRowFromBusiness(res.data);
 		},

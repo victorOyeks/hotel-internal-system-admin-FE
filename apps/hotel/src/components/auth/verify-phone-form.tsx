@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { sendPhoneCode, verifyPhone } from "@hospio/api/actions/onboarding";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { Button } from "@hospio/ui/primitives/button";
 import {
 	InputOTP,
@@ -43,7 +44,7 @@ export function VerifyPhoneForm({
 
 	const send = useCallback(async () => {
 		setSending(true);
-		const result = await sendPhoneCode();
+		const result = await withDeliveries(sendPhoneCode(), "Your phone code");
 		setSending(false);
 		if (!result.ok) {
 			toast.error(result.error);

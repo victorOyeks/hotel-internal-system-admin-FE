@@ -5,7 +5,6 @@ import {
 	ArrowRightIcon,
 	BuildingIcon,
 	CoinsIcon,
-	ExternalLinkIcon,
 	KeyRoundIcon,
 	PencilIcon,
 	ShieldAlertIcon,
@@ -21,24 +20,30 @@ import {
 	resendInvite,
 	resetPassword,
 } from "@hospio/api/actions/identity";
+import { recordChange } from "@hospio/api/actions/platform-admin";
 import {
 	assignAccountManager,
 	changeBusinessStage,
 	updateBusiness,
 } from "@hospio/api/actions/tenant";
 import { useAction } from "@hospio/api/actions/use-action";
-import type { BusinessStage, UserCreated } from "@hospio/api/api/schema";
+import type {
+	BusinessRequest,
+	BusinessStage,
+	UserCreated,
+} from "@hospio/api/api/schema";
+import type {
+	AdminChangeRow,
+	FeeStatementItem,
+	TicketItem,
+} from "@hospio/api/data/admin-types";
 import { feeModelLabels } from "@hospio/api/data/mappers/tenant";
 import type {
 	AdminUserRow,
 	BusinessRow,
-	FeeStatementRow,
 	HotelSummary,
-	PlatformChangeRow,
 	PortalUserRow,
-	TicketRow,
 } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
 import type { AdminRole } from "@hospio/api/demo/fixtures/platform-extra";
 import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -50,7 +55,6 @@ import {
 	SelectField,
 	TextareaField,
 	TextField,
-	ToggleField,
 } from "@hospio/ui/shared/field";
 import {
 	fmtAgo,
@@ -73,6 +77,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
+import { BusinessTabStrip } from "./business-tabs/nav";
 import {
 	businessRequestFrom,
 	CopyButton,
@@ -88,11 +93,13 @@ import {
 	ticketPriority,
 	ticketStatus,
 } from "./shared";
+import { SupportAccessButton } from "./support-access-button";
 
 /**
- * Admin — C2 · one business: overview, Hotels and People live from tenant and identity; Change stage
- * (C11), Change account manager (C10) and Edit business write to tenant; fee statements, tickets and
- * changes stay on fixtures until platform-service lands.
+ * Admin — C2 · one business: overview, Hotels and People from tenant and identity; fee statements,
+ * tickets and changes from platform-service. Change stage (C11), Change account manager (C10) and Edit
+ * business write to tenant; Edit as H.M.S does the same edit and records the change with its reason
+ * (POST /platform/admin/changes); View as owner opens the hotel app read only.
  */
 
 export function BusinessPage({
@@ -102,22 +109,22 @@ export function BusinessPage({
 	users: initialUsers,
 	fees,
 	tickets,
-	changes,
+	changes: initialChanges,
 	admins,
 }: {
 	role: AdminRole;
 	business: BusinessRow;
 	hotels: HotelSummary[];
 	users: PortalUserRow[];
-	fees: FeeStatementRow[];
-	tickets: TicketRow[];
-	changes: PlatformChangeRow[];
+	fees: FeeStatementItem[];
+	tickets: TicketItem[];
+	changes: AdminChangeRow[];
 	admins: AdminUserRow[];
 }) {
-	const demo = useDemoAction();
 	const { run, pending } = useAction();
 	const [business, setBusiness] = useState(initial);
 	const [users, setUsers] = useState(initialUsers);
+	const [changes, setChanges] = useState(initialChanges);
 	const [action, setAction] = useQueryState("action");
 	const [secret, setSecret] = useState<{
 		user: PortalUserRow;
@@ -173,19 +180,10 @@ export function BusinessPage({
 					</span>
 				}
 			>
-				<button
-					type="button"
-					onClick={() =>
-						demo.run(
-							`Opened ${business.name} as ${business.ownerName} · logged`,
-							undefined,
-							{ tone: "info" },
-						)
-					}
-					className={cn(btn.secondary, "flex items-center gap-2")}
-				>
-					<ExternalLinkIcon className="size-4" /> View as owner
-				</button>
+				<SupportAccessButton
+					businessId={business.id}
+					businessName={business.name}
+				/>
 				{editable && (
 					<button
 						type="button"
@@ -235,11 +233,18 @@ export function BusinessPage({
 				</ReadOnlyNote>
 			)}
 
-			<PillTabs
-				tabs={tabs}
-				value={current}
-				onChange={(k) => void setTab(k === "overview" ? null : k)}
-			/>
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<PillTabs
+					tabs={tabs}
+					value={current}
+					onChange={(k) => void setTab(k === "overview" ? null : k)}
+				/>
+				<BusinessTabStrip
+					businessId={business.id}
+					active="overview"
+					includeOverview={false}
+				/>
+			</div>
 
 			{current === "overview" && (
 				<>
@@ -398,6 +403,18 @@ export function BusinessPage({
 								</span>
 							),
 						},
+						{
+							id: "today",
+							header: "",
+							cell: ({ row }) => (
+								<Link
+									href={`/dashboard/businesses/${business.id}/hotels/${row.original.id}`}
+									className="text-[13px] font-semibold text-brand"
+								>
+									Today →
+								</Link>
+							),
+						},
 					]}
 					emptyTitle="No hotels yet"
 					emptyHint="Hotels are added during onboarding."
@@ -547,25 +564,25 @@ export function BusinessPage({
 					columns={[
 						{ accessorKey: "month", header: "Month" },
 						{
-							accessorKey: "base",
+							accessorKey: "baseAmount",
 							header: "Base",
 							cell: ({ row }) => (
 								<span>
 									{business.feeModel.includes("%")
-										? naira(row.original.base)
-										: `${row.original.base} room nights`}
+										? naira(row.original.baseAmount)
+										: `${row.original.baseAmount} room nights`}
 								</span>
 							),
 						},
 						{
-							accessorKey: "fee",
+							accessorKey: "feeAmount",
 							header: "Fee",
-							cell: ({ row }) => naira(row.original.fee),
+							cell: ({ row }) => naira(row.original.feeAmount),
 						},
 						{
-							accessorKey: "paid",
+							accessorKey: "paidAmount",
 							header: "Paid",
-							cell: ({ row }) => naira(row.original.paid),
+							cell: ({ row }) => naira(row.original.paidAmount),
 						},
 						{
 							accessorKey: "status",
@@ -587,10 +604,10 @@ export function BusinessPage({
 					]}
 					footer={
 						<Link
-							href="/dashboard/fees"
+							href={`/dashboard/businesses/${business.id}/money`}
 							className="text-xs font-semibold text-brand"
 						>
-							Fees & billing →
+							Money · statements, settlements and payments →
 						</Link>
 					}
 					emptyTitle="No statements yet"
@@ -607,8 +624,8 @@ export function BusinessPage({
 							header: "Ticket",
 							cell: ({ row }) => (
 								<TwoLine
-									primary={`${row.original.id.replace("tk-", "T-")} · ${row.original.subject}`}
-									secondary={`${row.original.openedBy} · ${fmtAgo(row.original.openedAt)}`}
+									primary={row.original.subject}
+									secondary={`${row.original.openedByName} · ${fmtAgo(row.original.openedAt)}`}
 								/>
 							),
 						},
@@ -631,16 +648,16 @@ export function BusinessPage({
 							),
 						},
 						{
-							accessorKey: "assignedTo",
+							accessorKey: "assignedToName",
 							header: "Assigned",
-							cell: ({ row }) => row.original.assignedTo ?? "—",
+							cell: ({ row }) => row.original.assignedToName ?? "—",
 						},
 						{
 							id: "open",
 							header: "",
 							cell: ({ row }) => (
 								<Link
-									href={`/dashboard/support?open=${row.original.id}`}
+									href={`/dashboard/support?status=ALL&businessId=${business.id}&open=${row.original.id}`}
 									className="text-[13px] font-semibold text-brand"
 								>
 									Open →
@@ -741,6 +758,11 @@ export function BusinessPage({
 				open={action === "hms"}
 				onOpenChange={(o) => (o ? setAction("hms") : close())}
 				business={business}
+				onSaved={(b, change) => {
+					setBusiness(b);
+					setChanges((list) => [change, ...list]);
+					close();
+				}}
 			/>
 
 			<Modal
@@ -831,16 +853,63 @@ function EditBusinessPanel({
 	);
 }
 
+/** What Edit as H.M.S writes into the change log for each field it can touch. */
+const FIELD_LABELS: Partial<Record<keyof BusinessRequest, string>> = {
+	name: "Trading name",
+	legalName: "Registered name",
+	registrationNumber: "Registration number",
+	businessType: "Business type",
+	address: "Address",
+	city: "City",
+	email: "Business email",
+	phone: "Phone",
+	ownerName: "Owner's name",
+	ownerEmail: "Owner email",
+	ownerPhone: "Owner phone",
+	feeModel: "Fee model",
+	feeValue: "Fee",
+	contractStartsOn: "Agreement start",
+	contractNotes: "Contract notes",
+};
+
+/** The fields whose value differs between the row and the edit, with their before and after values. */
+function diffBusiness(
+	business: BusinessRow,
+	patch: Partial<BusinessRequest>,
+): {
+	keys: (keyof BusinessRequest)[];
+	before: Record<string, unknown>;
+	after: Record<string, unknown>;
+} {
+	const current = businessRequestFrom(business, {});
+	const keys: (keyof BusinessRequest)[] = [];
+	const before: Record<string, unknown> = {};
+	const after: Record<string, unknown> = {};
+	for (const key of Object.keys(patch) as (keyof BusinessRequest)[]) {
+		const was = current[key] ?? null;
+		const now = patch[key] ?? null;
+		if (JSON.stringify(was) === JSON.stringify(now)) continue;
+		keys.push(key);
+		before[key] = was;
+		after[key] = now;
+	}
+	return { keys, before, after };
+}
+
 function EditBusinessForm({
 	business,
 	onCancel,
 	onSaved,
+	asHms,
 }: {
 	business: BusinessRow;
 	onCancel: () => void;
-	onSaved: (b: BusinessRow) => void;
+	onSaved: (b: BusinessRow, change?: AdminChangeRow) => void;
+	/** Edit as H.M.S: a reason is required and the change is recorded with before/after values. */
+	asHms?: boolean;
 }) {
 	const { run, pending } = useAction();
+	const [reason, setReason] = useState("");
 	const [name, setName] = useState(business.name);
 	const [legalName, setLegalName] = useState(business.legalName ?? "");
 	const [registrationNumber, setReg] = useState(
@@ -881,39 +950,87 @@ function EditBusinessForm({
 				: perNight
 			: Number(pct.replace(",", "."));
 	const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim());
+	const reasonOk = !asHms || reason.trim().length >= 8;
 	const valid =
-		name.trim().length > 1 && ownerName.trim().length > 1 && emailOk;
+		name.trim().length > 1 && ownerName.trim().length > 1 && emailOk && reasonOk;
 
-	const save = () =>
+	const save = () => {
+		const patch: Partial<BusinessRequest> = {
+			name: name.trim(),
+			legalName: legalName.trim() || null,
+			registrationNumber: registrationNumber.trim() || null,
+			businessType: businessType.trim() || null,
+			address: address.trim() || null,
+			city: city.trim() || null,
+			email: email.trim() || null,
+			phone: phone.trim() || null,
+			ownerName: ownerName.trim(),
+			ownerEmail: ownerEmail.trim().toLowerCase(),
+			ownerPhone: ownerPhone.trim() || null,
+			feeModel,
+			feeValue: Number.isFinite(feeValue) && feeValue > 0 ? feeValue : null,
+			contractStartsOn: contractStartsOn || null,
+			contractNotes: contractNotes.trim() || null,
+		};
+		const body = businessRequestFrom(business, patch);
+		if (!asHms) {
+			run(() => updateBusiness(business.id, body), "Business saved", (b) =>
+				onSaved(refreshBusiness(business, b)),
+			);
+			return;
+		}
+		const diff = diffBusiness(business, patch);
 		run(
-			() =>
-				updateBusiness(
-					business.id,
-					businessRequestFrom(business, {
-						name: name.trim(),
-						legalName: legalName.trim() || null,
-						registrationNumber: registrationNumber.trim() || null,
-						businessType: businessType.trim() || null,
-						address: address.trim() || null,
-						city: city.trim() || null,
-						email: email.trim() || null,
-						phone: phone.trim() || null,
-						ownerName: ownerName.trim(),
-						ownerEmail: ownerEmail.trim().toLowerCase(),
-						ownerPhone: ownerPhone.trim() || null,
-						feeModel,
-						feeValue:
-							Number.isFinite(feeValue) && feeValue > 0 ? feeValue : null,
-						contractStartsOn: contractStartsOn || null,
-						contractNotes: contractNotes.trim() || null,
-					}),
-				),
-			"Business saved",
-			(b) => onSaved(refreshBusiness(business, b)),
+			async () => {
+				if (diff.keys.length === 0)
+					return { ok: false as const, error: "Nothing has changed yet" };
+				const saved = await updateBusiness(business.id, body);
+				if (!saved.ok) return saved;
+				const change = await recordChange({
+					businessId: business.id,
+					area: "BUSINESS",
+					description: `${diff.keys
+						.map((k) => FIELD_LABELS[k] ?? k)
+						.join(", ")} changed`,
+					reason: reason.trim(),
+					before: diff.before,
+					after: diff.after,
+				});
+				if (!change.ok) return change;
+				return {
+					ok: true as const,
+					data: { business: saved.data, change: change.data },
+				};
+			},
+			"Change saved and logged · the owner can undo it for 7 days",
+			({ business: b, change }) =>
+				onSaved(refreshBusiness(business, b), change),
 		);
+	};
 
 	return (
 		<div className="flex h-full flex-col gap-5">
+			{asHms && (
+				<PanelSection title="Why">
+					<Note tone="info">
+						Use this for support fixes the hotel can't do itself. The owner sees
+						the change in their activity log, marked "by H.M.S", with this reason.
+					</Note>
+					<TextareaField
+						label="Reason"
+						value={reason}
+						onChange={setReason}
+						rows={2}
+						placeholder="Ticket #4412 · owner asked for the new phone number"
+						hint="At least 8 characters. A ticket number is best."
+						error={
+							reason.length > 0 && reason.trim().length < 8
+								? "Say a little more"
+								: undefined
+						}
+					/>
+				</PanelSection>
+			)}
 			<PanelSection title="Business">
 				<FieldRow>
 					<TextField
@@ -1055,7 +1172,7 @@ function EditBusinessForm({
 					onClick={save}
 					disabled={!valid || pending}
 				>
-					Save business
+					{asHms ? "Save change" : "Save business"}
 				</button>
 			</div>
 		</div>
@@ -1275,22 +1392,22 @@ function ChangeManagerModal({
 	);
 }
 
-/** Admin — Phase 3 · Edit as H.M.S: a reason is required; the change is logged and undoable for 7 days. Still a demo flow. */
+/**
+ * Phase 3 · Edit as H.M.S: the same business form with a required reason; the edit goes to tenant and
+ * is then recorded (POST /platform/admin/changes, area BUSINESS, before/after of the fields that changed)
+ * so it shows under "Changes by H.M.S" and in the owner's activity log, undoable for 7 days.
+ */
 export function EditAsHmsPanel({
 	open,
 	onOpenChange,
 	business,
+	onSaved,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	business: BusinessRow;
+	onSaved: (b: BusinessRow, change: AdminChangeRow) => void;
 }) {
-	const { run, pending } = useDemoAction();
-	const [area, setArea] = useState("Hotel setup");
-	const [hotel, setHotel] = useState("");
-	const [what, setWhat] = useState("");
-	const [reason, setReason] = useState("");
-	const [notify, setNotify] = useState(true);
 	return (
 		<SidePanel
 			open={open}
@@ -1301,82 +1418,19 @@ export function EditAsHmsPanel({
 			width="md"
 			tone="danger"
 			footerInfo="The owner and managers see this change in their activity log, marked 'by H.M.S'."
-			footer={
-				<>
-					<button
-						type="button"
-						className={btn.secondary}
-						onClick={() => onOpenChange(false)}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						disabled={!what || reason.length < 8 || pending}
-						className={btn.primary}
-						onClick={() =>
-							run("Change saved and logged · undo available for 7 days", () =>
-								onOpenChange(false),
-							)
-						}
-					>
-						Save change
-					</button>
-				</>
-			}
 		>
-			<div className="flex flex-col gap-5">
-				<Note tone="info">
-					Use this for support fixes the hotel can't do itself. A ticket number
-					in the reason is best.
-				</Note>
-				<PanelSection title="Where">
-					<SelectField
-						label="Area"
-						value={area}
-						onChange={setArea}
-						options={[
-							"Hotel setup",
-							"Users & roles",
-							"Payments & POS",
-							"Rooms & prices",
-							"Messaging / WhatsApp",
-						]}
-					/>
-					<TextField
-						label="Hotel (optional)"
-						value={hotel}
-						onChange={setHotel}
-						placeholder="All hotels"
-					/>
-				</PanelSection>
-				<PanelSection title="Change">
-					<TextareaField
-						label="What you are changing"
-						value={what}
-						onChange={setWhat}
-						placeholder="Check-out time 12:00 → 11:00"
-					/>
-					<TextareaField
-						label="Reason"
-						value={reason}
-						onChange={setReason}
-						placeholder="Ticket #4412 · owner asked"
-						hint="At least 8 characters."
-						error={
-							reason.length > 0 && reason.length < 8
-								? "Say a little more"
-								: undefined
-						}
-					/>
-					<ToggleField
-						label="Tell the owner by email"
-						hint="Also appears in their notifications"
-						checked={notify}
-						onChange={setNotify}
-					/>
-				</PanelSection>
-			</div>
+			{open && (
+				<EditBusinessForm
+					key={`hms-${business.id}`}
+					business={business}
+					asHms
+					onCancel={() => onOpenChange(false)}
+					onSaved={(b, change) => {
+						if (change) onSaved(b, change);
+						else onOpenChange(false);
+					}}
+				/>
+			)}
 		</SidePanel>
 	);
 }

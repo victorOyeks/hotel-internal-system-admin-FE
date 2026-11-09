@@ -5,6 +5,21 @@ import { toast } from "sonner";
 import type { ActionResult } from "@hospio/api/actions";
 
 /**
+ * Set while the session is a support view ("View as owner", read only): the services refuse every
+ * write with 403 "forbidden", which reads better as the sentence below. The support bar flips it on mount.
+ */
+let readOnlySupport = false;
+export function setReadOnlySupport(on: boolean) {
+	readOnlySupport = on;
+}
+export const READ_ONLY_SUPPORT_MESSAGE = "Read-only support access cannot change anything";
+
+function readable(error: string) {
+	if (readOnlySupport && /forbidden|access is denied|not allowed|read[- ]only/i.test(error)) return READ_ONLY_SUPPORT_MESSAGE;
+	return error;
+}
+
+/**
  * Runs a server action from a panel or modal: shows a toast with the result, calls `after` with the
  * data on success. Replaces useDemoAction screen by screen as each domain is wired.
  *
@@ -18,13 +33,13 @@ export function useAction() {
 		try {
 			const result = await action();
 			if (!result.ok) {
-				toast.error(result.error, { duration: 8000 });
+				toast.error(readable(result.error), { duration: 8000 });
 				return;
 			}
 			toast.success(message);
 			after?.(result.data);
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : "Something went wrong", { duration: 8000 });
+			toast.error(readable(e instanceof Error ? e.message : "Something went wrong"), { duration: 8000 });
 		} finally {
 			setPending(false);
 		}

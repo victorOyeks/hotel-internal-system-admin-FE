@@ -15,8 +15,61 @@ const TABS: { key: BusinessTabKey; label: string }[] = [
 ];
 
 /**
- * The header every business sub-page shares: a back link to the business page, the title and a strip
- * that moves between the sub-routes (`/dashboard/businesses/[id]/usage`, `/money`, `/support`, `/activity`).
+ * The strip that moves between the business's routes: the overview (`/dashboard/businesses/[id]`) and
+ * the sub-routes `/usage`, `/money`, `/support`, `/activity`. The overview page renders it without its own entry.
+ */
+export function BusinessTabStrip({
+	businessId,
+	active,
+	includeOverview = true,
+	className,
+}: {
+	businessId: string;
+	active: BusinessTabKey | "hotel" | "overview";
+	includeOverview?: boolean;
+	className?: string;
+}) {
+	const base = `/dashboard/businesses/${businessId}`;
+	return (
+		<div
+			className={cn(
+				"inline-flex w-fit gap-[2px] rounded-[10px] bg-subtle p-1",
+				className,
+			)}
+		>
+			{includeOverview && (
+				<Link
+					href={base}
+					className={cn(
+						"rounded-lg px-[10px] py-[6px] text-xs transition-colors",
+						active === "overview"
+							? "bg-card font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+							: "font-medium text-ink-2 hover:text-ink",
+					)}
+				>
+					Overview
+				</Link>
+			)}
+			{TABS.map((t) => (
+				<Link
+					key={t.key}
+					href={`${base}/${t.key}`}
+					className={cn(
+						"rounded-lg px-[10px] py-[6px] text-xs transition-colors",
+						active === t.key
+							? "bg-card font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+							: "font-medium text-ink-2 hover:text-ink",
+					)}
+				>
+					{t.label}
+				</Link>
+			))}
+		</div>
+	);
+}
+
+/**
+ * The header every business sub-page shares: a back link to the business page, the title and the strip.
  */
 export function BusinessTabHeader({
 	businessId,
@@ -43,28 +96,7 @@ export function BusinessTabHeader({
 			<PageHeader title={businessName} subtitle={subtitle}>
 				{children}
 			</PageHeader>
-			<div className="inline-flex w-fit gap-[2px] rounded-[10px] bg-subtle p-1">
-				<Link
-					href={base}
-					className="rounded-lg px-[10px] py-[6px] text-xs font-medium text-ink-2 hover:text-ink"
-				>
-					Overview
-				</Link>
-				{TABS.map((t) => (
-					<Link
-						key={t.key}
-						href={`${base}/${t.key}`}
-						className={cn(
-							"rounded-lg px-[10px] py-[6px] text-xs transition-colors",
-							active === t.key
-								? "bg-card font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-								: "font-medium text-ink-2 hover:text-ink",
-						)}
-					>
-						{t.label}
-					</Link>
-				))}
-			</div>
+			<BusinessTabStrip businessId={businessId} active={active} />
 		</>
 	);
 }
