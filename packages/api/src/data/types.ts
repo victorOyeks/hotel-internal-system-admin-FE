@@ -976,3 +976,9 @@ export type AdminUserRow = {
 	lastSignIn?: string;
 	twoStep: boolean;
 };
+
+/** What the booking's payment plan asks for now: a 50% deposit or the full stay, less what is already paid. */
+export function dueOnBooking(b: Pick<BookingRow, "paymentPlan" | "totalAmount" | "paid">): number {
+	const target = b.paymentPlan === "PAY_IN_FULL" ? b.totalAmount : b.paymentPlan === "DEPOSIT_50" ? Math.round(b.totalAmount / 2) : 0;
+	return Math.max(0, target - b.paid);
+}
