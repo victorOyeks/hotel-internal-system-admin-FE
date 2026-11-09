@@ -359,7 +359,7 @@ function CheckInPanel({
 					) : (
 						<Note tone="success">
 							{b.paymentPlan === "ORGANIZATION"
-								? `${b.organizationName} pays on their account`
+								? `${b.organizationName ?? "the company"} pays on their account`
 								: b.paymentPlan === "PAY_AT_CHECKOUT" ||
 										b.priceKind === "COMPLIMENTARY"
 									? "Nothing to collect now"
@@ -608,7 +608,7 @@ function CheckOutPanel({
 							: []),
 						{
 							label: onAccount
-								? `Billed to ${b.organizationName}`
+								? `Billed to ${b.organizationName ?? "the company"}`
 								: bal < 0
 									? "Credit"
 									: "Balance",
@@ -678,7 +678,7 @@ function CheckOutPanel({
 					items={[
 						`Room ${b.roomNumber} goes to housekeeping as Needs cleaning`,
 						onAccount
-							? `Charges go on ${b.organizationName}'s account`
+							? `Charges go on ${b.organizationName ?? "the company"}'s account`
 							: due > 0 && settle === "later"
 								? "Folio closes with a balance and shows on the dashboard"
 								: "Folio closes paid in full",
