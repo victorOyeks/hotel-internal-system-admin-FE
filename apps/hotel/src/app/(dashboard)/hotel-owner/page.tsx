@@ -11,16 +11,25 @@ export const dynamic = "force-dynamic";
 export default async function OwnerHomePage() {
 	const user = await getUser();
 	if (!user) redirect("/auth");
-	const [hotels, approvals, activity, daily, business, settings, active] =
-		await Promise.all([
-			data.hotels.withMoney(),
-			data.approvals.list(),
-			data.activity.list(),
-			data.finance.series(lagosDay(-29), lagosDay(0)),
-			data.business.mine(),
-			data.hotels.limits(),
-			getActiveHotel(),
-		]);
+	const [
+		hotels,
+		approvals,
+		activity,
+		daily,
+		business,
+		settings,
+		active,
+		outletSales,
+	] = await Promise.all([
+		data.hotels.withMoney(),
+		data.approvals.list(),
+		data.activity.list(),
+		data.finance.series(lagosDay(-29), lagosDay(0)),
+		data.business.mine(),
+		data.hotels.limits(),
+		getActiveHotel(),
+		data.outlets.managementSales(),
+	]);
 	const worth = await data.hotels.worth(hotels, approvals);
 	return (
 		<OwnerDashboard
@@ -33,6 +42,7 @@ export default async function OwnerHomePage() {
 			dailyScope={live("finance") && active ? active.name : "All branches"}
 			worth={worth}
 			limit={settings.limits.managerExpenseLimit}
+			outletSales={outletSales}
 		/>
 	);
 }

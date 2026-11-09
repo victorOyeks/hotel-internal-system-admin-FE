@@ -37,6 +37,7 @@ export const sectionKeyToApi: Record<string, string | undefined> = {
 	approvals: "APPROVAL_LIMITS",
 	housekeeping: "HOUSEKEEPING",
 	outlets: "OUTLETS",
+	restaurants: undefined,
 	messaging: "MESSAGING",
 	staff: "STAFF",
 	night: "NIGHT_AUDIT",
@@ -276,6 +277,15 @@ export const SETUP_CATALOGUE: SectionDef[] = [
 				default: 50000,
 			},
 		],
+	},
+	{
+		// Not a hotel-config section: the outlets and their tables live in fnb-service, edited by a panel of their own.
+		key: "restaurants",
+		title: "Restaurants & tables",
+		description:
+			"Your kitchens and bars, the store each draws from, and their tables",
+		icon: "chef",
+		fields: [],
 	},
 	{
 		key: "messaging",

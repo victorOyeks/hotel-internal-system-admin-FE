@@ -41,7 +41,12 @@ import { PageHeader } from "@hospio/ui/shared/page-header";
 import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { WhatHappens } from "@hospio/ui/shared/side-panel";
 import { btn, input as inputCls } from "@hospio/ui/shared/ui";
-import type { HotelSetupSection } from "@hospio/api/data/types";
+import type {
+	HotelSetupSection,
+	OutletRow,
+	StoreRow,
+} from "@hospio/api/data/types";
+import { RestaurantsSection } from "./hotel-setup-restaurants";
 import { cn } from "@hospio/ui/utils";
 
 const icons: Record<string, LucideIcon> = {
@@ -98,12 +103,17 @@ export function HotelSetupScreen({
 	hotelName,
 	hotelId,
 	isOwner,
+	outlets = [],
+	stores = [],
 }: {
 	sections: HotelSetupSection[];
 	activeKey: string;
 	hotelName: string;
 	hotelId?: string;
 	isOwner: boolean;
+	/** The kitchens and bars with their tables, and the stores they can draw from (Restaurants & tables). */
+	outlets?: OutletRow[];
+	stores?: StoreRow[];
 }) {
 	const section = sections.find((s) => s.key === activeKey) ?? sections[0];
 	const locked = !!section.ownerOnly && !isOwner;
@@ -135,13 +145,22 @@ export function HotelSetupScreen({
 						/>
 					))}
 				</nav>
-				<SectionForm
-					key={section.key}
-					section={section}
-					locked={locked}
-					why={why[section.key]}
-					hotelId={hotelId}
-				/>
+				{section.key === "restaurants" ? (
+					<RestaurantsSection
+						key={section.key}
+						outlets={outlets}
+						stores={stores}
+						locked={locked}
+					/>
+				) : (
+					<SectionForm
+						key={section.key}
+						section={section}
+						locked={locked}
+						why={why[section.key]}
+						hotelId={hotelId}
+					/>
+				)}
 			</div>
 		</>
 	);

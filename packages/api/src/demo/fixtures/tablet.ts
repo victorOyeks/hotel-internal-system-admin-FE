@@ -36,19 +36,6 @@ export const laundryPriceList = [
 	{ name: "Jacket", price: 3500 },
 	{ name: "Underwear · 5", price: 1200 },
 ];
-
-export type SeatRow = { id: string; name: string; state: "FREE" | "TAB" | "RESERVED"; who?: string; amount?: number; orderId?: string };
-export const demoSeats: SeatRow[] = [
-	{ id: "s1", name: "Seat 1", state: "FREE" },
-	{ id: "s2", name: "Seat 2", state: "FREE" },
-	{ id: "s3", name: "Bar 2", state: "FREE" },
-	{ id: "s4", name: "Seat 4", state: "FREE" },
-	{ id: "s5", name: "Lounge 1", state: "TAB", who: "Emeka Nwosu · A207", amount: 15600, orderId: "or-6" },
-	{ id: "s6", name: "Lounge 2", state: "FREE" },
-	{ id: "s7", name: "Pool 3", state: "TAB", who: "2 guests", amount: 8000, orderId: "or-7" },
-	{ id: "s8", name: "Lounge 4", state: "RESERVED", who: "Reserved 9pm" },
-];
-
 export const demoPublicAreas = ["Lobby", "Restaurant", "Bar", "Pool deck", "Gym", "Floor 1 corridor", "Floor 2 corridor", "Floor 3 corridor"];
 
 export const demoWeekShifts = { from: day(-1), to: day(5) };

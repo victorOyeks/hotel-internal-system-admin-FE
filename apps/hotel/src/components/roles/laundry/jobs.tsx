@@ -11,11 +11,11 @@ import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
-import type { BookingRow, LaundryOrderRow } from "@hospio/api/data/types";
+import type { BookingRow, LaundryOrderRow, TerminalRow } from "@hospio/api/data/types";
 import { useDemoAction } from "@hospio/api/demo/actions";
 import { laundryPriceList } from "@hospio/api/demo/fixtures/tablet";
 import { cn } from "@hospio/ui/utils";
-import { PaymentFlow } from "../shared-staff/pos-payment";
+import { OrderPaymentPanel } from "../shared-staff/pos-payment";
 import { BigButton, BoardCard, BoardColumn, ShiftPill, Stepper } from "../shared-staff/tablet";
 
 type Status = LaundryOrderRow["status"];
@@ -26,7 +26,7 @@ const tone: Record<Status, "warning" | "info" | "success" | "grey"> = { RECEIVED
 type Panel = { kind: "new" } | { kind: "order"; id: string } | { kind: "pocket"; id: string } | { kind: "deliver"; id: string } | { kind: "pay"; id: string } | null;
 
 /** Laundry · Jobs (3243:13987) with new guest order, order details, found in pocket, mark delivered and take payment. */
-export function LaundryJobsScreen({ orders, inHouse }: { orders: LaundryOrderRow[]; inHouse: BookingRow[] }) {
+export function LaundryJobsScreen({ orders, inHouse, terminals = [] }: { orders: LaundryOrderRow[]; inHouse: BookingRow[]; terminals?: TerminalRow[] }) {
 	const [rows, setRows] = useState(orders);
 	const [open, setOpen] = useQueryState("open", parseAsString);
 	const [isNew, setIsNew] = useQueryState("new", parseAsString);
@@ -167,9 +167,10 @@ export function LaundryJobsScreen({ orders, inHouse }: { orders: LaundryOrderRow
 			</Modal>
 
 			{/* Take payment */}
-			<SidePanel open={panel?.kind === "pay" && !!current} onOpenChange={(o) => !o && setPanel(current ? { kind: "order", id: current.id } : null)} title="Take payment" subtitle={current ? `${current.guestName} · laundry` : undefined} icon={CreditCardIcon}>
-				{current && <PaymentFlow amount={current.total} description={`Laundry · ${current.items.map((i) => `${i.qty} ${i.name}`).join(", ")}`} terminal="Laundry POS" onDone={() => { update(current.id, { paid: true }); setPanel({ kind: "order", id: current.id }); }} />}
-			</SidePanel>
+			<OrderPaymentPanel open={panel?.kind === "pay" && !!current} onOpenChange={(o) => !o && setPanel(current ? { kind: "order", id: current.id } : null)} desk="LAUNDRY" terminals={terminals}
+				payment={current ? { guestName: current.guestName, roomNumber: current.roomNumber, amount: current.total, description: `Laundry · ${current.items.map((i) => `${i.qty} ${i.name}`).join(", ")}` } : null}
+				onDone={() => { if (current) { update(current.id, { paid: true }); setPanel({ kind: "order", id: current.id }); } }}
+			/>
 		</>
 	);
 }

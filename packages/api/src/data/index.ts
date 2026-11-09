@@ -34,6 +34,7 @@ import {
 } from "./mappers/hotel-config";
 import { toPortalUserRow, toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
+import { fnbData } from "./fnb";
 import { opsData } from "./ops";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import {
@@ -67,6 +68,7 @@ import type {
 	BusinessRow,
 	MarketerRow,
 	NotificationRow,
+	OutletSettingsRow,
 	FolioRow,
 	GuestRow,
 	HotelSetupSection,
@@ -873,13 +875,14 @@ export const data = {
 	},
 	finance: opsData.finance,
 	inventory: {
-		stores: () => give(ops.demoStores),
-		items: () => give(ops.demoStockItems),
-		requests: () => give(ops.demoStockRequests),
-		purchaseOrders: () => give(ops.demoPurchaseOrders),
-		deliveries: () => give(ops.demoDeliveries),
-		counts: () => give(ops.demoStockCounts),
-		suppliers: () => give(ops.demoSuppliers),
+		// Stores, stock and team requests are the live reads the kitchen and bar use. The purchasing screens
+		// (orders, deliveries, counts, suppliers) are not wired yet: empty once inventory is live, never demo rows.
+		...fnbData.inventory,
+		purchaseOrders: () =>
+			live("inventory") ? give([]) : give(ops.demoPurchaseOrders),
+		deliveries: () => (live("inventory") ? give([]) : give(ops.demoDeliveries)),
+		counts: () => (live("inventory") ? give([]) : give(ops.demoStockCounts)),
+		suppliers: () => (live("inventory") ? give([]) : give(ops.demoSuppliers)),
 	},
 	maintenance: {
 		repairs: () => give(ops.demoRepairs),
@@ -929,18 +932,35 @@ export const data = {
 		live: () => give(ops.demoDepartments),
 	},
 	outlets: {
-		menu: (outletId?: string) =>
-			give(
-				outletId
-					? ops.demoMenu.filter((m) => m.outletId === outletId)
-					: ops.demoMenu,
-			),
-		orders: (outlet?: string) =>
-			give(
-				outlet
-					? ops.demoOrders.filter((o) => o.outlet === outlet)
-					: ops.demoOrders,
-			),
+		...fnbData.outlets,
+		/** OUTLETS (room charge, tabs, tab limit) and TAXES_CURRENCY from Hotel setup; the contract's defaults when it cannot be read. */
+		settings: async (): Promise<OutletSettingsRow> => {
+			const fallback: OutletSettingsRow = {
+				roomCharge: true,
+				tabs: true,
+				tabLimit: 50_000,
+				vatPct: 7.5,
+				serviceChargePct: 0,
+				pricesIncludeTax: true,
+			};
+			if (!live("hotel-config")) return give(fallback);
+			const sections = await data.hotels.setup().catch(() => []);
+			const value = (section: string, key: string) =>
+				sections
+					.find((x) => x.key === section)
+					?.fields.find((f) => f.key === key)?.value;
+			const n = (v: unknown, d: number) =>
+				typeof v === "number" && Number.isFinite(v) ? v : d;
+			const b = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+			return {
+				roomCharge: b(value("outlets", "roomCharge"), fallback.roomCharge),
+				tabs: b(value("outlets", "tabs"), fallback.tabs),
+				tabLimit: n(value("outlets", "tabLimit"), fallback.tabLimit),
+				vatPct: n(value("taxes", "vatPct"), fallback.vatPct),
+				serviceChargePct: n(value("taxes", "serviceChargePct"), 0),
+				pricesIncludeTax: b(value("taxes", "pricesIncludeTax"), true),
+			};
+		},
 	},
 	housekeeping: opsData.housekeeping,
 	laundry: {
@@ -1195,6 +1215,7 @@ const ROLE_SCREENS: Record<string, string[]> = {
 		"folios",
 		"hotel-setup",
 		"inventory",
+		"menus",
 		"messaging",
 		"night-audit",
 		"organizations",
@@ -1218,8 +1239,8 @@ const ROLE_SCREENS: Record<string, string[]> = {
 	FINANCE: ["expenses", "month", "night-audit", "organizations", "tills"],
 	INVENTORY: ["counts", "deliveries", "orders", "requests", "suppliers"],
 	MAINTENANCE: ["jobs", "parts", "rooms"],
-	KITCHEN: ["menu", "payments", "store"],
-	BAR: ["menu", "payments", "stock", "tabs"],
+	KITCHEN: ["menu", "payments", "store", "till"],
+	BAR: ["menu", "payments", "stock", "tabs", "till"],
 	LAUNDRY: ["linen", "payments"],
 };
 const SHARED_SCREENS = ["notifications", "profile", "help", "shifts"];

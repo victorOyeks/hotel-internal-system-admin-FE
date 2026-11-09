@@ -10,17 +10,27 @@ export default async function ManagerHomePage() {
 	const [user, hotel] = await Promise.all([getUser(), getActiveHotel()]);
 	if (!user) redirect("/auth");
 
-	const [buckets, rooms, money, approvals, repairs, items, folios, shifts] =
-		await Promise.all([
-			data.bookings.buckets(),
-			data.rooms.list(),
-			data.finance.today(),
-			data.approvals.list(),
-			data.maintenance.repairs(),
-			data.inventory.items(),
-			data.folios.list(),
-			data.staff.shifts(lagosDate(), lagosDate()),
-		]);
+	const [
+		buckets,
+		rooms,
+		money,
+		approvals,
+		repairs,
+		items,
+		folios,
+		shifts,
+		outletSales,
+	] = await Promise.all([
+		data.bookings.buckets(),
+		data.rooms.list(),
+		data.finance.today(),
+		data.approvals.list(),
+		data.maintenance.repairs(),
+		data.inventory.items(),
+		data.folios.list(),
+		data.staff.shifts(lagosDate(), lagosDate()),
+		data.outlets.managementSales(),
+	]);
 	const todayShifts = shifts.filter(
 		(s) => s.date === lagosDate() && s.status !== "CANCELLED",
 	);
@@ -38,6 +48,7 @@ export default async function ManagerHomePage() {
 				items,
 				folios,
 				shifts: todayShifts,
+				outletSales,
 			}}
 		/>
 	);

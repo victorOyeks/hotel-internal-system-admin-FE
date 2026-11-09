@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { HotelSetupScreen } from "@/components/roles/manager/hotel-setup";
-import { loadSetup } from "@/app/(dashboard)/manager/hotel-setup/load";
+import {
+	loadOutlets,
+	loadSetup,
+} from "@/app/(dashboard)/manager/hotel-setup/load";
 import { getActiveHotel } from "@hospio/api/dal";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +16,11 @@ export default async function OwnerHotelSetupPage({
 }) {
 	const { section } = await params;
 	const key = section?.[0] ?? "basics";
-	const [hotel, sections] = await Promise.all([getActiveHotel(), loadSetup()]);
+	const [hotel, sections, { outlets, stores }] = await Promise.all([
+		getActiveHotel(),
+		loadSetup(),
+		loadOutlets(),
+	]);
 	if (!sections.some((s) => s.key === key)) notFound();
 	return (
 		<HotelSetupScreen
@@ -21,6 +28,8 @@ export default async function OwnerHotelSetupPage({
 			activeKey={key}
 			hotelName={hotel?.name ?? "This hotel"}
 			hotelId={hotel?.id}
+			outlets={outlets}
+			stores={stores}
 			isOwner
 		/>
 	);

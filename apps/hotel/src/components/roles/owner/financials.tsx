@@ -29,6 +29,7 @@ import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs, useTabParam } from "@hospio/ui/shared/pill-tabs";
 import { ProgressBar } from "@hospio/ui/shared/progress-bar";
 import { SectionCard } from "@hospio/ui/shared/section-card";
+import { OutletSalesCard } from "../manager/outlet-sales";
 import {
 	PanelSection,
 	SidePanel,
@@ -46,6 +47,7 @@ import type {
 	SeriesPointRow,
 	TransactionRow,
 	WorthRow,
+	OutletSalesDayRow,
 } from "@hospio/api/data/types";
 import type {
 	PayrollRow,
@@ -108,6 +110,8 @@ export type FinancialsProps = {
 	payroll: PayrollRow[];
 	organizations: OrganizationRow[];
 	approvals: ApprovalRow[];
+	/** What the restaurant and bar sold today; sales, not money received. */
+	outletSales?: OutletSalesDayRow | null;
 };
 
 export function OwnerFinancials(props: FinancialsProps) {
@@ -307,6 +311,7 @@ export function OwnerFinancials(props: FinancialsProps) {
 						</SectionCard>
 					</div>
 					<PnlTable hotels={hotels} compact />
+					<OutletSalesCard sales={props.outletSales} />
 					{demo ? (
 						<div className="grid gap-4 xl:grid-cols-2">
 							<SectionCard
