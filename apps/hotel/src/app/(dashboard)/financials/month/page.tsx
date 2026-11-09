@@ -1,10 +1,37 @@
 import { MonthScreen } from "@/components/roles/finance/month";
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { live } from "@hospio/api/data/live";
+import { lagosDate } from "@hospio/api/data/mappers/finance";
 
 export const dynamic = "force-dynamic";
 
-export default async function FinanceMonthPage() {
-	const [hotel, expenses] = await Promise.all([getActiveHotel(), data.finance.expenses()]);
-	return <MonthScreen expenses={expenses} hotelName={hotel?.name ?? "Hotel"} />;
+export default async function FinanceMonthPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ month?: string }>;
+}) {
+	const { month } = await searchParams;
+	const today = lagosDate();
+	const first = `${today.slice(0, 8)}01`;
+	const prevEnd = lagosDate(
+		new Date(Date.parse(`${first}T12:00:00Z`) - 86_400_000),
+	);
+	const [from, to] =
+		month === "last" ? [`${prevEnd.slice(0, 8)}01`, prevEnd] : [first, today];
+	const [hotel, expenses, series] = await Promise.all([
+		getActiveHotel(),
+		data.finance.expenses(),
+		data.finance.series(from, to),
+	]);
+	return (
+		<MonthScreen
+			demo={!live("finance")}
+			expenses={expenses}
+			series={series}
+			from={from}
+			to={to}
+			hotelName={hotel?.name ?? "Hotel"}
+		/>
+	);
 }

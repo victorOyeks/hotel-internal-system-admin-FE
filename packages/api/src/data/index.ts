@@ -7,24 +7,66 @@ import "server-only";
  */
 
 import { api } from "@hospio/api/api/client";
-import type { Business, Hotel, ListItem, SetupSection, UserSummary } from "@hospio/api/api/schema";
+import type {
+	Business,
+	Hotel,
+	ListItem,
+	SetupSection,
+	UserSummary,
+} from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
 import { getActiveHotel, getBusiness, getHotels } from "@hospio/api/dal";
 import { demoDelay } from "@hospio/api/demo/mode";
 import { isHotelRole } from "@hospio/api/roles";
 import { live } from "./live";
-import { SETUP_LISTS, type SetupListName, toSetupSections } from "./mappers/hotel-config";
+import {
+	SETUP_LISTS,
+	type SetupListName,
+	toSetupSections,
+} from "./mappers/hotel-config";
 import { toPortalUserRow, toStaffRow } from "./mappers/identity";
+import { lagosDate } from "./mappers/finance";
+import { opsData } from "./ops";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import { toBookingRow, toFolioRow, toGuestRow } from "./mappers/reservation";
-import { toBusinessRow, toBusinessRowFromBusiness, toHotelSummary, toOnboardingRow, toOwnerHotelRow, toSetupTemplateRow } from "./mappers/tenant";
+import {
+	toBusinessRow,
+	toBusinessRowFromBusiness,
+	toHotelSummary,
+	toOnboardingRow,
+	toOwnerHotelRow,
+	toSetupTemplateRow,
+} from "./mappers/tenant";
 import * as hotel from "@hospio/api/demo/fixtures/hotel";
 import * as ops from "@hospio/api/demo/fixtures/ops";
 import * as owner from "@hospio/api/demo/fixtures/owner";
 import * as platform from "@hospio/api/demo/fixtures/platform";
 import * as platformExtra from "@hospio/api/demo/fixtures/platform-extra";
 import * as stay from "@hospio/api/demo/fixtures/stay";
-import type { AdminUserRow, AreaRow, BookingRow, BookingStatus, BusinessRow, MarketerRow, FolioRow, GuestRow, HotelSetupSection, HotelSummary, OnboardingRow, OwnerHotelRow, PaymentRow, PortalUserRow, RoomRow, RoomTypeRow, SetupTemplateRow, StaffRow, TerminalRow } from "./types";
+import type {
+	AdminUserRow,
+	ApprovalLimits,
+	ApprovalRow,
+	AreaRow,
+	BookingRow,
+	BookingStatus,
+	BusinessRow,
+	MarketerRow,
+	FolioRow,
+	GuestRow,
+	HotelSetupSection,
+	HotelSummary,
+	OnboardingRow,
+	OwnerHotelRow,
+	PaymentRow,
+	PortalUserRow,
+	RoomRow,
+	RoomTypeRow,
+	SetupTemplateRow,
+	StaffRow,
+	TerminalRow,
+	WorthRow,
+} from "./types";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -35,18 +77,46 @@ const isToday = (iso: string) => iso === hotel.today();
 
 export function bookingBuckets(bookings: BookingRow[]) {
 	return {
-		arrivals: bookings.filter((b) => isToday(b.checkInDate) && (b.status === "BOOKED" || b.status === "NO_SHOW" || (b.status === "CHECKED_IN" && b.checkedInAt?.slice(0, 10) === hotel.today()))),
-		departures: bookings.filter((b) => isToday(b.checkOutDate) && b.status === "CHECKED_IN"),
+		arrivals: bookings.filter(
+			(b) =>
+				isToday(b.checkInDate) &&
+				(b.status === "BOOKED" ||
+					b.status === "NO_SHOW" ||
+					(b.status === "CHECKED_IN" &&
+						b.checkedInAt?.slice(0, 10) === hotel.today())),
+		),
+		departures: bookings.filter(
+			(b) => isToday(b.checkOutDate) && b.status === "CHECKED_IN",
+		),
 		inHouse: bookings.filter((b) => b.status === "CHECKED_IN"),
-		upcoming: bookings.filter((b) => b.status === "BOOKED" && b.checkInDate > hotel.today()),
-		past: bookings.filter((b) => b.status === "CHECKED_OUT" || b.status === "CANCELLED" || (b.status === "NO_SHOW" && !isToday(b.checkInDate))),
+		upcoming: bookings.filter(
+			(b) => b.status === "BOOKED" && b.checkInDate > hotel.today(),
+		),
+		past: bookings.filter(
+			(b) =>
+				b.status === "CHECKED_OUT" ||
+				b.status === "CANCELLED" ||
+				(b.status === "NO_SHOW" && !isToday(b.checkInDate)),
+		),
 	};
 }
 
 /** identity users for the caller's business, or a named business for platform callers. */
-async function listUsers(query: { businessId?: string; hotelId?: string; role?: string; q?: string } = {}): Promise<UserSummary[]> {
-	const q = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== "")) as Record<string, string>;
-	const { data: res, error } = await api("@get/identity/users", { ...(await withSession()), query: q });
+async function listUsers(
+	query: {
+		businessId?: string;
+		hotelId?: string;
+		role?: string;
+		q?: string;
+	} = {},
+): Promise<UserSummary[]> {
+	const q = Object.fromEntries(
+		Object.entries(query).filter(([, v]) => v !== undefined && v !== ""),
+	) as Record<string, string>;
+	const { data: res, error } = await api("@get/identity/users", {
+		...(await withSession()),
+		query: q,
+	});
 	if (error || !res) {
 		console.error("identity-service users:", error);
 		return [];
@@ -55,7 +125,8 @@ async function listUsers(query: { businessId?: string; hotelId?: string; role?: 
 }
 
 /** The hotels a business or the caller can see, as `id → name`. */
-const hotelNameMap = (hotels: { id: string; name: string }[]) => new Map(hotels.map((h) => [h.id, h.name]));
+const hotelNameMap = (hotels: { id: string; name: string }[]) =>
+	new Map(hotels.map((h) => [h.id, h.name]));
 
 /** Managers by hotel id and by user id, so hotel rows can show who runs them. Empty when identity is off. */
 async function managerNames(businessId?: string): Promise<Map<string, string>> {
@@ -63,14 +134,24 @@ async function managerNames(businessId?: string): Promise<Map<string, string>> {
 	if (!live("identity")) return names;
 	for (const u of await listUsers({ businessId, role: "MANAGER" })) {
 		names.set(u.id, u.fullName);
-		for (const g of u.grants) if (g.role === "MANAGER" && g.hotelId && !g.paused && !names.has(g.hotelId)) names.set(g.hotelId, u.fullName);
+		for (const g of u.grants)
+			if (
+				g.role === "MANAGER" &&
+				g.hotelId &&
+				!g.paused &&
+				!names.has(g.hotelId)
+			)
+				names.set(g.hotelId, u.fullName);
 	}
 	return names;
 }
 
 /** The platform's hotels for one business (GET /tenant/businesses/{id}/hotels). */
 async function businessHotels(businessId: string): Promise<Hotel[]> {
-	const { data: res, error } = await api("@get/tenant/businesses/:id/hotels", { ...(await withSession()), params: { id: businessId } });
+	const { data: res, error } = await api("@get/tenant/businesses/:id/hotels", {
+		...(await withSession()),
+		params: { id: businessId },
+	});
 	if (error || !res) {
 		console.error("tenant-service business hotels:", error);
 		return [];
@@ -78,15 +159,55 @@ async function businessHotels(businessId: string): Promise<Hotel[]> {
 	return res.data;
 }
 
-const demoOwnerUsers = (query: { hotelId?: string; role?: string; q?: string } = {}) =>
-	owner.ownerPortalUsers.filter((u) => (!query.role || u.role === query.role) && (!query.hotelId || u.hotelIds.length === 0 || u.hotelIds.includes(query.hotelId)) && (!query.q || `${u.fullName} ${u.email}`.toLowerCase().includes(query.q.toLowerCase())));
+const demoOwnerUsers = (
+	query: { hotelId?: string; role?: string; q?: string } = {},
+) =>
+	owner.ownerPortalUsers.filter(
+		(u) =>
+			(!query.role || u.role === query.role) &&
+			(!query.hotelId ||
+				u.hotelIds.length === 0 ||
+				u.hotelIds.includes(query.hotelId)) &&
+			(!query.q ||
+				`${u.fullName} ${u.email}`
+					.toLowerCase()
+					.includes(query.q.toLowerCase())),
+	);
 
 const demoBusinessUsers = (businessId: string): PortalUserRow[] =>
 	businessId === "biz-1" || businessId === hotel.BUSINESS_ID
 		? owner.ownerPortalUsers
 		: platformExtra.demoBusinessUsers
 				.filter((u) => u.businessId === businessId)
-				.map((u) => ({ id: u.id, userId: u.id, businessId: u.businessId, fullName: u.fullName, email: u.email, phone: "", role: isHotelRole(u.role) ? u.role : ("FRONT_OFFICE" as const), level: "FULL" as const, hotels: u.hotel ? [u.hotel] : ["All hotels"], hotelIds: [], hotel: u.hotel ?? "All hotels", grants: [{ id: `${u.id}-g0`, role: u.role, level: "FULL" as const, paused: u.status === "PAUSED" }], status: u.status, inviteStatus: u.status === "INVITED" ? ("PENDING" as const) : ("ACCEPTED" as const), mustChangePassword: u.status === "INVITED", twoStep: false, lastSignIn: u.lastSignIn }));
+				.map((u) => ({
+					id: u.id,
+					userId: u.id,
+					businessId: u.businessId,
+					fullName: u.fullName,
+					email: u.email,
+					phone: "",
+					role: isHotelRole(u.role) ? u.role : ("FRONT_OFFICE" as const),
+					level: "FULL" as const,
+					hotels: u.hotel ? [u.hotel] : ["All hotels"],
+					hotelIds: [],
+					hotel: u.hotel ?? "All hotels",
+					grants: [
+						{
+							id: `${u.id}-g0`,
+							role: u.role,
+							level: "FULL" as const,
+							paused: u.status === "PAUSED",
+						},
+					],
+					status: u.status,
+					inviteStatus:
+						u.status === "INVITED"
+							? ("PENDING" as const)
+							: ("ACCEPTED" as const),
+					mustChangePassword: u.status === "INVITED",
+					twoStep: false,
+					lastSignIn: u.lastSignIn,
+				}));
 
 export const data = {
 	business: {
@@ -104,10 +225,135 @@ export const data = {
 			const managers = await managerNames();
 			return hotels.map((h, i) => toOwnerHotelRow(h, i, managers));
 		},
-		get: async (id: string): Promise<OwnerHotelRow | null> => (await data.hotels.list()).find((h) => h.hotelId === id) ?? null,
+		get: async (id: string): Promise<OwnerHotelRow | null> =>
+			(await data.hotels.list()).find((h) => h.hotelId === id) ?? null,
+		/**
+		 * The owner's hotels with this month's money from finance-service (revenue today and to date,
+		 * expenses, last month's revenue, tonight's occupancy). Identity and counts come from `list`;
+		 * the demo's hotels already carry their own figures.
+		 */
+		withMoney: async (): Promise<OwnerHotelRow[]> => {
+			const hotels = await data.hotels.list();
+			if (!live("finance") || hotels.length === 0) return hotels;
+			const today = lagosDate();
+			const first = `${today.slice(0, 8)}01`;
+			const prevEnd = lagosDate(
+				new Date(Date.parse(`${first}T12:00:00Z`) - 86_400_000),
+			);
+			const prevStart = `${prevEnd.slice(0, 8)}01`;
+			const [day, month, prev] = await Promise.all([
+				data.finance.ownerSummary(today, today),
+				data.finance.ownerSummary(first, today),
+				data.finance.ownerSummary(prevStart, prevEnd),
+			]);
+			const by = (s: typeof day) =>
+				new Map(s.hotels.map((h) => [h.hotelId, h]));
+			const [d, m, p] = [by(day), by(month), by(prev)];
+			return hotels.map((h) => ({
+				...h,
+				revenueToday: d.get(h.hotelId)?.revenue ?? 0,
+				revenueMonth: m.get(h.hotelId)?.revenue ?? 0,
+				expensesMonth: m.get(h.hotelId)?.expenses ?? 0,
+				revenueLastMonth: p.get(h.hotelId)?.revenue ?? 0,
+				occupancy: Math.round(d.get(h.hotelId)?.occupancyPct ?? h.occupancy),
+			}));
+		},
+		/**
+		 * What the owner should look at today. The demo shows its sample list; live it is computed from what
+		 * the services say: approvals waiting, hotels losing money this month, hotels nearly empty tonight.
+		 */
+		worth: async (
+			hotels: OwnerHotelRow[],
+			approvals: ApprovalRow[],
+		): Promise<WorthRow[]> => {
+			if (!live("finance")) return give(owner.ownerWorthALook);
+			const items: WorthRow[] = [];
+			const waiting = approvals.filter(
+				(a) =>
+					a.approverLevel === "OWNER" &&
+					(a.status === "PENDING" || a.status === "QUESTION"),
+			);
+			if (waiting.length > 0)
+				items.push({
+					id: "w-approvals",
+					tone: "warning",
+					title: `${waiting.length === 1 ? "1 approval needs" : `${waiting.length} approvals need`} your decision`,
+					detail: waiting
+						.slice(0, 2)
+						.map((a) => `${a.description} · ${a.requesterName}`)
+						.join(" · "),
+					area: "Approvals",
+					href: `/dashboard?open=${waiting[0].id}`,
+				});
+			for (const h of hotels) {
+				if (h.revenueMonth > 0 && h.expensesMonth > h.revenueMonth)
+					items.push({
+						id: `w-loss-${h.hotelId}`,
+						tone: "danger",
+						title: `${h.name} is spending more than it takes`,
+						detail: `Revenue ${h.revenueMonth.toLocaleString("en-NG")} against expenses ${h.expensesMonth.toLocaleString("en-NG")} this month`,
+						area: "Financials",
+						href: "/dashboard/financials",
+					});
+				else if (h.status === "ACTIVE" && h.rooms > 0 && h.occupancy < 40)
+					items.push({
+						id: `w-occ-${h.hotelId}`,
+						tone: "info",
+						title: `${h.name} is ${h.occupancy}% full tonight`,
+						detail: `${h.rooms} rooms · ${h.manager}`,
+						area: "Hotels",
+						href: `/dashboard/hotels/${h.hotelId}`,
+					});
+			}
+			return items;
+		},
+		/**
+		 * What the hotel's settings say about spending: APPROVAL_LIMITS and the default till float. Above
+		 * `managerExpenseLimit` an expense needs the owner; `ownerExpenseLimit` 0 means no ceiling.
+		 */
+		limits: async (): Promise<{
+			limits: ApprovalLimits;
+			tillFloat: number;
+		}> => {
+			const fallback = {
+				limits: {
+					managerExpenseLimit: 500_000,
+					ownerExpenseLimit: 0,
+					discountPct: 10,
+					refundsNeedOwner: false,
+				},
+				tillFloat: 50_000,
+			};
+			if (!live("hotel-config")) return give(fallback);
+			const sections = await data.hotels.setup();
+			const value = (section: string, key: string) =>
+				sections
+					.find((x) => x.key === section)
+					?.fields.find((f) => f.key === key)?.value;
+			const n = (v: unknown, d: number) =>
+				typeof v === "number" && Number.isFinite(v) ? v : d;
+			return {
+				limits: {
+					managerExpenseLimit: n(
+						value("approvals", "managerExpenseLimit"),
+						fallback.limits.managerExpenseLimit,
+					),
+					ownerExpenseLimit: n(value("approvals", "ownerExpenseLimit"), 0),
+					discountPct: n(
+						value("approvals", "discountPct"),
+						fallback.limits.discountPct,
+					),
+					refundsNeedOwner: value("approvals", "refundsNeedOwner") === true,
+				},
+				tillFloat: n(value("money", "tillFloat"), 0),
+			};
+		},
 		summaries: async (): Promise<HotelSummary[]> => {
 			if (!live("tenant")) return give(hotel.demoHotelSummaries);
-			const [hotels, managers] = await Promise.all([getHotels(), managerNames()]);
+			const [hotels, managers] = await Promise.all([
+				getHotels(),
+				managerNames(),
+			]);
 			return hotels.map((h) => toHotelSummary(h, managers));
 		},
 		/**
@@ -119,8 +365,18 @@ export const data = {
 			const s = await withSession(hotelId ? { hotelId } : undefined);
 			const [setup, active, ...lists] = await Promise.all([
 				api("@get/hotel-config/setup", s),
-				hotelId ? api("@get/tenant/hotels/:id", { ...s, params: { id: hotelId } }).then((r) => r.data?.data ?? null).catch(() => null) : getActiveHotel(),
-				...SETUP_LISTS.map((listName) => api("@get/hotel-config/setup/lists/:listName", { ...s, params: { listName }, query: {} }).catch(() => ({ data: null, error: null }))),
+				hotelId
+					? api("@get/tenant/hotels/:id", { ...s, params: { id: hotelId } })
+							.then((r) => r.data?.data ?? null)
+							.catch(() => null)
+					: getActiveHotel(),
+				...SETUP_LISTS.map((listName) =>
+					api("@get/hotel-config/setup/lists/:listName", {
+						...s,
+						params: { listName },
+						query: {},
+					}).catch(() => ({ data: null, error: null })),
+				),
 			]);
 			if (setup.error || !setup.data) {
 				console.error("hotel-config setup:", setup.error);
@@ -138,13 +394,34 @@ export const data = {
 		 * Portal users: the owner's business (or `businessId` for platform callers), narrowed by hotel,
 		 * role or a search. Hotel names come from the caller's hotels, or the business's for platform callers.
 		 */
-		list: async (query: { businessId?: string; hotelId?: string; role?: string; q?: string } = {}): Promise<PortalUserRow[]> => {
-			if (!live("identity")) return give(query.businessId && query.businessId !== hotel.BUSINESS_ID ? demoBusinessUsers(query.businessId) : demoOwnerUsers(query));
-			const [users, hotels] = await Promise.all([listUsers(query), query.businessId ? businessHotels(query.businessId) : getHotels()]);
+		list: async (
+			query: {
+				businessId?: string;
+				hotelId?: string;
+				role?: string;
+				q?: string;
+			} = {},
+		): Promise<PortalUserRow[]> => {
+			if (!live("identity"))
+				return give(
+					query.businessId && query.businessId !== hotel.BUSINESS_ID
+						? demoBusinessUsers(query.businessId)
+						: demoOwnerUsers(query),
+				);
+			const [users, hotels] = await Promise.all([
+				listUsers(query),
+				query.businessId ? businessHotels(query.businessId) : getHotels(),
+			]);
 			const names = hotelNameMap(hotels);
-			return users.map((u) => toPortalUserRow(u, names)).sort((a, b) => a.fullName.localeCompare(b.fullName));
+			return users
+				.map((u) => toPortalUserRow(u, names))
+				.sort((a, b) => a.fullName.localeCompare(b.fullName));
 		},
-		get: async (id: string, businessId?: string): Promise<PortalUserRow | null> => (await data.users.list({ businessId })).find((u) => u.id === id) ?? null,
+		get: async (
+			id: string,
+			businessId?: string,
+		): Promise<PortalUserRow | null> =>
+			(await data.users.list({ businessId })).find((u) => u.id === id) ?? null,
 	},
 	rooms: {
 		list: async (): Promise<RoomRow[]> => {
@@ -159,12 +436,17 @@ export const data = {
 				console.error("property-service rooms:", rooms.error);
 				return [];
 			}
-			const clean = new Map((cleanliness.data?.data ?? []).map((c) => [c.roomId, c]));
+			const clean = new Map(
+				(cleanliness.data?.data ?? []).map((c) => [c.roomId, c]),
+			);
 			return rooms.data.data.map((r) => toRoomRow(r, areas, clean.get(r.id)));
 		},
 		types: async (): Promise<RoomTypeRow[]> => {
 			if (!live("property")) return give(hotel.demoRoomTypes);
-			const { data: res, error } = await api("@get/property/room-types", await withSession());
+			const { data: res, error } = await api(
+				"@get/property/room-types",
+				await withSession(),
+			);
 			if (error || !res) {
 				console.error("property-service room types:", error);
 				return [];
@@ -174,14 +456,28 @@ export const data = {
 		areas: async (): Promise<AreaRow[]> => {
 			if (!live("property")) {
 				const names = Array.from(new Set(hotel.demoRooms.map((r) => r.floor)));
-				return give(names.map((name, i) => ({ id: `area-${i + 1}`, name, kind: "FLOOR", sortOrder: i + 1 })));
+				return give(
+					names.map((name, i) => ({
+						id: `area-${i + 1}`,
+						name,
+						kind: "FLOOR",
+						sortOrder: i + 1,
+					})),
+				);
 			}
-			const { data: res, error } = await api("@get/property/areas", await withSession());
+			const { data: res, error } = await api(
+				"@get/property/areas",
+				await withSession(),
+			);
 			if (error || !res) {
 				console.error("property-service areas:", error);
 				return [];
 			}
-			return res.data.map(toAreaRow).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+			return res.data
+				.map(toAreaRow)
+				.sort(
+					(a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+				);
 		},
 		get: async (id: string): Promise<RoomRow | null> => {
 			const rooms = await data.rooms.list();
@@ -190,10 +486,18 @@ export const data = {
 	},
 	bookings: {
 		list: async (status?: BookingStatus): Promise<BookingRow[]> => {
-			if (!live("reservation")) return give(status ? stay.demoBookings.filter((b) => b.status === status) : stay.demoBookings);
+			if (!live("reservation"))
+				return give(
+					status
+						? stay.demoBookings.filter((b) => b.status === status)
+						: stay.demoBookings,
+				);
 			const s = await withSession();
 			const [res, guests, folios] = await Promise.all([
-				api("@get/reservation/bookings", { ...s, query: status ? { status } : {} }),
+				api("@get/reservation/bookings", {
+					...s,
+					query: status ? { status } : {},
+				}),
 				data.guests.list(),
 				data.folios.list(),
 			]);
@@ -202,8 +506,16 @@ export const data = {
 				return [];
 			}
 			const guestsById = new Map(guests.map((g) => [g.id, g]));
-			const foliosByBooking = new Map(folios.filter((f) => f.bookingId).map((f) => [f.bookingId, f]));
-			return res.data.data.map((b) => toBookingRow(b, guestsById, foliosByBooking)).sort((a, b) => a.checkInDate.localeCompare(b.checkInDate) || a.guestName.localeCompare(b.guestName));
+			const foliosByBooking = new Map(
+				folios.filter((f) => f.bookingId).map((f) => [f.bookingId, f]),
+			);
+			return res.data.data
+				.map((b) => toBookingRow(b, guestsById, foliosByBooking))
+				.sort(
+					(a, b) =>
+						a.checkInDate.localeCompare(b.checkInDate) ||
+						a.guestName.localeCompare(b.guestName),
+				);
 		},
 		buckets: async () => bookingBuckets(await data.bookings.list()),
 		get: async (id: string): Promise<BookingRow | null> => {
@@ -214,20 +526,27 @@ export const data = {
 	guests: {
 		list: async (): Promise<GuestRow[]> => {
 			if (!live("reservation")) return give(stay.demoGuests);
-			const { data: res, error } = await api("@get/reservation/guests", { ...(await withSession()), query: {} });
+			const { data: res, error } = await api("@get/reservation/guests", {
+				...(await withSession()),
+				query: {},
+			});
 			if (error || !res) {
 				console.error("reservation-service guests:", error);
 				return [];
 			}
 			return res.data.map(toGuestRow);
 		},
-		get: async (id: string): Promise<GuestRow | null> => (await data.guests.list()).find((g) => g.id === id) ?? null,
+		get: async (id: string): Promise<GuestRow | null> =>
+			(await data.guests.list()).find((g) => g.id === id) ?? null,
 	},
 	folios: {
 		/** Open folios (folio-service lists the open ones; closed folios come with the booking they belong to). */
 		list: async (): Promise<FolioRow[]> => {
 			if (!live("folio")) return give(stay.demoFolios);
-			const { data: res, error } = await api("@get/folio/folios", await withSession());
+			const { data: res, error } = await api(
+				"@get/folio/folios",
+				await withSession(),
+			);
 			if (error || !res) {
 				console.error("folio-service folios:", error);
 				return [];
@@ -235,18 +554,31 @@ export const data = {
 			return res.data.map(toFolioRow);
 		},
 		get: async (id: string): Promise<FolioRow | null> => {
-			if (!live("folio")) return give(stay.demoFolios.find((f) => f.id === id || f.bookingId === id) ?? null);
+			if (!live("folio"))
+				return give(
+					stay.demoFolios.find((f) => f.id === id || f.bookingId === id) ??
+						null,
+				);
 			const s = await withSession();
-			const direct = await api("@get/folio/folios/:id", { ...s, params: { id } });
+			const direct = await api("@get/folio/folios/:id", {
+				...s,
+				params: { id },
+			});
 			if (direct.data) return toFolioRow(direct.data.data);
-			const byBooking = await api("@get/folio/folios/by-booking/:bookingId", { ...s, params: { bookingId: id } });
+			const byBooking = await api("@get/folio/folios/by-booking/:bookingId", {
+				...s,
+				params: { bookingId: id },
+			});
 			return byBooking.data ? toFolioRow(byBooking.data.data) : null;
 		},
 	},
 	payments: {
 		list: async (): Promise<PaymentRow[]> => {
 			if (!live("payment")) return give(stay.demoPayments);
-			const { data: res, error } = await api("@get/payment/payments", await withSession());
+			const { data: res, error } = await api(
+				"@get/payment/payments",
+				await withSession(),
+			);
 			if (error || !res) {
 				console.error("payment-service payments:", error);
 				return [];
@@ -275,40 +607,36 @@ export const data = {
 	},
 	organizations: {
 		list: () => give(stay.demoOrganizations),
-		get: (id: string) => give(stay.demoOrganizations.find((o) => o.id === id) ?? null),
+		get: (id: string) =>
+			give(stay.demoOrganizations.find((o) => o.id === id) ?? null),
 		members: (id: string) => give(stay.demoOrgMembers[id] ?? []),
-		invoices: (id?: string) => give(id ? stay.demoInvoices.filter((i) => i.organizationId === id) : stay.demoInvoices),
+		invoices: (id?: string) =>
+			give(
+				id
+					? stay.demoInvoices.filter((i) => i.organizationId === id)
+					: stay.demoInvoices,
+			),
 	},
 	staff: {
 		/** The active hotel's people from identity (every grant on this hotel plus the business-wide owner). */
 		list: async (): Promise<StaffRow[]> => {
 			if (!live("identity")) return give(hotel.demoStaff);
-			const [active, hotels] = await Promise.all([getActiveHotel(), getHotels()]);
+			const [active, hotels] = await Promise.all([
+				getActiveHotel(),
+				getHotels(),
+			]);
 			if (!active) return [];
 			const users = await listUsers({ hotelId: active.id });
 			const names = hotelNameMap(hotels);
-			return users.map((u) => toStaffRow(u, active.id, names)).sort((a, b) => a.fullName.localeCompare(b.fullName));
+			return users
+				.map((u) => toStaffRow(u, active.id, names))
+				.sort((a, b) => a.fullName.localeCompare(b.fullName));
 		},
-		get: async (id: string): Promise<StaffRow | null> => (await data.staff.list()).find((s) => s.id === id) ?? null,
-		shifts: (from?: string, to?: string) => give(hotel.demoShifts.filter((s) => (!from || s.date >= from) && (!to || s.date <= to))),
-		leave: () => give(hotel.demoLeave),
-		shiftRequests: () => give(hotel.demoShiftRequests),
+		get: async (id: string): Promise<StaffRow | null> =>
+			(await data.staff.list()).find((s) => s.id === id) ?? null,
+		...opsData.staff,
 	},
-	finance: {
-		expenses: () => give(ops.demoExpenses),
-		tills: () => give(ops.demoTills),
-		transactions: () => give(ops.demoTransactions),
-		nightAudits: () => give(ops.demoNightAudits),
-		today: () =>
-			give({
-				revenue: 1232000,
-				byMethod: { CARD: 785000, TRANSFER: 309650, CASH: 137350 } as Record<string, number>,
-				paymentsCount: 29,
-				expenses: 642500,
-				openTills: ops.demoTills.filter((t) => t.status === "OPEN").length,
-				cashInTills: ops.demoTills.filter((t) => t.status === "OPEN").reduce((s, t) => s + t.expected, 0),
-			}),
-	},
+	finance: opsData.finance,
 	inventory: {
 		stores: () => give(ops.demoStores),
 		items: () => give(ops.demoStockItems),
@@ -327,17 +655,16 @@ export const data = {
 	activity: {
 		list: () => give(ops.demoActivity),
 	},
-	approvals: {
-		list: () => give(ops.demoApprovals),
-		get: (id: string) => give(ops.demoApprovals.find((a) => a.id === id) ?? null),
-	},
+	approvals: opsData.approvals,
 	notifications: {
 		list: () => give(ops.demoNotifications),
-		unreadCount: () => give(ops.demoNotifications.filter((n) => !n.read).length),
+		unreadCount: () =>
+			give(ops.demoNotifications.filter((n) => !n.read).length),
 	},
 	messaging: {
 		conversations: () => give(ops.demoConversations),
-		get: (id: string) => give(ops.demoConversations.find((c) => c.id === id) ?? null),
+		get: (id: string) =>
+			give(ops.demoConversations.find((c) => c.id === id) ?? null),
 		templates: () => give(ops.demoTemplates),
 	},
 	reports: {
@@ -347,24 +674,44 @@ export const data = {
 		live: () => give(ops.demoDepartments),
 	},
 	outlets: {
-		menu: (outletId?: string) => give(outletId ? ops.demoMenu.filter((m) => m.outletId === outletId) : ops.demoMenu),
-		orders: (outlet?: string) => give(outlet ? ops.demoOrders.filter((o) => o.outlet === outlet) : ops.demoOrders),
+		menu: (outletId?: string) =>
+			give(
+				outletId
+					? ops.demoMenu.filter((m) => m.outletId === outletId)
+					: ops.demoMenu,
+			),
+		orders: (outlet?: string) =>
+			give(
+				outlet
+					? ops.demoOrders.filter((o) => o.outlet === outlet)
+					: ops.demoOrders,
+			),
 	},
-	housekeeping: {
-		tasks: () => give(ops.demoCleaningTasks),
-		lostFound: () => give(ops.demoLostFound),
-	},
+	housekeeping: opsData.housekeeping,
 	laundry: {
 		orders: () => give(ops.demoLaundry),
 	},
 	platform: {
 		/** Every business on the platform (GET /tenant/businesses, first 200). Health, MRR and tickets are 0 until platform-service is wired. */
-		businesses: async (query: { stage?: string; q?: string } = {}): Promise<BusinessRow[]> => {
-			if (!live("tenant")) return give(platform.demoBusinesses.filter((b) => (!query.stage || b.stage === query.stage) && (!query.q || b.name.toLowerCase().includes(query.q.toLowerCase()))));
+		businesses: async (
+			query: { stage?: string; q?: string } = {},
+		): Promise<BusinessRow[]> => {
+			if (!live("tenant"))
+				return give(
+					platform.demoBusinesses.filter(
+						(b) =>
+							(!query.stage || b.stage === query.stage) &&
+							(!query.q ||
+								b.name.toLowerCase().includes(query.q.toLowerCase())),
+					),
+				);
 			const q: Record<string, string | number> = { page: 0, size: 200 };
 			if (query.stage) q.stage = query.stage;
 			if (query.q) q.q = query.q;
-			const { data: res, error } = await api("@get/tenant/businesses", { ...(await withSession()), query: q });
+			const { data: res, error } = await api("@get/tenant/businesses", {
+				...(await withSession()),
+				query: q,
+			});
 			if (error || !res) {
 				console.error("tenant-service businesses:", error);
 				return [];
@@ -373,26 +720,49 @@ export const data = {
 		},
 		/** One business. Null only when tenant-service says it does not exist (404); any other failure throws so the page's error boundary offers a retry instead of a wrong "not found". */
 		business: async (id: string): Promise<BusinessRow | null> => {
-			if (!live("tenant")) return give(platform.demoBusinesses.find((b) => b.id === id) ?? null);
-			const { data: res, error } = await api("@get/tenant/businesses/:id", { ...(await withSession()), params: { id } });
+			if (!live("tenant"))
+				return give(platform.demoBusinesses.find((b) => b.id === id) ?? null);
+			const { data: res, error } = await api("@get/tenant/businesses/:id", {
+				...(await withSession()),
+				params: { id },
+			});
 			if (error || !res) {
 				if (error?.status === 404) return null;
 				console.error("tenant-service business:", error);
-				throw new Error(error?.message?.trim() || `The business could not be loaded (${error?.status ?? "no response"})`);
+				throw new Error(
+					error?.message?.trim() ||
+						`The business could not be loaded (${error?.status ?? "no response"})`,
+				);
 			}
 			return toBusinessRowFromBusiness(res.data);
 		},
 		/** A business's hotels for the detail page and the wizard. */
 		businessHotels: async (id: string): Promise<HotelSummary[]> => {
 			if (!live("tenant")) {
-				if (id === "biz-1" || id === hotel.BUSINESS_ID) return give(hotel.demoHotelSummaries);
-				return give((platformExtra.demoOtherHotels[id] ?? []).map((h, i) => ({ id: `${id}-h${i + 1}`, name: h.name, city: h.city, address: "", rooms: h.rooms, timezone: "Africa/Lagos", occupancy: h.occupancy, manager: h.manager })));
+				if (id === "biz-1" || id === hotel.BUSINESS_ID)
+					return give(hotel.demoHotelSummaries);
+				return give(
+					(platformExtra.demoOtherHotels[id] ?? []).map((h, i) => ({
+						id: `${id}-h${i + 1}`,
+						name: h.name,
+						city: h.city,
+						address: "",
+						rooms: h.rooms,
+						timezone: "Africa/Lagos",
+						occupancy: h.occupancy,
+						manager: h.manager,
+					})),
+				);
 			}
-			const [hotels, managers] = await Promise.all([businessHotels(id), managerNames(id)]);
+			const [hotels, managers] = await Promise.all([
+				businessHotels(id),
+				managerNames(id),
+			]);
 			return hotels.map((h) => toHotelSummary(h, managers));
 		},
 		/** A business's people (identity users?businessId=). */
-		businessUsers: (id: string): Promise<PortalUserRow[]> => data.users.list({ businessId: id }),
+		businessUsers: (id: string): Promise<PortalUserRow[]> =>
+			data.users.list({ businessId: id }),
 		// Live from platform-service (marketer profiles); the row keeps the shape the pickers already use.
 		marketers: async (): Promise<MarketerRow[]> => {
 			if (!live("platform")) return give(platform.demoMarketers);
@@ -417,20 +787,45 @@ export const data = {
 		changes: () => give(platform.demoPlatformChanges),
 		/** The onboarding board (GET /tenant/onboarding). Admin names come from the demo team until identity lists platform staff. */
 		onboarding: async (status?: string): Promise<OnboardingRow[]> => {
-			if (!live("tenant")) return give(status ? platform.demoOnboarding.filter((o) => o.status === status) : platform.demoOnboarding);
-			const { data: res, error } = await api("@get/tenant/onboarding", { ...(await withSession()), query: status ? { status } : {} });
+			if (!live("tenant"))
+				return give(
+					status
+						? platform.demoOnboarding.filter((o) => o.status === status)
+						: platform.demoOnboarding,
+				);
+			const { data: res, error } = await api("@get/tenant/onboarding", {
+				...(await withSession()),
+				query: status ? { status } : {},
+			});
 			if (error || !res) {
 				console.error("tenant-service onboarding:", error);
 				return [];
 			}
-			const admins = new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName]));
-			return res.data.map((o) => toOnboardingRow(o, admins)).sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+			const admins = new Map(
+				platform.demoAdminUsers.map((a) => [a.id, a.fullName]),
+			);
+			return res.data
+				.map((o) => toOnboardingRow(o, admins))
+				.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
 		},
-		onboardingFor: async (businessId: string): Promise<OnboardingRow | null> => {
-			if (!live("tenant")) return give(platform.demoOnboarding.find((o) => o.businessId === businessId || o.id === businessId) ?? null);
-			const { data: res, error } = await api("@get/tenant/onboarding/:businessId", { ...(await withSession()), params: { businessId } });
+		onboardingFor: async (
+			businessId: string,
+		): Promise<OnboardingRow | null> => {
+			if (!live("tenant"))
+				return give(
+					platform.demoOnboarding.find(
+						(o) => o.businessId === businessId || o.id === businessId,
+					) ?? null,
+				);
+			const { data: res, error } = await api(
+				"@get/tenant/onboarding/:businessId",
+				{ ...(await withSession()), params: { businessId } },
+			);
 			if (error || !res) return null;
-			return toOnboardingRow(res.data, new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName])));
+			return toOnboardingRow(
+				res.data,
+				new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName])),
+			);
 		},
 		// Live platform staff from identity (any platform admin may read it); account manager and assignee pickers.
 		adminUsers: async (): Promise<AdminUserRow[]> => {
@@ -443,7 +838,10 @@ export const data = {
 		/** The owner's own self-serve draft (GET /tenant/onboarding/mine). */
 		mine: async (): Promise<OnboardingRow | null> => {
 			if (!live("tenant")) return give(null);
-			const { data: res, error } = await api("@get/tenant/onboarding/mine", await withSession());
+			const { data: res, error } = await api(
+				"@get/tenant/onboarding/mine",
+				await withSession(),
+			);
 			if (error || !res) return null;
 			return toOnboardingRow(res.data);
 		},
@@ -451,7 +849,10 @@ export const data = {
 	setupTemplates: {
 		list: async (): Promise<SetupTemplateRow[]> => {
 			if (!live("tenant")) return give(platformExtra.demoSetupTemplates);
-			const { data: res, error } = await api("@get/tenant/setup-templates", await withSession());
+			const { data: res, error } = await api(
+				"@get/tenant/setup-templates",
+				await withSession(),
+			);
 			if (error || !res) {
 				console.error("tenant-service setup templates:", error);
 				return [];
@@ -463,14 +864,28 @@ export const data = {
 		/** POS terminals of the active hotel (or `hotelId`), retired ones left out. */
 		list: async (hotelId?: string): Promise<TerminalRow[]> => {
 			if (!live("payment")) return give(stay.demoTerminals);
-			const { data: res, error } = await api("@get/payment/terminals", await withSession(hotelId ? { hotelId } : undefined));
+			const { data: res, error } = await api(
+				"@get/payment/terminals",
+				await withSession(hotelId ? { hotelId } : undefined),
+			);
 			if (error || !res) {
 				console.error("payment-service terminals:", error);
 				return [];
 			}
 			return res.data
 				.filter((t) => t.status !== "RETIRED")
-				.map((t) => ({ id: t.id, name: t.name, provider: t.provider, ref: t.terminalRef, status: t.status === "ONLINE" ? ("ONLINE" as const) : ("OFFLINE" as const), roles: [], lastSeen: t.lastSeenAt ?? t.updatedAt ?? t.createdAt ?? "", todayCount: 0, todayAmount: 0 }));
+				.map((t) => ({
+					id: t.id,
+					name: t.name,
+					provider: t.provider,
+					ref: t.terminalRef,
+					status:
+						t.status === "ONLINE" ? ("ONLINE" as const) : ("OFFLINE" as const),
+					roles: [],
+					lastSeen: t.lastSeenAt ?? t.updatedAt ?? t.createdAt ?? "",
+					todayCount: 0,
+					todayAmount: 0,
+				}));
 		},
 	},
 };

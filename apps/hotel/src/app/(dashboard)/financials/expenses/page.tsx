@@ -8,6 +8,19 @@ export const dynamic = "force-dynamic";
 export default async function FinanceExpensesPage() {
 	const user = await getUser();
 	if (!user) redirect("/auth");
-	const expenses = await data.finance.expenses();
-	return <ExpensesScreen expenses={expenses} me={user.fullName} />;
+	const [expenses, settings, business] = await Promise.all([
+		data.finance.expenses(),
+		data.hotels.limits(),
+		data.business.mine(),
+	]);
+	return (
+		<ExpensesScreen
+			expenses={expenses}
+			me={user.fullName}
+			rules={{
+				limits: settings.limits,
+				ownerName: business?.ownerName ?? "the owner",
+			}}
+		/>
+	);
 }

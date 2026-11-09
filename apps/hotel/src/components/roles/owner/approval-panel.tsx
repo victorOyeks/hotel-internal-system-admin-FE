@@ -1,26 +1,64 @@
 "use client";
 
-import { CheckIcon, MessageCircleQuestionIcon, ShieldCheckIcon, XIcon } from "lucide-react";
+import {
+	CheckIcon,
+	MessageCircleQuestionIcon,
+	ShieldCheckIcon,
+	XIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
 import { TextareaField } from "@hospio/ui/shared/field";
 import { fmtWhen, humanize, naira } from "@hospio/ui/shared/format";
 import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
-import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
+import {
+	PanelSection,
+	SidePanel,
+	WhatHappens,
+} from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { decideApproval } from "@hospio/api/actions/approvals";
+import { useAction } from "@hospio/api/actions/use-action";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type { ApprovalRow } from "@hospio/api/data/types";
 
 /** Owner · 01 Approvals waiting → approve spend / decline / ask manager. */
-export function ApprovalPanel({ approval, onClose }: { approval: ApprovalRow | null; onClose: () => void }) {
+export function ApprovalPanel({
+	approval,
+	limit,
+	onClose,
+}: {
+	approval: ApprovalRow | null;
+	limit?: number;
+	onClose: () => void;
+}) {
 	const [decline, setDecline] = useState(false);
 	const [ask, setAsk] = useState(false);
 	const [reason, setReason] = useState("");
 	const [question, setQuestion] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const a = approval;
+	const decide = (
+		decision: "APPROVED" | "DECLINED" | "QUESTION",
+		message: string,
+		note?: string,
+	) =>
+		a &&
+		run(
+			() =>
+				withDeliveries(
+					decideApproval(a.id, decision, note),
+					`Approval for ${a.requesterName}`,
+				),
+			message,
+			() => {
+				setReason("");
+				setQuestion("");
+				close();
+			},
+		);
 	const open = !!a;
 	const close = () => {
 		setDecline(false);
@@ -33,20 +71,41 @@ export function ApprovalPanel({ approval, onClose }: { approval: ApprovalRow | n
 				open={open}
 				onOpenChange={(o) => !o && close()}
 				title={a?.description ?? ""}
-				subtitle={a ? `${humanize(a.kind)} · ${a.hotelName ?? "Simpas Ikeja"} · asked ${fmtWhen(a.createdAt)}` : undefined}
+				subtitle={
+					a
+						? `${humanize(a.kind)} · ${a.hotelName ?? "This hotel"} · asked ${fmtWhen(a.createdAt)}`
+						: undefined
+				}
 				icon={ShieldCheckIcon}
-				footerInfo={a?.amount ? `Over ₦500,000 comes to you by your approval limits` : "Needs the owner by your approval limits"}
+				footerInfo={
+					limit
+						? `Spend over ${naira(limit)} comes to you by your approval limits`
+						: "Needs the owner by your approval limits"
+				}
 				footer={
 					a?.status === "PENDING" ? (
 						<>
-							<Button variant="outline" className={btn.secondary} onClick={() => setAsk(true)}>
+							<Button
+								variant="outline"
+								className={btn.secondary}
+								onClick={() => setAsk(true)}
+							>
 								<MessageCircleQuestionIcon className="size-4" /> Ask manager
 							</Button>
-							<Button variant="outline" className={btn.dangerSoft} onClick={() => setDecline(true)}>
+							<Button
+								variant="outline"
+								className={btn.dangerSoft}
+								onClick={() => setDecline(true)}
+							>
 								<XIcon className="size-4" /> Decline
 							</Button>
-							<Button className={btn.primary} disabled={pending} onClick={() => run(`${a.description} approved`, close)}>
-								<CheckIcon className="size-4" /> Approve {a.amount ? naira(a.amount) : ""}
+							<Button
+								className={btn.primary}
+								disabled={pending}
+								onClick={() => decide("APPROVED", `${a.description} approved`)}
+							>
+								<CheckIcon className="size-4" /> Approve{" "}
+								{a.amount ? naira(a.amount) : ""}
 							</Button>
 						</>
 					) : (
@@ -60,34 +119,56 @@ export function ApprovalPanel({ approval, onClose }: { approval: ApprovalRow | n
 					<div className="flex flex-col gap-6">
 						<div className="flex items-center justify-between rounded-xl bg-subtle/70 px-4 py-3">
 							<div>
-								<p className="text-[11px] font-medium uppercase tracking-[0.04em] text-ink-3">Amount</p>
-								<p className="text-2xl font-bold text-ink">{a.amount ? naira(a.amount) : "—"}</p>
+								<p className="text-[11px] font-medium uppercase tracking-[0.04em] text-ink-3">
+									Amount
+								</p>
+								<p className="text-2xl font-bold text-ink">
+									{a.amount ? naira(a.amount) : "—"}
+								</p>
 							</div>
-							<StatusPill tone={a.status === "PENDING" ? "warning" : a.status === "APPROVED" ? "success" : a.status === "DECLINED" ? "danger" : "info"}>{humanize(a.status)}</StatusPill>
+							<StatusPill
+								tone={
+									a.status === "PENDING"
+										? "warning"
+										: a.status === "APPROVED"
+											? "success"
+											: a.status === "DECLINED"
+												? "danger"
+												: "info"
+								}
+							>
+								{humanize(a.status)}
+							</StatusPill>
 						</div>
 						<PanelSection title="Request">
 							<DetailList
 								columns={2}
 								items={[
-									{ label: "Asked by", value: `${a.requesterName} · ${humanize(a.requesterRole)}` },
-									{ label: "Hotel", value: a.hotelName ?? "Simpas Ikeja" },
+									{
+										label: "Asked by",
+										value: `${a.requesterName} · ${humanize(a.requesterRole)}`,
+									},
+									{ label: "Hotel", value: a.hotelName ?? "This hotel" },
 									{ label: "From", value: humanize(a.sourceModule) },
 									{ label: "Type", value: humanize(a.kind) },
-									{ label: "Manager", value: a.hotelName === "Simpas Lekki" ? "Amaka Eze · approved" : "Tunde Bakare · approved" },
+									{
+										label: "Needs",
+										value: a.approverLevel === "OWNER" ? "Owner" : "Manager",
+									},
 									{ label: "Asked", value: fmtWhen(a.createdAt) },
 								]}
 							/>
 						</PanelSection>
 						{a.note && <Note tone="info">Your question: {a.note}</Note>}
-						<PanelSection title="Context">
-							<DetailList
+						{a.status === "PENDING" && (
+							<WhatHappens
 								items={[
-									{ label: "Same category this month", value: a.kind === "EXPENSE" ? "₦21.3M of ₦18M budget · 118%" : a.kind === "PURCHASE_ORDER" ? "4 orders · ₦2.4M" : "—" },
-									{ label: "Last similar request", value: a.kind === "EXPENSE" ? "₦480,000 · 12 Oct · approved" : "—" },
+									"The manager is told straight away",
+									`${a.requesterName} can go ahead`,
+									"This decision is logged under your name",
 								]}
 							/>
-						</PanelSection>
-						{a.status === "PENDING" && <WhatHappens items={["The manager is told straight away", `${a.requesterName} can go ahead`, "This decision is logged under your name"]} />}
+						)}
 					</div>
 				)}
 			</SidePanel>
@@ -100,12 +181,31 @@ export function ApprovalPanel({ approval, onClose }: { approval: ApprovalRow | n
 				tone="danger"
 				confirmLabel="Decline request"
 				pending={pending}
-				onConfirm={() => run("Request declined · manager told", close)}
-				alternative={{ label: "Ask the manager a question instead", onClick: () => { setDecline(false); setAsk(true); } }}
+				onConfirm={() =>
+					decide("DECLINED", "Request declined · manager told", reason)
+				}
+				alternative={{
+					label: "Ask the manager a question instead",
+					onClick: () => {
+						setDecline(false);
+						setAsk(true);
+					},
+				}}
 			>
 				<div className="flex flex-col gap-3">
-					<TextareaField label="Reason the manager will see" value={reason} onChange={setReason} placeholder="e.g. Get two more quotes first" />
-					<WhatHappens tone="danger" items={["The request is closed", `${a?.requesterName ?? "The requester"} and the manager are told with your reason`]} />
+					<TextareaField
+						label="Reason the manager will see"
+						value={reason}
+						onChange={setReason}
+						placeholder="e.g. Get two more quotes first"
+					/>
+					<WhatHappens
+						tone="danger"
+						items={[
+							"The request is closed",
+							`${a?.requesterName ?? "The requester"} and the manager are told with your reason`,
+						]}
+					/>
 				</div>
 			</ConfirmModal>
 
@@ -118,16 +218,31 @@ export function ApprovalPanel({ approval, onClose }: { approval: ApprovalRow | n
 				size="confirm"
 				footer={
 					<>
-						<Button variant="outline" className={btn.secondary} onClick={() => setAsk(false)}>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							onClick={() => setAsk(false)}
+						>
 							Cancel
 						</Button>
-						<Button className={btn.primary} disabled={pending || !question} onClick={() => run("Question sent to the manager", close)}>
+						<Button
+							className={btn.primary}
+							disabled={pending || !question}
+							onClick={() =>
+								decide("QUESTION", "Question sent to the manager", question)
+							}
+						>
 							Send question
 						</Button>
 					</>
 				}
 			>
-				<TextareaField label="Your question" value={question} onChange={setQuestion} placeholder="e.g. Which supplier gave this price?" />
+				<TextareaField
+					label="Your question"
+					value={question}
+					onChange={setQuestion}
+					placeholder="e.g. Which supplier gave this price?"
+				/>
 			</Modal>
 		</>
 	);
