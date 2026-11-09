@@ -113,10 +113,16 @@ export function ConnectionsStep({ ctx }: { ctx: WizardCtx }) {
 	const saveNumber = async (id: string): Promise<boolean> => {
 		const value = (numbers[id] ?? "").trim();
 		if (value === (savedRef.current[id] ?? "")) return true;
-		const ok = await call(() =>
-			saveSetupSection("messaging", { whatsappNumber: value }, id),
+		// saveSetupSection answers {ok: true, data: null} on success, so the result itself is checked.
+		const result = await saveSetupSection(
+			"messaging",
+			{ whatsappNumber: value },
+			id,
 		);
-		if (ok === null) return false;
+		if (!result.ok) {
+			toast.error(result.error, { duration: 8000 });
+			return false;
+		}
 		savedRef.current = { ...savedRef.current, [id]: value };
 		setSavedNumbers(savedRef.current);
 		return true;
