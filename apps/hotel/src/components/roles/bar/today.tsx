@@ -194,14 +194,13 @@ export function BarTodayScreen({
 					outletName,
 				);
 				if (!charged.ok) {
+					// The sale exists but is not on the room: say why and take payment for it instead.
 					put(started.data);
-					setRoomError(
-						`Can't charge to room ${guest.roomNumber ?? ""}: ${charged.error}`,
-					);
-					return {
-						ok: true as const,
-						data: { ...started.data, __uncharged: true },
-					};
+					setLines([]);
+					const why = `Can't charge to room ${guest.roomNumber ?? ""}: ${charged.error}. Take payment instead`;
+					setRoomError(why);
+					setPanel({ kind: "pay", id: started.data.id });
+					return { ok: false as const, error: why };
 				}
 				return {
 					ok: true as const,
@@ -213,16 +212,9 @@ export function BarTodayScreen({
 				: settle === "ROOM"
 					? "Sale recorded"
 					: "Sale started",
-			(o) => {
-				const { __uncharged, ...order } = o as OrderRow & {
-					__uncharged?: boolean;
-				};
+			(order) => {
 				put(order);
 				setLines([]);
-				if (__uncharged) {
-					setPanel({ kind: "pay", id: order.id });
-					return;
-				}
 				if (settle === "NOW") setPanel({ kind: "pay", id: order.id });
 				else
 					setPanel({
