@@ -24,7 +24,7 @@ import * as owner from "@hospio/api/demo/fixtures/owner";
 import * as platform from "@hospio/api/demo/fixtures/platform";
 import * as platformExtra from "@hospio/api/demo/fixtures/platform-extra";
 import * as stay from "@hospio/api/demo/fixtures/stay";
-import type { AreaRow, BookingRow, BookingStatus, BusinessRow, FolioRow, GuestRow, HotelSetupSection, HotelSummary, OnboardingRow, OwnerHotelRow, PaymentRow, PortalUserRow, RoomRow, RoomTypeRow, SetupTemplateRow, StaffRow, TerminalRow } from "./types";
+import type { AdminUserRow, AreaRow, BookingRow, BookingStatus, BusinessRow, MarketerRow, FolioRow, GuestRow, HotelSetupSection, HotelSummary, OnboardingRow, OwnerHotelRow, PaymentRow, PortalUserRow, RoomRow, RoomTypeRow, SetupTemplateRow, StaffRow, TerminalRow } from "./types";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -393,7 +393,25 @@ export const data = {
 		},
 		/** A business's people (identity users?businessId=). */
 		businessUsers: (id: string): Promise<PortalUserRow[]> => data.users.list({ businessId: id }),
-		marketers: () => give(platform.demoMarketers),
+		// Live from platform-service (marketer profiles); the row keeps the shape the pickers already use.
+		marketers: async (): Promise<MarketerRow[]> => {
+			if (!live("platform")) return give(platform.demoMarketers);
+			const { adminData } = await import("./admin");
+			const rows = await adminData.marketers.list();
+			return rows.map((m) => ({
+				id: m.id,
+				fullName: m.fullName,
+				email: m.email,
+				phone: m.phone,
+				status: m.status,
+				sharePct: m.sharePct,
+				months: m.months,
+				businesses: m.businesses,
+				earnedTotal: m.earnedTotal,
+				due: m.due,
+				joined: m.joined,
+			}));
+		},
 		tickets: () => give(platform.demoTickets),
 		feeStatements: () => give(platform.demoFeeStatements),
 		changes: () => give(platform.demoPlatformChanges),
@@ -414,7 +432,12 @@ export const data = {
 			if (error || !res) return null;
 			return toOnboardingRow(res.data, new Map(platform.demoAdminUsers.map((a) => [a.id, a.fullName])));
 		},
-		adminUsers: () => give(platform.demoAdminUsers),
+		// Live platform staff from identity (any platform admin may read it); account manager and assignee pickers.
+		adminUsers: async (): Promise<AdminUserRow[]> => {
+			if (!live("identity")) return give(platform.demoAdminUsers);
+			const { adminData } = await import("./admin");
+			return adminData.team.list();
+		},
 	},
 	onboarding: {
 		/** The owner's own self-serve draft (GET /tenant/onboarding/mine). */
