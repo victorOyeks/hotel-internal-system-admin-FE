@@ -111,6 +111,7 @@ export function MenuScreen({
 	stock = [],
 	happyHours: initialHappy,
 	title = "Menu & prices",
+	canManage = true,
 }: {
 	menu: MenuItemRow[];
 	outlet: { id: string; name: string; kind: OutletKind };
@@ -118,6 +119,8 @@ export function MenuScreen({
 	stock?: StockItemRow[];
 	happyHours?: HappyHourRow[];
 	title?: string;
+	/** Manager or Full access on the outlet's role: add, edit, categories and happy hours. Others mark sold out and ask for price changes. */
+	canManage?: boolean;
 }) {
 	const [items, setItems] = useState(menu);
 	useEffect(() => setItems(menu), [menu]);
@@ -235,13 +238,15 @@ export function MenuScreen({
 				subtitle={`${outlet.name} · ${onMenu.length} items · ${onMenu.filter((m) => !m.available).length} sold out${items.length > onMenu.length ? ` · ${items.length - onMenu.length} off the menu` : ""}`}
 			>
 				<ShiftPill />
-				<BigButton
-					tone="secondary"
-					onClick={() => setPanel({ kind: "categories" })}
-				>
-					<ListIcon className="size-5" /> Categories
-				</BigButton>
-				{showHappy && (
+				{canManage && (
+					<BigButton
+						tone="secondary"
+						onClick={() => setPanel({ kind: "categories" })}
+					>
+						<ListIcon className="size-5" /> Categories
+					</BigButton>
+				)}
+				{showHappy && canManage && (
 					<BigButton
 						tone="secondary"
 						onClick={() => {
@@ -252,19 +257,24 @@ export function MenuScreen({
 						<SunIcon className="size-5" /> Happy hours
 					</BigButton>
 				)}
-				<BigButton
-					onClick={() => {
-						setDraft(emptyDraft(categoryNames[0] ?? ""));
-						setPanel({ kind: "add" });
-					}}
-				>
-					<PlusIcon className="size-5" /> Add {noun}
-				</BigButton>
+				{canManage && (
+					<BigButton
+						onClick={() => {
+							setDraft(emptyDraft(categoryNames[0] ?? ""));
+							setPanel({ kind: "add" });
+						}}
+					>
+						<PlusIcon className="size-5" /> Add {noun}
+					</BigButton>
+				)}
 			</PageHeader>
 			<Note tone="info">
 				Marking an item sold out takes effect at once. A price change applies at
 				once for a manager or Full access; otherwise it waits for the manager's
 				approval and the old price stays until then.
+				{canManage
+					? ""
+					: " Adding or editing items, categories and happy hours needs Full access (head chef, bar lead) or the manager."}
 			</Note>
 			<Toolbar
 				left={
@@ -303,7 +313,7 @@ export function MenuScreen({
 				data={list}
 				search={q}
 				pageSize={15}
-				onRowClick={openEdit}
+				onRowClick={canManage ? openEdit : undefined}
 				emptyTitle="Nothing here yet"
 				columns={[
 					{
@@ -381,11 +391,15 @@ export function MenuScreen({
 											setPanel({ kind: "price", item: row.original });
 										},
 									},
-									{
-										label: "Edit item",
-										icon: PencilIcon,
-										onClick: () => openEdit(row.original),
-									},
+									...(canManage
+										? [
+												{
+													label: "Edit item",
+													icon: PencilIcon,
+													onClick: () => openEdit(row.original),
+												},
+											]
+										: []),
 								]}
 							/>
 						),

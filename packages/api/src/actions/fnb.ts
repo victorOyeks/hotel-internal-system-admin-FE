@@ -169,18 +169,25 @@ export async function addOrderLines(
 	}
 	const s = await withSession();
 	let latest: Parameters<typeof toOrderRow>[0] | null = null;
+	let added = 0;
 	for (const l of lines) {
 		const { data, error } = await api("@post/fnb/orders/:id/lines", {
 			...s,
 			params: { id: orderId },
 			body: lineBody(l),
 		});
-		if (error || !data)
+		if (error || !data) {
+			const why = errorMessage(error, "The items could not be added");
+			if (added === 0) return { ok: false, error: why };
+			// Some went on before the refusal: say so, and refresh so the screen shows them.
+			revalidateOps();
 			return {
 				ok: false,
-				error: errorMessage(error, "The items could not be added"),
+				error: `${why}. ${added} of ${lines.length} were added before that`,
 			};
+		}
 		latest = data.data;
+		added++;
 	}
 	revalidateOps();
 	return { ok: true, data: latest ? toOrderRow(latest, outletName) : null };
