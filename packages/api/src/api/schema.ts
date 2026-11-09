@@ -2,6 +2,7 @@ import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
 import { opsRoutes } from "./routes-ops";
+import { paymentRoutes } from "./routes-payments";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -814,6 +815,7 @@ export const Notification = z.object({
 export const schema = createSchema({
 	...adminRoutes,
 	...opsRoutes,
+	...paymentRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),

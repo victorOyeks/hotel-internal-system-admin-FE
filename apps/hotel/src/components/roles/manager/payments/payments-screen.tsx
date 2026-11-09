@@ -15,10 +15,12 @@ import { RowActions } from "@hospio/ui/shared/row-actions";
 import { type PillTone, StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
+import { verifyPayment } from "@hospio/api/actions/payment";
+import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
 import type { DisputeRow, FolioRow, PaymentRow, PaymentStatus, RefundRow, TerminalRow } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
-import { DisputePanel, NewPaymentPanel, PaymentPanel, RefundModal, TerminalPanel } from "./payment-panels";
+import { DisputePanel, LinkTerminalPanel, NewPaymentPanel, PaymentPanel, RefundModal, TerminalPanel } from "./payment-panels";
 
 const TABS = ["all", "terminals", "refunds", "disputes"] as const;
 type Tab = (typeof TABS)[number];
@@ -26,12 +28,14 @@ type Tab = (typeof TABS)[number];
 export const paymentTone: Record<PaymentStatus, PillTone> = { APPROVED: "success", PROCESSING: "info", PENDING: "info", DECLINED: "danger", NO_RESPONSE: "warning", FAILED: "danger", REFUNDED: "grey" };
 export const methodLabel = { CARD: "Card", TRANSFER: "Transfer", CASH: "Cash" } as const;
 
-export function PaymentsScreen({ hotelName, payments: initial, terminals, refunds: initialRefunds, disputes: initialDisputes, folios }: { hotelName: string; payments: PaymentRow[]; terminals: TerminalRow[]; refunds: RefundRow[]; disputes: DisputeRow[]; folios: FolioRow[] }) {
+export function PaymentsScreen({ hotelName, payments: initial, terminals: initialTerminals, refunds: initialRefunds, disputes: initialDisputes, folios }: { hotelName: string; payments: PaymentRow[]; terminals: TerminalRow[]; refunds: RefundRow[]; disputes: DisputeRow[]; folios: FolioRow[] }) {
 	const [tab] = useQueryState("tab", parseAsString.withDefault("all"));
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [folioId, setFolioId] = useQueryState("folio");
 	const [payments, setPayments] = useState(initial);
+	const [terminals, setTerminals] = useState(initialTerminals);
+	const [linking, setLinking] = useState(false);
 	const [refunds, setRefunds] = useState(initialRefunds);
 	const [disputes, setDisputes] = useState(initialDisputes);
 	const [search, setSearch] = useState("");
@@ -41,6 +45,7 @@ export function PaymentsScreen({ hotelName, payments: initial, terminals, refund
 	const [refund, setRefund] = useState<RefundRow | null>(null);
 	const [dispute, setDispute] = useState<DisputeRow | null>(null);
 	const { run } = useDemoAction();
+	const live = useAction();
 	const active = (TABS.includes(tab as Tab) ? tab : "all") as Tab;
 	const selected = payments.find((p) => p.id === openId) ?? null;
 
@@ -62,8 +67,8 @@ export function PaymentsScreen({ hotelName, payments: initial, terminals, refund
 		{ id: "actions", header: "", enableSorting: false, cell: ({ row }) => { const p = row.original; return <RowActions actions={[
 			{ label: "Open payment", onClick: () => setOpenId(p.id) },
 			{ label: "Resend receipt", onClick: () => run(`Receipt resent to ${p.guestName}`), disabled: p.status !== "APPROVED" },
-			...(p.status === "NO_RESPONSE" || p.status === "PROCESSING" ? [{ label: "Check with provider", onClick: () => run("Provider says: approved · payment updated", () => setPayments((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: "APPROVED" as const, resolvedAt: new Date().toISOString() } : x)))) }] : []),
-			{ label: "Request refund", managerOnly: true, separatorBefore: true, onClick: () => setRefund({ id: `rf-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "PENDING_APPROVAL", requestedBy: "Tunde Bakare", createdAt: new Date().toISOString() }), disabled: p.status !== "APPROVED" },
+			...(p.status === "NO_RESPONSE" || p.status === "PROCESSING" ? [{ label: "Check with provider", onClick: () => live.run(() => verifyPayment(p.id), "Checked with the provider", (r) => setPayments((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: r.status, resolvedAt: new Date().toISOString() } : x)))) }] : []),
+			{ label: "Request refund", managerOnly: true, separatorBefore: true, onClick: () => setRefund({ id: `rf-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "PENDING_APPROVAL", requestedBy: "You", createdAt: new Date().toISOString() }), disabled: p.status !== "APPROVED" },
 		]} />; } },
 	];
 
@@ -106,7 +111,7 @@ export function PaymentsScreen({ hotelName, payments: initial, terminals, refund
 							<p className="text-xs text-ink-3">Used by {t.roles.map(humanize).join(", ")} · last seen {fmtWhen(t.lastSeen)}</p>
 						</button>
 					))}
-					<button type="button" onClick={() => run("Ask Hospio support to link a new terminal · ticket opened", undefined, { tone: "info" })} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line-strong text-sm font-semibold text-ink-2 hover:bg-subtle"><PlusIcon className="size-5" /> Link a terminal</button>
+					<button type="button" onClick={() => setLinking(true)} className="flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line-strong text-sm font-semibold text-ink-2 hover:bg-subtle"><PlusIcon className="size-5" /> Link a terminal</button>
 				</div>
 			)}
 
@@ -131,8 +136,9 @@ export function PaymentsScreen({ hotelName, payments: initial, terminals, refund
 				]} />
 			)}
 
-			<PaymentPanel payment={selected} onClose={() => setOpenId(null)} onRefund={(p) => setRefund({ id: `rf-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "PENDING_APPROVAL", requestedBy: "Tunde Bakare", createdAt: new Date().toISOString() })} onDispute={(p) => setDispute({ id: `dp-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "OPEN", openedAt: new Date().toISOString() })} />
-			<TerminalPanel terminal={terminal} payments={payments} onClose={() => setTerminal(null)} />
+			<PaymentPanel payment={selected} onClose={() => setOpenId(null)} onRefund={(p) => setRefund({ id: `rf-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "PENDING_APPROVAL", requestedBy: "You", createdAt: new Date().toISOString() })} onStatus={(id, st) => setPayments((ps) => ps.map((x) => (x.id === id ? { ...x, status: st, resolvedAt: new Date().toISOString() } : x)))} onDispute={(p) => setDispute({ id: `dp-${Date.now()}`, paymentId: p.id, guestName: p.guestName, amount: p.amount, reason: "", status: "OPEN", openedAt: new Date().toISOString() })} />
+			<TerminalPanel terminal={terminal} payments={payments} onClose={() => setTerminal(null)} onChanged={(t) => { setTerminals((ts) => ts.map((x) => (x.id === t.id ? t : { ...x, roles: x.roles.filter((r) => !t.roles.includes(r)) }))); setTerminal(t); }} onRemoved={(id) => setTerminals((ts) => ts.filter((x) => x.id !== id))} />
+			<LinkTerminalPanel open={linking} onClose={() => setLinking(false)} onLinked={(t) => setTerminals((ts) => [...ts.map((x) => ({ ...x, roles: x.roles.filter((r) => !t.roles.includes(r)) })), t])} />
 			<RefundModal refund={refund} isNew={!!refund && !refunds.some((r) => r.id === refund.id)} onClose={() => setRefund(null)} onSaved={(r) => { setRefunds((rs) => (rs.some((x) => x.id === r.id) ? rs.map((x) => (x.id === r.id ? r : x)) : [r, ...rs])); if (r.status === "APPROVED") setPayments((ps) => ps.map((p) => (p.id === r.paymentId ? { ...p, status: "REFUNDED" } : p))); }} />
 			<DisputePanel dispute={dispute} payment={dispute ? payments.find((p) => p.id === dispute.paymentId) ?? null : null} isNew={!!dispute && !disputes.some((d) => d.id === dispute.id)} onClose={() => setDispute(null)} onSaved={(d) => setDisputes((ds) => (ds.some((x) => x.id === d.id) ? ds.map((x) => (x.id === d.id ? d : x)) : [d, ...ds]))} />
 			<NewPaymentPanel open={!!isNew || !!folioId} folios={folios} preselect={folioId} onClose={() => { setIsNew(null); setFolioId(null); }} onSaved={(p) => setPayments((ps) => [p, ...ps])} />
