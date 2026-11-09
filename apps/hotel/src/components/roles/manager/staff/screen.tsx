@@ -22,11 +22,7 @@ import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
-import {
-	fmtWhen,
-	humanize,
-	plural,
-} from "@hospio/ui/shared/format";
+import { fmtWhen, humanize, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";

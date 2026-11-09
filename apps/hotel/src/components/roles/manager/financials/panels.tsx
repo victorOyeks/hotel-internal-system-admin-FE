@@ -16,7 +16,6 @@ import {
 	SelectField,
 	TextField,
 	TextareaField,
-	ToggleField,
 } from "@hospio/ui/shared/field";
 import { fmtLongDate, naira } from "@hospio/ui/shared/format";
 import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
@@ -124,7 +123,13 @@ export function RecordExpensePanel({
 										recordExpense({
 											category: form.category,
 											amount,
-											description: form.description || form.category,
+											description: [
+												form.description || form.category,
+												form.supplier.trim() && `to ${form.supplier.trim()}`,
+												form.note.trim(),
+											]
+												.filter(Boolean)
+												.join(" · "),
 											paidFrom:
 												form.paidFrom === "CASH" ? "TILL" : form.paidFrom,
 											expenseDate: form.date,
@@ -199,12 +204,6 @@ export function RecordExpensePanel({
 					value={form.supplier}
 					onChange={(v) => set("supplier", v)}
 					placeholder="NNPC Ikeja"
-				/>
-				<ToggleField
-					label="I have the receipt"
-					hint="Attach a photo from the tablet or desk scanner later"
-					checked={form.receipt}
-					onChange={(v) => set("receipt", v)}
 				/>
 				<TextareaField
 					label="Note"
