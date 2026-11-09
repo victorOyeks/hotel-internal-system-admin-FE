@@ -19,6 +19,7 @@ import {
 	MoneyField,
 	SelectField,
 	TextField,
+	TextareaField,
 } from "@hospio/ui/shared/field";
 import { fmtTime, naira, plural } from "@hospio/ui/shared/format";
 import { PageHeader } from "@hospio/ui/shared/page-header";
@@ -118,6 +119,7 @@ export function BarTodayScreen({
 	const [roomId, setRoomId] = useState("");
 	const [name, setName] = useState("");
 	const [counted, setCounted] = useState<number | "">("");
+	const [shiftNote, setShiftNote] = useState("");
 	const [roomError, setRoomError] = useState<string | null>(null);
 	const { run, pending } = useAction();
 	const outletName = outlet?.name ?? "Bar";
@@ -129,6 +131,7 @@ export function BarTodayScreen({
 	const close = () => {
 		setPanel(null);
 		setRoomError(null);
+		setShiftNote("");
 		void setIsNew(null);
 	};
 	const startSale = (t?: string, how: "NOW" | "TAB" | "ROOM" = "NOW") => {
@@ -235,7 +238,10 @@ export function BarTodayScreen({
 					() =>
 						closeTill(
 							till.id,
-							{ countedCash: typeof counted === "number" ? counted : expected },
+							{
+								countedCash: typeof counted === "number" ? counted : expected,
+								note: shiftNote.trim() || undefined,
+							},
 							till,
 						),
 					"Shift closed · till sent to Finance",
@@ -656,7 +662,12 @@ export function BarTodayScreen({
 						</BigButton>
 						<BigButton
 							pending={pending}
-							disabled={tabs.length > 0 || !till || counted === ""}
+							disabled={
+								tabs.length > 0 ||
+								!till ||
+								counted === "" ||
+								(counted !== expected && !shiftNote.trim())
+							}
 							onClick={closeShift}
 						>
 							Close shift
@@ -713,6 +724,16 @@ export function BarTodayScreen({
 							{counted < expected ? "Short" : "Over"} by{" "}
 							{naira(Math.abs(counted - expected))}. Finance is told.
 						</Note>
+					)}
+					{typeof counted === "number" && till && counted !== expected && (
+						<TextareaField
+							label="Why the cash is different"
+							value={shiftNote}
+							onChange={setShiftNote}
+							rows={2}
+							placeholder="e.g. change given wrongly on a ₦5,000 note"
+							hint="Needed when the count is short or over"
+						/>
 					)}
 					{tabs.length > 0 ? (
 						<Note tone="danger">
