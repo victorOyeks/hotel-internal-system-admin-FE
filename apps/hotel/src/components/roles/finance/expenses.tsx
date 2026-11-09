@@ -13,7 +13,6 @@ import {
 	SelectField,
 	TextareaField,
 	TextField,
-	ToggleField,
 } from "@hospio/ui/shared/field";
 import { fmtDay, naira, plural } from "@hospio/ui/shared/format";
 import { Modal } from "@hospio/ui/shared/modal";
@@ -472,7 +471,6 @@ export function RecordExpensePanel({
 	const [desc, setDesc] = useState("");
 	const [amount, setAmount] = useState<number | "">("");
 	const [paidFrom, setPaidFrom] = useState<ExpenseRow["paidFrom"]>("CASH");
-	const [receipt, setReceipt] = useState(true);
 	const [note, setNote] = useState("");
 	const { run, pending } = useAction();
 	const limit = rules.limits.managerExpenseLimit;
@@ -509,7 +507,7 @@ export function RecordExpensePanel({
 								paidFrom,
 								requestedBy: me,
 								status: "PENDING_APPROVAL",
-								receipt,
+								receipt: false,
 								note: note || undefined,
 								approverLevel: level === "owner" ? "OWNER" : "MANAGER",
 							};
@@ -520,7 +518,9 @@ export function RecordExpensePanel({
 											{
 												category,
 												amount: amt,
-												description: desc,
+												description: note.trim()
+													? `${desc} · ${note.trim()}`
+													: desc,
 												paidFrom: paidFrom === "CASH" ? "TILL" : paidFrom,
 											},
 											demoRow,
@@ -588,12 +588,6 @@ export function RecordExpensePanel({
 						{ value: "TRANSFER", label: "Bank transfer" },
 						{ value: "CARD", label: "Company card" },
 					]}
-				/>
-				<ToggleField
-					label="Receipt attached"
-					hint="Take a photo of the receipt · the owner can see it"
-					checked={receipt}
-					onChange={setReceipt}
 				/>
 				<TextareaField
 					label="Note"

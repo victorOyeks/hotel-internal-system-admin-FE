@@ -342,6 +342,25 @@ export function ApprovalsScreen({
 							<Button
 								variant="outline"
 								className={btn.secondary}
+								disabled={pending}
+								onClick={() =>
+									current &&
+									run(
+										() =>
+											withDeliveries(
+												escalateApproval(current.id, reason),
+												`Approval for ${current.requesterName}`,
+											),
+										`Sent to ${ownerName}`,
+										close,
+									)
+								}
+							>
+								<SendIcon className="size-4" /> Send to owner
+							</Button>
+							<Button
+								variant="outline"
+								className={btn.secondary}
 								onClick={() => setAsk(true)}
 							>
 								<MessageCircleQuestionIcon className="size-4" /> Ask

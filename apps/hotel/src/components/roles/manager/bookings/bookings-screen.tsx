@@ -1,4 +1,6 @@
 "use client";
+
+import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	ArrowLeftToLineIcon,
@@ -21,7 +23,6 @@ import { RowActions } from "@hospio/ui/shared/row-actions";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
 import type {
 	BookingRow,
 	FolioRow,
@@ -123,7 +124,6 @@ export function BookingsScreen({
 		),
 	);
 	const [search, setSearch] = useState("");
-	const { run } = useDemoAction();
 	// Card payments the POS has not confirmed yet, per booking.
 	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
 
@@ -327,9 +327,7 @@ export function BookingsScreen({
 			>
 				<ExportButton
 					onClick={() =>
-						run("Export ready · bookings.xlsx sent to your email", undefined, {
-							tone: "info",
-						})
+						toast.info("Export is not connected yet · nothing was downloaded")
 					}
 				/>
 				<Button className={btn.primary} onClick={() => setIsNew("1")}>
