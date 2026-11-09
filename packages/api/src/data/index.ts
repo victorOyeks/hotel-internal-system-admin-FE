@@ -58,6 +58,7 @@ import type {
 	HotelSummary,
 	OnboardingRow,
 	OwnerHotelRow,
+	OrganizationRow,
 	PaymentRow,
 	RefundRow,
 	DisputeRow,
@@ -699,6 +700,35 @@ export const data = {
 	},
 	organizations: {
 		list: () => give(stay.demoOrganizations),
+		/** The company accounts a booking can be billed to: folio-service's organizations when it is live. */
+		forBooking: async (): Promise<OrganizationRow[]> => {
+			if (!live("folio")) return give(stay.demoOrganizations);
+			const { data: res, error } = await api(
+				"@get/folio/organizations",
+				await withSession(),
+			);
+			if (error || !res) {
+				console.error("folio-service organizations:", error);
+				return [];
+			}
+			return res.data.map((o) => ({
+				id: o.id,
+				name: o.name,
+				contactName: o.contactName ?? "",
+				contactPhone: o.contactPhone ?? "",
+				contactEmail: o.contactEmail ?? "",
+				creditLimit: Number(o.creditLimit ?? 0),
+				dailyCap: o.dailyCap ? Number(o.dailyCap) : undefined,
+				billingCycle: o.billingCycle ?? "MONTHLY",
+				termsDays: o.paymentTermsDays ?? 30,
+				status: o.status === "ON_HOLD" ? "ON_HOLD" : "ACTIVE",
+				outstanding: 0,
+				staffCount: 0,
+				staysThisMonth: 0,
+				agreementNotes: o.agreementNotes ?? undefined,
+				since: o.createdAt ?? "",
+			}));
+		},
 		get: (id: string) =>
 			give(stay.demoOrganizations.find((o) => o.id === id) ?? null),
 		members: (id: string) => give(stay.demoOrgMembers[id] ?? []),

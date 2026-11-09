@@ -752,6 +752,21 @@ export const FolioLine = z.object({
 	movedFrom: z.string().nullable(),
 });
 
+export const Organization = z.object({
+	id: z.string(),
+	name: z.string(),
+	contactName: z.string().nullable().optional(),
+	contactPhone: z.string().nullable().optional(),
+	contactEmail: z.string().nullable().optional(),
+	creditLimit: z.number().nullable().optional(),
+	dailyCap: z.number().nullable().optional(),
+	billingCycle: z.string().nullable().optional(),
+	paymentTermsDays: z.number().nullable().optional(),
+	agreementNotes: z.string().nullable().optional(),
+	status: z.string().nullable().optional(),
+	createdAt: z.string().nullable().optional(),
+});
+
 export const Folio = z.object({
 	id: z.string(),
 	bookingId: z.string().nullable(),
@@ -1212,6 +1227,7 @@ export const schema = createSchema({
 		output: envelope(z.array(StockLevel)),
 	},
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
+	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
 	"@get/folio/folios/:id": { output: envelope(Folio) },
 	"@get/folio/folios/by-booking/:bookingId": { output: envelope(Folio) },
 	"@post/folio/folios/:id/charges": {
