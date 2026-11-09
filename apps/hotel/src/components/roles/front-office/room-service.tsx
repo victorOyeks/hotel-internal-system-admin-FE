@@ -9,7 +9,7 @@ import {
 	UtensilsIcon,
 } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -115,9 +115,12 @@ export function RoomServiceScreen({
 	settings: OutletSettingsRow;
 	terminals: TerminalRow[];
 }) {
-	const { rows, put, apply } = useOrderRows(
-		orders.filter((o) => o.kind === "ROOM_SERVICE"),
+	// Memoised: a new array each render would reset the rows on every render.
+	const roomOrders = useMemo(
+		() => orders.filter((o) => o.kind === "ROOM_SERVICE"),
+		[orders],
 	);
+	const { rows, put, apply } = useOrderRows(roomOrders);
 	const [openId, setOpenId] = useQueryState("open", parseAsString);
 	const [isNew, setIsNew] = useQueryState("new", parseAsString);
 	const [panel, setPanel] = useState<Panel>(() =>
