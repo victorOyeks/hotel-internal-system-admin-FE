@@ -36,6 +36,7 @@ import { toPortalUserRow, toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
 import { fnbData } from "./fnb";
 import { inventoryData } from "./inventory";
+import { lmData } from "./lm";
 import { opsData } from "./ops";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import {
@@ -881,12 +882,8 @@ export const data = {
 		...fnbData.inventory,
 		...inventoryData,
 	},
-	maintenance: {
-		repairs: () => give(ops.demoRepairs),
-		get: (id: string) => give(ops.demoRepairs.find((r) => r.id === id) ?? null),
-		jobs: () => give(ops.demoScheduledJobs),
-		parts: () => give(ops.demoSpareParts),
-	},
+	/** Work orders, assets, preventive schedules and maintenance money (./lm, maintenance-service). */
+	maintenance: lmData.maintenance,
 	activity: {
 		list: () => give(ops.demoActivity),
 	},
@@ -960,9 +957,8 @@ export const data = {
 		},
 	},
 	housekeeping: opsData.housekeeping,
-	laundry: {
-		orders: () => give(ops.demoLaundry),
-	},
+	/** Guest laundry, the price list, linen batches and laundry money (./lm, housekeeping-service). */
+	laundry: lmData.laundry,
 	platform: {
 		/** Every business on the platform (GET /tenant/businesses, first 200). Health, MRR and tickets are 0 until platform-service is wired. */
 		businesses: async (
@@ -1227,18 +1223,20 @@ const ROLE_SCREENS: Record<string, string[]> = {
 		"bookings",
 		"folios",
 		"guests",
+		"laundry",
 		"messages",
 		"payments",
+		"repairs",
 		"rooms",
 		"till",
 	],
-	HOUSEKEEPING: ["inspect", "linen", "lost-found"],
+	HOUSEKEEPING: ["inspect", "linen", "lost-found", "repairs", "store"],
 	FINANCE: ["expenses", "month", "night-audit", "organizations", "tills"],
 	INVENTORY: ["counts", "deliveries", "orders", "requests", "suppliers"],
-	MAINTENANCE: ["jobs", "parts", "rooms"],
+	MAINTENANCE: ["preventive", "store", "rooms"],
 	KITCHEN: ["menu", "payments", "store", "till"],
 	BAR: ["menu", "payments", "stock", "tabs", "till"],
-	LAUNDRY: ["linen", "payments"],
+	LAUNDRY: ["linen", "payments", "store"],
 };
 const SHARED_SCREENS = ["notifications", "profile", "help", "shifts"];
 /** Where a service link lands per role when the role has no screen of that name. */
@@ -1247,8 +1245,9 @@ const SCREEN_ALIASES: Record<string, Record<string, string>> = {
 	FINANCE: { financials: "", "night-audit": "night-audit" },
 	MANAGER: { repairs: "tasks", inventory: "inventory" },
 	FRONT_OFFICE: { orders: "", menu: "" },
-	HOUSEKEEPING: { rooms: "", repairs: "" },
-	MAINTENANCE: { repairs: "jobs" },
+	HOUSEKEEPING: { rooms: "", inventory: "store", laundry: "linen" },
+	MAINTENANCE: { repairs: "", inventory: "store" },
+	LAUNDRY: { inventory: "store", laundry: "linen" },
 	INVENTORY: { inventory: "requests" },
 };
 

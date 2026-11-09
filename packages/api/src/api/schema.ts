@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
 import { fnbRoutes } from "./routes-fnb";
 import { inventoryRoutes } from "./routes-inventory";
+import { lmRoutes } from "./routes-lm";
 import { opsRoutes } from "./routes-ops";
 import { paymentRoutes } from "./routes-payments";
 
@@ -902,6 +903,7 @@ export const schema = createSchema({
 	...paymentRoutes,
 	...fnbRoutes,
 	...inventoryRoutes,
+	...lmRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),
@@ -1294,10 +1296,6 @@ export const schema = createSchema({
 	},
 
 	// maintenance, inventory, folio
-	"@get/maintenance/repairs": {
-		query: z.object({ all: z.boolean() }).partial().optional(),
-		output: envelope(z.array(Repair)),
-	},
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
 	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
 	"@post/folio/organizations": {

@@ -1,108 +1,804 @@
 "use client";
 
-import { ArrowDownToLineIcon, ArrowUpFromLineIcon, ShirtIcon, TrashIcon, WashingMachineIcon } from "lucide-react";
-import { useState } from "react";
-import { Note } from "@hospio/ui/shared/detail-list";
+import type { ColumnDef } from "@tanstack/react-table";
+import {
+	ArrowDownToLineIcon,
+	ArrowUpFromLineIcon,
+	BeakerIcon,
+	LockIcon,
+	ShirtIcon,
+	TrashIcon,
+} from "lucide-react";
+import { useQueryState } from "nuqs";
+import { useEffect, useState } from "react";
+import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
+import { DetailList, Note } from "@hospio/ui/shared/detail-list";
 import { SelectField, TextareaField } from "@hospio/ui/shared/field";
-import { fmtTime, naira, plural } from "@hospio/ui/shared/format";
+import { fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
-import { ProgressBar } from "@hospio/ui/shared/progress-bar";
+import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { SectionCard } from "@hospio/ui/shared/section-card";
-import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
+import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
-import type { LinenMoveRow, LinenRow, MachineLoadRow } from "@hospio/api/demo/fixtures/tablet";
-import { useDemoAction } from "@hospio/api/demo/actions";
-import { cn } from "@hospio/ui/utils";
-import { BigButton, ShiftPill, Stepper } from "../shared-staff/tablet";
+import { useOrWasteStock } from "@hospio/api/actions/fnb";
+import {
+	closeLinenBatch,
+	receiveLinen,
+	returnLinen,
+} from "@hospio/api/actions/laundry";
+import { useAction } from "@hospio/api/actions/use-action";
+import type { LinenBatchRow, StockItemRow } from "@hospio/api/data/types";
+import { BigButton, Stepper } from "../shared-staff/tablet";
 
-type Panel = "in" | "out" | "load" | "damaged" | null;
-const floors = ["Floor A1", "Floor A2", "Floor A3", "Floor B1"];
+export const BATCH_STATUS: Record<
+	LinenBatchRow["status"],
+	{ label: string; tone: "warning" | "info" | "success" | "grey" | "danger" }
+> = {
+	SENT: { label: "On its way", tone: "warning" },
+	RECEIVED: { label: "At the laundry", tone: "info" },
+	PART_RETURNED: { label: "Part returned", tone: "info" },
+	RETURNED: { label: "Returned", tone: "success" },
+	CLOSED: { label: "Closed short", tone: "grey" },
+};
+const openBatch = (b: LinenBatchRow) =>
+	b.status === "SENT" ||
+	b.status === "RECEIVED" ||
+	b.status === "PART_RETURNED";
 
-/** Laundry · Linen in/out (3244:13987): count linen in, machine loads, send clean linen, damaged linen → write-off request. */
-export function LaundryLinenScreen({ linen, machines, moves }: { linen: LinenRow[]; machines: MachineLoadRow[]; moves: LinenMoveRow[] }) {
-	const [stock, setStock] = useState(linen);
-	const [loads, setLoads] = useState(machines);
-	const [log, setLog] = useState(moves);
-	const [panel, setPanel] = useState<Panel>(null);
-	const [counts, setCounts] = useState<Record<string, number>>({});
-	const [floor, setFloor] = useState(floors[1]);
-	const [machine, setMachine] = useState("Washer 1");
-	const [kind, setKind] = useState("Towels");
-	const [damaged, setDamaged] = useState({ type: linen[0]?.name ?? "", qty: 1, reason: "Torn", note: "" });
-	const { run, pending } = useDemoAction();
+export function batchColumns(): ColumnDef<LinenBatchRow, unknown>[] {
+	return [
+		{
+			id: "n",
+			header: "Batch",
+			cell: ({ row: { original: b } }) => (
+				<TwoLine
+					primary={b.number}
+					secondary={`${b.sentByName ?? "Housekeeping"} · ${fmtWhen(b.createdAt)}`}
+				/>
+			),
+		},
+		{
+			id: "lines",
+			header: "Linen",
+			cell: ({ row: { original: b } }) =>
+				b.lines.map((l) => `${l.sent} ${l.name}`).join(", "),
+		},
+		{
+			id: "status",
+			header: "Status",
+			cell: ({ row: { original: b } }) => (
+				<StatusPill tone={BATCH_STATUS[b.status].tone}>
+					{BATCH_STATUS[b.status].label}
+				</StatusPill>
+			),
+		},
+		{
+			id: "short",
+			header: "Short / condemned",
+			cell: ({ row: { original: b } }) => {
+				const condemned = b.lines.reduce((s, l) => s + l.condemned, 0);
+				const lost = b.lines.reduce((s, l) => s + l.lost, 0);
+				return lost || condemned ? (
+					<span className="text-[13px] text-danger">
+						{lost ? `${lost} missing/lost` : ""}
+						{lost && condemned ? " · " : ""}
+						{condemned ? `${condemned} condemned` : ""}
+					</span>
+				) : (
+					<span className="text-ink-3">—</span>
+				);
+			},
+		},
+		{
+			id: "out",
+			header: "Still at laundry",
+			cell: ({ row: { original: b } }) => b.outstanding || "—",
+		},
+	];
+}
 
-	const zero = () => Object.fromEntries(stock.map((l) => [l.name, 0]));
-	const total = Object.values(counts).reduce((s, q) => s + q, 0);
-	const applyMove = (direction: "IN" | "OUT") => {
-		setStock((st) => st.map((l) => { const q = counts[l.name] ?? 0; return direction === "IN" ? { ...l, dirty: l.dirty + q } : { ...l, clean: l.clean + q, inLaundry: Math.max(0, l.inLaundry - q) }; }));
-		setLog((lg) => [{ id: `lm-${Date.now()}`, at: new Date().toISOString(), direction, from: `${floor} · ${direction === "IN" ? "dirty" : "clean"}`, items: Object.entries(counts).filter(([, q]) => q > 0).map(([name, qty]) => ({ name, qty })), by: "Lola Eze" }, ...lg]);
+/** One batch's lines: sent, received, back, condemned, lost and what is still at the laundry, plus its value written off. */
+export function BatchDetail({ b }: { b: LinenBatchRow }) {
+	return (
+		<div className="flex flex-col gap-5">
+			{b.missing > 0 && (
+				<Note tone="danger">
+					{b.missing} pieces didn't arrive at the laundry · written off as
+					missing.
+				</Note>
+			)}
+			{b.closedReason && (
+				<Note tone="info">Closed short: {b.closedReason}</Note>
+			)}
+			<DetailList
+				columns={2}
+				items={[
+					{
+						label: "Status",
+						value: (
+							<StatusPill tone={BATCH_STATUS[b.status].tone}>
+								{BATCH_STATUS[b.status].label}
+							</StatusPill>
+						),
+					},
+					{
+						label: "Sent by",
+						value: `${b.sentByName ?? "—"} · ${fmtWhen(b.createdAt)}`,
+					},
+					{
+						label: "Received",
+						value: b.receivedAt
+							? `${b.receivedByName ?? ""} · ${fmtWhen(b.receivedAt)}`
+							: "Not yet",
+					},
+					{
+						label: "Written off",
+						value: naira(b.condemnedValue + b.lostValue),
+					},
+				]}
+			/>
+			<table className="w-full text-left text-[13px]">
+				<thead>
+					<tr className="border-y border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">
+						<th className="px-3 py-2">Linen</th>
+						<th className="py-2">Sent</th>
+						<th className="py-2">Arrived</th>
+						<th className="py-2">Back</th>
+						<th className="py-2">Condemned</th>
+						<th className="py-2">Lost</th>
+						<th className="py-2 pr-3">At laundry</th>
+					</tr>
+				</thead>
+				<tbody>
+					{b.lines.map((l) => (
+						<tr key={l.itemId} className="border-b border-line last:border-b-0">
+							<td className="px-3 py-2 font-semibold text-ink">{l.name}</td>
+							<td className="py-2">{l.sent}</td>
+							<td className="py-2">{l.received ?? "—"}</td>
+							<td className="py-2">{l.returned}</td>
+							<td className="py-2">{l.condemned || "—"}</td>
+							<td className="py-2">{l.lost || "—"}</td>
+							<td className="py-2 pr-3 font-semibold">{l.outstanding}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+			{b.note && (
+				<p className="rounded-control bg-subtle px-4 py-3 text-[13px] text-ink">
+					{b.note}
+				</p>
+			)}
+		</div>
+	);
+}
+
+type Sub = "receive" | "return" | "close" | "chem" | null;
+
+/**
+ * Laundry · Linen in & out (3244:13987): soiled batches from housekeeping are counted in (what didn't arrive is written
+ * off as missing), returned clean, condemned linen written off, a batch closed short; chemicals used from the Laundry store.
+ */
+export function LaundryLinenScreen({
+	batches: b0,
+	storeItems,
+	storeId,
+	canClose,
+}: {
+	batches: LinenBatchRow[];
+	storeItems: StockItemRow[];
+	storeId?: string;
+	canClose: boolean;
+}) {
+	const [batches, setBatches] = useState(b0);
+	useEffect(() => setBatches(b0), [b0]);
+	const [openId, setOpenId] = useQueryState("open");
+	const [tab, setTab] = useQueryState("tab");
+	const [sub, setSub] = useState<Sub>(null);
+	const current = batches.find((b) => b.id === openId) ?? null;
+	const patch = (b: LinenBatchRow) =>
+		setBatches((bs) => bs.map((x) => (x.id === b.id ? b : x)));
+	const done = (b: LinenBatchRow) => {
+		patch(b);
+		setSub(null);
 	};
+	const incoming = batches.filter((b) => b.status === "SENT");
+	const atLaundry = batches.filter(
+		(b) => b.status === "RECEIVED" || b.status === "PART_RETURNED",
+	);
+	const list = tab === "all" ? batches : batches.filter(openBatch);
+	const linenHere = storeItems.filter(
+		(i) => i.category.toLowerCase() === "linen",
+	);
+	const chemicals = storeItems.filter(
+		(i) => i.category.toLowerCase() !== "linen",
+	);
+	const writtenOff = batches.reduce(
+		(s, b) => s + b.condemnedValue + b.lostValue,
+		0,
+	);
 
 	return (
 		<>
-			<PageHeader title="Linen in & out" subtitle="Hotel linen: what came down dirty, what's in the machines, what went back up clean">
-				<ShiftPill />
-				<BigButton tone="secondary" onClick={() => { setCounts(zero()); setPanel("in"); }}><ArrowDownToLineIcon className="size-5" /> Count linen in</BigButton>
-				<BigButton onClick={() => { setCounts(zero()); setPanel("out"); }}><ArrowUpFromLineIcon className="size-5" /> Send clean linen</BigButton>
+			<PageHeader
+				title="Linen in & out"
+				subtitle="Hotel linen from housekeeping: count it in, send it back clean, write off what can't be used"
+			>
+				<BigButton
+					tone="secondary"
+					onClick={() => setSub("chem")}
+					disabled={!storeId}
+				>
+					<BeakerIcon className="size-5" /> Chemicals used
+				</BigButton>
 			</PageHeader>
+			{!storeId && (
+				<Note tone="warning">
+					There is no Laundry store yet, so linen can't be counted in. The
+					storekeeper adds one in Inventory → Stores.
+				</Note>
+			)}
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-				<KpiCard label="Dirty waiting" value={stock.reduce((s, l) => s + l.dirty, 0)} icon={ShirtIcon} />
-				<KpiCard label="In machines" value={loads.filter((m) => m.status === "RUNNING").reduce((s, m) => s + m.items, 0)} icon={WashingMachineIcon} hint={`${loads.filter((m) => m.status === "FREE").length} machine free`} />
-				<KpiCard label="Clean, to send up" value={stock.reduce((s, l) => s + l.inLaundry, 0)} icon={ArrowUpFromLineIcon} />
-				<KpiCard label="Damaged this week" value={stock.reduce((s, l) => s + l.damaged, 0)} icon={TrashIcon} />
+				<KpiCard
+					label="Batches on their way"
+					value={incoming.length}
+					icon={ArrowDownToLineIcon}
+					hint={`${incoming.reduce((s, b) => s + b.sent, 0)} pieces`}
+				/>
+				<KpiCard
+					label="Linen at the laundry"
+					value={atLaundry.reduce((s, b) => s + b.outstanding, 0)}
+					icon={ShirtIcon}
+					hint={plural(atLaundry.length, "batch", "batches")}
+				/>
+				<KpiCard
+					label="Written off"
+					value={naira(writtenOff)}
+					icon={TrashIcon}
+					hint="Condemned, missing and lost"
+				/>
+				<KpiCard
+					label="Chemicals low"
+					value={chemicals.filter((c) => c.quantity <= c.minLevel).length}
+					icon={BeakerIcon}
+					hint={
+						chemicals
+							.filter((c) => c.quantity <= c.minLevel)
+							.map((c) => c.name)
+							.join(", ") || "All above minimum"
+					}
+				/>
 			</div>
-			<div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-				<SectionCard title="Machines" subtitle="Tap a free machine to start a load" bodyClassName="grid grid-cols-2 gap-3 pt-2">
-					{loads.map((m) => (
-						<button key={m.id} type="button" onClick={() => { setMachine(m.machine); setPanel("load"); }} disabled={m.status === "RUNNING"} className={cn("flex flex-col gap-2 rounded-xl border p-4 text-left", m.status === "RUNNING" ? "border-info/40 bg-info-soft/40" : m.status === "DONE" ? "border-success/40 bg-success-soft/50" : "border-line bg-card hover:bg-subtle")}>
-							<div className="flex items-center justify-between"><span className="text-[15px] font-bold text-ink">{m.machine}</span><StatusPill tone={m.status === "RUNNING" ? "info" : m.status === "DONE" ? "success" : "grey"}>{m.status === "RUNNING" ? `Ready ${fmtTime(m.readyAt)}` : m.status === "DONE" ? "Done · unload" : "Free"}</StatusPill></div>
-							<span className="text-[13px] text-ink-2">{m.status === "FREE" ? "Tap to start a load" : `${m.items} ${m.kind.toLowerCase()} · started ${fmtTime(m.startedAt)}`}</span>
-							{m.status === "DONE" && <BigButton tone="secondary" className="mt-1 h-10" onClick={(e) => { e.stopPropagation(); run(`${m.machine} unloaded`, () => setLoads((ls) => ls.map((x) => (x.id === m.id ? { ...x, status: "FREE", items: 0, kind: "—" } : x)))); }}>Unload</BigButton>}
-						</button>
-					))}
-				</SectionCard>
-				<SectionCard title="Damaged linen" subtitle="Write-offs need the supervisor" bodyClassName="gap-3 pt-2">
-					<ul className="flex flex-col gap-2">{stock.filter((l) => l.damaged > 0).map((l) => <li key={l.id} className="flex items-center justify-between rounded-control bg-subtle px-3 py-2 text-[13px]"><span className="font-medium text-ink">{l.name}</span><span className="text-ink-2">{l.damaged} waiting</span></li>)}</ul>
-					<BigButton tone="dangerSoft" onClick={() => setPanel("damaged")}><TrashIcon className="size-5" /> Report damaged linen</BigButton>
-				</SectionCard>
-			</div>
-			<SectionCard title="Stock by type" flush>
+			<PillTabs
+				tabs={[
+					{
+						key: "open",
+						label: "Open batches",
+						count: batches.filter(openBatch).length,
+					},
+					{ key: "all", label: "All batches", count: batches.length },
+				]}
+				value={tab === "all" ? "all" : "open"}
+				onChange={(k) => void setTab(k === "open" ? null : k)}
+			/>
+			<DataTable
+				columns={batchColumns()}
+				data={list}
+				onRowClick={(b) => void setOpenId(b.id)}
+				emptyTitle="No linen batches"
+				emptyHint="Housekeeping sends soiled linen from their Linen screen"
+			/>
+			<SectionCard
+				title="Laundry store"
+				subtitle="Linen here and the chemicals the laundry uses"
+				flush
+			>
 				<table className="w-full text-left">
-					<thead><tr className="border-y border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3"><th className="px-5 py-3">Type</th><th className="py-3">Dirty here</th><th className="py-3">Clean here</th><th className="py-3">On floors</th><th className="py-3 pr-5">Of par</th></tr></thead>
-					<tbody>{stock.map((l) => <tr key={l.id} className="border-b border-line last:border-b-0"><td className="px-5 py-3 text-[15px] font-semibold text-ink">{l.name}</td><td className="py-3 text-[15px]">{l.dirty}</td><td className="py-3 text-[15px]">{l.inLaundry}</td><td className="py-3 text-[15px] text-ink-2">{l.clean}</td><td className="py-3 pr-5"><div className="w-40"><ProgressBar value={l.clean + l.inLaundry} max={l.par} /></div></td></tr>)}</tbody>
+					<thead>
+						<tr className="border-y border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">
+							<th className="px-5 py-3">Item</th>
+							<th className="py-3">Kind</th>
+							<th className="py-3">Here</th>
+							<th className="py-3 pr-5">Minimum</th>
+						</tr>
+					</thead>
+					<tbody>
+						{[...linenHere, ...chemicals].map((i) => (
+							<tr key={i.id} className="border-b border-line last:border-b-0">
+								<td className="px-5 py-3 text-[15px] font-semibold text-ink">
+									{i.name}
+								</td>
+								<td className="py-3 text-[13px] text-ink-2">{i.category}</td>
+								<td
+									className={
+										i.quantity <= i.minLevel &&
+										i.category.toLowerCase() !== "linen"
+											? "py-3 text-[15px] font-semibold text-warning"
+											: "py-3 text-[15px]"
+									}
+								>
+									{i.quantity} {i.unit}
+								</td>
+								<td className="py-3 pr-5 text-[13px] text-ink-3">
+									{i.category.toLowerCase() === "linen"
+										? "—"
+										: `${i.minLevel} ${i.unit}`}
+								</td>
+							</tr>
+						))}
+						{storeItems.length === 0 && (
+							<tr>
+								<td
+									colSpan={4}
+									className="px-5 py-6 text-center text-[13px] text-ink-3"
+								>
+									Nothing in the Laundry store yet.
+								</td>
+							</tr>
+						)}
+					</tbody>
 				</table>
 			</SectionCard>
-			<SectionCard title="Today's movements" flush>
-				<ul className="divide-y divide-line">{log.map((m) => <li key={m.id} className="flex items-center gap-3 px-5 py-3"><span className={cn("flex size-8 items-center justify-center rounded-lg", m.direction === "IN" ? "bg-warning-soft text-warning" : "bg-success-soft text-success")}>{m.direction === "IN" ? <ArrowDownToLineIcon className="size-4" /> : <ArrowUpFromLineIcon className="size-4" />}</span><div className="min-w-0 flex-1"><p className="text-[15px] font-semibold text-ink">{m.direction === "IN" ? "Received from" : "Sent to"} {m.from}</p><p className="text-[13px] text-ink-3">{m.items.map((i) => `${i.qty} ${i.name}`).join(", ")} · {m.by}</p></div><span className="text-xs text-ink-3">{fmtTime(m.at)}</span></li>)}</ul>
-			</SectionCard>
 
-			<SidePanel open={panel === "in" || panel === "out"} onOpenChange={(o) => !o && setPanel(null)} title={panel === "in" ? "Count linen in" : "Send clean linen"} subtitle={panel === "in" ? "Dirty linen from a floor trolley" : "Clean linen going up to a floor"} icon={panel === "in" ? ArrowDownToLineIcon : ArrowUpFromLineIcon}
-				footerInfo={plural(total, "piece")}
-				footer={<><BigButton tone="secondary" onClick={() => setPanel(null)}>Cancel</BigButton><BigButton pending={pending} disabled={total === 0} onClick={() => { const d = panel === "in" ? "IN" : "OUT"; run(d === "IN" ? `${total} pieces counted in from ${floor}` : `${total} clean pieces sent to ${floor} · housekeeping told`, () => { applyMove(d); setPanel(null); }); }}>{panel === "in" ? "Count in" : "Mark sent"}</BigButton></>}>
-				<div className="flex flex-col gap-4">
-					<SelectField label={panel === "in" ? "From" : "To"} value={floor} onChange={setFloor} options={floors} />
-					<ul className="divide-y divide-line rounded-control border border-line">{stock.map((l) => <li key={l.id} className="flex items-center gap-3 px-4 py-2"><span className="flex-1 text-[15px] font-medium text-ink">{l.name}</span>{panel === "out" && <span className="text-xs text-ink-3">{l.inLaundry} clean</span>}<Stepper value={counts[l.name] ?? 0} onChange={(v) => setCounts({ ...counts, [l.name]: v })} max={panel === "out" ? l.inLaundry : 999} /></li>)}</ul>
-					{panel === "out" && <Note tone="info">Housekeeping gets an alert that the trolley is on its way.</Note>}
-				</div>
+			<SidePanel
+				open={!!current && sub === null}
+				onOpenChange={(o) => {
+					if (!o) void setOpenId(null);
+				}}
+				title={current ? `${current.number} · ${current.sent} pieces` : ""}
+				subtitle={current ? BATCH_STATUS[current.status].label : undefined}
+				icon={ShirtIcon}
+				width="lg"
+				footer={
+					current &&
+					(current.status === "SENT" ? (
+						<BigButton onClick={() => setSub("receive")} disabled={!storeId}>
+							<ArrowDownToLineIcon className="size-5" /> Count it in
+						</BigButton>
+					) : openBatch(current) ? (
+						<>
+							{canClose && (
+								<BigButton tone="ghost" onClick={() => setSub("close")}>
+									<LockIcon className="size-5" /> Close short
+								</BigButton>
+							)}
+							<BigButton onClick={() => setSub("return")}>
+								<ArrowUpFromLineIcon className="size-5" /> Send back clean
+							</BigButton>
+						</>
+					) : (
+						<BigButton tone="secondary" onClick={() => void setOpenId(null)}>
+							Close
+						</BigButton>
+					))
+				}
+			>
+				{current && <BatchDetail b={current} />}
 			</SidePanel>
 
-			<Modal open={panel === "load"} onOpenChange={(o) => !o && setPanel(null)} title={`Start ${machine}`} subtitle="What's going in" icon={WashingMachineIcon} size="confirm"
-				footer={<><BigButton tone="secondary" onClick={() => setPanel(null)}>Cancel</BigButton><BigButton pending={pending} onClick={() => run(`${machine} started · ready in 55 min`, () => { setLoads((ls) => ls.map((m) => (m.machine === machine ? { ...m, status: "RUNNING", kind, items: 30, startedAt: new Date().toISOString(), readyAt: new Date(Date.now() + 55 * 60000).toISOString() } : m))); setPanel(null); })}>Start load</BigButton></>}>
-				<div className="flex flex-col gap-4"><SelectField label="Load" value={kind} onChange={setKind} options={["Towels", "Bed sheets", "Pillowcases", "Guest clothes", "Mixed"]} /><Note tone="info">The timer shows on the machine card; you'll get an alert when it's done.</Note></div>
-			</Modal>
-
-			<Modal open={panel === "damaged"} onOpenChange={(o) => !o && setPanel(null)} title="Damaged linen" subtitle="Goes to the housekeeping supervisor as a write-off request" icon={TrashIcon} tone="danger" size="form"
-				footer={<><BigButton tone="secondary" onClick={() => setPanel(null)}>Cancel</BigButton><BigButton tone="danger" pending={pending} onClick={() => run("Write-off request sent to the supervisor", () => { setStock((st) => st.map((l) => (l.name === damaged.type ? { ...l, damaged: l.damaged + damaged.qty } : l))); setPanel(null); }, { tone: "warning" })}>Send request</BigButton></>}>
-				<div className="flex flex-col gap-4">
-					<div className="grid grid-cols-2 gap-3"><SelectField label="Type" value={damaged.type} onChange={(v) => setDamaged({ ...damaged, type: v })} options={stock.map((l) => l.name)} /><div className="flex flex-col gap-[6px]"><span className="text-[13px] font-medium text-ink-2">How many</span><Stepper value={damaged.qty} onChange={(v) => setDamaged({ ...damaged, qty: v })} min={1} /></div></div>
-					<SelectField label="What happened" value={damaged.reason} onChange={(v) => setDamaged({ ...damaged, reason: v })} options={["Torn", "Bleach stains", "Burn", "Worn out", "Missing after wash"]} setupLink="reasons" />
-					<TextareaField label="Note" value={damaged.note} onChange={(v) => setDamaged({ ...damaged, note: v })} rows={2} />
-					<WhatHappens tone="warning" items={[`About ${naira(4200 * damaged.qty)} of linen leaves the count if approved`, "The supervisor approves or declines on their Inspect screen"]} />
-					<PanelSection><span /></PanelSection>
-				</div>
-			</Modal>
+			{current && (
+				<>
+					<ReceiveModal
+						open={sub === "receive"}
+						b={current}
+						onClose={() => setSub(null)}
+						onDone={done}
+					/>
+					<ReturnModal
+						open={sub === "return"}
+						b={current}
+						onClose={() => setSub(null)}
+						onDone={done}
+					/>
+					<CloseModal
+						open={sub === "close"}
+						b={current}
+						onClose={() => setSub(null)}
+						onDone={done}
+					/>
+				</>
+			)}
+			<ChemicalsModal
+				open={sub === "chem"}
+				items={chemicals}
+				storeId={storeId}
+				onClose={() => setSub(null)}
+			/>
 		</>
+	);
+}
+
+function ReceiveModal({
+	open,
+	b,
+	onClose,
+	onDone,
+}: {
+	open: boolean;
+	b: LinenBatchRow;
+	onClose: () => void;
+	onDone: (b: LinenBatchRow) => void;
+}) {
+	const [counts, setCounts] = useState<Record<string, number>>({});
+	const { run, pending } = useAction();
+	useEffect(() => {
+		if (open)
+			setCounts(Object.fromEntries(b.lines.map((l) => [l.itemId, l.sent])));
+	}, [open, b.lines]);
+	const short = b.lines.reduce(
+		(s, l) => s + Math.max(0, l.sent - (counts[l.itemId] ?? l.sent)),
+		0,
+	);
+	return (
+		<Modal
+			open={open}
+			onOpenChange={(o) => !o && onClose()}
+			title={`Count ${b.number} in`}
+			subtitle="Count what actually arrived from housekeeping"
+			icon={ArrowDownToLineIcon}
+			footerInfo={short ? `${short} short` : "Matches what was sent"}
+			footer={
+				<>
+					<BigButton tone="secondary" onClick={onClose}>
+						Back
+					</BigButton>
+					<BigButton
+						pending={pending}
+						onClick={() =>
+							run(
+								() =>
+									receiveLinen(
+										b.id,
+										b.lines.map((l) => ({
+											itemId: l.itemId,
+											quantity: counts[l.itemId] ?? l.sent,
+										})),
+									),
+								short
+									? `${b.number} counted in · ${short} missing, housekeeping told`
+									: `${b.number} counted in`,
+								onDone,
+							)
+						}
+					>
+						Count in
+					</BigButton>
+				</>
+			}
+		>
+			<div className="flex flex-col gap-4">
+				<ul className="divide-y divide-line rounded-control border border-line">
+					{b.lines.map((l) => (
+						<li key={l.itemId} className="flex items-center gap-3 px-4 py-2">
+							<span className="min-w-0 flex-1">
+								<span className="block text-[15px] font-medium text-ink">
+									{l.name}
+								</span>
+								<span className="block text-xs text-ink-3">{l.sent} sent</span>
+							</span>
+							<Stepper
+								value={counts[l.itemId] ?? l.sent}
+								max={l.sent}
+								onChange={(v) => setCounts({ ...counts, [l.itemId]: v })}
+							/>
+						</li>
+					))}
+				</ul>
+				{short > 0 && (
+					<Note tone="warning">
+						{short} pieces short: they are written off as missing and
+						housekeeping and the manager are told.
+					</Note>
+				)}
+			</div>
+		</Modal>
+	);
+}
+
+function ReturnModal({
+	open,
+	b,
+	onClose,
+	onDone,
+}: {
+	open: boolean;
+	b: LinenBatchRow;
+	onClose: () => void;
+	onDone: (b: LinenBatchRow) => void;
+}) {
+	const [back, setBack] = useState<Record<string, number>>({});
+	const [condemned, setCondemned] = useState<Record<string, number>>({});
+	const [reason, setReason] = useState("");
+	const { run, pending } = useAction();
+	useEffect(() => {
+		if (open) {
+			setBack(
+				Object.fromEntries(b.lines.map((l) => [l.itemId, l.outstanding])),
+			);
+			setCondemned({});
+			setReason("");
+		}
+	}, [open, b.lines]);
+	const over = b.lines.filter(
+		(l) => (back[l.itemId] ?? 0) + (condemned[l.itemId] ?? 0) > l.outstanding,
+	);
+	const anyCondemned = Object.values(condemned).some((q) => q > 0);
+	const total =
+		Object.values(back).reduce((s, q) => s + q, 0) +
+		Object.values(condemned).reduce((s, q) => s + q, 0);
+	const value = b.lines.reduce(
+		(s, l) => s + (condemned[l.itemId] ?? 0) * l.unitCost,
+		0,
+	);
+	return (
+		<Modal
+			open={open}
+			onOpenChange={(o) => !o && onClose()}
+			title={`Send ${b.number} back`}
+			subtitle="Clean linen to housekeeping · condemned linen written off"
+			icon={ArrowUpFromLineIcon}
+			size="large"
+			footerInfo={anyCondemned ? `Condemned ${naira(value)}` : undefined}
+			footer={
+				<>
+					<BigButton tone="secondary" onClick={onClose}>
+						Back
+					</BigButton>
+					<BigButton
+						pending={pending}
+						disabled={
+							total === 0 || over.length > 0 || (anyCondemned && !reason.trim())
+						}
+						onClick={() =>
+							run(
+								() =>
+									returnLinen(
+										b.id,
+										b.lines
+											.map((l) => ({
+												itemId: l.itemId,
+												returned: back[l.itemId] ?? 0,
+												condemned: condemned[l.itemId] ?? 0,
+											}))
+											.filter((l) => l.returned + l.condemned > 0),
+										reason,
+									),
+								(r) =>
+									r.status === "RETURNED"
+										? `${b.number} returned · housekeeping told`
+										: `Part of ${b.number} returned · housekeeping told`,
+								onDone,
+							)
+						}
+					>
+						Send back
+					</BigButton>
+				</>
+			}
+		>
+			<div className="flex flex-col gap-4">
+				<table className="w-full text-left text-[13px]">
+					<thead>
+						<tr className="border-y border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">
+							<th className="px-3 py-2">Linen</th>
+							<th className="py-2">At laundry</th>
+							<th className="py-2">Clean back</th>
+							<th className="py-2 pr-3">Condemned</th>
+						</tr>
+					</thead>
+					<tbody>
+						{b.lines
+							.filter((l) => l.outstanding > 0)
+							.map((l) => (
+								<tr
+									key={l.itemId}
+									className="border-b border-line last:border-b-0"
+								>
+									<td className="px-3 py-2 font-semibold text-ink">{l.name}</td>
+									<td className="py-2">{l.outstanding}</td>
+									<td className="py-2">
+										<Stepper
+											value={back[l.itemId] ?? 0}
+											max={l.outstanding}
+											onChange={(v) => setBack({ ...back, [l.itemId]: v })}
+										/>
+									</td>
+									<td className="py-2 pr-3">
+										<Stepper
+											value={condemned[l.itemId] ?? 0}
+											max={l.outstanding}
+											onChange={(v) =>
+												setCondemned({ ...condemned, [l.itemId]: v })
+											}
+										/>
+									</td>
+								</tr>
+							))}
+					</tbody>
+				</table>
+				{over.length > 0 && (
+					<Note tone="danger">
+						More than is at the laundry for {over.map((l) => l.name).join(", ")}
+						.
+					</Note>
+				)}
+				{anyCondemned && (
+					<SelectField
+						label="Why condemned"
+						value={reason}
+						onChange={setReason}
+						options={[
+							"Torn",
+							"Bleach stains",
+							"Burn",
+							"Worn out",
+							"Permanent stain",
+						]}
+						placeholder="Pick a reason"
+					/>
+				)}
+				<WhatHappens
+					items={[
+						"Clean linen moves to the Housekeeping store",
+						"Condemned linen comes off the stock at its cost",
+						"Whatever is left stays here until it goes back or the batch is closed short",
+					]}
+				/>
+			</div>
+		</Modal>
+	);
+}
+
+function CloseModal({
+	open,
+	b,
+	onClose,
+	onDone,
+}: {
+	open: boolean;
+	b: LinenBatchRow;
+	onClose: () => void;
+	onDone: (b: LinenBatchRow) => void;
+}) {
+	const [reason, setReason] = useState("");
+	const { run, pending } = useAction();
+	useEffect(() => {
+		if (open) setReason("");
+	}, [open]);
+	const value = b.lines.reduce((s, l) => s + l.outstanding * l.unitCost, 0);
+	return (
+		<Modal
+			open={open}
+			onOpenChange={(o) => !o && onClose()}
+			title={`Close ${b.number} short`}
+			subtitle={`${b.outstanding} pieces never come back · about ${naira(value)} written off`}
+			icon={LockIcon}
+			tone="danger"
+			size="confirm"
+			footer={
+				<>
+					<BigButton tone="secondary" onClick={onClose}>
+						Back
+					</BigButton>
+					<BigButton
+						tone="danger"
+						pending={pending}
+						disabled={!reason.trim()}
+						onClick={() =>
+							run(
+								() => closeLinenBatch(b.id, reason),
+								`${b.number} closed · ${b.outstanding} written off as lost`,
+								onDone,
+							)
+						}
+					>
+						Close short
+					</BigButton>
+				</>
+			}
+		>
+			<TextareaField
+				label="What happened to the rest"
+				value={reason}
+				onChange={setReason}
+				rows={2}
+				placeholder="e.g. Searched the laundry, not found"
+			/>
+		</Modal>
+	);
+}
+
+function ChemicalsModal({
+	open,
+	items,
+	storeId,
+	onClose,
+}: {
+	open: boolean;
+	items: StockItemRow[];
+	storeId?: string;
+	onClose: () => void;
+}) {
+	const [used, setUsed] = useState<Record<string, number>>({});
+	const { run, pending } = useAction();
+	useEffect(() => {
+		if (open) setUsed({});
+	}, [open]);
+	const lines = Object.entries(used).filter(([, q]) => q > 0);
+	const over = lines.filter(
+		([id, q]) => q > (items.find((i) => i.id === id)?.quantity ?? 0),
+	);
+	return (
+		<Modal
+			open={open}
+			onOpenChange={(o) => !o && onClose()}
+			title="Chemicals used"
+			subtitle="Comes off the Laundry store at its cost"
+			icon={BeakerIcon}
+			footer={
+				<>
+					<BigButton tone="secondary" onClick={onClose}>
+						Cancel
+					</BigButton>
+					<BigButton
+						pending={pending}
+						disabled={!storeId || lines.length === 0 || over.length > 0}
+						onClick={() =>
+							run(
+								async () => {
+									for (const [itemId, quantity] of lines) {
+										const r = await useOrWasteStock({
+											itemId,
+											storeId: storeId as string,
+											quantity,
+											waste: false,
+											note: "Laundry chemicals",
+										});
+										if (!r.ok) return r;
+									}
+									return { ok: true as const, data: null };
+								},
+								"Chemicals recorded",
+								onClose,
+							)
+						}
+					>
+						Record
+					</BigButton>
+				</>
+			}
+		>
+			{items.length === 0 ? (
+				<Note tone="info">
+					No chemicals in the Laundry store yet · ask the store for some.
+				</Note>
+			) : (
+				<div className="flex flex-col gap-3">
+					<ul className="divide-y divide-line rounded-control border border-line">
+						{items.map((i) => (
+							<li key={i.id} className="flex items-center gap-3 px-4 py-2">
+								<span className="min-w-0 flex-1">
+									<span className="block text-[15px] font-medium text-ink">
+										{i.name}
+									</span>
+									<span className="block text-xs text-ink-3">
+										{i.quantity} {i.unit} in store
+									</span>
+								</span>
+								<Stepper
+									value={used[i.id] ?? 0}
+									onChange={(v) => setUsed({ ...used, [i.id]: v })}
+								/>
+								<span className="w-12 text-xs text-ink-3">{i.unit}</span>
+							</li>
+						))}
+					</ul>
+					{over.length > 0 && (
+						<Note tone="danger">More than the store holds.</Note>
+					)}
+				</div>
+			)}
+		</Modal>
 	);
 }
