@@ -66,7 +66,7 @@ import {
 
 type Tab = "all" | "rota" | "leave" | "requests";
 
-/** Manager · Staff. The list, add, reset password, suspend/resume and remove are live on identity-service; the rota, leave and requests stay on fixtures. */
+/** Manager · Staff. The list, add, reset password, suspend/resume and remove are live on identity-service; the rota, leave and requests are live on finance-service. */
 export function StaffScreen({
 	staff,
 	shifts,
@@ -101,10 +101,15 @@ export function StaffScreen({
 	const [autoFill, setAutoFill] = useState(false);
 
 	const active = (tab as Tab) || "all";
-	const today = new Date().toISOString().slice(0, 10);
+	const today = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Africa/Lagos",
+	}).format(new Date());
 	const onShift = shifts.filter(
 		(s) =>
-			s.date === today && s.status !== "ABSENT" && s.status !== "CANCELLED",
+			s.date === today &&
+			(s.clockedIn !== undefined
+				? s.clockedIn
+				: s.status !== "ABSENT" && s.status !== "CANCELLED"),
 	).length;
 	const scheduled = shifts.filter((s) => s.date === today).length;
 	const pendingCount =
@@ -322,7 +327,7 @@ export function StaffScreen({
 					label="On shift now"
 					value={onShift}
 					icon={UserCheckIcon}
-					hint={`of ${scheduled} scheduled · ${scheduled - onShift} sick`}
+					hint={`of ${scheduled} scheduled · ${scheduled - onShift} not in`}
 				/>
 				<KpiCard
 					label="Attendance this week"
@@ -474,12 +479,14 @@ export function StaffScreen({
 			/>
 			<SwapShiftModal
 				shift={swap}
+				shifts={shifts}
 				staff={staff}
 				onClose={() => setSwap(null)}
 			/>
 			<AutoFillModal
 				open={autoFill}
 				shifts={shifts}
+				staff={staff}
 				onClose={() => setAutoFill(false)}
 			/>
 		</>

@@ -6,3 +6,7 @@ export * from "./tenant";
 export * from "./marketer";
 export * from "./payments-admin";
 export * from "./platform-admin";
+export * from "./workforce";
+export * from "./finance";
+export * from "./housekeeping";
+export * from "./approvals";

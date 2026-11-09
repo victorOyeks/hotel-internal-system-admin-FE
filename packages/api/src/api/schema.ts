@@ -1,6 +1,7 @@
 import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
+import { opsRoutes } from "./routes-ops";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -643,6 +644,8 @@ export const RoomStatus = z.object({
 	roomId: z.string(),
 	roomNumber: z.string().nullable(),
 	status: z.enum(["DIRTY", "CLEAN", "INSPECTED"]),
+	note: z.string().nullable().optional(),
+	updatedAt: z.string().nullable().optional(),
 });
 
 // ---- finance -------------------------------------------------------------------------------------
@@ -655,6 +658,13 @@ export const MoneyToday = z.object({
 	cashInTills: z.number(),
 	openTills: z.number(),
 	paymentsCount: z.number(),
+	// operating-day contract: arrivals, occupancy, cash taken with no open till, approvals waiting
+	occupancyPct: z.number().nullable().optional(),
+	arrivals: z.number().nullable().optional(),
+	departures: z.number().nullable().optional(),
+	inHouse: z.number().nullable().optional(),
+	unattachedCash: z.number().nullable().optional(),
+	pendingApprovals: z.number().nullable().optional(),
 });
 
 export const Shift = z.object({
@@ -666,6 +676,8 @@ export const Shift = z.object({
 	startsAt: z.string(),
 	endsAt: z.string(),
 	status: z.string(),
+	clockedIn: z.boolean().nullable().optional(),
+	attendance: z.string().nullable().optional(),
 });
 
 // ---- platform, maintenance, inventory, folio, messaging -----------------------------------------
@@ -680,6 +692,12 @@ export const Approval = z.object({
 	description: z.string().nullable(),
 	status: z.string(),
 	createdAt: z.string(),
+	sourceRef: z.string().nullable().optional(),
+	requesterRole: z.string().nullable().optional(),
+	hotelName: z.string().nullable().optional(),
+	decidedByName: z.string().nullable().optional(),
+	note: z.string().nullable().optional(),
+	deliveries: Deliveries,
 });
 
 export const ActivityEntry = z.object({
@@ -795,6 +813,7 @@ export const Notification = z.object({
 
 export const schema = createSchema({
 	...adminRoutes,
+	...opsRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),
@@ -826,7 +845,9 @@ export const schema = createSchema({
 	},
 	"@post/identity/auth/phone/send-code": {
 		input: z.object({}).optional(),
-		output: envelope(z.object({ expiresAt: z.string(), deliveries: Deliveries })),
+		output: envelope(
+			z.object({ expiresAt: z.string(), deliveries: Deliveries }),
+		),
 	},
 	"@post/identity/auth/phone/verify": {
 		input: z.object({ code: z.string() }),

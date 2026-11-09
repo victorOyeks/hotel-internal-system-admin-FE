@@ -11,6 +11,7 @@ import {
 	UserPlusIcon,
 	UserXIcon,
 } from "lucide-react";
+import { addDays, format, parseISO } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -20,6 +21,7 @@ import {
 	resetPassword,
 } from "@hospio/api/actions/identity";
 import { useAction } from "@hospio/api/actions/use-action";
+import { addShift } from "@hospio/api/actions/workforce";
 import type { UserCreated } from "@hospio/api/api/schema";
 import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
@@ -65,6 +67,11 @@ export const ROLE_OPTIONS = [
 	{ value: "FINANCE", label: "Finance" },
 ];
 export const SHIFT_OPTIONS = ["Morning", "Afternoon", "Night"];
+const SHIFT_TIMES: Record<string, [string, string]> = {
+	Morning: ["06:00", "14:00"],
+	Afternoon: ["14:00", "22:00"],
+	Night: ["22:00", "06:00"],
+};
 export const DEPARTMENTS = [
 	"Management",
 	"Front office",
@@ -624,16 +631,18 @@ export function ChangeShiftModal({
 	staff: StaffRow | null;
 	onClose: () => void;
 }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [shift, setShift] = useState("");
 	const [from, setFrom] = useState(new Date().toISOString().slice(0, 10));
+	const [days, setDays] = useState("1");
+	const times = SHIFT_TIMES[shift];
 	return (
 		<Modal
 			open={!!staff}
 			onOpenChange={(o) => !o && onClose()}
 			icon={CalendarDaysIcon}
-			title="Change shift"
-			subtitle={staff ? `${staff.fullName} · currently ${staff.shift}` : ""}
+			title="Add to the rota"
+			subtitle={staff ? `${staff.fullName} · ${humanize(staff.role)}` : ""}
 			footer={
 				<>
 					<Button variant="outline" className={btn.secondary} onClick={onClose}>
@@ -641,15 +650,39 @@ export function ChangeShiftModal({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={!shift || pending}
+						disabled={!shift || !staff || pending}
 						onClick={() =>
+							staff &&
+							times &&
 							run(
-								`${staff?.fullName} moves to ${shift} from ${fmtDay(from)}`,
-								onClose,
+								async () => {
+									const n = Math.max(1, Math.min(14, Number(days) || 1));
+									for (let i = 0; i < n; i++) {
+										const date = format(
+											addDays(parseISO(from), i),
+											"yyyy-MM-dd",
+										);
+										const r = await addShift({
+											userId: staff.userId ?? staff.id,
+											userName: staff.fullName,
+											role: staff.role,
+											date,
+											starts: times[0],
+											ends: times[1],
+										});
+										if (!r.ok) return r;
+									}
+									return { ok: true as const, data: null };
+								},
+								`${staff.fullName} is on ${shift} from ${fmtDay(from)}`,
+								() => {
+									setShift("");
+									onClose();
+								},
 							)
 						}
 					>
-						Change shift
+						Add shifts
 					</Button>
 				</>
 			}
@@ -668,13 +701,25 @@ export function ChangeShiftModal({
 								: s === "Afternoon"
 									? "2pm – 10pm"
 									: "10pm – 6am",
-						disabled: s === staff?.shift,
 					}))}
 				/>
-				<TextField label="From" type="date" value={from} onChange={setFrom} />
+				<FieldRow>
+					<TextField
+						label="First day"
+						type="date"
+						value={from}
+						onChange={setFrom}
+					/>
+					<TextField
+						label="Number of days"
+						type="number"
+						value={days}
+						onChange={setDays}
+					/>
+				</FieldRow>
 				<Note tone="info">
-					They are told on WhatsApp. Shifts already on the rota before this date
-					stay as they are.
+					One shift is added for each day. They see it under My shifts; shifts
+					already on the rota stay as they are.
 				</Note>
 			</div>
 		</Modal>
