@@ -79,6 +79,7 @@ export function BookingDetailsPanel({
 				<>
 					{b.status !== "CANCELLED" &&
 						b.status !== "CHECKED_OUT" &&
+						b.status !== "NO_SHOW" &&
 						b.priceKind !== "COMPLIMENTARY" && (
 							<Button
 								variant="outline"
@@ -94,15 +95,6 @@ export function BookingDetailsPanel({
 							onClick={() => onAction("check-in")}
 						>
 							<ArrowRightToLineIcon className="size-4" /> Check in
-						</Button>
-					)}
-					{b.status === "NO_SHOW" && (
-						<Button
-							className={btn.primary}
-							onClick={() => onAction("check-in")}
-						>
-							<ArrowRightToLineIcon className="size-4" /> Guest arrived · check
-							in
 						</Button>
 					)}
 					{b.status === "CHECKED_IN" && (

@@ -66,6 +66,7 @@ import {
 import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
+import { actionAllowed } from "../manager/bookings/booking-helpers";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
 import {
 	type PaymentTarget,
@@ -155,6 +156,13 @@ export function BookingsScreen({
 		all: bookings,
 	};
 	const selected = bookings.find((b) => b.id === openId) ?? null;
+	// A stale ?action= (check in on a stay already in house, cancel by the front office…) falls back to the summary.
+	const act =
+		selected &&
+		actionAllowed(selected, action) &&
+		(action !== "cancel" || canCancel)
+			? action
+			: null;
 	const update = (id: string, patch: Partial<BookingRow>) =>
 		setBookings((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 	/** A payment was recorded for a booking: approved ones count as paid, the rest wait on the POS. */
@@ -412,7 +420,7 @@ export function BookingsScreen({
 
 			<BookingPanel
 				booking={selected}
-				open={!!selected && !action && !payOpen}
+				open={!!selected && !act && !payOpen}
 				onOpenChange={(o) => !o && closeAll()}
 				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
 				folio={
@@ -445,7 +453,7 @@ export function BookingsScreen({
 
 			<CheckInPanel
 				booking={selected}
-				open={!!selected && action === "check-in"}
+				open={!!selected && act === "check-in"}
 				onOpenChange={(o) => !o && closeAll()}
 				rooms={rooms}
 				folios={folios}
@@ -464,7 +472,7 @@ export function BookingsScreen({
 						? (folios.find((f) => f.bookingId === selected.id) ?? null)
 						: null
 				}
-				open={!!selected && action === "check-out"}
+				open={!!selected && act === "check-out"}
 				onOpenChange={(o) => !o && closeAll()}
 				folios={folios}
 				terminals={terminals}
@@ -477,7 +485,7 @@ export function BookingsScreen({
 			/>
 			<ChangeDatesModal
 				booking={selected}
-				open={!!selected && action === "dates"}
+				open={!!selected && act === "dates"}
 				onOpenChange={(o) => !o && closeAll()}
 				onDone={(changes) => {
 					if (selected) update(selected.id, changes);
@@ -486,11 +494,11 @@ export function BookingsScreen({
 			/>
 			<MessageGuestModal
 				booking={selected}
-				open={!!selected && action === "message"}
+				open={!!selected && act === "message"}
 				onOpenChange={(o) => !o && closeAll()}
 			/>
 			<ConfirmModal
-				open={!!selected && action === "cancel"}
+				open={!!selected && act === "cancel"}
 				onOpenChange={(o) => !o && closeAll()}
 				title="Cancel this booking?"
 				subtitle={
