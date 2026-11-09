@@ -6,6 +6,11 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
 	const load = await loadOnboarding();
 	return (
-		<ManagerStep business={load.business} draft={load.draft} user={load.user} />
+		<ManagerStep
+			key={load.version}
+			business={load.business}
+			draft={load.draft}
+			user={load.user}
+		/>
 	);
 }

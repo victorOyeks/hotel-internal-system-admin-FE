@@ -21,23 +21,48 @@ import {
 } from "@hospio/ui/primitives/form";
 import { Input } from "@hospio/ui/primitives/input";
 
+const letters = (v: string) => v.replace(/[^\p{L}]/gu, "").length;
+const realPhone = (v: string) => {
+	const d = v.replace(/\D/g, "");
+	return d.length >= 10 && d.length <= 15 && !/^(\d)\1*$/.test(d);
+};
+
 const schema = z.object({
-	fullName: z.string().trim().min(2, "Enter your name"),
+	fullName: z
+		.string()
+		.trim()
+		.min(2, "Enter your name")
+		.max(120, "Keep your name under 120 characters")
+		.refine((v) => letters(v) >= 2, "Your name must contain letters"),
 	email: z.email("Enter a work email"),
 	phone: z
 		.string()
 		.trim()
-		.min(7, "Enter your phone number")
+		.min(1, "Enter your phone number")
 		.regex(
-			/^\+?[\d\s()-]{7,20}$/,
+			/^\+?[\d\s()-]{7,24}$/,
 			"Enter a phone number like +234 803 555 0192",
-		),
+		)
+		.refine(realPhone, "Enter a real phone number, like +234 803 555 0192"),
 	password: z
 		.string()
 		.min(8, "At least 8 characters")
 		.max(72, "At most 72 characters"),
-	businessName: z.string().trim().min(2, "Enter your company or group name"),
-	city: z.string().trim().optional(),
+	businessName: z
+		.string()
+		.trim()
+		.min(2, "Enter your company or group name")
+		.max(120, "Keep the name under 120 characters")
+		.refine(
+			(v) => letters(v) >= 2,
+			"The business name must contain letters, not only numbers or symbols",
+		),
+	city: z
+		.string()
+		.trim()
+		.min(1, "Enter your city")
+		.max(80, "Keep the city under 80 characters")
+		.refine((v) => letters(v) >= 2 && !/\d/.test(v), "Enter a real city name"),
 });
 
 const input =
@@ -66,18 +91,24 @@ export function SignUpForm() {
 			const result = await withDeliveries(
 				signUp({
 					...values,
-					city: values.city || undefined,
+					city: values.city,
 				}),
 				`Phone code for ${values.fullName.trim()}`,
 			);
 			if (!result.ok) {
 				// A taken address comes back as "Someone already signs in with …": that belongs under the email.
-				form.setError(
-					/email|already|sign in instead|exists/i.test(result.error)
-						? "email"
-						: "password",
-					{ message: result.error },
-				);
+				const field = /phone/i.test(result.error)
+					? "phone"
+					: /full name/i.test(result.error)
+						? "fullName"
+						: /business name/i.test(result.error)
+							? "businessName"
+							: /city/i.test(result.error)
+								? "city"
+								: /email|already|sign in instead|exists/i.test(result.error)
+									? "email"
+									: "password";
+				form.setError(field, { message: result.error });
 				return;
 			}
 			toast.success("Account created");

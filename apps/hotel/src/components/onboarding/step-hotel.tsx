@@ -10,12 +10,22 @@ import type { Business, Me } from "@hospio/api/api/schema";
 import type { OwnerOnboardingData } from "@hospio/api/types";
 import { FieldRow, TextField } from "@hospio/ui/shared/field";
 import { SideCard, StepCard, StepFooter, StepPage } from "./common";
+import { useFreshOnOpen, useSaveLater, useStepForm } from "./persist";
 import { stepHref } from "./steps";
+import {
+	checkAddress,
+	checkCity,
+	checkEmail,
+	checkName,
+	checkPhone,
+	only,
+} from "./validate";
 
 /** Step 2 · Your first hotel (Figma 3164:16239) → POST /tenant/hotels (the action refreshes the token), then the draft. */
 export function HotelStep({
 	business,
 	draft,
+	user,
 }: {
 	business: Business | null;
 	draft: OwnerOnboardingData;
@@ -27,7 +37,8 @@ export function HotelStep({
 	const existing = saved?.hotelId
 		? (business?.hotels ?? []).find((h) => h.id === saved.hotelId)
 		: undefined;
-	const [form, setForm] = useState({
+	useFreshOnOpen();
+	const { form, update, forget } = useStepForm("hotel", user?.id, {
 		name: existing?.name ?? saved?.name ?? "",
 		address: existing?.address ?? "",
 		city: existing?.city ?? saved?.city ?? business?.city ?? "",
@@ -37,17 +48,24 @@ export function HotelStep({
 		checkOutTime: existing?.checkOutTime ?? "12:00",
 	});
 	const set = <K extends keyof typeof form>(k: K, v: string) =>
-		setForm((f) => ({ ...f, [k]: v }));
-	const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+		update({ [k]: v } as Partial<typeof form>);
+	const [errors, setErrors] = useState<
+		Partial<Record<keyof typeof form, string>>
+	>({});
 	const { run, pending } = useAction();
 
-	function submit() {
-		const e: typeof errors = {};
-		if (form.name.trim().length < 2) e.name = "Enter the hotel's name";
-		if (form.email && !/^\S+@\S+\.\S+$/.test(form.email))
-			e.email = "Enter a valid email";
-		setErrors(e);
-		if (Object.keys(e).length) return;
+	const check = () =>
+		only({
+			name: checkName(form.name, "the hotel's name"),
+			address: checkAddress(form.address),
+			city: checkCity(form.city),
+			phone: checkPhone(form.phone),
+			email: checkEmail(form.email, false),
+			checkOutTime:
+				form.checkInTime && form.checkOutTime ? undefined : "Set both times",
+		});
+
+	async function save() {
 		const body = {
 			name: form.name.trim(),
 			city: form.city.trim() || null,
@@ -58,22 +76,32 @@ export function HotelStep({
 			checkInTime: form.checkInTime || null,
 			checkOutTime: form.checkOutTime || null,
 		};
-		run(
-			async () => {
-				const r = saved?.hotelId
-					? await updateHotel(saved.hotelId, body)
-					: await createHotel(body);
-				if (!r.ok) return r;
-				return saveMyOnboardingStep("hotel", {
-					hotelId: r.data.id,
-					name: r.data.name,
-					city: r.data.city ?? body.city ?? "",
-				});
-			},
-			saved?.hotelId ? "Hotel updated" : "Hotel created",
-			() => router.push(stepHref("rooms")),
+		const r = saved?.hotelId
+			? await updateHotel(saved.hotelId, body)
+			: await createHotel(body);
+		if (!r.ok) return r;
+		const step = await saveMyOnboardingStep("hotel", {
+			hotelId: r.data.id,
+			name: r.data.name,
+			city: r.data.city ?? body.city ?? "",
+		});
+		if (step.ok) forget();
+		return step;
+	}
+
+	function submit() {
+		const e = check();
+		setErrors(e);
+		if (Object.keys(e).length) return;
+		run(save, saved?.hotelId ? "Hotel updated" : "Hotel created", () =>
+			router.push(stepHref("rooms")),
 		);
 	}
+
+	useSaveLater(async () => {
+		if (Object.keys(check()).length) return "kept";
+		return (await save()).ok ? "saved" : "failed";
+	});
 
 	const trading = business?.name?.trim() || "your trading name";
 
@@ -149,6 +177,8 @@ export function HotelStep({
 						value={form.address}
 						onChange={(v) => set("address", v)}
 						placeholder="Plot 12, Isaac John Street, Ikeja GRA, Lagos"
+						required
+						error={errors.address}
 					/>
 					<FieldRow>
 						<TextField
@@ -156,6 +186,8 @@ export function HotelStep({
 							value={form.city}
 							onChange={(v) => set("city", v)}
 							placeholder="Lagos"
+							required
+							error={errors.city}
 						/>
 						<TextField
 							label="Front desk phone"
@@ -163,6 +195,8 @@ export function HotelStep({
 							value={form.phone}
 							onChange={(v) => set("phone", v)}
 							placeholder="+234 1 280 4400"
+							required
+							error={errors.phone}
 						/>
 					</FieldRow>
 					<FieldRow>
@@ -173,6 +207,7 @@ export function HotelStep({
 							onChange={(v) => set("email", v)}
 							placeholder="ikeja@simpashotels.com"
 							error={errors.email}
+							hint="Optional"
 						/>
 						<FieldRow>
 							<TextField
@@ -186,6 +221,7 @@ export function HotelStep({
 								type="time"
 								value={form.checkOutTime}
 								onChange={(v) => set("checkOutTime", v)}
+								error={errors.checkOutTime}
 							/>
 						</FieldRow>
 					</FieldRow>

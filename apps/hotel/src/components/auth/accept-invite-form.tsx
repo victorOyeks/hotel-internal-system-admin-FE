@@ -54,6 +54,7 @@ export function AcceptInviteForm({
 }) {
 	const router = useRouter();
 	const [show, setShow] = useState(false);
+	const [showConfirm, setShowConfirm] = useState(false);
 	const [pending, startTransition] = useTransition();
 	const form = useForm({
 		resolver: zodResolver(schema),
@@ -167,12 +168,31 @@ export function AcceptInviteForm({
 						<FormItem className="gap-[6px]">
 							<FormLabel className={label}>Password again</FormLabel>
 							<FormControl>
-								<Input
-									{...field}
-									type={show ? "text" : "password"}
-									autoComplete="new-password"
-									className={input}
-								/>
+								<div className="relative">
+									<Input
+										{...field}
+										type={showConfirm ? "text" : "password"}
+										autoComplete="new-password"
+										placeholder="••••••••••"
+										className={`${input} pr-11`}
+									/>
+									<button
+										type="button"
+										onClick={() => setShowConfirm((s) => !s)}
+										className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+										aria-label={
+											showConfirm
+												? "Hide password again"
+												: "Show password again"
+										}
+									>
+										{showConfirm ? (
+											<EyeOffIcon className="size-4" />
+										) : (
+											<EyeIcon className="size-4" />
+										)}
+									</button>
+								</div>
 							</FormControl>
 							<FormMessage />
 						</FormItem>

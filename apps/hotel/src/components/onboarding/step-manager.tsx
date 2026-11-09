@@ -17,7 +17,9 @@ import { InviteCard } from "@hospio/ui/shared/invite-card";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import { SideCard, StepCard, StepFooter, StepPage } from "./common";
+import { useFreshOnOpen, useStepForm } from "./persist";
 import { stepHref } from "./steps";
+import { checkEmail, checkName, checkPhone, only } from "./validate";
 
 type Created = NonNullable<OwnerOnboardingData["manager"]> & {
 	phone?: string;
@@ -38,18 +40,28 @@ export function ManagerStep({
 	const router = useRouter();
 	const hotel = draft.hotel;
 	const [created, setCreated] = useState<Created | null>(draft.manager ?? null);
-	const [form, setForm] = useState({ fullName: "", phone: "", email: "" });
+	useFreshOnOpen();
+	const { form, update, forget } = useStepForm("manager", user?.id, {
+		fullName: "",
+		phone: "",
+		email: "",
+	});
 	const [errors, setErrors] = useState<Partial<typeof form>>({});
 	const set = <K extends keyof typeof form>(k: K, v: string) =>
-		setForm((f) => ({ ...f, [k]: v }));
+		update({ [k]: v } as Partial<typeof form>);
 	const { run, pending } = useAction();
 	const hotelName = hotel?.name ?? "your hotel";
 	const inviter = user?.fullName ?? business?.ownerName ?? "The owner";
 
+	const check = () =>
+		only({
+			fullName: checkName(form.fullName, "their full name"),
+			email: checkEmail(form.email),
+			phone: checkPhone(form.phone, false),
+		});
+
 	function submit() {
-		const e: typeof errors = {};
-		if (form.fullName.trim().length < 2) e.fullName = "Enter their full name";
-		if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Enter a valid email";
+		const e = check();
 		setErrors(e);
 		if (Object.keys(e).length) return;
 		if (!hotel?.hotelId) return;
@@ -78,6 +90,7 @@ export function ManagerStep({
 					inviteToken: r.data.inviteToken ?? undefined,
 				});
 				if (!step.ok) return step;
+				forget();
 				return {
 					ok: true as const,
 					data: {
@@ -193,7 +206,8 @@ export function ManagerStep({
 								value={form.phone}
 								onChange={(v) => set("phone", v)}
 								placeholder="+234 807 220 1145"
-								hint="For the WhatsApp invite"
+								error={errors.phone}
+								hint="Optional · needed only to send the invite on WhatsApp"
 							/>
 						</FieldRow>
 						<TextField
