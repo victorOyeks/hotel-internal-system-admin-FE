@@ -67,6 +67,8 @@ export type CheckInInput = {
 	roomId?: string;
 	withoutPayment?: boolean;
 	idChecked?: boolean;
+	/** Manager: check in to a room housekeeping hasn't cleaned yet. */
+	overrideDirty?: boolean;
 	collect?: { method: PaymentMethod; amount: number };
 };
 
@@ -80,7 +82,7 @@ export async function checkIn(b: BookingRow, input: CheckInInput, fallback: Part
 	const { data, error } = await api("@post/reservation/bookings/:id/check-in", {
 		...s,
 		params: { id: b.id },
-		body: { roomId: input.roomId ?? null, guestPhone: b.guestPhone || null, guestEmail: b.guestEmail ?? null, withoutPayment: input.withoutPayment ?? false, idType: input.idChecked ? "SEEN" : null },
+		body: { roomId: input.roomId ?? null, guestPhone: b.guestPhone || null, guestEmail: b.guestEmail ?? null, withoutPayment: input.withoutPayment ?? false, idType: input.idChecked ? "SEEN" : null, overrideDirty: input.overrideDirty ?? false },
 	});
 	if (error || !data) return { ok: false, error: errorMessage(error, "Check-in failed") };
 	let paid = b.paid;

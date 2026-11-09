@@ -1,7 +1,9 @@
+import { format } from "date-fns";
 import type { PillTone } from "@hospio/ui/shared/status-pill";
 import type { BookingRow, PaymentPlan, PriceKind } from "@hospio/api/data/types";
 
-export const today = () => new Date().toISOString().slice(0, 10);
+// The local (Lagos) calendar date, not UTC.
+export const today = () => format(new Date(), "yyyy-MM-dd");
 
 export function bookingStatus(b: BookingRow): { label: string; tone: PillTone } {
 	const t = today();

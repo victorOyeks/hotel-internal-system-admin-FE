@@ -8,7 +8,8 @@ import {
 	CreditCardIcon,
 	MessageSquareIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import {
@@ -31,12 +32,12 @@ import {
 	checkIn,
 	checkOut,
 } from "@hospio/api/actions/reservation";
+import { folioForBooking, postCharge } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
 import type {
 	BookingRow,
 	FolioRow,
-	PaymentMethod,
 	RoomRow,
 	TerminalRow,
 } from "@hospio/api/data/types";
@@ -46,7 +47,7 @@ import {
 	type TakenPayment,
 	usePaymentSteps,
 } from "../../front-office/take-payment";
-import { balance } from "./booking-helpers";
+import { balance, today } from "./booking-helpers";
 
 export type BookingAction =
 	| "check-in"
@@ -61,11 +62,6 @@ const nightsBetween = (a: string, b: string) =>
 		1,
 		Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000),
 	);
-const methodOptions: { value: PaymentMethod; label: string; hint: string }[] = [
-	{ value: "CARD", label: "Card · POS", hint: "Front desk POS" },
-	{ value: "TRANSFER", label: "Transfer", hint: "GTBank 0123456789" },
-	{ value: "CASH", label: "Cash", hint: "Goes into the till" },
-];
 
 export function BookingModals({
 	booking: b,
@@ -77,6 +73,7 @@ export function BookingModals({
 	onClose,
 	onPatch,
 	onPaid,
+	onPos = 0,
 }: {
 	booking: BookingRow | null;
 	action: BookingAction | null;
@@ -87,6 +84,8 @@ export function BookingModals({
 	onClose: () => void;
 	onPatch: (id: string, changes: Partial<BookingRow>) => void;
 	onPaid: (bookingId: string, p: TakenPayment) => void;
+	/** Card payments for this booking still with the POS. */
+	onPos?: number;
 }) {
 	if (!b || !action) return null;
 	switch (action) {
@@ -104,11 +103,15 @@ export function BookingModals({
 			);
 		case "check-out":
 			return (
-				<CheckOutModal
+				<CheckOutPanel
 					b={b}
 					folio={folio}
+					folios={folios}
+					terminals={terminals}
+					onPos={onPos}
 					onClose={onClose}
 					onPatch={onPatch}
+					onPaid={onPaid}
 				/>
 			);
 		case "payment":
@@ -160,7 +163,8 @@ function CheckInPanel({
 	);
 	const [paying, setPaying] = useState(false);
 	const [skip, setSkip] = useState(false);
-	const [idChecked, setIdChecked] = useState(true);
+	const [idChecked, setIdChecked] = useState(false);
+	const [override, setOverride] = useState(false);
 	const pay = usePaymentSteps(
 		{
 			terminals,
@@ -175,16 +179,24 @@ function CheckInPanel({
 	// What is owed before the key: the whole balance (the deposit was due at booking).
 	const due = dueAtCheckIn(b);
 	const room = rooms.find((r) => r.id === roomId);
-	const options = [...ready, ...anyReady.filter((r) => !ready.includes(r))].map(
-		(r) => ({
-			value: r.id,
-			label: `${r.number} · ${r.typeName}`,
-			hint:
-				r.state === "held"
-					? "Held for this guest"
-					: `Ready · cleaned by ${r.attendant}`,
-		}),
-	);
+	const roomReady = !!room && (room.state === "ready" || room.state === "held");
+	const assigned = rooms.find((r) => r.id === b.roomId);
+	const options = [
+		...ready,
+		...anyReady.filter((r) => !ready.includes(r)),
+		...(assigned && !ready.includes(assigned) && !anyReady.includes(assigned)
+			? [assigned]
+			: []),
+	].map((r) => ({
+		value: r.id,
+		label: `${r.number} · ${r.typeName}`,
+		hint:
+			r.state === "held"
+				? "Held for this guest"
+				: r.state === "ready"
+					? `Ready · cleaned by ${r.attendant}`
+					: `Not ready · ${r.state.replace("_", " ")}`,
+	}));
 	const target: PaymentTarget = {
 		guestName: b.guestName,
 		roomNumber: room?.number ?? b.roomNumber,
@@ -233,7 +245,13 @@ function CheckInPanel({
 						</Button>
 						<Button
 							className={btn.primary}
-							disabled={pending || !room || !idChecked || (due > 0 && !skip)}
+							disabled={
+								pending ||
+								!room ||
+								!idChecked ||
+								(due > 0 && !skip) ||
+								(!roomReady && !override)
+							}
 							onClick={() =>
 								room &&
 								run(
@@ -244,6 +262,7 @@ function CheckInPanel({
 												roomId: room.id,
 												withoutPayment: skip && due > 0,
 												idChecked,
+												overrideDirty: !roomReady && override,
 											},
 											{
 												status: "CHECKED_IN",
@@ -273,7 +292,10 @@ function CheckInPanel({
 					<SelectField
 						label="Room"
 						value={roomId}
-						onChange={setRoomId}
+						onChange={(v) => {
+							setRoomId(v);
+							setOverride(false);
+						}}
 						options={options}
 						hint={
 							ready.length === 0
@@ -281,6 +303,21 @@ function CheckInPanel({
 								: `${ready.length} ${b.roomTypeName} ready`
 						}
 					/>
+					{room && !roomReady && (
+						<div className="flex flex-col gap-3">
+							<Note tone="warning">
+								{room.number} is {room.state.replace("_", " ")} · housekeeping
+								hasn't marked it ready. Pick a ready room, or check the guest in
+								anyway.
+							</Note>
+							<ToggleField
+								label="Check in to this room anyway"
+								hint="Manager override · logged"
+								checked={override}
+								onChange={setOverride}
+							/>
+						</div>
+					)}
 					{due > 0 ? (
 						<div className="flex flex-col gap-3 rounded-xl border border-line p-4">
 							<TotalsList
@@ -349,38 +386,153 @@ function CheckInPanel({
 	);
 }
 
-function CheckOutModal({
+/** Check out: the bill as the folio has it now; the balance is taken inside this panel (or left on the folio, manager only). */
+function CheckOutPanel({
 	b,
-	folio,
+	folio: loadedFolio,
+	folios,
+	terminals,
+	onPos,
 	onClose,
 	onPatch,
+	onPaid,
 }: {
 	b: BookingRow;
 	folio: FolioRow | null;
+	folios: FolioRow[];
+	terminals: TerminalRow[];
+	onPos: number;
 	onClose: () => void;
 	onPatch: (id: string, c: Partial<BookingRow>) => void;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 }) {
 	const { run, pending } = useAction();
-	const bal = folio ? folio.balance : balance(b);
-	const onAccount = b.paymentPlan === "ORGANIZATION";
-	const [settle, setSettle] = useState<"now" | "later">(
-		bal > 0 && !onAccount ? "now" : "later",
-	);
-	const [method, setMethod] = useState<PaymentMethod>("CARD");
+	const [folio, setFolio] = useState<FolioRow | null>(loadedFolio);
+	// Approved here since the folio above was read; card payments still with the POS.
+	const [taken, setTaken] = useState(0);
+	const [held, setHeld] = useState(0);
+	const [paying, setPaying] = useState(false);
+	const [settle, setSettle] = useState<"now" | "later">("now");
 	const [late, setLate] = useState(false);
 	const [lateFee, setLateFee] = useState<number | "">(
 		Math.round(b.nightlyRate * 0.3),
 	);
+	const [feePosted, setFeePosted] = useState(false);
+	const [posting, setPosting] = useState(false);
+	useEffect(() => {
+		let live = true;
+		void folioForBooking(b.id).then((f) => {
+			if (live && f) setFolio(f);
+		});
+		return () => {
+			live = false;
+		};
+	}, [b.id]);
+	const pay = usePaymentSteps(
+		{
+			terminals,
+			folios,
+			onDone: (p) => {
+				onPaid(b.id, p);
+				if (p.status === "APPROVED") setTaken((t) => t + p.amount);
+				else setHeld((h) => h + p.amount);
+			},
+			onFinish: () => setPaying(false),
+			onBack: () => setPaying(false),
+			doneLabel: "Back to check-out",
+		},
+		false,
+	);
+	const onAccount = b.paymentPlan === "ORGANIZATION";
+	const fee = late && !feePosted && lateFee !== "" ? lateFee : 0;
+	// Without a folio the booking's paid amount already counts what was taken here.
+	const bal = (folio ? folio.balance - taken : balance(b)) + fee;
+	const due = onAccount ? 0 : Math.max(0, bal);
+
+	/** The late check-out charge goes on the folio once, before the balance is taken or the stay closed. */
+	async function postLateFee(): Promise<boolean> {
+		if (!fee || !folio) return true;
+		setPosting(true);
+		const r = await postCharge(
+			folio.id,
+			{ description: "Late check-out", amount: fee, category: "Accommodation" },
+			folio,
+		);
+		setPosting(false);
+		if (!r.ok) {
+			toast.error(r.error, { duration: 8000 });
+			return false;
+		}
+		setFolio(r.data);
+		setFeePosted(true);
+		return true;
+	}
+
+	async function takeBalance() {
+		if (!(await postLateFee())) return;
+		pay.begin({
+			guestName: b.guestName,
+			roomNumber: b.roomNumber,
+			folioId: folio?.id,
+			bookingId: b.id,
+			guestPhone: b.guestPhone,
+			guestEmail: b.guestEmail,
+			amountDue: due,
+			description: `Check-out · ${b.reference}`,
+		});
+		setPaying(true);
+	}
+
+	async function checkOutNow() {
+		if (!(await postLateFee())) return;
+		const left = Math.max(0, bal);
+		run(
+			() =>
+				checkOut(
+					b,
+					{
+						folioBalance: left,
+						allowPendingPayment: onAccount || (settle === "later" && left > 0),
+					},
+					{
+						status: "CHECKED_OUT",
+						checkedOutAt: new Date().toISOString(),
+					},
+				),
+			`${b.guestName} checked out of ${b.roomNumber}`,
+			(changes) => {
+				onPatch(b.id, changes);
+				onClose();
+			},
+		);
+	}
+
+	const v = pay.view;
+	if (paying)
+		return (
+			<SidePanel
+				open
+				onOpenChange={(o) => !o && onClose()}
+				title={v.title}
+				subtitle={v.subtitle}
+				icon={CreditCardIcon}
+				footer={v.footer}
+				footerInfo={v.footerInfo}
+			>
+				{v.body}
+			</SidePanel>
+		);
+
+	const collectNow = due > 0 && settle === "now";
 	return (
-		<Modal
+		<SidePanel
 			open
 			onOpenChange={(o) => !o && onClose()}
 			title={`Check out ${b.guestName}`}
 			subtitle={`Room ${b.roomNumber} · ${plural(b.nights, "night")}${folio ? ` · folio ${folio.reference}` : ""}`}
 			icon={ArrowLeftToLineIcon}
-			size="form"
 			footerInfo={
-				settle === "later" && bal > 0 && !onAccount ? (
+				due > 0 && settle === "later" ? (
 					<span className="flex items-center gap-2">
 						<ManagerMark /> check-out with a balance is logged
 					</span>
@@ -393,44 +545,23 @@ function CheckOutModal({
 					<Button variant="outline" className={btn.secondary} onClick={onClose}>
 						Cancel
 					</Button>
-					<Button
-						className={btn.primary}
-						disabled={pending}
-						onClick={() => {
-							const fee = late && lateFee !== "" ? lateFee : 0;
-							const toCollect =
-								settle === "now" && !onAccount ? Math.max(0, bal + fee) : 0;
-							run(
-								() =>
-									checkOut(
-										b,
-										{
-											folioBalance: Math.max(0, bal + fee),
-											allowPendingPayment: settle === "later",
-											collect:
-												toCollect > 0
-													? { method, amount: toCollect, folioId: folio?.id }
-													: undefined,
-											lateCheckoutFee: fee || undefined,
-										},
-										{
-											status: "CHECKED_OUT",
-											checkedOutAt: new Date().toISOString(),
-											paid: settle === "now" ? b.totalAmount : b.paid,
-										},
-									),
-								`${b.guestName} checked out of ${b.roomNumber}`,
-								(changes) => {
-									onPatch(b.id, changes);
-									onClose();
-								},
-							);
-						}}
-					>
-						{settle === "now" && bal > 0
-							? `Collect ${naira(bal + (late && lateFee !== "" ? lateFee : 0))} & check out`
-							: "Check out"}
-					</Button>
+					{collectNow ? (
+						<Button
+							className={btn.primary}
+							disabled={posting}
+							onClick={() => void takeBalance()}
+						>
+							Take {naira(due)}
+						</Button>
+					) : (
+						<Button
+							className={btn.primary}
+							disabled={pending || posting}
+							onClick={() => void checkOutNow()}
+						>
+							{due > 0 ? `Check out with ${naira(due)} owing` : "Check out"}
+						</Button>
+					)}
 				</>
 			}
 		>
@@ -443,9 +574,18 @@ function CheckOutModal({
 										label: "Room & extras",
 										value: naira(folio.charges + folio.tax),
 									},
+									...(folio.discounts > 0
+										? [
+												{
+													label: "Discounts",
+													value: `– ${naira(folio.discounts)}`,
+													tone: "success" as const,
+												},
+											]
+										: []),
 									{
 										label: "Payments",
-										value: `– ${naira(folio.payments)}`,
+										value: `– ${naira(folio.payments + taken)}`,
 										tone: "success" as const,
 									},
 								]
@@ -457,26 +597,39 @@ function CheckOutModal({
 										tone: "success" as const,
 									},
 								]),
-						...(late && lateFee !== ""
-							? [{ label: "Late check-out", value: naira(lateFee) }]
+						...(fee > 0
+							? [{ label: "Late check-out", value: naira(fee) }]
 							: []),
 						{
-							label: onAccount ? `Billed to ${b.organizationName}` : "Balance",
-							value: naira(
-								Math.max(0, bal + (late && lateFee !== "" ? lateFee : 0)),
-							),
+							label: onAccount
+								? `Billed to ${b.organizationName}`
+								: bal < 0
+									? "Credit"
+									: "Balance",
+							value: naira(Math.abs(bal)),
 							strong: true,
-							tone: bal > 0 && !onAccount ? "danger" : "success",
+							tone: due > 0 ? "danger" : "success",
 						},
 					]}
 				/>
-				{bal < 0 && (
+				{bal < 0 && !onAccount && (
 					<Note tone="success">
-						Guest overpaid by {naira(-bal)} · refund it from the till or keep as
-						credit.
+						Guest overpaid by {naira(-bal)} · refund it from Payments or keep it
+						as credit.
 					</Note>
 				)}
-				{bal > 0 && !onAccount && (
+				{held + onPos > 0 && due > 0 && (
+					<Note tone="info">
+						{naira(held + onPos)} is with the POS. Check out once it is
+						confirmed, take the balance another way, or check out with it owing.
+					</Note>
+				)}
+				{taken > 0 && due <= 0 && (
+					<Note tone="success">
+						{naira(taken)} taken · nothing left to pay.
+					</Note>
+				)}
+				{due > 0 && (
 					<ChoiceCards
 						value={settle}
 						onChange={setSettle}
@@ -485,7 +638,7 @@ function CheckOutModal({
 							{
 								value: "now",
 								label: "Collect balance now",
-								hint: "Record the payment and close the folio",
+								hint: "Take the payment here, then check out",
 							},
 							{
 								value: "later",
@@ -495,43 +648,39 @@ function CheckOutModal({
 						]}
 					/>
 				)}
-				{settle === "now" && bal > 0 && !onAccount && (
-					<ChoiceCards
-						label="Paid by"
-						value={method}
-						onChange={setMethod}
-						columns={3}
-						options={methodOptions}
-					/>
-				)}
-				<div className="flex flex-col gap-3">
-					<ToggleField
-						label="Late check-out"
-						hint="After 11:00am · charge from Hotel setup → Stay rules"
-						checked={late}
-						onChange={setLate}
-					/>
-					{late && (
-						<MoneyField
-							label="Late check-out charge"
-							value={lateFee}
-							onChange={setLateFee}
+				{folio && !feePosted && taken === 0 && (
+					<div className="flex flex-col gap-3">
+						<ToggleField
+							label="Late check-out"
+							hint="After 11:00am · posted to the folio as a charge"
+							checked={late}
+							onChange={setLate}
 						/>
-					)}
-				</div>
+						{late && (
+							<MoneyField
+								label="Late check-out charge"
+								value={lateFee}
+								onChange={setLateFee}
+							/>
+						)}
+					</div>
+				)}
+				{feePosted && (
+					<Note tone="info">The late check-out charge is on the folio.</Note>
+				)}
 				<WhatHappens
 					items={[
 						`Room ${b.roomNumber} goes to housekeeping as Needs cleaning`,
 						onAccount
 							? `Charges go on ${b.organizationName}'s account`
-							: settle === "now"
-								? "Folio closes paid in full"
-								: "Folio closes with a balance and shows on the dashboard",
+							: due > 0 && settle === "later"
+								? "Folio closes with a balance and shows on the dashboard"
+								: "Folio closes paid in full",
 						"Thank-you message goes to the guest",
 					]}
 				/>
 			</div>
-		</Modal>
+		</SidePanel>
 	);
 }
 
@@ -549,15 +698,17 @@ export function RecordPaymentPanel({
 	onClose: () => void;
 	onPaid: (bookingId: string, p: TakenPayment) => void;
 }) {
-	// A new booking on a deposit plan asks for the deposit, not the whole stay.
+	// A new booking on a deposit plan asks for the deposit, not the whole stay; then what the folio (extras included) owes.
+	const folio = folios.find((f) => f.bookingId === b.id);
 	const target: PaymentTarget = {
 		guestName: b.guestName,
 		roomNumber: b.roomNumber,
 		bookingId: b.id,
-		folioId: folios.find((f) => f.bookingId === b.id)?.id,
+		folioId: folio?.id,
 		guestPhone: b.guestPhone,
 		guestEmail: b.guestEmail,
-		amountDue: dueOnBooking(b) || balance(b),
+		amountDue:
+			dueOnBooking(b) || Math.max(0, folio ? folio.balance : balance(b)),
 		description: `Room charges · ${b.reference}`,
 	};
 	const { view } = usePaymentSteps({
@@ -615,7 +766,9 @@ function ChangeDatesModal({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={pending || checkOut <= checkIn}
+						disabled={
+							pending || checkOut <= checkIn || (!locked && checkIn < today())
+						}
 						onClick={() =>
 							run(
 								() =>

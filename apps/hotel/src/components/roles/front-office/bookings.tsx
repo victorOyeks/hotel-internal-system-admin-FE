@@ -63,6 +63,7 @@ import {
 	checkOut,
 	createBooking,
 } from "@hospio/api/actions/reservation";
+import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
@@ -112,6 +113,7 @@ export function BookingsScreen({
 	terminals,
 	hotelName,
 	canCancel = true,
+	pendingOnPos = {},
 }: {
 	buckets: ReturnType<typeof bookingBuckets>;
 	all: BookingRow[];
@@ -123,6 +125,8 @@ export function BookingsScreen({
 	terminals: TerminalRow[];
 	hotelName: string;
 	canCancel?: boolean;
+	/** Card payments still with the POS, per booking, as loaded. */
+	pendingOnPos?: Record<string, number>;
 }) {
 	const [tab, setTab] = useQueryState("tab");
 	const [openId, setOpenId] = useQueryState("open");
@@ -133,7 +137,7 @@ export function BookingsScreen({
 	const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 	const [payOpen, setPayOpen] = useState(false);
 	// Card payments the POS has not confirmed yet, per booking: the summary shows them instead of a paid amount.
-	const [onPos, setOnPos] = useState<Record<string, number>>({});
+	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
 	const { run, pending } = useAction();
 
 	const activeTab = (tab ?? "arrivals") as Tab;
@@ -164,6 +168,14 @@ export function BookingsScreen({
 			return;
 		}
 		setOnPos((m) => ({ ...m, [bookingId]: (m[bookingId] ?? 0) + p.amount }));
+	};
+	/** What Record payment asks for: the deposit first, then what the folio (extras included) or the booking still owes. */
+	const owed = (b: BookingRow) => {
+		const folio = folios.find((f) => f.bookingId === b.id);
+		return (
+			dueOnBooking(b) ||
+			Math.max(0, folio ? folio.balance : b.totalAmount - b.paid)
+		);
 	};
 	/** A flow ended: land on the booking summary. */
 	const openSummary = (id: string) => {
@@ -287,13 +299,16 @@ export function BookingsScreen({
 												bookingId: b.id,
 												guestPhone: b.guestPhone,
 												guestEmail: b.guestEmail,
-												amountDue:
-													dueOnBooking(b) ||
-													Math.max(0, b.totalAmount - b.paid),
+												amountDue: owed(b),
 												description: `Booking ${b.reference}`,
 											});
 											setPayOpen(true);
 										},
+										disabled:
+											b.status === "CANCELLED" ||
+											b.status === "NO_SHOW" ||
+											b.paymentPlan === "ORGANIZATION" ||
+											owed(b) <= 0,
 									},
 									{
 										label: "Change dates",
@@ -332,7 +347,7 @@ export function BookingsScreen({
 				},
 			},
 		],
-		[buckets, folios, setOpenId, setAction, canCancel],
+		[buckets, folios, setOpenId, setAction, canCancel, owed],
 	);
 
 	return (
@@ -411,6 +426,7 @@ export function BookingsScreen({
 						: null
 				}
 				onAction={(a) => void setAction(a)}
+				canCancel={canCancel}
 				onPay={() => {
 					if (!selected) return;
 					setPayTarget({
@@ -420,9 +436,7 @@ export function BookingsScreen({
 						bookingId: selected.id,
 						guestPhone: selected.guestPhone,
 						guestEmail: selected.guestEmail,
-						amountDue:
-							dueOnBooking(selected) ||
-							Math.max(0, selected.totalAmount - selected.paid),
+						amountDue: owed(selected),
 						description: `Booking ${selected.reference}`,
 					});
 					setPayOpen(true);
@@ -440,10 +454,10 @@ export function BookingsScreen({
 				onPaid={paymentTaken}
 				onDone={(changes) => {
 					if (selected) update(selected.id, changes);
-					closeAll();
+					void setAction(null);
 				}}
 			/>
-			<CheckOutModal
+			<CheckOutPanel
 				booking={selected}
 				folio={
 					selected
@@ -452,13 +466,13 @@ export function BookingsScreen({
 				}
 				open={!!selected && action === "check-out"}
 				onOpenChange={(o) => !o && closeAll()}
-				onPay={(t) => {
-					setPayTarget(t);
-					setPayOpen(true);
-				}}
+				folios={folios}
+				terminals={terminals}
+				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
+				onPaid={paymentTaken}
 				onDone={(changes) => {
 					if (selected) update(selected.id, changes);
-					closeAll();
+					void setAction(null);
 				}}
 			/>
 			<ChangeDatesModal
@@ -467,7 +481,7 @@ export function BookingsScreen({
 				onOpenChange={(o) => !o && closeAll()}
 				onDone={(changes) => {
 					if (selected) update(selected.id, changes);
-					closeAll();
+					void setAction(null);
 				}}
 			/>
 			<MessageGuestModal
@@ -503,7 +517,7 @@ export function BookingsScreen({
 						"Booking cancelled · guest told by WhatsApp",
 						(changes) => {
 							update(b.id, changes);
-							closeAll();
+							void setAction(null);
 						},
 					);
 				}}
@@ -565,6 +579,7 @@ export function BookingPanel({
 	onAction,
 	onPay,
 	onPos = 0,
+	canCancel = true,
 }: {
 	booking: BookingRow | null;
 	open: boolean;
@@ -575,6 +590,8 @@ export function BookingPanel({
 	onPay: () => void;
 	/** Card payments sent to the POS and not confirmed yet. */
 	onPos?: number;
+	/** Cancelling is the manager's; the front office does not see the button. */
+	canCancel?: boolean;
 }) {
 	if (!booking) return null;
 	const b = booking;
@@ -607,9 +624,10 @@ export function BookingPanel({
 							<ArrowLeftToLineIcon className="mr-1 inline size-4" /> Check out
 						</button>
 					)}
-					{due > 0 &&
+					{(due > 0 || (folio?.balance ?? 0) > 0) &&
 						b.paymentPlan !== "ORGANIZATION" &&
-						b.status !== "CANCELLED" && (
+						b.status !== "CANCELLED" &&
+						b.status !== "NO_SHOW" && (
 							<button type="button" className={btn.secondary} onClick={onPay}>
 								Record payment
 							</button>
@@ -628,10 +646,14 @@ export function BookingPanel({
 						],
 						["Paid", naira(b.paid), "text-success"],
 						[
-							b.paymentPlan === "ORGANIZATION" ? "Company pays" : "Balance",
+							b.paymentPlan === "ORGANIZATION"
+								? "Company pays"
+								: due < 0
+									? "Credit"
+									: "Balance",
 							b.paymentPlan === "ORGANIZATION"
 								? (b.organizationName ?? "")
-								: naira(due),
+								: naira(Math.abs(due)),
 							due > 0 && b.paymentPlan !== "ORGANIZATION"
 								? "text-danger"
 								: undefined,
@@ -744,7 +766,7 @@ export function BookingPanel({
 						>
 							Message guest
 						</button>
-						{b.status === "BOOKED" && (
+						{b.status === "BOOKED" && canCancel && (
 							<button
 								type="button"
 								className={btn.dangerSoft}
@@ -988,29 +1010,90 @@ function CheckInPanel({
 	);
 }
 
-/** 2.4 Check out. */
-function CheckOutModal({
+/** 2.4 Check out: the bill as the folio has it now, the balance taken inside this panel, then the check-out. */
+function CheckOutPanel({
 	booking,
-	folio,
+	folio: loadedFolio,
 	open,
 	onOpenChange,
-	onPay,
+	folios,
+	terminals,
+	onPos,
+	onPaid,
 	onDone,
 }: {
 	booking: BookingRow | null;
 	folio: FolioRow | null;
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
-	onPay: (t: PaymentTarget) => void;
+	folios: FolioRow[];
+	terminals: TerminalRow[];
+	onPos: number;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 	onDone: (changes: Partial<BookingRow>) => void;
 }) {
 	const { run, pending } = useAction();
+	const [folio, setFolio] = useState<FolioRow | null>(loadedFolio);
+	// Approved here since the folio above was read; card payments still with the POS.
+	const [taken, setTaken] = useState(0);
+	const [held, setHeld] = useState(0);
+	const [paying, setPaying] = useState(false);
+	const pay = usePaymentSteps(
+		{
+			terminals,
+			folios,
+			onDone: (p) => {
+				if (!booking) return;
+				onPaid(booking.id, p);
+				if (p.status === "APPROVED") setTaken((t) => t + p.amount);
+				else setHeld((h) => h + p.amount);
+			},
+			onFinish: () => setPaying(false),
+			onBack: () => setPaying(false),
+			doneLabel: "Back to check-out",
+		},
+		false,
+	);
+	useEffect(() => {
+		setPaying(false);
+		setTaken(0);
+		setHeld(0);
+		setFolio(loadedFolio);
+		if (!open || !booking) return;
+		let live = true;
+		void folioForBooking(booking.id).then((f) => {
+			if (live && f) setFolio(f);
+		});
+		return () => {
+			live = false;
+		};
+	}, [open, booking?.id]);
 	if (!booking) return null;
 	const b = booking;
-	const balance = folio ? folio.balance : b.totalAmount - b.paid;
+	// Without a folio the booking's own paid amount already counts what was taken here.
+	const balance = folio ? folio.balance - taken : b.totalAmount - b.paid;
 	const company = b.paymentPlan === "ORGANIZATION";
+	const due = company ? 0 : Math.max(0, balance);
+
+	if (paying) {
+		const v = pay.view;
+		return (
+			<SidePanel
+				open={open}
+				onOpenChange={onOpenChange}
+				title={v.title}
+				subtitle={v.subtitle}
+				icon={CreditCardIcon}
+				footer={v.footer}
+				footerInfo={v.footerInfo}
+			>
+				{v.body}
+			</SidePanel>
+		);
+	}
+
 	return (
-		<Modal
+		<SidePanel
 			open={open}
 			onOpenChange={onOpenChange}
 			title={`Check out ${b.guestName}`}
@@ -1025,24 +1108,25 @@ function CheckOutModal({
 					>
 						Not yet
 					</button>
-					{balance > 0 && !company ? (
+					{due > 0 ? (
 						<button
 							type="button"
 							className={btn.primary}
-							onClick={() =>
-								onPay({
+							onClick={() => {
+								pay.begin({
 									guestName: b.guestName,
 									roomNumber: b.roomNumber,
 									folioId: folio?.id,
 									bookingId: b.id,
 									guestPhone: b.guestPhone,
 									guestEmail: b.guestEmail,
-									amountDue: balance,
+									amountDue: due,
 									description: `Check-out · ${b.reference}`,
-								})
-							}
+								});
+								setPaying(true);
+							}}
 						>
-							Take {naira(balance)}
+							Take {naira(due)}
 						</button>
 					) : (
 						<button
@@ -1056,7 +1140,7 @@ function CheckOutModal({
 											b,
 											{
 												folioBalance: Math.max(0, balance),
-												allowPendingPayment: company || balance > 0,
+												allowPendingPayment: company,
 											},
 											{
 												status: "CHECKED_OUT",
@@ -1074,8 +1158,8 @@ function CheckOutModal({
 				</>
 			}
 			footerInfo={
-				balance > 0 && !company
-					? "Balance must be settled first · or ask the manager to allow a balance"
+				due > 0
+					? "Take the balance first · a manager can check out with a balance"
 					: undefined
 			}
 		>
@@ -1108,16 +1192,29 @@ function CheckOutModal({
 									: 0,
 							),
 						},
+						...(folio && folio.discounts > 0
+							? [
+									{
+										label: "Discounts",
+										value: `-${naira(folio.discounts)}`,
+										tone: "success" as const,
+									},
+								]
+							: []),
 						{
 							label: "Paid",
-							value: `-${naira(folio?.payments ?? b.paid)}`,
+							value: `-${naira(folio ? folio.payments + taken : b.paid)}`,
 							tone: "success",
 						},
 						{
-							label: balance < 0 ? "To refund" : "Balance",
+							label: company
+								? `Billed to ${b.organizationName ?? "the company"}`
+								: balance < 0
+									? "Credit"
+									: "Balance",
 							value: naira(Math.abs(balance)),
 							strong: true,
-							tone: balance > 0 ? "danger" : "success",
+							tone: due > 0 ? "danger" : "success",
 						},
 					]}
 				/>
@@ -1127,20 +1224,34 @@ function CheckOutModal({
 						to collect from the guest.
 					</Note>
 				)}
-				{balance < 0 && (
-					<Note tone="success">
-						The guest paid {naira(-balance)} more than the bill · refund request
-						goes to the manager.
+				{held + onPos > 0 && due > 0 && (
+					<Note tone="info">
+						{naira(held + onPos)} is with the POS. Check the guest out once it
+						is confirmed, or take the balance another way.
 					</Note>
 				)}
-				<ToggleField
-					label="Room checked · key returned"
-					hint="Housekeeping is told the moment you confirm"
-					checked={true}
-					onChange={() => undefined}
+				{balance < 0 && !company && (
+					<Note tone="success">
+						The guest paid {naira(-balance)} more than the bill. Refund it from
+						Payments (the manager approves refunds) or keep it as credit.
+					</Note>
+				)}
+				{due <= 0 && taken > 0 && (
+					<Note tone="success">
+						{naira(taken)} taken · nothing left to pay.
+					</Note>
+				)}
+				<WhatHappens
+					items={[
+						`Room ${b.roomNumber} goes to housekeeping as Needs cleaning`,
+						company
+							? `Charges go on ${b.organizationName}'s account`
+							: "The folio closes paid in full",
+						"Thank-you message goes to the guest",
+					]}
 				/>
 			</div>
-		</Modal>
+		</SidePanel>
 	);
 }
 
@@ -1189,7 +1300,12 @@ function ChangeDatesModal({
 					<button
 						type="button"
 						className={btn.primary}
-						disabled={nights < 1 || pending}
+						disabled={
+							nights < 1 ||
+							pending ||
+							(booking.status !== "CHECKED_IN" &&
+								ci < format(new Date(), "yyyy-MM-dd"))
+						}
 						onClick={() =>
 							void run(
 								() =>
@@ -1376,7 +1492,6 @@ export function NewBookingPanel({
 	const [adults, setAdults] = useState("2");
 	const [eta, setEta] = useState("");
 	const [priceKind, setPriceKind] = useState<PriceKind>("NORMAL");
-	const [special, setSpecial] = useState("");
 	const [plan, setPlan] = useState<PaymentPlan>("PAY_IN_FULL");
 	const [orgId, setOrgId] = useState("");
 	const [notes, setNotes] = useState("");
@@ -1408,12 +1523,7 @@ export function NewBookingPanel({
 		0,
 		differenceInCalendarDays(new Date(co), new Date(ci)),
 	);
-	const rate =
-		priceKind === "COMPLIMENTARY"
-			? 0
-			: priceKind === "SPECIAL"
-				? Number(special.replace(/\D/g, "")) || 0
-				: (type?.basePrice ?? 0);
+	const rate = priceKind === "COMPLIMENTARY" ? 0 : (type?.basePrice ?? 0);
 	const total = rate * nights;
 	const dueNow =
 		plan === "PAY_IN_FULL"
@@ -1435,9 +1545,9 @@ export function NewBookingPanel({
 			? 0
 			: total
 		: dueNow;
-	const discount =
-		type && priceKind === "SPECIAL" ? (type.basePrice - rate) * nights : 0;
-	const needsManager = priceKind === "COMPLIMENTARY" || discount > 50000;
+	// Special and complimentary prices are the manager's (reservation-service refuses them from the desk).
+	const needsManager = priceKind !== "NORMAL";
+	const pastStart = ci < today;
 
 	function pickGuest(id: string) {
 		setGuestId(id);
@@ -1500,9 +1610,7 @@ export function NewBookingPanel({
 					},
 					row,
 				),
-			needsManager
-				? "Booking saved · sent to the manager to approve the price"
-				: "Booking saved · confirmation sent",
+			"Booking saved · confirmation sent",
 			(saved) =>
 				void flow.start(saved, {
 					take: later ? 0 : takeNow,
@@ -1515,12 +1623,16 @@ export function NewBookingPanel({
 	}
 
 	const canSave =
-		!!name &&
-		!!phone &&
+		!!name.trim() &&
+		!!phone.trim() &&
 		nights >= 1 &&
+		!pastStart &&
+		!needsManager &&
 		!pending &&
 		!flow.busy &&
-		(plan !== "ORGANIZATION" || !!orgId);
+		(plan !== "ORGANIZATION" ||
+			(!!orgId &&
+				organizations.find((o) => o.id === orgId)?.status !== "ON_HOLD"));
 	const formFooter = (
 		<>
 			<button
@@ -1576,11 +1688,13 @@ export function NewBookingPanel({
 			footerInfo={
 				paying
 					? flow.view.footerInfo
-					: needsManager
-						? "Needs the manager · they're told on save"
-						: nights >= 1
-							? `${plural(nights, "night")} · ${naira(total)}`
-							: undefined
+					: pastStart
+						? "Check-in can't be in the past"
+						: nights < 1 && ci && co
+							? "Check-out must be after check-in"
+							: nights >= 1
+								? `${plural(nights, "night")} · ${naira(total)}`
+								: undefined
 			}
 		>
 			{paying ? (
@@ -1719,29 +1833,21 @@ export function NewBookingPanel({
 								{
 									value: "SPECIAL",
 									label: "Special rate",
-									hint: "Over ₦50k off needs the manager",
+									hint: "Manager only",
+									disabled: true,
 								},
 								{
 									value: "COMPLIMENTARY",
 									label: "Complimentary",
-									hint: "Manager approves",
+									hint: "Manager only",
+									disabled: true,
 								},
 							]}
 						/>
-						{priceKind === "SPECIAL" && (
-							<TextField
-								label="Rate per night"
-								value={special}
-								onChange={setSpecial}
-								prefix="₦"
-								placeholder={String(type?.basePrice ?? 0)}
-								hint={
-									discount > 0
-										? `${naira(discount)} off over the stay`
-										: undefined
-								}
-							/>
-						)}
+						<p className="text-xs text-ink-3">
+							A special or complimentary price is booked by the manager · ask
+							them to make this booking.
+						</p>
 					</PanelSection>
 					<PanelSection title="Payment">
 						<ChoiceCards

@@ -589,6 +589,7 @@ export const data = {
 				id: p.id,
 				reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`,
 				folioId: p.folioId ?? undefined,
+				bookingId: p.bookingId ?? undefined,
 				guestName: p.guestName ?? "Walk-in",
 				role: p.role ?? "FRONT_OFFICE",
 				takenBy: p.requestedByName ?? p.requestedBy ?? "—",

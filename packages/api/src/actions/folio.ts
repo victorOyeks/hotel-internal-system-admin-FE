@@ -19,6 +19,13 @@ function revalidateFolios() {
 	for (const p of FOLIO_PATHS) revalidatePath(p);
 }
 
+/** The stay's folio as it is now (balance after every charge and payment), or null before check-in. */
+export async function folioForBooking(bookingId: string): Promise<FolioRow | null> {
+	if (!live("folio")) return null;
+	const { data } = await api("@get/folio/folios/by-booking/:bookingId", { ...(await withSession()), params: { bookingId } }).catch(() => ({ data: null }));
+	return data ? toFolioRow(data.data) : null;
+}
+
 export async function postCharge(folioId: string, input: { description: string; amount: number; tax?: number; category?: string }, fallback: FolioRow): Promise<ActionResult<FolioRow>> {
 	if (!live("folio")) {
 		await demoDelay(400);

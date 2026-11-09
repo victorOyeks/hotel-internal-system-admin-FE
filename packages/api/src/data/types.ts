@@ -254,6 +254,7 @@ export type PaymentRow = {
 	id: Id;
 	reference: string;
 	folioId?: Id;
+	bookingId?: Id;
 	guestName: string;
 	roomNumber?: string;
 	role: string;
@@ -981,4 +982,14 @@ export type AdminUserRow = {
 export function dueOnBooking(b: Pick<BookingRow, "paymentPlan" | "totalAmount" | "paid">): number {
 	const target = b.paymentPlan === "PAY_IN_FULL" ? b.totalAmount : b.paymentPlan === "DEPOSIT_50" ? Math.round(b.totalAmount / 2) : 0;
 	return Math.max(0, target - b.paid);
+}
+
+/** Card payments sent to the POS and not confirmed yet, per booking: the summaries show them as pending. */
+export function pendingByBooking(payments: Pick<PaymentRow, "bookingId" | "status" | "amount">[]): Record<string, number> {
+	const out: Record<string, number> = {};
+	for (const p of payments) {
+		if (!p.bookingId || (p.status !== "PROCESSING" && p.status !== "PENDING")) continue;
+		out[p.bookingId] = (out[p.bookingId] ?? 0) + p.amount;
+	}
+	return out;
 }
