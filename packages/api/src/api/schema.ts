@@ -1,5 +1,6 @@
 import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
+import { adminRoutes } from "./routes-admin";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -211,47 +212,86 @@ export const HotelRequest = z.object({
 	businessId: z.string().nullable().optional(),
 });
 
-/** Where the business is in its onboarding, as GET /businesses/mine and /businesses/{id} carry it. */
+/** The wizard steps by name, in order: the owner's four and the back office's ten (see types.ts). */
+const OWNER_STEP_NAMES = ["business", "hotel", "rooms", "manager"] as const;
+const ADMIN_STEP_NAMES = [
+	"business",
+	"owner",
+	"fee",
+	"hotels",
+	"rooms",
+	"template",
+	"people",
+	"connections",
+	"golive",
+	"handover",
+] as const;
+
+/** tenant-service numbers the completed steps (1..n); the apps name them. */
+export function stepNames(
+	completed: (string | number)[] | null | undefined,
+	source: string | null | undefined,
+): string[] {
+	const names = source === "SELF_SERVE" ? OWNER_STEP_NAMES : ADMIN_STEP_NAMES;
+	return (completed ?? [])
+		.map((c) => (typeof c === "number" ? names[c - 1] : c))
+		.filter((c): c is string => !!c);
+}
+
+/**
+ * Where the business is in its onboarding, as GET /businesses/mine and /businesses/{id} carry it.
+ * `completedSteps` arrives as step numbers; `Business` turns them into step names.
+ */
 export const BusinessOnboarding = z.object({
 	status: OnboardingStatus,
 	step: z.number(),
-	completedSteps: z.array(z.string()),
+	completedSteps: z.array(z.union([z.string(), z.number()])),
 });
 
-export const Business = z.object({
-	id: z.string(),
-	name: z.string(),
-	legalName: z.string().nullable().optional(),
-	registrationNumber: z.string().nullable().optional(),
-	businessType: z.string().nullable().optional(),
-	ownerUserId: z.string().nullable().optional(),
-	ownerName: z.string().nullable(),
-	ownerEmail: z.string().nullable().optional(),
-	ownerPhone: z.string().nullable().optional(),
-	stage: z.string(),
-	source: BusinessSource.nullable().optional(),
-	accountManagerId: z.string().nullable().optional(),
-	marketerId: z.string().nullable().optional(),
-	feeModel: z.string().nullable().optional(),
-	feeValue: z.number().nullable().optional(),
-	currency: z.string(),
-	country: z.string().nullable().optional(),
-	timezone: z.string(),
-	city: z.string().nullable().optional(),
-	address: z.string().nullable().optional(),
-	email: z.string().nullable().optional(),
-	phone: z.string().nullable().optional(),
-	logoUrl: z.string().nullable().optional(),
-	brandColour: z.string().nullable().optional(),
-	contractStartsOn: z.string().nullable().optional(),
-	contractNotes: z.string().nullable().optional(),
-	hotelCount: z.number().nullable().optional(),
-	suspendedAt: z.string().nullable().optional(),
-	suspensionReason: z.string().nullable().optional(),
-	createdAt: z.string().nullable().optional(),
-	hotels: z.array(Hotel).nullable().optional(),
-	onboarding: BusinessOnboarding.nullable().optional(),
-});
+export const Business = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		legalName: z.string().nullable().optional(),
+		registrationNumber: z.string().nullable().optional(),
+		businessType: z.string().nullable().optional(),
+		ownerUserId: z.string().nullable().optional(),
+		ownerName: z.string().nullable(),
+		ownerEmail: z.string().nullable().optional(),
+		ownerPhone: z.string().nullable().optional(),
+		stage: z.string(),
+		source: BusinessSource.nullable().optional(),
+		accountManagerId: z.string().nullable().optional(),
+		marketerId: z.string().nullable().optional(),
+		feeModel: z.string().nullable().optional(),
+		feeValue: z.number().nullable().optional(),
+		currency: z.string(),
+		country: z.string().nullable().optional(),
+		timezone: z.string(),
+		city: z.string().nullable().optional(),
+		address: z.string().nullable().optional(),
+		email: z.string().nullable().optional(),
+		phone: z.string().nullable().optional(),
+		logoUrl: z.string().nullable().optional(),
+		brandColour: z.string().nullable().optional(),
+		contractStartsOn: z.string().nullable().optional(),
+		contractNotes: z.string().nullable().optional(),
+		hotelCount: z.number().nullable().optional(),
+		suspendedAt: z.string().nullable().optional(),
+		suspensionReason: z.string().nullable().optional(),
+		createdAt: z.string().nullable().optional(),
+		hotels: z.array(Hotel).nullable().optional(),
+		onboarding: BusinessOnboarding.nullable().optional(),
+	})
+	.transform((b) => ({
+		...b,
+		onboarding: b.onboarding
+			? {
+					...b.onboarding,
+					completedSteps: stepNames(b.onboarding.completedSteps, b.source),
+				}
+			: b.onboarding,
+	}));
 
 /** One row of GET /tenant/businesses (platform list). */
 export const BusinessSummary = z.object({
@@ -750,6 +790,7 @@ export const Notification = z.object({
 });
 
 export const schema = createSchema({
+	...adminRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),

@@ -17,7 +17,7 @@ export type SessionClaims = {
 	hotels: string[];
 	/** "ROLE:LEVEL", e.g. "FRONT_OFFICE:EDIT" */
 	roles: string[];
-	scope: "hotel" | "business" | "platform";
+	scope: "hotel" | "business" | "platform" | "marketer";
 	iat: number;
 	exp: number;
 };
@@ -33,7 +33,12 @@ export type Session = SessionClaims & {
 // or admin can leave and come back. Both apps' wizards read and write these shapes.
 
 /** Self-serve wizard (apps/hotel `/onboarding`): four steps. */
-export const OWNER_ONBOARDING_STEPS = ["business", "hotel", "rooms", "manager"] as const;
+export const OWNER_ONBOARDING_STEPS = [
+	"business",
+	"hotel",
+	"rooms",
+	"manager",
+] as const;
 export type OwnerOnboardingStep = (typeof OWNER_ONBOARDING_STEPS)[number];
 
 export type OwnerOnboardingData = {
@@ -49,12 +54,37 @@ export type OwnerOnboardingData = {
 		timezone?: string;
 	};
 	hotel?: { hotelId: string; name: string; city: string };
-	rooms?: { roomTypes: { roomTypeId: string; name: string; price: number; count: number }[]; created: number };
-	manager?: { userId: string; fullName: string; email: string; temporaryPassword?: string; inviteToken?: string };
+	rooms?: {
+		roomTypes: {
+			roomTypeId: string;
+			name: string;
+			price: number;
+			count: number;
+		}[];
+		created: number;
+	};
+	manager?: {
+		userId: string;
+		fullName: string;
+		email: string;
+		temporaryPassword?: string;
+		inviteToken?: string;
+	};
 };
 
 /** Back-office wizard (apps/admin `/dashboard/onboarding/[businessId]`): ten steps, J2–J14. */
-export const ADMIN_ONBOARDING_STEPS = ["business", "owner", "fee", "hotels", "rooms", "template", "people", "connections", "golive", "handover"] as const;
+export const ADMIN_ONBOARDING_STEPS = [
+	"business",
+	"owner",
+	"fee",
+	"hotels",
+	"rooms",
+	"template",
+	"people",
+	"connections",
+	"golive",
+	"handover",
+] as const;
 export type AdminOnboardingStep = (typeof ADMIN_ONBOARDING_STEPS)[number];
 
 export type OnboardingLogin = {
@@ -71,20 +101,75 @@ export type OnboardingLogin = {
 };
 
 export type AdminOnboardingData = {
-	business?: { name: string; legalName?: string; registrationNumber?: string; businessType?: string; address?: string; city?: string; country?: string; timezone?: string };
-	owner?: { ownerName: string; ownerEmail: string; ownerPhone?: string; email?: string; phone?: string };
-	fee?: { feeModel: string; feeValue: number; currency?: string; contractStartsOn?: string; contractNotes?: string; marketerId?: string };
+	business?: {
+		name: string;
+		legalName?: string;
+		registrationNumber?: string;
+		businessType?: string;
+		address?: string;
+		city?: string;
+		country?: string;
+		timezone?: string;
+	};
+	owner?: {
+		ownerName: string;
+		ownerEmail: string;
+		ownerPhone?: string;
+		email?: string;
+		phone?: string;
+	};
+	fee?: {
+		feeModel: string;
+		feeValue: number;
+		currency?: string;
+		contractStartsOn?: string;
+		contractNotes?: string;
+		marketerId?: string;
+	};
 	hotels?: { hotelIds: string[] };
-	rooms?: { byHotel: Record<string, { roomTypes: { roomTypeId: string; name: string; price: number; count: number }[]; created: number }> };
+	rooms?: {
+		byHotel: Record<
+			string,
+			{
+				roomTypes: {
+					roomTypeId: string;
+					name: string;
+					price: number;
+					count: number;
+				}[];
+				created: number;
+			}
+		>;
+	};
 	template?: { templateId?: string; appliedTo: string[] };
 	people?: { logins: OnboardingLogin[] };
-	connections?: { terminals: { hotelId: string; terminalId: string; name: string; provider: string; terminalRef: string }[]; whatsappNumber?: string };
-	golive?: { checks: { key: string; label: string; done: boolean; detail?: string }[]; notes?: string };
-	handover?: { sentAt?: string; ownerUserId?: string; ownerEmail?: string; inviteToken?: string; temporaryPassword?: string };
+	connections?: {
+		terminals: {
+			hotelId: string;
+			terminalId: string;
+			name: string;
+			provider: string;
+			terminalRef: string;
+		}[];
+		whatsappNumber?: string;
+	};
+	golive?: {
+		checks: { key: string; label: string; done: boolean; detail?: string }[];
+		notes?: string;
+	};
+	handover?: {
+		sentAt?: string;
+		ownerUserId?: string;
+		ownerEmail?: string;
+		inviteToken?: string;
+		temporaryPassword?: string;
+	};
 };
 
 export type OnboardingStepData = OwnerOnboardingData | AdminOnboardingData;
 
 /** Step number ↔ step key, for `PUT /onboarding/.../step` which takes the number. */
-export const ownerStepNumber = (step: OwnerOnboardingStep) => OWNER_ONBOARDING_STEPS.indexOf(step) + 1;
-export const adminStepNumber = (step: AdminOnboardingStep) => ADMIN_ONBOARDING_STEPS.indexOf(step) + 1;
+export const ownerStepNumber = (step: OwnerOnboardingStep) =>
+	OWNER_ONBOARDING_STEPS.indexOf(step) + 1;
+export const adminStepNumber = (step: AdminOnboardingStep) =>
+	ADMIN_ONBOARDING_STEPS.indexOf(step) + 1;

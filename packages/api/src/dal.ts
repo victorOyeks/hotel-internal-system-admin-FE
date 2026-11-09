@@ -37,7 +37,8 @@ export const getUser = cache(async (): Promise<Me | null> => {
 /** Hotels the user can see. Platform staff have none of their own. */
 export const getHotels = cache(async (): Promise<Hotel[]> => {
 	const session = await getSession();
-	if (session.scope === "platform") return [];
+	// Platform staff and marketers belong to no hotel business.
+	if (session.scope === "platform" || session.scope === "marketer") return [];
 	if (DEMO_AUTH) return demoHotels;
 	const { data } = await api("@get/tenant/hotels", await withSession());
 	return data?.data ?? [];
@@ -49,9 +50,12 @@ export const getHotels = cache(async (): Promise<Hotel[]> => {
  */
 export const getBusiness = cache(async (): Promise<Business | null> => {
 	const session = await getSession();
-	if (session.scope === "platform") return null;
+	if (session.scope === "platform" || session.scope === "marketer") return null;
 	if (DEMO_AUTH || !live("tenant")) return demoBusiness;
-	const { data, error } = await api("@get/tenant/businesses/mine", await withSession());
+	const { data, error } = await api(
+		"@get/tenant/businesses/mine",
+		await withSession(),
+	);
 	if (error || !data) return null;
 	return data.data;
 });

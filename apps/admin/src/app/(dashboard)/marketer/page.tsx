@@ -1,14 +1,28 @@
 import { redirect } from "next/navigation";
 import { MarketerDashboard } from "@/components/roles/marketer/dashboard";
 import { getUser } from "@hospio/api/dal";
-import { data } from "@hospio/api/data";
-import { demoCommissions, demoReferrals } from "@hospio/api/demo/fixtures/platform-extra";
-import { demoMarketer } from "./me";
+import { adminData } from "@hospio/api/data/admin";
+import { NotAMarketer } from "./not-a-marketer";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketerHomePage() {
-	const [user, me, businesses] = await Promise.all([getUser(), demoMarketer(), data.platform.businesses()]);
+	const [user, me, businesses, ledger, referrals] = await Promise.all([
+		getUser(),
+		adminData.marketer.me(),
+		adminData.marketer.businesses(),
+		adminData.marketer.commissions(),
+		adminData.marketer.referrals(),
+	]);
 	if (!user) redirect("/auth");
-	return <MarketerDashboard firstName={user.fullName.split(" ")[0]} me={me} businesses={businesses} ledger={demoCommissions.filter((c) => c.marketerId === me.id)} referrals={demoReferrals.filter((r) => r.marketerId === me.id)} />;
+	if (!me) return <NotAMarketer />;
+	return (
+		<MarketerDashboard
+			firstName={user.fullName.split(" ")[0]}
+			me={me}
+			businesses={businesses}
+			ledger={ledger}
+			referrals={referrals}
+		/>
+	);
 }

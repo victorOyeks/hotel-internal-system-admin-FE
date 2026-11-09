@@ -27,7 +27,7 @@ export function KpiCard({
 				<p className="text-2xl font-bold leading-none text-ink">{value}</p>
 				{pill}
 			</div>
-			{hint && <p className="text-xs text-ink-3">{hint}</p>}
+			{hint && <div className="text-xs text-ink-3">{hint}</div>}
 		</div>
 	);
 }

@@ -12,6 +12,7 @@ import { Button } from "@hospio/ui/primitives/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@hospio/ui/primitives/form";
 import { Input } from "@hospio/ui/primitives/input";
 import { login } from "@hospio/api/actions";
+import { isAppRole, OTHER_APP_URL } from "@hospio/api/app";
 
 const schema = z.object({
 	email: z.email("Enter your email"),
@@ -29,6 +30,13 @@ export function AuthForm({ from }: { from?: string }) {
 			const result = await login(values);
 			if (!result.ok) {
 				form.setError("password", { message: result.error });
+				return;
+			}
+			// An account with none of this app's roles belongs on the other app: go there with a full
+			// navigation. A client-side push would be redirected cross-origin by the middleware and the
+			// RSC fetch would fail on CORS before the browser fell back to a plain navigation.
+			if (result.data.roles.length > 0 && !result.data.roles.some((r) => isAppRole(r))) {
+				window.location.assign(`${OTHER_APP_URL}/auth?switch=${encodeURIComponent(values.email)}`);
 				return;
 			}
 			toast.success("Signed in");

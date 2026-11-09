@@ -65,6 +65,9 @@ export function BusinessesScreen({
 	const router = useRouter();
 	const [tab, setTab] = useQueryState("tab");
 	const [isNew, setNew] = useQueryState("new");
+	// Set when a business was just created: the panel closes without touching the URL (a nuqs write
+	// here would cancel the push to the wizard) and the page navigates away.
+	const [created, setCreated] = useState(false);
 	const [search, setSearch] = useState("");
 	const active = (tab ?? "ALL") as (typeof STAGES)[number];
 	const rows = useMemo(
@@ -220,8 +223,12 @@ export function BusinessesScreen({
 			/>
 
 			<NewBusinessPanel
-				open={isNew === "1"}
+				open={isNew === "1" && !created}
 				onOpenChange={(o) => void setNew(o ? "1" : null)}
+				onCreated={(business) => {
+					setCreated(true);
+					router.push(`/dashboard/onboarding/${business.id}`);
+				}}
 				marketers={marketers}
 				admins={admins}
 			/>
@@ -237,11 +244,14 @@ export function BusinessesScreen({
 export function NewBusinessPanel({
 	open,
 	onOpenChange,
+	onCreated,
 	marketers,
 	admins = [],
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
+	/** Called with the new business; the parent closes the panel and opens the wizard. */
+	onCreated?: (business: { id: string }) => void;
 	marketers: MarketerRow[];
 	admins?: AdminUserRow[];
 }) {
@@ -297,8 +307,14 @@ export function NewBusinessPanel({
 				}),
 			`${name.trim()} created · onboarding started`,
 			(business) => {
-				onOpenChange(false);
-				router.push(`/dashboard/onboarding/${business.id}`);
+				// The panel must close before the page changes (an open Sheet leaves `pointer-events: none`
+				// on <body> when it unmounts mid-navigation, and nothing on the wizard can be clicked), but
+				// not through the URL: clearing `?new=1` with nuqs a moment later cancels the push.
+				if (onCreated) onCreated(business);
+				else {
+					onOpenChange(false);
+					router.push(`/dashboard/onboarding/${business.id}`);
+				}
 			},
 		);
 

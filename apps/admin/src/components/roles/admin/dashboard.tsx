@@ -1,102 +1,50 @@
 "use client";
 
 import {
+	ActivityIcon,
 	AlertTriangleIcon,
 	BuildingIcon,
 	ClipboardCheckIcon,
 	CoinsIcon,
 	HeadsetIcon,
+	HeartPulseIcon,
 	HotelIcon,
-	MegaphoneIcon,
 	TrendingUpIcon,
 	UserPlusIcon,
+	XIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { dismissAlert } from "@hospio/api/actions/platform-admin";
+import { useAction } from "@hospio/api/actions/use-action";
+import type { AlertRow, OverviewData } from "@hospio/api/data/admin-types";
+import type { AdminRole } from "@hospio/api/demo/fixtures/platform-extra";
 import { EmptyState } from "@hospio/ui/shared/empty-state";
-import {
-	fmtAgo,
-	fmtWhen,
-	naira,
-	nairaShort,
-	plural,
-} from "@hospio/ui/shared/format";
+import { fmtAgo, fmtWhen, nairaShort, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import type {
-	BusinessRow,
-	FeeStatementRow,
-	MarketerRow,
-	OnboardingRow,
-	PlatformChangeRow,
-	TicketRow,
-} from "@hospio/api/data/types";
-import type {
-	AdminRole,
-	SystemAlertRow,
-} from "@hospio/api/demo/fixtures/platform-extra";
 import { cn } from "@hospio/ui/utils";
-import {
-	adminRoleLabel,
-	can,
-	StagePill,
-	stageMeta,
-	ticketPriority,
-} from "./shared";
+import { adminRoleLabel, can, stageMeta } from "./shared";
 
+/** Admin — Dashboard (Figma 3304:3908): everything from GET /platform/admin/overview. */
 export function AdminDashboard({
 	role,
 	firstName,
-	businesses,
-	onboarding = [],
-	tickets,
-	changes,
-	marketers,
-	fees,
-	alerts,
+	overview,
 }: {
 	role: AdminRole;
 	firstName: string;
-	businesses: BusinessRow[];
-	/** The onboarding board (live when tenant is on): in progress and ready for handover. */
-	onboarding?: OnboardingRow[];
-	tickets: TicketRow[];
-	changes: PlatformChangeRow[];
-	marketers: MarketerRow[];
-	fees: FeeStatementRow[];
-	alerts: SystemAlertRow[];
+	overview: OverviewData;
 }) {
-	const live = businesses.filter(
-		(b) => b.stage === "LIVE" || b.stage === "HANDED_OVER",
-	);
-	const hotels = businesses.reduce((s, b) => s + b.hotels, 0);
-	const rooms = businesses.reduce((s, b) => s + b.rooms, 0);
-	const mrr = businesses.reduce((s, b) => s + b.mrr, 0);
-	const feesDue = fees
-		.filter((f) => f.status !== "PAID")
-		.reduce((s, f) => s + (f.fee - f.paid), 0);
-	const openTickets = tickets.filter((t) => t.status !== "RESOLVED");
-	const atRisk = businesses.filter(
-		(b) => b.stage === "AT_RISK" || b.stage === "SUSPENDED",
-	);
-	const payoutsDue = marketers.reduce((s, m) => s + m.due, 0);
-	const inProgress = onboarding.filter(
-		(o) => o.status === "IN_PROGRESS",
-	).length;
-	const readyForHandover = onboarding.filter(
-		(o) => o.status === "READY_FOR_HANDOVER",
-	).length;
-	const attention = businesses
-		.filter(
-			(b) =>
-				b.stage === "AT_RISK" ||
-				b.dueFees > 0 ||
-				b.openTickets >= 2 ||
-				(b.stage === "LIVE" && b.adoption < 50),
-		)
-		.sort((a, b) => a.health - b.health);
+	const o = overview;
+	const [alerts, setAlerts] = useState<AlertRow[]>(o.alerts);
+	const { run, pending } = useAction();
+	const byStage = o.businesses.byStage;
+	const live = (byStage.LIVE ?? 0) + (byStage.HANDED_OVER ?? 0);
+	const atRisk = (byStage.AT_RISK ?? 0) + (byStage.SUSPENDED ?? 0);
 	const stages = [
 		"LEAD",
 		"ONBOARDING",
@@ -104,17 +52,17 @@ export function AdminDashboard({
 		"LIVE",
 		"AT_RISK",
 		"SUSPENDED",
+		"CHURNED",
 	] as const;
-	const max = Math.max(
-		1,
-		...stages.map((s) => businesses.filter((b) => b.stage === s).length),
-	);
+	const max = Math.max(1, ...stages.map((s) => byStage[s] ?? 0));
+	const health = o.health;
+	const healthTotal = Math.max(1, health.good + health.watch + health.atRisk);
 
 	return (
 		<>
 			<PageHeader
 				title={`Hello ${firstName}`}
-				subtitle={`${adminRoleLabel[role]} · ${plural(businesses.length, "business", "businesses")} on the platform · ${plural(openTickets.length, "open ticket")}`}
+				subtitle={`${adminRoleLabel[role]} · ${plural(o.businesses.total, "business", "businesses")} on the platform · ${plural(o.openTickets, "open ticket")}`}
 			>
 				{can.editBusiness(role) && (
 					<Link
@@ -129,17 +77,17 @@ export function AdminDashboard({
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
 				<KpiCard
 					label="Live businesses"
-					value={live.length}
+					value={live}
 					icon={BuildingIcon}
-					hint={`${businesses.filter((b) => b.stage === "ONBOARDING").length} onboarding`}
+					hint={`${byStage.ONBOARDING ?? 0} onboarding`}
 				/>
 				<KpiCard
 					label="Onboarding"
-					value={inProgress}
+					value={o.onboardingInProgress}
 					icon={ClipboardCheckIcon}
 					pill={
-						readyForHandover > 0 ? (
-							<StatusPill tone="warning">{readyForHandover} ready</StatusPill>
+						o.readyForHandover > 0 ? (
+							<StatusPill tone="warning">{o.readyForHandover} ready</StatusPill>
 						) : undefined
 					}
 					hint={
@@ -153,97 +101,138 @@ export function AdminDashboard({
 				/>
 				<KpiCard
 					label="Hotels"
-					value={hotels}
+					value={o.hotels}
 					icon={HotelIcon}
-					hint={`${rooms} rooms`}
+					hint={`${o.rooms} rooms`}
 				/>
 				<KpiCard
 					label="Monthly fees (MRR)"
-					value={nairaShort(mrr)}
+					value={nairaShort(o.mrr)}
 					icon={TrendingUpIcon}
-					hint="Live and handed over"
+					hint="This month's statements"
 				/>
 				<KpiCard
 					label="Fees due"
-					value={nairaShort(feesDue)}
+					value={nairaShort(o.dueFees)}
 					icon={CoinsIcon}
 					pill={
-						feesDue > 0 ? (
-							<StatusPill tone="warning">
-								{fees.filter((f) => f.status === "OVERDUE").length} overdue
+						o.overdueFees > 0 ? (
+							<StatusPill tone="danger">
+								{nairaShort(o.overdueFees)} overdue
 							</StatusPill>
 						) : undefined
+					}
+					hint={
+						<Link
+							href="/dashboard/fees"
+							className="font-semibold text-brand hover:underline"
+						>
+							Fees & billing
+						</Link>
 					}
 				/>
 				<KpiCard
 					label="Open tickets"
-					value={openTickets.length}
+					value={o.openTickets}
 					icon={HeadsetIcon}
-					pill={
-						openTickets.some((t) => t.priority === "URGENT") ? (
-							<StatusPill tone="danger">urgent</StatusPill>
-						) : undefined
+					hint={
+						<Link
+							href="/dashboard/support"
+							className="font-semibold text-brand hover:underline"
+						>
+							Support
+						</Link>
 					}
 				/>
 				<KpiCard
 					label="At risk"
-					value={atRisk.length}
+					value={atRisk}
 					icon={AlertTriangleIcon}
-					hint="Low health or suspended"
+					hint="At risk or suspended"
 				/>
 				<KpiCard
-					label="Marketer payouts due"
-					value={nairaShort(payoutsDue)}
-					icon={MegaphoneIcon}
-					hint="After 5% WHT"
+					label="Health"
+					value={health.good}
+					icon={HeartPulseIcon}
+					pill={
+						health.atRisk > 0 ? (
+							<StatusPill tone="danger">{health.atRisk} low</StatusPill>
+						) : undefined
+					}
+					hint={`${health.watch} to watch`}
 				/>
 			</div>
 
 			<div className="grid gap-4 xl:grid-cols-[1fr_380px]">
 				<SectionCard
-					title="Needs attention"
-					subtitle="Low health, fees owed, several tickets, or low adoption"
-					count={attention.length}
-					action={{ label: "All businesses", href: "/dashboard/businesses" }}
+					title="System alerts"
+					subtitle="What the platform found: overdue fees, failing payments, urgent tickets, stalled onboarding"
+					count={alerts.length}
+					action={{ label: "Support", href: "/dashboard/support" }}
+					bodyClassName="pt-1"
 				>
-					{attention.length === 0 ? (
-						<EmptyState title="Every business is healthy" />
+					{alerts.length === 0 ? (
+						<EmptyState
+							title="Nothing needs attention"
+							hint="Alerts clear on their own when the cause ends."
+						/>
 					) : (
 						<ul>
-							{attention.map((b, i) => (
+							{alerts.map((a, i) => (
 								<li
-									key={b.id}
+									key={a.id}
 									className={cn(
-										"flex items-center gap-3 py-[10px]",
-										i < attention.length - 1 && "border-b border-line",
+										"flex items-start gap-3 py-[10px]",
+										i < alerts.length - 1 && "border-b border-line",
 									)}
 								>
+									<AlertTriangleIcon
+										className={cn(
+											"mt-[2px] size-4 shrink-0",
+											a.tone === "danger"
+												? "text-danger"
+												: a.tone === "warning"
+													? "text-warning"
+													: "text-ink-3",
+										)}
+									/>
 									<div className="min-w-0 flex-1">
 										<p className="truncate text-[13px] font-semibold text-ink">
-											{b.name}
+											{a.businessName} · {a.title}
 										</p>
 										<p className="truncate text-xs text-ink-3">
-											{[
-												b.dueFees > 0 ? `${naira(b.dueFees)} fees due` : null,
-												b.openTickets > 0
-													? plural(b.openTickets, "open ticket")
-													: null,
-												`adoption ${b.adoption}%`,
-												b.lastActive
-													? `active ${fmtAgo(b.lastActive)}`
-													: "never active",
-											]
-												.filter(Boolean)
-												.join(" · ")}
+											{a.detail}
+											{a.detail ? " · " : ""}
+											{fmtAgo(a.at)}
 										</p>
 									</div>
-									<StagePill stage={b.stage} />
-									<Link
-										href={`/dashboard/businesses/${b.id}`}
-										className={btn.secondary}
+									{a.businessId && (
+										<Link
+											href={`/dashboard/businesses/${a.businessId}`}
+											className={cn(btn.secondary, btn.small)}
+										>
+											Open
+										</Link>
+									)}
+									<button
+										type="button"
+										disabled={pending}
+										className={cn(
+											btn.ghost,
+											btn.small,
+											"flex items-center gap-1",
+										)}
+										onClick={() =>
+											run(
+												() => dismissAlert(a.id, a),
+												"Alert dismissed",
+												() =>
+													setAlerts((all) => all.filter((x) => x.id !== a.id)),
+											)
+										}
 									>
-										Open
-									</Link>
+										<XIcon className="size-3" /> Dismiss
+									</button>
 								</li>
 							))}
 						</ul>
@@ -256,7 +245,7 @@ export function AdminDashboard({
 					bodyClassName="gap-2 pt-2"
 				>
 					{stages.map((s) => {
-						const n = businesses.filter((b) => b.stage === s).length;
+						const count = byStage[s] ?? 0;
 						return (
 							<Link
 								key={s}
@@ -274,15 +263,15 @@ export function AdminDashboard({
 												? "bg-success"
 												: s === "AT_RISK"
 													? "bg-warning"
-													: s === "SUSPENDED"
+													: s === "SUSPENDED" || s === "CHURNED"
 														? "bg-danger"
 														: "bg-brand",
 										)}
-										style={{ width: `${(n / max) * 100}%` }}
+										style={{ width: `${(count / max) * 100}%` }}
 									/>
 								</div>
 								<span className="w-5 text-right text-sm font-bold text-ink">
-									{n}
+									{count}
 								</span>
 							</Link>
 						);
@@ -290,78 +279,17 @@ export function AdminDashboard({
 				</SectionCard>
 			</div>
 
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-				<SectionCard
-					title="System alerts"
-					count={alerts.length}
-					action={{ label: "Support", href: "/dashboard/support" }}
-					bodyClassName="pt-1"
-				>
-					{alerts.map((a, i) => (
-						<div
-							key={a.id}
-							className={cn(
-								"flex items-start gap-2 py-2",
-								i < alerts.length - 1 && "border-b border-line",
-							)}
-						>
-							<AlertTriangleIcon
-								className={cn(
-									"mt-[2px] size-4 shrink-0",
-									a.tone === "danger"
-										? "text-danger"
-										: a.tone === "warning"
-											? "text-warning"
-											: "text-ink-3",
-								)}
-							/>
-							<div className="min-w-0">
-								<p className="truncate text-[13px] font-semibold text-ink">
-									{a.businessName} · {a.title}
-								</p>
-								<p className="truncate text-xs text-ink-3">{a.detail}</p>
-							</div>
-						</div>
-					))}
-				</SectionCard>
-
-				<SectionCard
-					title="Open tickets"
-					count={openTickets.length}
-					action={{ label: "All tickets", href: "/dashboard/support" }}
-					bodyClassName="pt-1"
-				>
-					{openTickets.slice(0, 4).map((t, i, arr) => (
-						<Link
-							key={t.id}
-							href={`/dashboard/support?open=${t.id}`}
-							className={cn(
-								"flex items-start gap-2 py-2 hover:bg-subtle/60",
-								i < arr.length - 1 && "border-b border-line",
-							)}
-						>
-							<div className="min-w-0 flex-1">
-								<p className="truncate text-[13px] font-semibold text-ink">
-									{t.id.replace("tk-", "T-")} · {t.subject}
-								</p>
-								<p className="truncate text-xs text-ink-3">
-									{t.businessName} · {fmtAgo(t.openedAt)}
-								</p>
-							</div>
-							<StatusPill tone={ticketPriority[t.priority]}>
-								{t.priority.toLowerCase()}
-							</StatusPill>
-						</Link>
-					))}
-				</SectionCard>
-
+			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<SectionCard
 					title="Changes by H.M.S"
 					subtitle="Logged, undoable for 7 days"
 					action={{ label: "All changes", href: "/dashboard/changes" }}
 					bodyClassName="pt-1"
 				>
-					{changes.slice(0, 4).map((c, i, arr) => (
+					{o.recentChanges.length === 0 && (
+						<EmptyState title="No changes yet" />
+					)}
+					{o.recentChanges.slice(0, 6).map((c, i, arr) => (
 						<div
 							key={c.id}
 							className={cn(
@@ -381,38 +309,67 @@ export function AdminDashboard({
 				</SectionCard>
 
 				<SectionCard
-					title="Marketer payouts"
-					subtitle="Due after 5% WHT"
-					action={{ label: "Marketers", href: "/dashboard/marketers" }}
+					title="Recent activity"
+					subtitle="By the H.M.S team"
+					action={{
+						label: "Activity log",
+						href: "/dashboard/changes?tab=activity",
+					}}
 					bodyClassName="pt-1"
 				>
-					{marketers
-						.filter((m) => m.due > 0)
-						.map((m, i, arr) => (
-							<div
-								key={m.id}
-								className={cn(
-									"flex items-center gap-2 py-2",
-									i < arr.length - 1 && "border-b border-line",
-								)}
-							>
-								<div className="min-w-0 flex-1">
-									<p className="truncate text-[13px] font-semibold text-ink">
-										{m.fullName}
-									</p>
-									<p className="truncate text-xs text-ink-3">
-										{plural(m.businesses, "business", "businesses")} ·{" "}
-										{m.sharePct}% for {m.months} months
-									</p>
-								</div>
-								<span className="text-[13px] font-bold text-ink">
-									{naira(m.due)}
-								</span>
+					{o.recentActivity.length === 0 && <EmptyState title="Nothing yet" />}
+					{o.recentActivity.slice(0, 6).map((a, i, arr) => (
+						<div
+							key={a.id}
+							className={cn(
+								"flex items-start gap-2 py-2",
+								i < arr.length - 1 && "border-b border-line",
+							)}
+						>
+							<ActivityIcon className="mt-[2px] size-4 shrink-0 text-ink-3" />
+							<div className="min-w-0 flex-1">
+								<p className="truncate text-[13px] font-semibold text-ink">
+									{a.action}
+								</p>
+								<p className="truncate text-xs text-ink-3">
+									{a.by} · {fmtWhen(a.at)}
+								</p>
 							</div>
-						))}
-					{marketers.every((m) => m.due === 0) && (
-						<EmptyState title="Nothing due" />
-					)}
+						</div>
+					))}
+				</SectionCard>
+
+				<SectionCard
+					title="Health"
+					subtitle="Scored nightly for every live business"
+					bodyClassName="gap-3 pt-2"
+				>
+					{(
+						[
+							["Good (70+)", health.good, "bg-success"],
+							["Watch (40–69)", health.watch, "bg-warning"],
+							["At risk (under 40)", health.atRisk, "bg-danger"],
+						] as const
+					).map(([label, count, color]) => (
+						<div key={label} className="flex items-center gap-3">
+							<span className="w-32 text-[13px] font-medium text-ink">
+								{label}
+							</span>
+							<div className="h-2 flex-1 overflow-hidden rounded-full bg-subtle">
+								<div
+									className={cn("h-full rounded-full", color)}
+									style={{ width: `${(count / healthTotal) * 100}%` }}
+								/>
+							</div>
+							<span className="w-5 text-right text-sm font-bold text-ink">
+								{count}
+							</span>
+						</div>
+					))}
+					<p className="text-xs text-ink-3">
+						Adoption, bookings and payments in the last 7 days, open tickets,
+						overdue fees and missed night audits.
+					</p>
 				</SectionCard>
 			</div>
 		</>
