@@ -97,12 +97,17 @@ export function RoomBoard({
 	const floors = Array.from(new Set(shown.map((r) => r.floor)));
 	const room = rooms.find((r) => r.id === openId) ?? null;
 	const count = (s: RoomState) => rooms.filter((r) => r.state === s).length;
-	const rushable = (roomId: string) =>
-		tasks.find(
+	// The room's open cleaning task, a departure clean first (that is what makes the room dirty).
+	const rushable = (roomId: string) => {
+		const open = tasks.filter(
 			(t) =>
 				t.roomId === roomId &&
-				(t.status === "TODO" || t.status === "IN_PROGRESS"),
+				(t.status === "TODO" ||
+					t.status === "IN_PROGRESS" ||
+					t.status === "SENT_BACK"),
 		);
+		return open.find((t) => t.kind === "DEPARTURE") ?? open[0];
+	};
 	const setState = (id: string, state: RoomState) =>
 		setRooms((xs) => xs.map((r) => (r.id === id ? { ...r, state } : r)));
 

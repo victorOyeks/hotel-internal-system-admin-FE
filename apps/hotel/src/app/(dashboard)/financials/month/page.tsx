@@ -19,16 +19,18 @@ export default async function FinanceMonthPage({
 	);
 	const [from, to] =
 		month === "last" ? [`${prevEnd.slice(0, 8)}01`, prevEnd] : [first, today];
-	const [hotel, expenses, series] = await Promise.all([
+	const [hotel, expenses, series, income] = await Promise.all([
 		getActiveHotel(),
 		data.finance.expenses(),
 		data.finance.series(from, to),
+		data.finance.income(from, to),
 	]);
 	return (
 		<MonthScreen
 			demo={!live("finance")}
 			expenses={expenses}
 			series={series}
+			income={income}
 			from={from}
 			to={to}
 			hotelName={hotel?.name ?? "Hotel"}
