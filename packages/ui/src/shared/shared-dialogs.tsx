@@ -32,6 +32,7 @@ import {
 	SelectValue,
 } from "../primitives/select";
 import { useCallback, useEffect, useState } from "react";
+import { releasePageLock } from "@hospio/ui/shared/release-page-lock";
 
 export function SuccessDialog({
 	open,
@@ -48,11 +49,24 @@ export function SuccessDialog({
 	}, [setOpen]);
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen} modal>
-			<DialogContent className="!max-w-xs p-6 rounded-2xl" showCloseButton={false}>
+		<Dialog
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (!next) releasePageLock();
+			}}
+			modal
+		>
+			<DialogContent
+				className="!max-w-xs p-6 rounded-2xl"
+				showCloseButton={false}
+			>
 				<div className="flex flex-col items-center gap-3">
 					<div className="flex items-center justify-center size-14 rounded-full bg-green-50">
-						<CheckCircle2Icon className="size-8 text-green-600" strokeWidth={1.5} />
+						<CheckCircle2Icon
+							className="size-8 text-green-600"
+							strokeWidth={1.5}
+						/>
 					</div>
 					<DialogTitle className="sr-only">Success</DialogTitle>
 					<DialogDescription className="text-center text-sm text-muted-foreground">
@@ -65,8 +79,12 @@ export function SuccessDialog({
 }
 
 const exportSchema = z.object({
-	from_date: z.date({ error: "Please select a valid starting date" }).or(z.undefined()),
-	to_date: z.date({ error: "Please select a valid ending date" }).or(z.undefined()),
+	from_date: z
+		.date({ error: "Please select a valid starting date" })
+		.or(z.undefined()),
+	to_date: z
+		.date({ error: "Please select a valid ending date" })
+		.or(z.undefined()),
 	export_type: z
 		.string()
 		.nonempty({ message: "Please select an export type" })
@@ -115,7 +133,14 @@ export function ExportDialog({
 	);
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen} modal>
+		<Dialog
+			open={open}
+			onOpenChange={(next) => {
+				setOpen(next);
+				if (!next) releasePageLock();
+			}}
+			modal
+		>
 			<DialogTrigger asChild>
 				<Button size={"sm"} className="rounded-md md:rounded-xl">
 					Export
@@ -131,105 +156,107 @@ export function ExportDialog({
 						onSubmit={form.handleSubmit(handleSubmit)}
 						className="space-y-4"
 					>
-						{showDates && <div className="grid grid-cols-2 gap-x-2">
-							<FormField
-								control={form.control}
-								name="from_date"
-								render={({ field }) => (
-									<FormItem className="flex flex-col col-span-1 space-y-1">
-										<FormLabel className="font-semibold">From</FormLabel>
-										<Popover open={fromOpen} onOpenChange={setFromOpen}>
-											<PopoverTrigger asChild>
-												<FormControl>
-													<Button
-														variant={"outline"}
-														className={cn(
-															"w-full pl-3 text-left font-normal",
-															!field.value && "text-muted-foreground",
-														)}
-													>
-														{field.value ? (
-															formatDate(field.value, "PPP")
-														) : (
-															<span>Pick a date</span>
-														)}
-														<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-													</Button>
-												</FormControl>
-											</PopoverTrigger>
-											<PopoverContent
-												className="w-auto p-0"
-												align="center"
-												side="right"
-											>
-												<Calendar
-													mode="single"
-													selected={field.value}
-													onSelect={(date) => {
-														field.onChange(date);
-														setFromOpen(false);
-													}}
-													disabled={(date) =>
-														date > new Date() || date < new Date("1900-01-01")
-													}
-													captionLayout="dropdown"
-												/>
-											</PopoverContent>
-										</Popover>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+						{showDates && (
+							<div className="grid grid-cols-2 gap-x-2">
+								<FormField
+									control={form.control}
+									name="from_date"
+									render={({ field }) => (
+										<FormItem className="flex flex-col col-span-1 space-y-1">
+											<FormLabel className="font-semibold">From</FormLabel>
+											<Popover open={fromOpen} onOpenChange={setFromOpen}>
+												<PopoverTrigger asChild>
+													<FormControl>
+														<Button
+															variant={"outline"}
+															className={cn(
+																"w-full pl-3 text-left font-normal",
+																!field.value && "text-muted-foreground",
+															)}
+														>
+															{field.value ? (
+																formatDate(field.value, "PPP")
+															) : (
+																<span>Pick a date</span>
+															)}
+															<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+														</Button>
+													</FormControl>
+												</PopoverTrigger>
+												<PopoverContent
+													className="w-auto p-0"
+													align="center"
+													side="right"
+												>
+													<Calendar
+														mode="single"
+														selected={field.value}
+														onSelect={(date) => {
+															field.onChange(date);
+															setFromOpen(false);
+														}}
+														disabled={(date) =>
+															date > new Date() || date < new Date("1900-01-01")
+														}
+														captionLayout="dropdown"
+													/>
+												</PopoverContent>
+											</Popover>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
-							<FormField
-								control={form.control}
-								name="to_date"
-								render={({ field }) => (
-									<FormItem className="flex flex-col col-span-1 space-y-1">
-										<FormLabel className="font-semibold">To</FormLabel>
-										<Popover open={toOpen} onOpenChange={setToOpen}>
-											<PopoverTrigger asChild>
-												<FormControl>
-													<Button
-														variant={"outline"}
-														className={cn(
-															"w-full pl-3 text-left font-normal",
-															!field.value && "text-muted-foreground",
-														)}
-													>
-														{field.value ? (
-															formatDate(field.value, "PPP")
-														) : (
-															<span>Pick a date</span>
-														)}
-														<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-													</Button>
-												</FormControl>
-											</PopoverTrigger>
-											<PopoverContent
-												className="w-auto p-0"
-												align="center"
-												side="left"
-											>
-												<Calendar
-													mode="single"
-													selected={field.value}
-													onSelect={(date) => {
-														field.onChange(date);
-														setToOpen(false);
-													}}
-													disabled={(date) =>
-														date > new Date() || date < new Date("1900-01-01")
-													}
-													captionLayout="dropdown"
-												/>
-											</PopoverContent>
-										</Popover>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>}
+								<FormField
+									control={form.control}
+									name="to_date"
+									render={({ field }) => (
+										<FormItem className="flex flex-col col-span-1 space-y-1">
+											<FormLabel className="font-semibold">To</FormLabel>
+											<Popover open={toOpen} onOpenChange={setToOpen}>
+												<PopoverTrigger asChild>
+													<FormControl>
+														<Button
+															variant={"outline"}
+															className={cn(
+																"w-full pl-3 text-left font-normal",
+																!field.value && "text-muted-foreground",
+															)}
+														>
+															{field.value ? (
+																formatDate(field.value, "PPP")
+															) : (
+																<span>Pick a date</span>
+															)}
+															<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+														</Button>
+													</FormControl>
+												</PopoverTrigger>
+												<PopoverContent
+													className="w-auto p-0"
+													align="center"
+													side="left"
+												>
+													<Calendar
+														mode="single"
+														selected={field.value}
+														onSelect={(date) => {
+															field.onChange(date);
+															setToOpen(false);
+														}}
+														disabled={(date) =>
+															date > new Date() || date < new Date("1900-01-01")
+														}
+														captionLayout="dropdown"
+													/>
+												</PopoverContent>
+											</Popover>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						)}
 
 						<FormField
 							control={form.control}
