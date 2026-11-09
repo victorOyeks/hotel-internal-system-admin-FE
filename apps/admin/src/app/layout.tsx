@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import Providers from "@hospio/ui/react-query";
 import { Toaster } from "@hospio/ui/primitives/sonner";
+import { UpdateNotice } from "@hospio/ui/shared/update-notice";
 import { cn } from "@hospio/ui/utils";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 				<Providers>
 					{children}
 					<Toaster richColors theme="light" duration={5000} position="bottom-right" />
+					<UpdateNotice />
 				</Providers>
 			</body>
 		</html>
