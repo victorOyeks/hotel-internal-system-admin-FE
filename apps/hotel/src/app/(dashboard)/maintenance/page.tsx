@@ -1,12 +1,25 @@
-import { RepairsScreen } from "@/components/roles/maintenance/repairs";
-import { getUser } from "@hospio/api/dal";
+import { workOrderContext } from "@/components/roles/maintenance/load";
+import { WorkOrdersScreen } from "@/components/roles/maintenance/work-orders";
 import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
+/** Maintenance · Work orders (My repairs, 3247:13987). */
 export default async function MaintenanceHome() {
-	const [repairs, parts, staff, user] = await Promise.all([data.maintenance.repairs(), data.maintenance.parts(), data.staff.list(), getUser()]);
-	const technicians = staff.filter((s) => s.role === "MAINTENANCE");
-	const me = technicians.find((t) => t.fullName === user?.fullName)?.fullName ?? technicians[0]?.fullName ?? "Chinedu Obi";
-	return <RepairsScreen repairs={repairs} me={me} technicians={technicians} parts={parts} />;
+	const [rows, ctx] = await Promise.all([
+		data.maintenance.workOrders("all"),
+		workOrderContext({ parts: true }),
+	]);
+	return (
+		<WorkOrdersScreen
+			rows={rows}
+			mode="maintenance"
+			me={ctx.me}
+			supervisor={ctx.supervisor}
+			technicians={ctx.technicians}
+			rooms={ctx.rooms}
+			parts={ctx.parts}
+			title="Work orders"
+		/>
+	);
 }

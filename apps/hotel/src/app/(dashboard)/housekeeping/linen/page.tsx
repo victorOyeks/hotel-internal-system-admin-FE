@@ -1,8 +1,32 @@
 import { LinenScreen } from "@/components/roles/housekeeping/linen";
-import { demoLinen } from "@hospio/api/demo/fixtures/tablet";
+import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
-export default function LinenPage() {
-	return <LinenScreen linen={demoLinen} />;
+/** Housekeeping · Linen: clean linen on hand, batches sent to the laundry. */
+export default async function LinenPage() {
+	const [batches, stores, items] = await Promise.all([
+		data.laundry.batches("all"),
+		data.inventory.stores(),
+		data.inventory.items(),
+	]);
+	const hk = stores.find((s) => s.kind === "HOUSEKEEPING");
+	const laundry = stores.find((s) => s.kind === "LAUNDRY");
+	const isLinen = (c: string) => c.toLowerCase() === "linen";
+	return (
+		<LinenScreen
+			clean={
+				hk
+					? items.filter((i) => i.storeId === hk.id && isLinen(i.category))
+					: []
+			}
+			atLaundry={
+				laundry
+					? items.filter((i) => i.storeId === laundry.id && isLinen(i.category))
+					: []
+			}
+			batches={batches}
+			hasStore={!!hk}
+		/>
+	);
 }

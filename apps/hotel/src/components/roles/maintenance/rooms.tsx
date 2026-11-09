@@ -1,65 +1,132 @@
 "use client";
 
-import { DoorClosedIcon, DoorOpenIcon } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DoorClosedIcon } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { Note } from "@hospio/ui/shared/detail-list";
-import { SelectField, TextField, TextareaField } from "@hospio/ui/shared/field";
 import { fmtDay, plural } from "@hospio/ui/shared/format";
-import { ConfirmModal } from "@hospio/ui/shared/modal";
+import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
-import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
-import type { RoomRow } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
-import { BigButton, ShiftPill } from "../shared-staff/tablet";
+import type { RoomRow, WorkOrderRow } from "@hospio/api/data/types";
 
-/** Maintenance · Room out of order (3248:13987) and back in service (3248:14186). */
-export function OutOfOrderScreen({ rooms }: { rooms: RoomRow[] }) {
-	const [list, setList] = useState(rooms);
+type Row = RoomRow & { workOrder?: WorkOrderRow };
+
+/**
+ * Maintenance · Rooms out of order (3248:13987): every room property-service has out of order, with the work order
+ * that holds it. A room is taken out of order and put back from its work order, so it can never be forgotten.
+ */
+export function OutOfOrderScreen({
+	rooms,
+	workOrders,
+}: {
+	rooms: RoomRow[];
+	workOrders: WorkOrderRow[];
+}) {
 	const [q, setQ] = useState("");
-	const [putting, setPutting] = useState(false);
-	const [back, setBack] = useState<RoomRow | null>(null);
-	const [draft, setDraft] = useState({ room: "", reason: "", until: "" });
-	const { run, pending } = useDemoAction();
-
-	const ooo = list.filter((r) => r.state === "out_of_order");
-	const sellable = list.filter((r) => r.state !== "out_of_order" && r.state !== "occupied");
-
+	const byRoom = new Map(
+		workOrders
+			.filter((w) => w.roomOutOfOrder && w.roomId)
+			.map((w) => [w.roomId as string, w]),
+	);
+	const ooo: Row[] = rooms
+		.filter((r) => r.state === "out_of_order")
+		.map((r) => ({ ...r, workOrder: byRoom.get(r.id) }));
+	const list = ooo.filter(
+		(r) =>
+			!q.trim() ||
+			`${r.number} ${r.outOfOrderReason ?? ""} ${r.workOrder?.number ?? ""}`
+				.toLowerCase()
+				.includes(q.trim().toLowerCase()),
+	);
+	const openOnRooms = workOrders.filter(
+		(w) => w.roomId && w.status !== "DONE" && w.status !== "CANCELLED",
+	);
+	const columns: ColumnDef<Row, unknown>[] = [
+		{
+			id: "room",
+			header: "Room",
+			cell: ({ row: { original: r } }) => (
+				<TwoLine primary={`Room ${r.number}`} secondary={r.typeName} />
+			),
+		},
+		{
+			id: "why",
+			header: "Why",
+			cell: ({ row: { original: r } }) => r.outOfOrderReason ?? "—",
+		},
+		{
+			id: "until",
+			header: "Expected back",
+			cell: ({ row: { original: r } }) =>
+				r.outOfOrderUntil ? fmtDay(r.outOfOrderUntil) : "When the work is done",
+		},
+		{
+			id: "wo",
+			header: "Work order",
+			cell: ({ row: { original: r } }) =>
+				r.workOrder ? (
+					<Link
+						href={`/dashboard?tab=open&open=${r.workOrder.id}`}
+						className="font-semibold text-brand hover:underline"
+					>
+						{r.workOrder.number}
+					</Link>
+				) : (
+					<StatusPill tone="warning">Set by a manager</StatusPill>
+				),
+		},
+		{
+			id: "who",
+			header: "On it",
+			cell: ({ row: { original: r } }) => r.workOrder?.assignedToName ?? "—",
+		},
+	];
 	return (
 		<>
-			<PageHeader title="Rooms out of order" subtitle={`${plural(ooo.length, "room")} can't be sold · front office sees the same list`}>
-				<ShiftPill until="4pm" />
-				<BigButton tone="dangerSoft" onClick={() => { setDraft({ room: "", reason: "", until: "" }); setPutting(true); }}><DoorClosedIcon className="size-5" /> Put a room out of order</BigButton>
-			</PageHeader>
-			<Toolbar left={<SearchBox value={q} onChange={setQ} placeholder="Room number…" />} />
-			<DataTable
-				data={ooo}
-				search={q}
-				emptyTitle="Every room is sellable"
-				columns={[
-					{ accessorKey: "number", header: "Room", cell: ({ row }) => <TwoLine primary={<span className="text-[15px]">{row.original.number}</span>} secondary={`${row.original.typeName} · ${row.original.floor}`} /> },
-					{ accessorKey: "outOfOrderReason", header: "Why", cell: ({ row }) => <span className="text-[15px]">{row.original.outOfOrderReason ?? "—"}</span> },
-					{ accessorKey: "outOfOrderUntil", header: "Expected back", cell: ({ row }) => <StatusPill tone={row.original.outOfOrderUntil && row.original.outOfOrderUntil < new Date().toISOString().slice(0, 10) ? "danger" : "warning"}>{fmtDay(row.original.outOfOrderUntil)}</StatusPill> },
-					{ id: "a", header: "", cell: ({ row }) => <BigButton tone="secondary" className="h-10" onClick={() => setBack(row.original)}><DoorOpenIcon className="size-4" /> Back in service</BigButton> },
-				]}
+			<PageHeader
+				title="Rooms out of order"
+				subtitle={`${plural(ooo.length, "room")} can't be sold right now`}
 			/>
-
-			<SidePanel open={putting} onOpenChange={setPutting} title="Put a room out of order" subtitle="Front office can't check anyone in until it's back" icon={DoorClosedIcon} tone="danger"
-				footer={<><BigButton tone="secondary" onClick={() => setPutting(false)}>Cancel</BigButton><BigButton tone="danger" pending={pending} disabled={!draft.room || !draft.reason} onClick={() => run(`Room ${draft.room} out of order · front office told`, () => { setList((ls) => ls.map((r) => (r.number === draft.room ? { ...r, state: "out_of_order", outOfOrderReason: draft.reason, outOfOrderUntil: draft.until || undefined, guestName: undefined } : r))); setPutting(false); }, { tone: "warning" })}>Put out of order</BigButton></>}>
-				<div className="flex flex-col gap-4">
-					<SelectField label="Room" value={draft.room} onChange={(v) => setDraft({ ...draft, room: v })} options={sellable.map((r) => ({ value: r.number, label: r.number, hint: `${r.typeName} · ${r.state}` }))} placeholder="Pick a room" required />
-					<TextareaField label="Why" value={draft.reason} onChange={(v) => setDraft({ ...draft, reason: v })} placeholder="e.g. AC compressor replacement" />
-					<TextField label="Expected back (optional)" type="date" value={draft.until} onChange={(v) => setDraft({ ...draft, until: v })} />
-					<WhatHappens tone="danger" items={["The room disappears from what front office can sell", "Any booking already assigned to it is flagged for a room change", "A repair is opened for you"]} />
-					<Note tone="info">A room with a guest in it can't be put out of order here; ask front office to move the guest first.</Note>
-				</div>
-			</SidePanel>
-
-			<ConfirmModal open={!!back} onOpenChange={(o) => !o && setBack(null)} title={`Room ${back?.number ?? ""} back in service?`} subtitle={back?.outOfOrderReason} confirmLabel="Back in service" pending={pending} onConfirm={() => back && run(`Room ${back.number} back in service · housekeeping asked to clean it`, () => { setList((ls) => ls.map((r) => (r.id === back.id ? { ...r, state: "dirty", outOfOrderReason: undefined, outOfOrderUntil: undefined } : r))); setBack(null); })}>
-				<WhatHappens items={["Housekeeping gets a deep-clean task before it is sold", "Front office sees it as Needs cleaning, then Ready"]} />
-			</ConfirmModal>
+			<div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+				<KpiCard
+					label="Out of order"
+					value={ooo.length}
+					icon={DoorClosedIcon}
+				/>
+				<KpiCard
+					label="Rooms with open work orders"
+					value={new Set(openOnRooms.map((w) => w.roomId)).size}
+					icon={DoorClosedIcon}
+				/>
+				<KpiCard
+					label="Rooms in the hotel"
+					value={rooms.length}
+					icon={DoorClosedIcon}
+				/>
+			</div>
+			<Note tone="info">
+				Take a room out of order from its work order (open it, then “Take room
+				out of order”). It comes back when the work order is done or cancelled,
+				and housekeeping cleans it first.
+			</Note>
+			<Toolbar
+				left={
+					<SearchBox
+						value={q}
+						onChange={setQ}
+						placeholder="Search room or work order"
+					/>
+				}
+			/>
+			<DataTable
+				columns={columns}
+				data={list}
+				emptyTitle="Every room is in service"
+			/>
 		</>
 	);
 }

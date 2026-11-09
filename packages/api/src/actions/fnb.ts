@@ -747,7 +747,7 @@ export async function useOrWasteStock(input: {
 
 /** A request to the main store; it shows on Inventory's Requests with the team and the store it is for. */
 export async function askTheStore(input: {
-	fromTeam: "KITCHEN" | "BAR";
+	fromTeam: "KITCHEN" | "BAR" | "HOUSEKEEPING" | "LAUNDRY" | "MAINTENANCE";
 	storeId?: string;
 	lines: { itemId: string; name: string; quantity: number }[];
 	note?: string;

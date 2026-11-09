@@ -47,10 +47,13 @@ export function StoreScreen({
 	subtitle,
 	extraActions,
 	children,
+	catalogue = [],
 }: {
 	items: StockItemRow[];
 	requests?: StockRequestRow[];
-	team: "KITCHEN" | "BAR";
+	team: "KITCHEN" | "BAR" | "HOUSEKEEPING" | "LAUNDRY" | "MAINTENANCE";
+	/** Items the hotel stocks elsewhere that the team may ask for even when its own shelf has none yet. */
+	catalogue?: StockItemRow[];
 	storeId?: string;
 	title: string;
 	subtitle: string;
@@ -138,9 +141,9 @@ export function StoreScreen({
 			</div>
 			{!storeId && (
 				<Note tone="warning">
-					This outlet is not linked to a store yet, so there is no stock to show
-					or draw from. The manager links one in Hotel setup → Restaurants &
-					tables.
+					{team === "KITCHEN" || team === "BAR"
+						? "This outlet is not linked to a store yet, so there is no stock to show or draw from. The manager links one in Hotel setup → Restaurants & tables."
+						: `There is no ${team.charAt(0) + team.slice(1).toLowerCase()} store yet, so issued stock has nowhere to go. The storekeeper adds one in Inventory → Stores.`}
 				</Note>
 			)}
 			{low.length > 0 && (
@@ -345,12 +348,26 @@ export function StoreScreen({
 							label="Add an item"
 							value=""
 							onChange={(id) => {
-								const it = rows.find((r) => r.id === id);
-								if (it) addLine(it);
+								const it =
+									rows.find((r) => r.id === id) ??
+									catalogue.find((r) => r.id === id);
+								if (it)
+									addLine(
+										rows.some((r) => r.id === it.id)
+											? it
+											: { ...it, quantity: 0, storeId: storeId ?? it.storeId },
+									);
 							}}
-							options={rows
+							options={[
+								...rows,
+								...catalogue.filter(
+									(c, i, all) =>
+										!rows.some((r) => r.id === c.id) &&
+										all.findIndex((x) => x.id === c.id) === i,
+								),
+							]
 								.filter((r) => !lines.some((l) => l.item.id === r.id))
-								.map((r) => ({ value: r.id, label: r.name }))}
+								.map((r) => ({ value: r.id, label: r.name, hint: r.category }))}
 							placeholder="Pick from your stock list"
 						/>
 					</PanelSection>

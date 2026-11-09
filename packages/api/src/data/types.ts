@@ -1295,3 +1295,193 @@ export type OutletSettingsRow = {
 	serviceChargePct: number;
 	pricesIncludeTax: boolean;
 };
+
+// ---- laundry and maintenance (docs/laundry-maintenance.md in hospio-backend) ----
+
+export type WorkOrderStatus =
+	| "OPEN"
+	| "ASSIGNED"
+	| "IN_PROGRESS"
+	| "ON_HOLD"
+	| "DONE"
+	| "CANCELLED";
+export type WorkOrderPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+export type WorkOrderPart = {
+	itemId: string;
+	name: string;
+	unit: string;
+	quantity: number;
+	unitCost: number;
+	value: number;
+};
+export type WorkOrderRow = {
+	id: Id;
+	number: string;
+	roomId?: string;
+	roomNumber?: string;
+	area?: string;
+	/** "Room A105" or the area. */
+	where: string;
+	category: string;
+	priority: WorkOrderPriority;
+	status: WorkOrderStatus;
+	title: string;
+	description?: string;
+	source?: string;
+	reportedBy?: string;
+	reportedByName: string;
+	reportedByRole?: string;
+	assignedTo?: string;
+	assignedToName?: string;
+	dueAt?: string;
+	overdue: boolean;
+	startedAt?: string;
+	holdReason?: string;
+	doneAt?: string;
+	completionNote?: string;
+	labourMinutes?: number;
+	parts: WorkOrderPart[];
+	partsCost: number;
+	vendorName?: string;
+	vendorCost: number;
+	totalCost: number;
+	roomOutOfOrder: boolean;
+	oooUntil?: string;
+	reopenCount: number;
+	reopenReason?: string;
+	cancelReason?: string;
+	hasPhoto: boolean;
+	assetName?: string;
+	scheduleId?: string;
+	createdAt: string;
+	updates: { at: string; by: string; note: string }[];
+};
+export type MaintAssetRow = {
+	id: Id;
+	name: string;
+	category: string;
+	roomId?: string;
+	roomNumber?: string;
+	area?: string;
+	where: string;
+	active: boolean;
+	openWorkOrders: number;
+};
+export type MaintScheduleRow = {
+	id: Id;
+	title: string;
+	description?: string;
+	category: string;
+	priority: WorkOrderPriority;
+	everyDays: number;
+	nextDue: string;
+	lastDone?: string;
+	lastOpened?: string;
+	assetId?: string;
+	assetName?: string;
+	roomId?: string;
+	roomNumber?: string;
+	area?: string;
+	where: string;
+	assignedTo?: string;
+	assignedToName?: string;
+	paused: boolean;
+};
+export type MaintenanceMoney = {
+	from: string;
+	to: string;
+	done: number;
+	open: number;
+	overdue: number;
+	partsCost: number;
+	vendorCost: number;
+	labourMinutes: number;
+	totalCost: number;
+	byCategory: { category: string; count: number; cost: number }[];
+};
+export type LaundryPriceRow = {
+	id: Id;
+	name: string;
+	category: string;
+	price: number;
+	expressPrice: number;
+	active: boolean;
+	sortOrder: number;
+};
+export type GuestLaundryStatus =
+	| "RECEIVED"
+	| "IN_PROGRESS"
+	| "READY"
+	| "DELIVERED"
+	| "CANCELLED";
+export type GuestLaundryRow = {
+	id: Id;
+	number: string;
+	bookingId?: string;
+	guestName: string;
+	roomId?: string;
+	roomNumber?: string;
+	lines: {
+		priceId?: string;
+		name: string;
+		quantity: number;
+		unitPrice: number;
+		amount: number;
+	}[];
+	express: boolean;
+	total: number;
+	status: GuestLaundryStatus;
+	settlement?: "ROOM" | "PAID";
+	chargedAt?: string;
+	paidAt?: string;
+	paymentMethod?: string;
+	promisedAt?: string;
+	note?: string;
+	pocketNote?: string;
+	cancelReason?: string;
+	receivedByName?: string;
+	createdAt: string;
+	deliveredAt?: string;
+};
+export type LinenBatchRow = {
+	id: Id;
+	number: string;
+	status: "SENT" | "RECEIVED" | "PART_RETURNED" | "RETURNED" | "CLOSED";
+	lines: {
+		itemId: string;
+		name: string;
+		unit: string;
+		sent: number;
+		received?: number;
+		returned: number;
+		condemned: number;
+		lost: number;
+		missing: number;
+		outstanding: number;
+		unitCost: number;
+	}[];
+	note?: string;
+	sentByName?: string;
+	createdAt: string;
+	receivedAt?: string;
+	receivedByName?: string;
+	returnedAt?: string;
+	closedReason?: string;
+	condemnedValue: number;
+	lostValue: number;
+	sent: number;
+	missing: number;
+	outstanding: number;
+};
+export type LaundryMoney = {
+	from: string;
+	to: string;
+	orders: number;
+	income: number;
+	charged: number;
+	paid: number;
+	open: number;
+	cancelled: number;
+	condemnedValue: number;
+	lostValue: number;
+};

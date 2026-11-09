@@ -1,4 +1,5 @@
 import { OwnerFinancials } from "@/components/roles/owner/financials";
+import { LaundryMaintenanceMoney } from "@/components/roles/shared-staff/lm-money";
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import { live } from "@hospio/api/data/live";
@@ -30,6 +31,9 @@ export default async function Page() {
 		active,
 		income,
 		outletSales,
+		laundry,
+		maintenance,
+		usage,
 	] = await Promise.all([
 		data.hotels.withMoney(),
 		data.finance.transactions(),
@@ -42,28 +46,38 @@ export default async function Page() {
 		getActiveHotel(),
 		data.finance.income(),
 		data.outlets.managementSales(),
+		data.laundry.money(),
+		data.maintenance.money(),
+		data.inventory.usage(),
 	]);
 	const worth = await data.hotels.worth(hotels, approvals);
 	return (
-		<OwnerFinancials
-			demo={!live("finance")}
-			businessName={business?.name ?? "Your business"}
-			hotelName={active?.name ?? "This hotel"}
-			hotels={hotels}
-			series={series}
-			worth={worth}
-			limit={settings.limits.managerExpenseLimit}
-			trend={ownerTrend}
-			budgets={ownerBudgets}
-			sources={ownerRevenueSources}
-			income={income}
-			payMix={ownerPayMix}
-			transactions={transactions}
-			expenses={expenses}
-			payroll={ownerPayroll}
-			organizations={organizations}
-			approvals={approvals}
-			outletSales={outletSales}
-		/>
+		<>
+			<OwnerFinancials
+				demo={!live("finance")}
+				businessName={business?.name ?? "Your business"}
+				hotelName={active?.name ?? "This hotel"}
+				hotels={hotels}
+				series={series}
+				worth={worth}
+				limit={settings.limits.managerExpenseLimit}
+				trend={ownerTrend}
+				budgets={ownerBudgets}
+				sources={ownerRevenueSources}
+				income={income}
+				payMix={ownerPayMix}
+				transactions={transactions}
+				expenses={expenses}
+				payroll={ownerPayroll}
+				organizations={organizations}
+				approvals={approvals}
+				outletSales={outletSales}
+			/>
+			<LaundryMaintenanceMoney
+				laundry={laundry}
+				maintenance={maintenance}
+				usage={usage}
+			/>
+		</>
 	);
 }

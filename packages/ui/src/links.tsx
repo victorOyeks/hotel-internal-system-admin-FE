@@ -103,6 +103,8 @@ export const frontOfficeLinks: NavLink[] = [
 	{ title: "Rooms", url: "/dashboard/rooms", icon: BedDoubleIcon },
 	{ title: "Folios", url: "/dashboard/folios", icon: ReceiptIcon },
 	{ title: "Room service", url: "/dashboard/room-service", icon: UtensilsIcon },
+	{ title: "Guest laundry", url: "/dashboard/laundry", icon: ShirtIcon },
+	{ title: "Repairs", url: "/dashboard/repairs", icon: WrenchIcon },
 	{ title: "Guests", url: "/dashboard/guests", icon: UsersIcon },
 	{ title: "Messages", url: "/dashboard/messages", icon: MessageSquareIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
@@ -115,23 +117,26 @@ export const housekeepingLinks: NavLink[] = [
 	{ title: "Inspect", url: "/dashboard/inspect", icon: ClipboardCheckIcon },
 	{ title: "Lost & found", url: "/dashboard/lost-found", icon: SearchIcon },
 	{ title: "Linen", url: "/dashboard/linen", icon: ShirtIcon },
+	{ title: "Housekeeping store", url: "/dashboard/store", icon: PackageIcon },
+	{ title: "Repairs", url: "/dashboard/repairs", icon: WrenchIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
 export const laundryLinks: NavLink[] = [
 	{ title: "Jobs", url: "/dashboard", icon: ShirtIcon },
-	{ title: "Linen", url: "/dashboard/linen", icon: PackageIcon },
+	{ title: "Linen", url: "/dashboard/linen", icon: TruckIcon },
+	{ title: "Laundry store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
 export const maintenanceLinks: NavLink[] = [
-	{ title: "My repairs", url: "/dashboard", icon: WrenchIcon },
-	{ title: "Scheduled jobs", url: "/dashboard/jobs", icon: CalendarDaysIcon },
-	{ title: "Spare parts", url: "/dashboard/parts", icon: PackageIcon },
-	{ title: "Rooms", url: "/dashboard/rooms", icon: BedDoubleIcon },
+	{ title: "Work orders", url: "/dashboard", icon: WrenchIcon },
+	{ title: "Preventive", url: "/dashboard/preventive", icon: CalendarDaysIcon },
+	{ title: "Maintenance store", url: "/dashboard/store", icon: PackageIcon },
+	{ title: "Rooms out of order", url: "/dashboard/rooms", icon: BedDoubleIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];

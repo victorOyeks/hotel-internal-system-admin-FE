@@ -25,7 +25,7 @@ export default async function ManagerHomePage() {
 		data.rooms.list(),
 		data.finance.today(),
 		data.approvals.list(),
-		data.maintenance.repairs(),
+		data.maintenance.workOrders("open"),
 		data.inventory.items(),
 		data.folios.list(),
 		data.staff.shifts(lagosDate(), lagosDate()),
