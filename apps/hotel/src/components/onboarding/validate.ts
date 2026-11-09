@@ -44,7 +44,7 @@ export function checkPhone(v: string, required = true) {
 		!/^\+?[\d\s()-]{7,24}$/.test(t) ||
 		d.length < 10 ||
 		d.length > 15 ||
-		/^(\d)\1*$/.test(d)
+		/^(\d)\1*$/.test(d.slice(-10))
 	)
 		return "Enter a real phone number, like +234 803 555 0192";
 	return undefined;

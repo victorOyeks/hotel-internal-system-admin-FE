@@ -24,7 +24,7 @@ import { Input } from "@hospio/ui/primitives/input";
 const letters = (v: string) => v.replace(/[^\p{L}]/gu, "").length;
 const realPhone = (v: string) => {
 	const d = v.replace(/\D/g, "");
-	return d.length >= 10 && d.length <= 15 && !/^(\d)\1*$/.test(d);
+	return d.length >= 10 && d.length <= 15 && !/^(\d)\1*$/.test(d.slice(-10));
 };
 
 const schema = z.object({
