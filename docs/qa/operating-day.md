@@ -1,129 +1,293 @@
 # QA script · Operating day (staging)
 
-The second module wired end to end after the front-desk loop: the rota and clock, tills, housekeeping,
-expenses and approvals, the night audit, and what the owner sees. It follows one day at the hotel. It
-writes to the real staging database and shows up for every role. Contract: `docs/operating-day.md` in
-hospio-backend.
+## Purpose
 
-- Web: https://web-staging.hospio360.com · API: https://api-staging.hospio360.com
-- Hotel: Royal Suites Ltd → Simpas Ikeja (120 rooms). Live domains now include `finance` and `housekeeping`.
-- Accounts (password `Hospio123!`): manager `tunde@royalsuites.ng`, owner `godwin@royalsuites.ng`, front
-  office `victor@royalsuites.ng`, housekeeping `grace@royalsuites.ng`, finance `femi@royalsuites.ng`
-- Messages the platform would have sent (leave decisions, approvals, till variances, the day report) appear
-  as a "What we would have sent" notice at the top of the screen instead of an email. Read them as part of
-  each step.
-- Spend limits come from Hotel setup → Approval limits. The steps assume the seeded limit (₦200,000). If it
-  is different, pick an amount above it for step 17 and below it for step 15.
-- Still on sample data, and that is expected: budgets, bills, income sources, payroll, branch P&L and
-  organization credit (they show "Not connected yet"), write-offs, change PIN, language, bank-line matching
-  by reference, lost & found writes, the activity log and the owner's other pages.
-- Use a fresh day if you can: the night audit closes a business date once.
+This script tests one working day at a hotel after the front desk is running: staff on the rota and
+clocking in, cash in the tills, rooms cleaned and inspected, spending approved and paid, the day closed, and
+the owner and finance seeing real numbers. Everything you do here writes to the shared staging database and
+shows up for every account. Run the sections in order; later sections use what earlier ones created.
 
-## 1 · Rota and clock (manager, then staff)
+## Links
 
-1. As the manager, Staff → All staff → open Victor → Change shift → "Add to the rota": Morning, today,
-   1 day → "Add shifts". Repeat for Grace (housekeeping) and Femi (finance), and add a second day for Victor.
-   → The Rota tab lists each person with a cell for today; Staff shows "x scheduled".
-2. Rota tab → a future shift of Victor's → "Swap or cancel" opens → Cancel this shift → the cell shows
-   Cancelled (strikethrough). Add it back with step 1.
-3. As Victor, Shared → My shifts → Clock in → the card turns green with "On shift since hh:mm" and a running
-   timer; the Staff screen's "on shift right now" count goes up for the manager after a refresh.
-4. As Victor, Ask for leave: next week, Annual leave, a note → Send request. As Tunde, Staff → Leave →
-   Decline with a reason → the notice shows the message to Victor with the reason. Victor's My shifts → "My
-   leave" shows it Declined with the reason. Ask again, Tunde approves → Approved, and any of Victor's
-   shifts inside those dates are cancelled on the rota.
-5. As Victor, open tomorrow's shift → Ask to swap with a colleague (or Ask for cover) → "request sent". As
-   Tunde, Staff → Requests → Approve → the notice shows the message to Victor.
+- Hotel app: https://web-staging.hospio360.com
+- Platform admin (not used in this script): https://admin-staging.hospio360.com
+- Hotel used: Royal Suites Ltd → Simpas Ikeja (120 rooms)
 
-## 2 · The desk opens (front office)
+## Accounts
 
-6. As Victor, Till → Open till → the float is filled in from Hotel setup → Money (default till float). Open
-   with it → "Till open", Opening float shows it, "Should be in the drawer" equals the float.
-7. Pay in / out → Pay out ₦2,000 "Taxi for guest" → KPI "Paid out" ₦2,000, the drawer expectation drops by
-   ₦2,000, and the list shows the entry in red.
+Password for every account: `Hospio123!`
 
-## 3 · A stay with cash (front office)
+| Role | Name | Email |
+|---|---|---|
+| Owner | Godwin Kwin | `godwin@royalsuites.ng` |
+| Manager | Tunde Bakare | `tunde@royalsuites.ng` |
+| Front office | Victor Adeyemi | `victor@royalsuites.ng` |
+| Front office | Toyin Balogun | `toyin@royalsuites.ng` |
+| Housekeeping supervisor | Grace Okafor | `grace@royalsuites.ng` |
+| Housekeeping attendant | Kemi Adebayo | `kemi@royalsuites.ng` |
+| Finance | Femi Ojo | `femi@royalsuites.ng` |
 
-8. Bookings → New booking (check-in today, check-out tomorrow, Deluxe, Pay at checkout) → check in
-   (front-desk loop section 3), paying ₦45,000 by Cash → Rooms board shows the room occupied.
-9. Till → Cash in this till lists "Cash payment ₦45,000"; "Cash taken" and "Should be in the drawer" rise by
-   ₦45,000. Folios → balance ₦0.
-10. Check the guest out the same day (front-desk loop section 3, step 5) → the Rooms board shows the room "Needs
-    cleaning" and housekeeping gets a task for it.
+Use a separate browser profile (or a private window) per account so you can stay signed in as two people at
+once.
 
-## 4 · The room is cleaned and inspected (housekeeping)
+## Before you start
 
-11. As Grace, Housekeeping → My rooms → the room's task (Departure clean) → Start → the card says "Cleaning
-    now". Tick every checklist line (the ticks stay after a refresh) → Mark done → "sent for inspection".
-12. As Victor, Rooms board → open the room (still Needs cleaning or Being inspected) → "Ask housekeeping to
-    rush" → as Grace, My rooms shows "Rush" on the task (sorted first).
-13. As the supervisor (Grace or the manager), Housekeeping → Inspect → To inspect lists the room → Inspect →
-    Pass · room ready. As Victor, the Rooms board shows the room Ready. Try the other path on a second
-    room: Send back with a note → the task returns to the attendant with the note.
-14. As Victor, open a Ready room → Send to housekeeping → it shows Needs cleaning; Mark ready → Ready again.
+- Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed. A screen left open across a
+  deploy can show an error until it is reloaded.
+- Take money by **Cash** or **Bank transfer**. Card payments go to a test terminal that never answers, so they
+  stay "Processing".
+- If a screen asks for a phone code, use `123456`.
+- Emails and text messages are not sent on staging. Where the app would have sent one (a leave decision, a
+  till that is short, an approval, the day report) a notice "would have sent · email and SMS are not
+  connected on staging" appears with the message. Read it as part of the step. The person it was for also
+  gets it in **Notifications** (the bell, top right).
+- The **API** button at the bottom left lists every call the screen made to the server, with the answer. If
+  something fails, open it and copy the failing line into your bug report.
+- Name everything you create with "QA " at the start (guests, expenses, notes) so it can be found later.
+- Spend limits come from Hotel setup → Approval limits. The steps assume the manager's limit is ₦200,000.
+- The night audit closes each business day once. If someone already closed today, section 5 tells you what
+  you can still check.
 
-## 5 · Spend and approvals (finance, manager, owner)
+## 1 · Staff and shifts
 
-15. As Femi, Expenses → Record an expense: Housekeeping, "Detergent", ₦15,000, Cash / till → "Sent to the
-    manager to approve". As Tunde, Approvals → Waiting lists it → Review → Approve → toast "Approved" and a
-    notice with the message to Femi. As Femi, the expense shows Approved → open it → Mark paid → Paid.
-16. As Tunde, Financials → Tills lists the front office till as Open with its expected cash. Overview → "Money
-    taken today" includes the ₦45,000 cash; Transactions lists the payment, the paid expense and the till
-    pay-out.
-17. As Femi, Expenses → Record an expense: Fuel & power, "Diesel · 400 litres", ₦250,000 (above the limit)
-    → "Sent to Godwin Kwin to approve".
-18. As Tunde, Approvals → "With the owner" lists it; open it → the panel says it is with the owner and
-    there is no Approve button. For a MANAGER-level item above the limit the panel offers "Send to owner"
-    (escalate) with a note instead.
-19. As Godwin, Dashboard → "Approvals waiting" shows the diesel request with the amount → open → Ask
-    manager: "Which supplier?" → the request shows Question asked and the notice shows the message. As Femi,
-    the expense shows Question → Answer → "Answer sent". The approval is Pending again for Godwin.
-20. As Godwin, open it → Approve ₦250,000 → notice with the message to Femi. As Femi the expense is
-    Approved → Mark paid → Paid. As Tunde, Approvals → Decided shows "Approved by Godwin Kwin".
+Shifts are Morning 6am–2pm, Afternoon 2pm–10pm and Night 10pm–6am (the night shift ends the next morning).
+Someone who clocks in more than the hotel's late allowance (Hotel setup → Staff & shifts, 15 minutes on
+staging) after the start is Late; nobody clocked in by the end of the shift is Absent.
 
-## 6 · Closing the till (front office, manager)
+1. **Do:** sign in as Tunde → Staff → All staff → open Toyin → Change shift → Morning, first day tomorrow,
+   number of days 2 → Add shifts. **Expect:** "Toyin Balogun is on Morning from Tomorrow".
+2. **Do:** open Victor → Change shift → Night, tomorrow → Add shifts; again Morning, the day after tomorrow.
+   **Expect:** both are saved; the Rota tab shows Toyin's two mornings and Victor's night as 22:00–06:00.
+3. **Do:** Rota → tap Toyin's first shift → Swap with Victor → Swap. **Expect:** "Shift swapped with Victor
+   Adeyemi"; the two shifts change places on the rota.
+4. **Do:** tap one of Toyin's shifts → Cancel this shift. **Expect:** "Shift cancelled"; the cell is crossed
+   out.
+5. **Do:** sign in as Victor → My shifts → Clock in. **Expect:** "Clocked in · have a good shift"; the card
+   turns green with "On shift since" and a running timer. Clock out → "Clocked out"; Clock in again.
+6. **Do:** as Tunde, Staff. **Expect:** "On shift now" counts the people clocked in right now (Victor
+   included, even without a shift today). "Attendance this week" is worked shifts out of shifts with a known
+   outcome ("—" when none yet). "Payroll · this month" says Not connected yet.
+7. **Do:** as Victor, My shifts → open the shift on the day after tomorrow. **Expect:** the panel lists the
+   colleagues on that shift. **Do:** Swap → Swap with Toyin, a reason "QA swap" → Send request. **Expect:**
+   "Swap request sent to Toyin Balogun".
+8. **Do:** as Victor, Ask for leave three times: two days next month, two other days, three other days, each
+   with Send request. **Expect:** "Leave request sent to your manager" each time; My leave lists them as
+   Pending.
+9. **Do:** as Tunde, Staff → Leave. **Expect:** the three requests with dates, days and reason.
+   - Approve the first. **Expect:** "Victor Adeyemi's leave approved · their shifts in those days are
+     cancelled" and the delivery notice.
+   - Decline the second with the reason "QA short-staffed". **Expect:** "Leave declined · they are told why".
+   - Change dates on the third: new dates and a message → Send suggestion. **Expect:** "New dates sent for
+     them to accept".
+10. **Do:** Staff → Requests → Approve Victor's swap. **Expect:** "Request approved"; on the rota that shift
+    is now Toyin's and shows Swapped.
+11. **Do:** as Victor, My shifts and Notifications. **Expect:** My leave shows Approved, Declined with "QA
+    short-staffed", and Change requested with the suggested dates and message. Notifications shows "Your leave
+    was approved", "Your leave was declined", "Your manager suggested other dates for your leave" and "Your
+    swap request was approved".
+12. **Do (attendance):** as Tunde, give Toyin a Morning shift today (it has already ended) and Kemi a shift
+    that started earlier today, then ask Kemi to clock in (My shifts). **Expect:** the rota shows Toyin's cell
+    as "Needs cover" and Kemi's as "Late"; someone who clocks in within 15 minutes of the start shows "Present".
+13. **Do:** tap Toyin's "Needs cover" cell → Find cover → pick Victor → Give the shift. **Expect:** "Victor
+    Adeyemi now covers this shift".
 
-21. As Victor, Till → Count & close. Expected = float + ₦45,000 − ₦2,000 (− any cash expenses paid from the
-    till). Enter ₦500 less → "Short by ₦500" and "What happened" appears; Close till is disabled until you
-    type a note → close → toast "Till closed · short ₦500 · manager told" and the notice shows the message to
-    the managers. Past tills lists it with the note.
-22. As Tunde, Financials → Tills → the till shows Closed with the ₦500 variance. Financials → Night audit
-    still says tills must be closed if another till (e.g. the finance one) is open.
-23. As Femi, Tills → Count & close any other open till (needs a note for any variance) → Bank cash:
-    amount, bank account → "deposit recorded".
-24. Open a till as Victor again (Open till) and, from the till page, Hand over to Toyin: count the
-    drawer, pick Toyin → "Till handed to Toyin Balogun" → the drawer shows Toyin as the opener and the
-    counted cash as the new float. As Toyin, Till shows the till as hers; close it with the count.
+Negative checks
 
-## 7 · Night audit (manager or finance)
+- Clock in while already clocked in (second tab, or the API) → "You're already clocked in".
+- A leave request whose end date is before the start date → Send request stays disabled.
+- A shift that starts and ends at the same time (only possible through the API) → "The shift has to end at a
+  different time than it starts".
+- Staff cannot decide leave: front office has no Staff screen; through the API the answer is "Access Denied".
+- My shifts: Change PIN saves a new 4-digit PIN ("PIN changed"); Language says it is not connected yet.
 
-25. As Tunde, Night audit → the checklist comes from the service: Arrivals (arrivals still waiting, with the
-    count), Departures, Tills, Unpaid balances. No fake counts: the numbers in "Today in numbers" are the
-    day's real money by method, spend, occupancy and no-shows.
-26. With a till still open, "Close the day" is disabled and the banner says to count and close every till.
-    Close the tills (section 6) → Tills turns Done.
-27. Leave one arrival unresolved (do not check it in). Close the day → the modal shows the cash counted
-    field, a note, and "Mark the arrivals still waiting as no-shows". Turn it on, count the safe, add a note
-    → Close the day → "closed · summary sent to Godwin Kwin", the notice shows the daily report message, and
-    the audit report opens: revenue, rooms occupied, no-shows (the arrival you left), payments by method,
-    expenses, cash expected and counted. Bookings → that arrival is now a No-show.
-28. Past audits lists the day; Report reopens it. As Femi, Night audit shows the same checklist and report
-    (finance closes with Finance Full).
+## 2 · Tills
 
-## 8 · The owner sees the day
+1. **Do:** as Godwin, Hotel setup → Money & payments → Default till float ₦15,000 → Save changes. **Expect:**
+   "Money & payments saved".
+2. **Do:** as Victor, Till → Open till. **Expect:** the float is filled in as ₦15,000; "Open with ₦15,000" →
+   "Till open · you can take cash".
+3. **Do:** Pay in / out → Pay in ₦5,000, reason "QA change from the manager". Then Pay out ₦2,000, reason "QA
+   taxi for guest". **Expect:** "₦5,000 paid in", "₦2,000 paid out"; the list shows both (the pay out in red).
+4. **Do:** take a cash payment from a stay (Bookings → a QA guest → Record payment → Cash ₦20,000).
+   **Expect:** Till → "Cash in this till" lists "Cash payment · <guest name>" ₦20,000.
+5. **Do:** request a ₦5,000 cash refund on that payment (Payments → the payment → Refund); as Tunde approve it
+   (Payments → Refunds). **Expect:** the till lists "Cash refund" −₦5,000.
+6. **Do:** as Femi, record a ₦3,000 expense paid from "Cash / till"; Tunde approves it; Femi opens it → Mark
+   paid. **Expect:** "Marked as paid"; Victor's till lists it −₦3,000.
+7. **Expect (tiles):** Opening float ₦15,000 · Cash taken ₦25,000 (₦5,000 pay-in + ₦20,000 cash) · Paid out
+   ₦10,000 (₦2,000 + ₦5,000 + ₦3,000) · Should be in the drawer ₦30,000.
+8. **Do:** Count & close. **Expect:** the dialog shows Opening float ₦15,000, Cash in ₦25,000, Paid out
+   −₦10,000, Expected ₦30,000. **Do:** enter ₦29,500. **Expect:** "Short by ₦500", a "What happened" box, and
+   Close till disabled until you write a note. **Do:** note "QA ₦500 note missing" → Close till. **Expect:**
+   "Till closed · short ₦500 · manager told", the delivery notice to the managers, and Past tills lists the
+   till with "short ₦500" and the note. Tunde's Notifications shows "Till short ₦500 · front office".
+9. **Do:** Open till again (₦10,000) → Hand over → Handing over to Toyin, Cash counted together ₦10,000 → Hand
+   over. **Expect:** "Till handed to Toyin Balogun".
+10. **Do:** as Toyin, Till. **Expect:** the till is open by Toyin with a ₦10,000 float. **Do:** Count & close
+    with exactly the expected amount. **Expect:** "Counts match" and "Till closed · counts match".
 
-29. As Godwin, Dashboard → Revenue today for the hotel equals the money taken, "Approvals waiting" drops to
-    zero after step 20, Worth a look lists anything real (a loss-making hotel, an empty one); "Revenue ·
-    last 30 days" shows the series with today's bar.
-30. Financials → Overview: revenue, expenses and margin for the month (the numbers add up with Financials
-    → Transactions: the cash payment, the paid expenses, the till movements). Branch P&L, Payroll,
-    Organizations, Budgets and "Where the money came from" say "Not connected yet". Expenses & budgets →
-    Needs the owner lists the diesel request as Approved.
-31. Hotels → each hotel shows revenue and occupancy for the day and month from finance-service.
+Negative checks
 
-## What to report
+- A second till for the front desk while one is open → "The front office till is already open".
+- Pay out with a one-letter reason → the Pay out button stays disabled.
+- Close with a difference and no note → Close till stays disabled.
+- Housekeeping (Grace) closing the front-desk till (API) → "Only a manager, finance or the front office can
+  close this till".
 
-For anything that does not match: the account used, the screen, what you clicked, what you expected, what
-happened, and the time (the server logs are by time). Screenshots help; a room number, till opener or
-expense description pins it down. For the notices, copy the text: it is exactly what the platform would have
-sent.
+## 3 · Housekeeping
+
+Grace is the supervisor: she sees every room's task and inspects. Kemi is an attendant: she sees only the
+rooms given to her. A stay-over clean is due the day after check-in.
+
+1. **Do:** as Victor, check a QA guest into a ready room and check them out the same day (front-desk loop).
+   **Expect:** check-in does not mark the room dirty; check-out makes it "Needs cleaning" and creates a
+   Departure clean task.
+2. **Do:** Victor → Rooms → open that room → Ask housekeeping to rush. **Expect:** "Housekeeping asked to rush
+   <room>".
+3. **Do:** as Grace, Inspect → Assign rooms → give the room to Kemi.
+4. **Do:** as Kemi, My rooms. **Expect:** the room near the top marked "Rush"; the pill at the top shows
+   "On shift since …" or "Not clocked in · My shifts". **Do:** Start → tick every checklist line → Mark done.
+   **Expect:** "Room <n> started", then "Room <n> done · sent for inspection".
+5. **Do:** as Grace, Inspect → open the room → Send back with "QA bathroom mirror smeared". **Expect:** "<room>
+   sent back to Kemi Adebayo". Kemi's list shows it "Sent back" with the note.
+6. **Do:** Kemi cleans it again (Start → Mark done); Grace opens it → Pass · room ready. **Expect:** "<room>
+   passed · room is ready"; Victor's Rooms board shows it Ready.
+7. **Do:** Victor → open the ready room → Send to housekeeping. **Expect:** "Room <n> sent to housekeeping"
+   (Needs cleaning). Then Mark ready → "Room <n> marked ready".
+8. **Do (minibar):** for a guest in house, open their stay-over task (Grace) → Minibar → add a Coca-Cola →
+   post. **Expect:** "Minibar charges posted to the folio"; the guest's folio has a Minibar line.
+9. **Do:** Kemi → Report a problem → room, "QA tap dripping", how urgent → Send to Maintenance. **Expect:**
+   "Repair reported · Maintenance alerted".
+10. **Do (manager board):** Tunde → Rooms → a room that needs cleaning → Mark ready, or a ready room →
+    Assign cleaning to Kemi. **Expect:** "Room <n> marked ready" / "<n> assigned to Kemi Adebayo"; the board
+    shows "Needs cleaning · not assigned" for a dirty room nobody has.
+
+Negative checks
+
+- Checking a guest into a room that hasn't been cleaned: front office → "Room <n> hasn't been cleaned yet. A
+  manager can check the guest in anyway". The manager can switch on "Check in to this room anyway" on their
+  own Bookings screen; the check-in then carries the warning "Room not cleaned yet".
+- Ask housekeeping to rush is disabled on a room with no cleaning task (the tooltip says why).
+
+## 4 · Expenses and approvals
+
+Up to ₦200,000 a manager approves; above it the owner does. A manager's own spend within the limit is
+recorded straight away.
+
+1. **Do:** as Femi, Expenses → Record expense, four times: "QA A", "QA B", "QA C" by Bank transfer and "QA D"
+   by Cash / till, each about ₦10,000, with a note. **Expect:** "Sent to the manager to approve"; the note is
+   kept on the expense.
+2. **Do:** record "QA E big" for ₦250,000. **Expect:** the form says "Over ₦200,000 · goes to Godwin Kwin";
+   after sending "Sent to Godwin Kwin to approve".
+3. **Do:** as Tunde, Approvals:
+   - QA A → Approve → "Approved · Femi Ojo has been told".
+   - QA B → Decline → reason "QA too expensive" → Decline request → "Request declined".
+   - QA C → Ask → "QA which supplier?" → Send question → "Question sent · you'll be notified when they reply".
+   - QA D → Approve.
+4. **Do:** as Femi, Expenses → open QA C → Answer → "QA Bello & Sons" → Send answer. **Expect:** "Answer sent
+   · back to the approver"; for Tunde the request is waiting again with the answer.
+5. **Do:** as Tunde, open QA C → Send to owner. **Expect:** "Sent to Godwin Kwin".
+6. **Do:** as Tunde, Financials → Record expense ₦5,000 → "Expense recorded"; again for ₦260,000 → the button
+   reads "Send to owner" → "Sent to Godwin Kwin for approval".
+7. **Do:** as Godwin, Dashboard → Approvals waiting → Review each QA item → Approve. **Expect:** "<item>
+   approved"; the count goes down.
+8. **Do:** as Femi, open QA A → Mark paid (bank); open QA D → Mark paid (from the till; a front-desk till
+   must be open). **Expect:** "Marked as paid"; QA D comes out of the open till.
+9. **Expect (requester):** Femi's list shows A Approved/Paid, B Declined (opening it shows "QA too
+   expensive"), C and E Approved; Femi's Notifications shows the decisions.
+10. **Do (limits):** as Godwin, Hotel setup → Approval limits → "Expenses above this need the owner" ₦300,000
+    → Save. Wait one minute. As Tunde record a ₦250,000 expense. **Expect:** "Expense recorded" (no owner
+    needed now). Put the limit back to ₦200,000.
+
+Negative checks
+
+- Record expense with no category, description or amount → Send stays disabled.
+- Decline or Ask with an empty reason → the button stays disabled.
+- Housekeeping and front office have no Expenses screen; a request to list expenses is refused.
+- Mark paid from the till with no till open → "There is no open till to pay this from".
+
+## 5 · Night audit
+
+The manager and the owner close the day; finance can view it (and close it with full finance access). Front
+office cannot open it.
+
+1. **Do:** as Tunde, Night audit. **Expect:** the checklist (every arrival checked in or resolved, every
+   departure checked out, every till closed, no departure leaving with a balance) with real counts, and
+   "Today in numbers" (money by method, spent, occupancy, check-ins/check-outs, no-shows).
+2. **Do:** leave a till open (Victor). **Expect:** the till line is not done and "Close the day" is disabled.
+   Close the till → reload → the line is done.
+3. **Do:** if an expected guest has not checked in today, try to close. **Expect:** the close dialog offers
+   "Mark the arrivals still waiting as no-shows"; without it the close is refused with "N expected arrival(s)
+   haven't checked in…". With it, those bookings become No-show.
+4. **Do:** Close the day → note "QA closed" → Close the day. **Expect:** "<date> closed · summary sent to
+   Godwin Kwin", the day-report delivery notice, and the Audit report opens (revenue, rooms occupied,
+   arrivals, departures, no-shows, money by method, expenses, cash expected and counted).
+5. **Expect:** the page now says "<date> is closed by Tunde Bakare"; Past audits lists the day; Godwin's
+   Notifications shows "Day closed · <date> · Revenue ₦…".
+6. **Do:** as Femi, Night audit. **Expect:** the same day, closed, with the report.
+
+If today is already closed when you start, you will see "<date> is closed by …" and no Close button. Check
+the report, Past audits and the role checks below; closing can be tested on the next day.
+
+Negative checks
+
+- Front office opening Night audit → page not found.
+- Closing the same day twice → "This day is already closed".
+- Closing a day that hasn't happened (API) → "You can't close a day that hasn't happened yet".
+- Closing with a till open (API) → "1 till(s) are still open. Count and close them first".
+
+## 6 · Owner and finance figures
+
+1. **Do:** as Godwin, Dashboard. **Expect:** revenue month to date, net profit and margin, occupancy tonight,
+   approvals waiting (count and total), and per branch: revenue today, occupancy and profit this month.
+2. **Do:** Financials → Overview. **Expect:** revenue, expenses and profit for the month, the last-30-days
+   chart, "Where the money came from" by desk. Bank/bills/payroll, budgets, branch P&L and organization
+   credit say "Not connected yet".
+3. **Do:** as Tunde, Financials. **Expect:** Net profit, Revenue, Expenses, Taken today (with the number of
+   payments), Money taken today by method (Card, Transfer, Cash), cash taken with no till open, the
+   7-day chart labelled by weekday, "Where income came from" by desk and Latest money in and out. Budgets and
+   Bills say "Not connected yet".
+4. **Do:** as Femi, Today / Month / Tills / Expenses. **Expect:** the same figures as the manager's; Tills
+   lists today's tills with expected, counted and variance.
+5. **Do:** Organizations (Tunde, Femi). **Expect:** the real company accounts from the server (no sample
+   companies). Reminders, statements, putting on hold, invoice PDFs and export say "not connected yet ·
+   nothing was sent or changed".
+
+## Numbers must agree
+
+Check these at the same moment (nobody taking money in between):
+
+- [ ] Till: float + cash in − paid out = "Should be in the drawer" = Expected in the close dialog.
+- [ ] Manager Financials "Money taken today" = Card + Transfer + Cash shown under it.
+- [ ] Manager Financials "Taken today" = Femi's Today = the owner's branch "Revenue today".
+- [ ] Transactions for today: the payments add up to "Money taken today"; expenses paid and till movements
+      appear with a minus.
+- [ ] The 7-day chart's bar for today = "Money taken today".
+- [ ] After closing the day: the report's revenue and money by method = Today in numbers for that day at the
+      moment it was closed; the close dialog showed the same revenue.
+- [ ] Approvals waiting on the owner's dashboard = the requests listed under it.
+
+## Known limits
+
+- Card payments on the test terminal stay "Processing"; use cash or transfer.
+- A no-show can't be checked in; book a new stay instead.
+- A day closed early (for testing, during the day) keeps the report as it was at the close; money taken after
+  that still shows in Today's money but not in that day's report.
+- Not connected yet (they say so on screen): payroll, bills, budgets, bank balance, branch P&L, organization
+  credit, organization reminders/statements/holds/invoice PDFs, every Export button, staff messages, editing a
+  person's details, language, receipt photos.
+- Emails and SMS are not sent on staging; read the delivery notice and Notifications instead.
+- Services read hotel settings at most a minute late: wait a minute after changing a limit or the till float.
+
+## How to report a bug
+
+For anything that does not match, send:
+
+- the account you used,
+- the screen (and tab),
+- the steps you took,
+- what you expected (quote this script),
+- what happened (the exact message),
+- the time (the server logs are by time),
+- a screenshot,
+- the failing line from the **API** button (method, path, status and the answer).

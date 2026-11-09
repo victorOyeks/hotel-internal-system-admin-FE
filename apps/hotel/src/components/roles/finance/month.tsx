@@ -21,8 +21,7 @@ import type { ExpenseRow, SeriesPointRow } from "@hospio/api/data/types";
 
 /**
  * Finance 2.1 · Month at a glance. Live: the daily series from finance-service and the month's expenses by
- * category. In demo mode the daily numbers are generated so the chart has shape; revenue by department has
- * no source yet and shows "Not connected yet" outside demo.
+ * category, and revenue by department (the desk that took it). In demo mode the daily numbers are generated.
  */
 export function MonthScreen({
 	demo,
@@ -31,7 +30,10 @@ export function MonthScreen({
 	from,
 	to,
 	hotelName,
+	income = [],
 }: {
+	/** Revenue in the range by the desk that took it (live). */
+	income?: { source: string; amount: number; pct: number }[];
 	demo: boolean;
 	expenses: ExpenseRow[];
 	series: SeriesPointRow[];
@@ -183,12 +185,23 @@ export function MonthScreen({
 			</SectionCard>
 			<div className="grid gap-4 md:grid-cols-2">
 				<SectionCard title="Revenue by department" bodyClassName="gap-3 pt-2">
-					{!demo && (
-						<EmptyState
-							title="Not connected yet"
-							hint="Revenue by department is not connected to the backend yet."
-						/>
+					{!demo && income.length === 0 && (
+						<EmptyState title="No money taken in this period" />
 					)}
+					{!demo &&
+						income.map((s) => (
+							<div key={s.source} className="flex flex-col gap-1">
+								<div className="flex items-center text-[13px]">
+									<span className="flex-1 font-medium text-ink">
+										{s.source}
+									</span>
+									<span className="text-ink-2">
+										{s.pct}% · {nairaShort(s.amount)}
+									</span>
+								</div>
+								<ProgressBar value={s.pct} max={100} />
+							</div>
+						))}
 					{demo &&
 						byDept.map(([name, share]) => (
 							<div key={name} className="flex flex-col gap-1">
