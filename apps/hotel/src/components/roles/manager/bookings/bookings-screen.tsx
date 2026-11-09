@@ -88,6 +88,7 @@ export function BookingsScreen({
 	folios,
 	organizations,
 	terminals,
+	pendingOnPos = {},
 }: {
 	hotelName: string;
 	bookings: BookingRow[];
@@ -97,6 +98,8 @@ export function BookingsScreen({
 	folios: FolioRow[];
 	organizations: OrganizationRow[];
 	terminals: TerminalRow[];
+	/** Card payments still with the POS, per booking, as loaded. */
+	pendingOnPos?: Record<string, number>;
 }) {
 	const [tab, setTab] = useQueryState(
 		"tab",
@@ -109,7 +112,7 @@ export function BookingsScreen({
 	const [search, setSearch] = useState("");
 	const { run } = useDemoAction();
 	// Card payments the POS has not confirmed yet, per booking.
-	const [onPos, setOnPos] = useState<Record<string, number>>({});
+	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
 
 	const active = (TABS.includes(tab as Tab) ? tab : "arrivals") as Tab;
 	const rows = bookings.filter((b) => bucket(b, active));
@@ -423,6 +426,7 @@ export function BookingsScreen({
 				onClose={() => setAction(null)}
 				onPatch={patch}
 				onPaid={paymentTaken}
+				onPos={selected ? (onPos[selected.id] ?? 0) : 0}
 			/>
 			<NewBookingPanel
 				open={!!isNew}

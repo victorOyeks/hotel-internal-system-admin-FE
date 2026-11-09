@@ -1099,6 +1099,7 @@ export const schema = createSchema({
 			withoutPayment: z.boolean().optional(),
 			idType: z.string().nullable().optional(),
 			idNumber: z.string().nullable().optional(),
+			overrideDirty: z.boolean().optional(),
 		}),
 		output: envelope(Booking),
 	},

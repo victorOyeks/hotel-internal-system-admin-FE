@@ -6,6 +6,7 @@ import {
 	SearchIcon,
 	UserPlusIcon,
 } from "lucide-react";
+import { differenceInCalendarDays, format } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -41,12 +42,10 @@ import { useSaveFlow } from "../../front-office/save-flow";
 import type { TakenPayment } from "../../front-office/take-payment";
 import { planLabels } from "./booking-helpers";
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+// Local (Lagos) calendar dates, not UTC: just after midnight UTC would still be yesterday.
+const iso = (d: Date) => format(d, "yyyy-MM-dd");
 const nightsBetween = (a: string, b: string) =>
-	Math.max(
-		1,
-		Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000),
-	);
+	a && b ? differenceInCalendarDays(new Date(b), new Date(a)) : 0;
 
 type NewBookingProps = {
 	open: boolean;
@@ -152,7 +151,7 @@ export function NewBookingPanel({
 			: priceKind === "SPECIAL" && specialRate !== ""
 				? specialRate
 				: (type?.basePrice ?? 0);
-	const total = rate * nights;
+	const total = rate * Math.max(0, nights);
 	const dueNow =
 		plan === "PAY_IN_FULL"
 			? total
@@ -175,22 +174,19 @@ export function NewBookingPanel({
 	const org = organizations.find((o) => o.id === orgId);
 	const overCap = org?.dailyCap && rate > org.dailyCap;
 	const guestName = guest?.fullName ?? name;
+	const pastStart = checkIn < iso(new Date());
 	const canSave =
-		!!guestName &&
-		(!!guest || !!phone) &&
+		!!guestName.trim() &&
+		(!!guest || !!phone.trim()) &&
 		!!type &&
 		nights > 0 &&
+		!pastStart &&
+		(priceKind !== "SPECIAL" || (specialRate !== "" && specialRate > 0)) &&
 		(plan !== "ORGANIZATION" || !!org);
 	const discountPct =
 		type && priceKind === "SPECIAL" && specialRate !== ""
 			? Math.round(((type.basePrice - specialRate) / type.basePrice) * 100)
 			: 0;
-	const needsOwner =
-		priceKind === "COMPLIMENTARY" ||
-		(priceKind === "SPECIAL" &&
-			type &&
-			specialRate !== "" &&
-			type.basePrice - specialRate > 50000);
 
 	function save(later = false) {
 		if (!type) return;
@@ -247,9 +243,7 @@ export function NewBookingPanel({
 					},
 					fallback,
 				),
-			needsOwner
-				? "Booking saved · sent to the owner for approval"
-				: `Booking saved for ${guestName}`,
+			`Booking saved for ${guestName}`,
 			(saved) =>
 				void flow.start(saved, {
 					take: later ? 0 : takeNow,
@@ -279,9 +273,13 @@ export function NewBookingPanel({
 			footerInfo={
 				paying
 					? flow.view.footerInfo
-					: type
-						? `${available} ${type.name} ready today · ${plural(nights, "night")}`
-						: undefined
+					: pastStart
+						? "Check-in can't be in the past"
+						: nights < 1
+							? "Check-out must be after check-in"
+							: type
+								? `${available} ${type.name} ready today · ${plural(nights, "night")}`
+								: undefined
 			}
 			footer={
 				paying ? (
@@ -557,7 +555,11 @@ export function NewBookingPanel({
 					<PanelSection title="Price">
 						<ChoiceCards
 							value={priceKind}
-							onChange={setPriceKind}
+							onChange={(k) => {
+								setPriceKind(k);
+								// A complimentary stay has nothing to pay; it is booked as pay at check-out.
+								if (k === "COMPLIMENTARY") setPlan("PAY_AT_CHECKOUT");
+							}}
 							columns={3}
 							options={[
 								{
@@ -568,12 +570,12 @@ export function NewBookingPanel({
 								{
 									value: "SPECIAL",
 									label: "Special price",
-									hint: "Discount · may need the owner",
+									hint: "Agreed nightly price · logged",
 								},
 								{
 									value: "COMPLIMENTARY",
 									label: "Complimentary",
-									hint: "₦0 · owner approves",
+									hint: "₦0 · pays nothing · logged",
 								},
 							]}
 						/>
@@ -584,7 +586,7 @@ export function NewBookingPanel({
 								onChange={setSpecialRate}
 								hint={
 									discountPct > 0
-										? `${discountPct}% off · ${discountPct > 0 && type && type.basePrice - (specialRate || 0) > 50000 ? "over ₦50,000 off a night goes to the owner" : "within your limit"}`
+										? `${discountPct}% off · ${naira(((type?.basePrice ?? 0) - (specialRate || 0)) * Math.max(0, nights))} off over the stay`
 										: "Enter the agreed nightly price"
 								}
 							/>

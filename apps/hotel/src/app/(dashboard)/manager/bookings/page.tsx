@@ -1,6 +1,7 @@
 import { BookingsScreen } from "@/components/roles/manager/bookings/bookings-screen";
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { pendingByBooking } from "@hospio/api/data/types";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function BookingsPage() {
 		folios,
 		organizations,
 		terminals,
+		payments,
 	] = await Promise.all([
 		getActiveHotel(),
 		data.bookings.list(),
@@ -24,6 +26,7 @@ export default async function BookingsPage() {
 		data.folios.list(),
 		data.organizations.list(),
 		data.payments.terminals(),
+		data.payments.list(),
 	]);
 	return (
 		<BookingsScreen
@@ -35,6 +38,7 @@ export default async function BookingsPage() {
 			folios={folios}
 			organizations={organizations}
 			terminals={terminals}
+			pendingOnPos={pendingByBooking(payments)}
 		/>
 	);
 }
