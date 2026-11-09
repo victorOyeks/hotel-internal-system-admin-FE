@@ -7,9 +7,18 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 import { cn } from "@hospio/ui/utils";
 
 function DropdownMenu({
+	modal = false,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+	// Not modal: a modal menu locks the page, and when one of its items opens a panel the lock is never
+	// released after the panel closes (the screen stops responding until a reload).
+	return (
+		<DropdownMenuPrimitive.Root
+			data-slot="dropdown-menu"
+			modal={modal}
+			{...props}
+		/>
+	);
 }
 
 function DropdownMenuPortal({
