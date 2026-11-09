@@ -23,9 +23,8 @@ import {
 import { fmtDay, naira, plural } from "@hospio/ui/shared/format";
 import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
 import { ManagerMark } from "@hospio/ui/shared/row-actions";
-import { WhatHappens } from "@hospio/ui/shared/side-panel";
+import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { btn } from "@hospio/ui/shared/ui";
-import { recordPayment } from "@hospio/api/actions/payment";
 import {
 	cancelBooking,
 	changeBookingDates,
@@ -39,7 +38,14 @@ import type {
 	FolioRow,
 	PaymentMethod,
 	RoomRow,
+	TerminalRow,
 } from "@hospio/api/data/types";
+import { dueAtCheckIn } from "../../front-office/save-flow";
+import {
+	type PaymentTarget,
+	type TakenPayment,
+	usePaymentSteps,
+} from "../../front-office/take-payment";
 import { balance } from "./booking-helpers";
 
 export type BookingAction =
@@ -66,21 +72,35 @@ export function BookingModals({
 	action,
 	rooms,
 	folio,
+	folios,
+	terminals,
 	onClose,
 	onPatch,
+	onPaid,
 }: {
 	booking: BookingRow | null;
 	action: BookingAction | null;
 	rooms: RoomRow[];
 	folio: FolioRow | null;
+	folios: FolioRow[];
+	terminals: TerminalRow[];
 	onClose: () => void;
 	onPatch: (id: string, changes: Partial<BookingRow>) => void;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 }) {
 	if (!b || !action) return null;
 	switch (action) {
 		case "check-in":
 			return (
-				<CheckInModal b={b} rooms={rooms} onClose={onClose} onPatch={onPatch} />
+				<CheckInPanel
+					b={b}
+					rooms={rooms}
+					folios={folios}
+					terminals={terminals}
+					onClose={onClose}
+					onPatch={onPatch}
+					onPaid={onPaid}
+				/>
 			);
 		case "check-out":
 			return (
@@ -92,7 +112,15 @@ export function BookingModals({
 				/>
 			);
 		case "payment":
-			return <RecordPaymentModal b={b} onClose={onClose} onPatch={onPatch} />;
+			return (
+				<RecordPaymentPanel
+					b={b}
+					folios={folios}
+					terminals={terminals}
+					onClose={onClose}
+					onPaid={onPaid}
+				/>
+			);
 		case "dates":
 			return <ChangeDatesModal b={b} onClose={onClose} onPatch={onPatch} />;
 		case "cancel":
@@ -102,16 +130,23 @@ export function BookingModals({
 	}
 }
 
-function CheckInModal({
+/** Check in: room, ID and what is due before the key. "Take" runs the payment steps inside this panel. */
+function CheckInPanel({
 	b,
 	rooms,
+	folios,
+	terminals,
 	onClose,
 	onPatch,
+	onPaid,
 }: {
 	b: BookingRow;
 	rooms: RoomRow[];
+	folios: FolioRow[];
+	terminals: TerminalRow[];
 	onClose: () => void;
 	onPatch: (id: string, c: Partial<BookingRow>) => void;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 }) {
 	const { run, pending } = useAction();
 	const ready = rooms.filter(
@@ -123,15 +158,22 @@ function CheckInModal({
 	const [roomId, setRoomId] = useState(
 		b.roomId ?? ready[0]?.id ?? anyReady[0]?.id ?? "",
 	);
-	const due = balance(b);
-	const collectNow =
-		b.paymentPlan !== "PAY_AT_CHECKOUT" &&
-		b.paymentPlan !== "ORGANIZATION" &&
-		b.priceKind !== "COMPLIMENTARY" &&
-		due > 0;
-	const [method, setMethod] = useState<PaymentMethod>("CARD");
+	const [paying, setPaying] = useState(false);
 	const [skip, setSkip] = useState(false);
 	const [idChecked, setIdChecked] = useState(true);
+	const pay = usePaymentSteps(
+		{
+			terminals,
+			folios,
+			onDone: (p) => onPaid(b.id, p),
+			onFinish: () => setPaying(false),
+			onBack: () => setPaying(false),
+			doneLabel: "Back to check-in",
+		},
+		false,
+	);
+	// What is owed before the key: the whole balance (the deposit was due at booking).
+	const due = dueAtCheckIn(b);
 	const room = rooms.find((r) => r.id === roomId);
 	const options = [...ready, ...anyReady.filter((r) => !ready.includes(r))].map(
 		(r) => ({
@@ -143,134 +185,167 @@ function CheckInModal({
 					: `Ready · cleaned by ${r.attendant}`,
 		}),
 	);
+	const target: PaymentTarget = {
+		guestName: b.guestName,
+		roomNumber: room?.number ?? b.roomNumber,
+		bookingId: b.id,
+		guestPhone: b.guestPhone,
+		guestEmail: b.guestEmail,
+		amountDue: due,
+		description: `Check-in · ${b.reference}`,
+	};
+	const v = pay.view;
 	return (
-		<Modal
+		<SidePanel
 			open
 			onOpenChange={(o) => !o && onClose()}
-			title={`Check in ${b.guestName}`}
-			subtitle={`${b.reference} · ${plural(b.nights, "night")} · ${b.roomTypeName}`}
-			icon={ArrowRightToLineIcon}
-			size="form"
+			title={paying ? v.title : `Check in ${b.guestName}`}
+			subtitle={
+				paying
+					? v.subtitle
+					: `${b.reference} · ${plural(b.nights, "night")} · ${b.roomTypeName}`
+			}
+			icon={paying ? CreditCardIcon : ArrowRightToLineIcon}
 			footerInfo={
-				skip ? (
+				paying ? (
+					v.footerInfo
+				) : skip && due > 0 ? (
 					<span className="flex items-center gap-2">
 						<ManagerMark /> check-in without payment is logged
 					</span>
+				) : due > 0 ? (
+					`${naira(due)} still to collect before the key`
 				) : (
 					"Welcome message goes to the guest on WhatsApp"
 				)
 			}
 			footer={
-				<>
-					<Button variant="outline" className={btn.secondary} onClick={onClose}>
-						Cancel
-					</Button>
-					<Button
-						className={btn.primary}
-						disabled={pending || !room || !idChecked}
-						onClick={() =>
-							room &&
-							run(
-								() =>
-									checkIn(
-										b,
-										{
-											roomId: room.id,
-											withoutPayment: skip,
-											idChecked,
-											collect:
-												collectNow && !skip
-													? { method, amount: due }
-													: undefined,
-										},
-										{
-											status: "CHECKED_IN",
-											roomId: room.id,
-											roomNumber: room.number,
-											checkedInAt: new Date().toISOString(),
-											paid: collectNow && !skip ? b.totalAmount : b.paid,
-										},
-									),
-								`${b.guestName} checked in to ${room.number}`,
-								(changes) => {
-									onPatch(b.id, changes);
-									onClose();
-								},
-							)
-						}
-					>
-						{collectNow && !skip
-							? `Collect ${naira(due)} & check in`
-							: "Check in"}
-					</Button>
-				</>
+				paying ? (
+					v.footer
+				) : (
+					<>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							onClick={onClose}
+						>
+							Cancel
+						</Button>
+						<Button
+							className={btn.primary}
+							disabled={pending || !room || !idChecked || (due > 0 && !skip)}
+							onClick={() =>
+								room &&
+								run(
+									() =>
+										checkIn(
+											b,
+											{
+												roomId: room.id,
+												withoutPayment: skip && due > 0,
+												idChecked,
+											},
+											{
+												status: "CHECKED_IN",
+												roomId: room.id,
+												roomNumber: room.number,
+												checkedInAt: new Date().toISOString(),
+											},
+										),
+									`${b.guestName} checked in to ${room.number}`,
+									(changes) => {
+										onPatch(b.id, changes);
+										onClose();
+									},
+								)
+							}
+						>
+							Check in{room ? ` to ${room.number}` : ""}
+						</Button>
+					</>
+				)
 			}
 		>
-			<div className="flex flex-col gap-5">
-				<SelectField
-					label="Room"
-					value={roomId}
-					onChange={setRoomId}
-					options={options}
-					hint={
-						ready.length === 0
-							? `No ${b.roomTypeName} room is ready · pick another type or ask housekeeping`
-							: `${ready.length} ${b.roomTypeName} ready`
-					}
-				/>
-				{collectNow && (
-					<div className="flex flex-col gap-3 rounded-xl border border-line p-4">
-						<TotalsList
-							rows={[
-								{ label: "Total for the stay", value: naira(b.totalAmount) },
-								{
-									label: "Paid before arrival",
-									value: `– ${naira(b.paid)}`,
-									tone: "success",
-								},
-								{
-									label: "To collect now",
-									value: naira(due),
-									strong: true,
-									tone: "danger",
-								},
-							]}
-						/>
-						{!skip && (
-							<ChoiceCards
-								label="Paid by"
-								value={method}
-								onChange={setMethod}
-								columns={3}
-								options={methodOptions}
+			{paying ? (
+				v.body
+			) : (
+				<div className="flex flex-col gap-5">
+					<SelectField
+						label="Room"
+						value={roomId}
+						onChange={setRoomId}
+						options={options}
+						hint={
+							ready.length === 0
+								? `No ${b.roomTypeName} room is ready · pick another type or ask housekeeping`
+								: `${ready.length} ${b.roomTypeName} ready`
+						}
+					/>
+					{due > 0 ? (
+						<div className="flex flex-col gap-3 rounded-xl border border-line p-4">
+							<TotalsList
+								rows={[
+									{ label: "Total for the stay", value: naira(b.totalAmount) },
+									{
+										label: "Paid so far",
+										value: `– ${naira(b.paid)}`,
+										tone: "success",
+									},
+									{
+										label: "To collect before the key",
+										value: naira(due),
+										strong: true,
+										tone: "danger",
+									},
+								]}
 							/>
-						)}
-						<ToggleField
-							label="Check in without payment"
-							hint="Manager only · balance stays on the folio"
-							checked={skip}
-							onChange={setSkip}
-						/>
-					</div>
-				)}
-				<ToggleField
-					label="ID seen and matches the booking"
-					hint={`${b.guestName} · ${b.guestPhone}`}
-					checked={idChecked}
-					onChange={setIdChecked}
-				/>
-				<WhatHappens
-					items={[
-						`${room?.number ?? "The room"} becomes occupied on the board`,
-						"A folio opens for the stay",
-						collectNow && !skip
-							? `${naira(due)} is recorded by ${method.toLowerCase()}`
-							: "Nothing is collected now",
-						"Housekeeping sees the room as occupied",
-					]}
-				/>
-			</div>
-		</Modal>
+							{!skip && (
+								<Button
+									className={btn.primary}
+									onClick={() => {
+										pay.begin(target);
+										setPaying(true);
+									}}
+								>
+									Take {naira(due)}
+								</Button>
+							)}
+							<ToggleField
+								label="Check in without payment"
+								hint="Manager only · balance stays on the folio"
+								checked={skip}
+								onChange={setSkip}
+							/>
+						</div>
+					) : (
+						<Note tone="success">
+							{b.paymentPlan === "ORGANIZATION"
+								? `${b.organizationName} pays on their account`
+								: b.paymentPlan === "PAY_AT_CHECKOUT" ||
+										b.priceKind === "COMPLIMENTARY"
+									? "Nothing to collect now"
+									: `Fully paid · ${naira(b.paid)} received`}
+						</Note>
+					)}
+					<ToggleField
+						label="ID seen and matches the booking"
+						hint={`${b.guestName} · ${b.guestPhone}`}
+						checked={idChecked}
+						onChange={setIdChecked}
+					/>
+					<WhatHappens
+						items={[
+							`${room?.number ?? "The room"} becomes occupied on the board`,
+							"A folio opens for the stay",
+							due > 0 && skip
+								? `${naira(due)} stays on the folio as a balance`
+								: "Nothing more is collected",
+							"Housekeeping sees the room as occupied",
+						]}
+					/>
+				</div>
+			)}
+		</SidePanel>
 	);
 }
 
@@ -460,146 +535,52 @@ function CheckOutModal({
 	);
 }
 
-export function RecordPaymentModal({
+/** Record payment: the payment steps straight away (method, card / transfer / cash, receipt, done) in one panel. */
+export function RecordPaymentPanel({
 	b,
+	folios,
+	terminals,
 	onClose,
-	onPatch,
+	onPaid,
 }: {
 	b: BookingRow;
+	folios: FolioRow[];
+	terminals: TerminalRow[];
 	onClose: () => void;
-	onPatch: (id: string, c: Partial<BookingRow>) => void;
+	onPaid: (bookingId: string, p: TakenPayment) => void;
 }) {
-	const { run, pending } = useAction();
-	const due = balance(b);
-	// A new booking on a deposit plan opens here asking for the deposit, not the whole stay.
-	const planDue = dueOnBooking(b);
-	const [amount, setAmount] = useState<number | "">(
-		(planDue > 0 ? planDue : due) || "",
-	);
-	const [method, setMethod] = useState<PaymentMethod>("CARD");
-	const [receipt, setReceipt] = useState<"WHATSAPP" | "EMAIL" | "NONE">(
-		"WHATSAPP",
-	);
-	const [ref, setRef] = useState("");
+	// A new booking on a deposit plan asks for the deposit, not the whole stay.
+	const target: PaymentTarget = {
+		guestName: b.guestName,
+		roomNumber: b.roomNumber,
+		bookingId: b.id,
+		folioId: folios.find((f) => f.bookingId === b.id)?.id,
+		guestPhone: b.guestPhone,
+		guestEmail: b.guestEmail,
+		amountDue: dueOnBooking(b) || balance(b),
+		description: `Room charges · ${b.reference}`,
+	};
+	const { view } = usePaymentSteps({
+		target,
+		folios,
+		terminals,
+		onDone: (p) => onPaid(b.id, p),
+		onFinish: onClose,
+		onBack: onClose,
+		editAmount: true,
+	});
 	return (
-		<Modal
+		<SidePanel
 			open
 			onOpenChange={(o) => !o && onClose()}
-			title="Record payment"
-			subtitle={`${b.guestName} · ${b.reference}${b.roomNumber ? ` · Room ${b.roomNumber}` : ""}`}
+			title={view.title}
+			subtitle={view.subtitle}
 			icon={CreditCardIcon}
-			size="form"
-			footerInfo={
-				due > 0
-					? `${naira(due)} outstanding`
-					: "Nothing outstanding · this will be a credit"
-			}
-			footer={
-				<>
-					<Button variant="outline" className={btn.secondary} onClick={onClose}>
-						Cancel
-					</Button>
-					<Button
-						className={btn.primary}
-						disabled={pending || amount === "" || amount <= 0}
-						onClick={() =>
-							amount !== "" &&
-							run(
-								() =>
-									recordPayment({
-										method,
-										amount,
-										bookingId: b.id,
-										guestName: b.guestName,
-										guestPhone: b.guestPhone,
-										guestEmail: b.guestEmail,
-										description: ref
-											? `${b.reference} · ${ref}`
-											: `Room charges · ${b.reference}`,
-										receipt,
-									}),
-								method === "CARD"
-									? `${naira(amount)} sent to the POS`
-									: `${naira(amount)} recorded by ${method.toLowerCase()}`,
-								(p) => {
-									if (p.status === "APPROVED")
-										onPatch(b.id, { paid: b.paid + amount });
-									onClose();
-								},
-							)
-						}
-					>
-						{method === "CARD" ? "Send to POS" : "Record payment"}
-					</Button>
-				</>
-			}
+			footer={view.footer}
+			footerInfo={view.footerInfo}
 		>
-			<div className="flex flex-col gap-5">
-				<ChoiceCards
-					label="Paid by"
-					value={method}
-					onChange={setMethod}
-					columns={3}
-					options={methodOptions}
-				/>
-				<FieldRow>
-					<MoneyField
-						label="Amount"
-						value={amount}
-						onChange={setAmount}
-						required
-						hint={
-							due > 0 ? (
-								<button
-									type="button"
-									className="font-semibold text-brand"
-									onClick={() => setAmount(due)}
-								>
-									Use full balance · {naira(due)}
-								</button>
-							) : undefined
-						}
-					/>
-					{method === "TRANSFER" ? (
-						<TextField
-							label="Transfer reference"
-							value={ref}
-							onChange={setRef}
-							placeholder="From the bank alert"
-						/>
-					) : (
-						<TextField
-							label="Note"
-							value={ref}
-							onChange={setRef}
-							placeholder="Optional"
-						/>
-					)}
-				</FieldRow>
-				<ChoiceCards
-					label="Receipt"
-					value={receipt}
-					onChange={setReceipt}
-					columns={3}
-					options={[
-						{ value: "WHATSAPP", label: "WhatsApp", hint: b.guestPhone },
-						{
-							value: "EMAIL",
-							label: "Email",
-							hint: b.guestEmail ?? "No email on file",
-							disabled: !b.guestEmail,
-						},
-						{ value: "NONE", label: "No receipt" },
-					]}
-				/>
-				{method === "CARD" && (
-					<Note tone="info">
-						The amount is sent to the Front desk POS · the guest taps and the
-						payment confirms itself here.
-					</Note>
-				)}
-			</div>
-		</Modal>
+			{view.body}
+		</SidePanel>
 	);
 }
 

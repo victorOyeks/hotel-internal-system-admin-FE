@@ -6,7 +6,16 @@ export const dynamic = "force-dynamic";
 
 /** Manager · Bookings: list by tab, details, new booking, check in / out, payments, changes. */
 export default async function BookingsPage() {
-	const [hotel, bookings, rooms, types, guests, folios, organizations] = await Promise.all([
+	const [
+		hotel,
+		bookings,
+		rooms,
+		types,
+		guests,
+		folios,
+		organizations,
+		terminals,
+	] = await Promise.all([
 		getActiveHotel(),
 		data.bookings.list(),
 		data.rooms.list(),
@@ -14,6 +23,18 @@ export default async function BookingsPage() {
 		data.guests.list(),
 		data.folios.list(),
 		data.organizations.list(),
+		data.payments.terminals(),
 	]);
-	return <BookingsScreen hotelName={hotel?.name ?? "This hotel"} bookings={bookings} rooms={rooms} types={types} guests={guests} folios={folios} organizations={organizations} />;
+	return (
+		<BookingsScreen
+			hotelName={hotel?.name ?? "This hotel"}
+			bookings={bookings}
+			rooms={rooms}
+			types={types}
+			guests={guests}
+			folios={folios}
+			organizations={organizations}
+			terminals={terminals}
+		/>
+	);
 }
