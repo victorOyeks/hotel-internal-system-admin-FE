@@ -154,7 +154,7 @@ function CheckInPanel({
 	const { run, pending } = useAction();
 	const ready = rooms.filter(
 		(r) =>
-			(r.state === "ready" || r.state === "held") &&
+			(r.state === "ready" || (r.state === "held" && r.id === b.roomId)) &&
 			r.typeName === b.roomTypeName,
 	);
 	const anyReady = rooms.filter((r) => r.state === "ready");
@@ -179,7 +179,9 @@ function CheckInPanel({
 	// What is owed before the key: the whole balance (the deposit was due at booking).
 	const due = dueAtCheckIn(b);
 	const room = rooms.find((r) => r.id === roomId);
-	const roomReady = !!room && (room.state === "ready" || room.state === "held");
+	const roomReady =
+		!!room &&
+		(room.state === "ready" || (room.state === "held" && room.id === b.roomId));
 	const assigned = rooms.find((r) => r.id === b.roomId);
 	const options = [
 		...ready,

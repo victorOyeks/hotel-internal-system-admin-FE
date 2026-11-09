@@ -138,6 +138,8 @@ export type RoomRow = {
 	guestName?: string;
 	checkOut?: string;
 	note?: string;
+	/** A held room: the booking arriving today it is kept for. */
+	heldFor?: Id;
 	outOfOrderReason?: string;
 	outOfOrderUntil?: string;
 	lastCleaned?: string;
