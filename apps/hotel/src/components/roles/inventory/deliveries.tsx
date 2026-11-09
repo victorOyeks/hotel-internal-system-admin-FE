@@ -458,7 +458,7 @@ function ReceivePanel({
 					value={orderId}
 					onChange={setOrderId}
 					options={[
-						{ value: "", label: "No order (walk-in delivery)" },
+						{ value: "none", label: "No order (walk-in delivery)" },
 						...orders.map((o) => ({
 							value: o.id,
 							label: `${o.number} · ${o.supplierName}`,

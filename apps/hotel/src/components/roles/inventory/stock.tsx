@@ -910,7 +910,7 @@ function ItemPanel({
 										minLevel: num(f.min),
 										parLevel: num(f.par),
 										unitCost: cost === "" ? undefined : cost,
-										supplierId: f.supplier,
+										supplierId: f.supplier === "none" ? "" : f.supplier,
 										active: item ? f.active : undefined,
 										storeId: item ? undefined : f.storeId || undefined,
 										openingQuantity: item ? undefined : num(f.qty),
@@ -997,7 +997,7 @@ function ItemPanel({
 						value={f.supplier}
 						onChange={set("supplier")}
 						options={[
-							{ value: "", label: "None" },
+							{ value: "none", label: "None" },
 							...suppliers
 								.filter((s) => s.active !== false)
 								.map((s) => ({ value: s.id, label: s.name })),
