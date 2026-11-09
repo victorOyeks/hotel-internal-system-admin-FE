@@ -128,6 +128,7 @@ export function ConfirmModal({
 	tone = "default",
 	confirmLabel,
 	pending,
+	confirmDisabled,
 	onConfirm,
 	alternative,
 	children,
@@ -139,6 +140,8 @@ export function ConfirmModal({
 	tone?: "default" | "danger";
 	confirmLabel: string;
 	pending?: boolean;
+	/** The confirm button waits for something in the body (a choice, a reason). */
+	confirmDisabled?: boolean;
 	onConfirm: () => void;
 	/** "Safer alternative" offered on destructive flows. */
 	alternative?: { label: string; onClick: () => void };
@@ -182,7 +185,7 @@ export function ConfirmModal({
 						type="button"
 						className={tone === "danger" ? btn.danger : btn.primary}
 						onClick={onConfirm}
-						disabled={pending}
+						disabled={pending || confirmDisabled}
 					>
 						{pending ? (
 							<Loader2Icon className="size-4 animate-spin" />

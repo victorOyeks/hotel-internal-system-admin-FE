@@ -36,6 +36,7 @@ import {
 	WalletIcon,
 	WineIcon,
 	WrenchIcon,
+	UtensilsIcon,
 } from "lucide-react";
 import type { HotelRole } from "@hospio/api/roles";
 
@@ -101,6 +102,7 @@ export const frontOfficeLinks: NavLink[] = [
 	{ title: "Bookings", url: "/dashboard/bookings", icon: CalendarCheckIcon },
 	{ title: "Rooms", url: "/dashboard/rooms", icon: BedDoubleIcon },
 	{ title: "Folios", url: "/dashboard/folios", icon: ReceiptIcon },
+	{ title: "Room service", url: "/dashboard/room-service", icon: UtensilsIcon },
 	{ title: "Guests", url: "/dashboard/guests", icon: UsersIcon },
 	{ title: "Messages", url: "/dashboard/messages", icon: MessageSquareIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },

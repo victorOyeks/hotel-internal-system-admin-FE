@@ -78,6 +78,7 @@ export function NightAuditScreen({
 	const done = checks.filter((c) => c.done).length;
 	const tillsDone = checks.find((c) => c.key === "tills")?.done ?? true;
 	const arrivalsOpen = checks.some((c) => c.key === "arrivals" && !c.done);
+	const ordersOpen = checks.some((c) => c.key === "orders" && !c.done);
 	const rooms = (a: NightAuditRow) => (a.rooms ? ` of ${a.rooms}` : "");
 	const byMethod = report?.report
 		? (Object.entries(
@@ -206,6 +207,13 @@ export function NightAuditScreen({
 							<Note tone="warning" className="mt-3">
 								Count and close every till first: the day cannot be closed while
 								one is open.
+							</Note>
+						)}
+						{ordersOpen && (
+							<Note tone="warning" className="mt-3">
+								Open tabs or unsettled orders at the restaurant or bar stop the
+								close. Ask the outlet to settle them, or a manager can close the
+								day carrying them to tomorrow.
 							</Note>
 						)}
 						{tillsDone && done < checks.length && (

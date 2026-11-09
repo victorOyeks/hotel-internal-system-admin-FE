@@ -71,12 +71,75 @@ function reportNumbers(report: Record<string, unknown> | undefined) {
 					number,
 				][])
 			: [];
+	const cash = (report?.cash ?? {}) as Record<string, unknown>;
+	const occupancy = (report?.occupancy ?? {}) as Record<string, unknown>;
 	return {
 		byMethod,
 		expenses: num(report?.expenses),
-		cashExpected: num(report?.cashExpected ?? report?.expectedCash),
-		occupancyPct: num(report?.occupancyPct),
+		cashExpected: num(
+			report?.cashExpected ?? report?.expectedCash ?? cash.expected,
+		),
+		occupancyPct: num(report?.occupancyPct ?? occupancy.pct),
+		outletSales: outletSalesOf(report?.outletSales),
+		carried: report?.carriedOpenTabs === true ? carriedOf(report) : null,
 	};
+}
+
+type OutletSalesLine = {
+	name: string;
+	orders: number;
+	sales: number;
+	paidAtOutlet: number;
+	chargedToRooms: number;
+};
+
+/** The outlet sales the service stored in the report: one line per outlet, plus the total. */
+function outletSalesOf(raw: unknown): OutletSalesLine[] {
+	if (!raw || typeof raw !== "object") return [];
+	const outlets = (raw as { outlets?: unknown }).outlets;
+	if (!Array.isArray(outlets)) return [];
+	return outlets.map((o: Record<string, unknown>) => ({
+		name: typeof o.name === "string" ? o.name : "Outlet",
+		orders: num(o.orders) ?? 0,
+		sales: num(o.sales) ?? 0,
+		paidAtOutlet: num(o.paidAtOutlet) ?? 0,
+		chargedToRooms: num(o.chargedToRooms) ?? 0,
+	}));
+}
+
+type CarriedOrder = {
+	number: string;
+	kind: string;
+	where: string;
+	total?: number;
+};
+
+/** The open tabs and unsettled orders a manager carried into tomorrow when the day closed. */
+function carriedOf(report: Record<string, unknown>) {
+	const rows = Array.isArray(report.openOrdersCarried)
+		? (report.openOrdersCarried as Record<string, unknown>[])
+		: [];
+	return rows.map((r) => ({
+		outlet: typeof r.outlet === "string" ? r.outlet : "Outlet",
+		openTabs: num(r.openTabs) ?? 0,
+		unsettled: num(r.unsettled) ?? 0,
+		orders: (Array.isArray(r.orders)
+			? (r.orders as Record<string, unknown>[])
+			: []
+		).map(
+			(o): CarriedOrder => ({
+				number: typeof o.number === "string" ? o.number : "",
+				kind: typeof o.kind === "string" ? o.kind : "",
+				where:
+					typeof o.tableNo === "string" && o.tableNo
+						? `Table ${o.tableNo}`
+						: typeof o.roomNumber === "string" && o.roomNumber
+							? `Room ${o.roomNumber}`
+							: "",
+				total: num(o.total),
+			}),
+		),
+	}));
 }
 
 const methodLabel = (m: string) =>
@@ -105,6 +168,7 @@ export function NightAuditScreen({
 	const [cash, setCash] = useState<number | "">("");
 	const [note, setNote] = useState("");
 	const [markNoShows, setMarkNoShows] = useState(false);
+	const [carryOpenTabs, setCarryOpenTabs] = useState(false);
 	const { run, pending } = useAction();
 	const tonight = audits[0] ?? null;
 	const open = tonight && tonight.status === "OPEN" ? tonight : null;
@@ -113,6 +177,7 @@ export function NightAuditScreen({
 	const checks = open?.checklist ?? [];
 	const tillsDone = checks.find((c) => c.key === "tills")?.done ?? true;
 	const arrivalsOpen = checks.some((c) => c.key === "arrivals" && !c.done);
+	const ordersCheck = checks.find((c) => c.key === "orders" && !c.done);
 	const blocking = checks.filter((c) => !c.done).length;
 	const rooms = (a: NightAuditRow) => (a.rooms ? ` of ${a.rooms}` : "");
 	const pct = (a: NightAuditRow) =>
@@ -431,8 +496,13 @@ export function NightAuditScreen({
 							? `${plural(blocking, "check")} still open`
 							: "All checks done"
 					}
-					confirmLabel="Close the day"
+					confirmLabel={
+						ordersCheck && carryOpenTabs
+							? "Close and carry the tabs"
+							: "Close the day"
+					}
 					pending={pending}
+					confirmDisabled={!!ordersCheck && !carryOpenTabs}
 					onConfirm={() =>
 						run(
 							() =>
@@ -443,6 +513,7 @@ export function NightAuditScreen({
 										roomsOccupied: open.roomsOccupied,
 										note,
 										markNoShows,
+										carryOpenTabs: !!ordersCheck && carryOpenTabs,
 									}),
 									`Day report for ${ownerName}`,
 								),
@@ -452,6 +523,7 @@ export function NightAuditScreen({
 								setCash("");
 								setNote("");
 								setMarkNoShows(false);
+								setCarryOpenTabs(false);
 								void setReportId(row.id);
 							},
 						)
@@ -464,6 +536,21 @@ export function NightAuditScreen({
 								the tills are closed; anything else left open is listed in the
 								report.
 							</Note>
+						)}
+						{ordersCheck && (
+							<>
+								<Note tone="danger">
+									{ordersCheck.detail ??
+										"There are open tabs or unsettled orders at the outlets"}
+									. Settle them first, or carry them to tomorrow.
+								</Note>
+								<ToggleField
+									label="Carry open tabs to tomorrow"
+									hint="The tabs and orders stay open at the outlets and are listed in tonight's report."
+									checked={carryOpenTabs}
+									onChange={setCarryOpenTabs}
+								/>
+							</>
 						)}
 						<TotalsList
 							rows={[
@@ -603,6 +690,64 @@ export function NightAuditScreen({
 								]}
 							/>
 						</PanelSection>
+						{nums.outletSales.length > 0 && (
+							<PanelSection title="Restaurant & bar sales">
+								<TotalsList
+									rows={[
+										...nums.outletSales.map((o) => ({
+											label: `${o.name} · ${plural(o.orders, "order")} · ${naira(o.paidAtOutlet)} paid, ${naira(o.chargedToRooms)} on rooms`,
+											value: naira(o.sales),
+										})),
+										{
+											label: "Sales",
+											value: naira(
+												nums.outletSales.reduce((t, o) => t + o.sales, 0),
+											),
+											strong: true,
+										},
+									]}
+								/>
+							</PanelSection>
+						)}
+						{nums.carried && (
+							<PanelSection title="Carried to tomorrow">
+								<ul className="divide-y divide-line rounded-xl border border-line text-[13px]">
+									{nums.carried.length === 0 && (
+										<li className="px-3 py-2 text-ink-3">
+											The outlets couldn't be checked when the day closed
+										</li>
+									)}
+									{nums.carried.flatMap((o) =>
+										o.orders.length > 0
+											? o.orders.map((x) => (
+													<li
+														key={`${o.outlet}-${x.number}`}
+														className="flex items-center justify-between gap-3 px-3 py-2 text-ink"
+													>
+														<span>
+															{o.outlet} · {x.number}
+															{x.kind === "TAB" ? " · open tab" : ""}
+															{x.where ? ` · ${x.where}` : ""}
+														</span>
+														{x.total != null && (
+															<span className="font-semibold">
+																{naira(x.total)}
+															</span>
+														)}
+													</li>
+												))
+											: [
+													<li key={o.outlet} className="px-3 py-2 text-ink">
+														{o.outlet} · {plural(o.openTabs, "open tab")}
+														{o.unsettled > 0
+															? ` · ${plural(o.unsettled, "unsettled order")}`
+															: ""}
+													</li>,
+												],
+									)}
+								</ul>
+							</PanelSection>
+						)}
 						{(report.note || report.noShows > 0) && (
 							<PanelSection title="Exceptions">
 								<ul className="divide-y divide-line rounded-xl border border-line text-[13px]">

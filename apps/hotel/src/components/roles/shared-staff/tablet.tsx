@@ -168,11 +168,14 @@ export function BoardColumn({
 /** A card on a board or in a list. Click opens details; `accent` draws the brand outline (current item). */
 export function BoardCard({
 	onClick,
+	label,
 	accent = "none",
 	className,
 	children,
 }: {
 	onClick?: () => void;
+	/** What the card opens, for screen readers ("Open K-0004"). */
+	label?: string;
 	accent?: "none" | "brand" | "success" | "warning";
 	className?: string;
 	children: ReactNode;
@@ -183,20 +186,36 @@ export function BoardCard({
 		success: "border-success",
 		warning: "border-[#dbab00]",
 	}[accent];
-	const Comp = onClick ? "button" : "div";
+	// A card can hold its own buttons (Start, Ready), so it is never a <button> itself: nested buttons are
+	// invalid HTML, the browser splits them and the page fails to hydrate. A full-size button sits behind
+	// the content instead; the content lets clicks through except on its own buttons and links.
 	return (
-		<Comp
-			type={onClick ? "button" : undefined}
-			onClick={onClick}
+		<div
 			className={cn(
-				"flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
+				"relative flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
 				border,
 				onClick && "hover:border-brand/50",
 				className,
 			)}
 		>
-			{children}
-		</Comp>
+			{onClick && (
+				<button
+					type="button"
+					aria-label={label ?? "Open"}
+					onClick={onClick}
+					className="absolute inset-0 rounded-xl"
+				/>
+			)}
+			<div
+				className={cn(
+					"relative flex flex-col gap-2",
+					onClick &&
+						"pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto",
+				)}
+			>
+				{children}
+			</div>
+		</div>
 	);
 }
 

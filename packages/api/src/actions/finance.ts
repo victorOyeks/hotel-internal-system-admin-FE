@@ -377,13 +377,18 @@ export async function markExpensePaid(
 	return { ok: true, data: toExpenseRow(data.data) };
 }
 
-/** Close the day. `markNoShows` turns arrivals still waiting into no-shows; the owner gets the summary. */
+/**
+ * Close the day. `markNoShows` turns arrivals still waiting into no-shows; `carryOpenTabs` (manager or
+ * owner) closes it with open tabs and unsettled orders still open at the outlets, listed in the report.
+ * The owner gets the summary.
+ */
 export async function closeDay(input: {
 	date?: string;
 	cashCounted?: number;
 	roomsOccupied?: number;
 	note?: string;
 	markNoShows?: boolean;
+	carryOpenTabs?: boolean;
 }): Promise<ActionResult<WithDeliveries<NightAuditRow>>> {
 	const date = input.date ?? lagosDate();
 	if (!live("finance")) {
@@ -414,6 +419,7 @@ export async function closeDay(input: {
 			roomsOccupied: input.roomsOccupied ?? null,
 			note: input.note?.trim() || null,
 			markNoShows: input.markNoShows ?? false,
+			carryOpenTabs: input.carryOpenTabs ?? false,
 		},
 	});
 	if (error || !data)

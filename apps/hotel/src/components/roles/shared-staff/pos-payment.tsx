@@ -36,7 +36,7 @@ export function OrderPaymentPanel({
 	onOpenChange: (open: boolean) => void;
 	payment: DeskPayment | null;
 	/** The desk taking the payment; sent as the payment's role. */
-	desk: "KITCHEN" | "BAR" | "LAUNDRY";
+	desk: "KITCHEN" | "BAR" | "LAUNDRY" | "FRONT_OFFICE";
 	terminals?: TerminalRow[];
 	onDone?: (payment: TakenPayment) => void;
 	onFinish?: () => void;

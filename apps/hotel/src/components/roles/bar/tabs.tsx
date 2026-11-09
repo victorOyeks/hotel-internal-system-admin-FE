@@ -156,6 +156,7 @@ export function BarTabsScreen({
 				{tabs.map((o) => (
 					<BoardCard
 						key={o.id}
+						label={`Open the tab at ${o.tableNo ?? "the bar"}`}
 						onClick={() => void setOpen(o.id)}
 						accent={atLimit(o) ? "warning" : "brand"}
 					>
