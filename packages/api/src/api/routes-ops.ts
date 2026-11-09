@@ -462,6 +462,14 @@ export const opsRoutes = {
 		}),
 		output: envelope(NightAuditDay),
 	},
+	"@get/finance/income": {
+		query: z.object({ from: z.string(), to: z.string() }),
+		output: envelope(
+			z.array(
+				z.object({ source: z.string(), amount: z.number(), pct: z.number() }),
+			),
+		),
+	},
 	"@get/finance/series": {
 		query: z.object({ from: z.string(), to: z.string() }).partial().optional(),
 		output: envelope(z.array(SeriesPoint)),

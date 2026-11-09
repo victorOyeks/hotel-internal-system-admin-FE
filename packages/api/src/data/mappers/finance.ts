@@ -143,7 +143,8 @@ export function toTransactionRow(
 		description: t.description ?? "",
 		method: t.method ?? "",
 		amount: t.amount,
-		by: t.by ?? "—",
+		// Payments with no person carry the desk's role (FRONT_OFFICE): show it as words.
+		by: t.by ? (/^[A-Z_]+$/.test(t.by) ? humanizeRole(t.by) : t.by) : "—",
 		reference: t.ref ?? "",
 	};
 }
@@ -235,4 +236,9 @@ export function toNightAuditRow(
 		checklist: checklistOf(a),
 		report,
 	};
+}
+
+function humanizeRole(role: string): string {
+	const words = role.toLowerCase().replace(/_/g, " ");
+	return words.charAt(0).toUpperCase() + words.slice(1);
 }

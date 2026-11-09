@@ -734,7 +734,10 @@ export function FinancialsScreen(p: FinancialsProps) {
 											/>
 										</div>
 										<span className="text-[10px] text-ink-3">
-											{fmtDay(w.date).slice(0, 3)}
+											{new Date(`${w.date}T12:00:00Z`).toLocaleDateString(
+												"en-GB",
+												{ weekday: "short", timeZone: "UTC" },
+											)}
 										</span>
 									</div>
 								))}
