@@ -9,7 +9,7 @@ import { updateMyBusiness } from "@hospio/api/actions/tenant";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { Business } from "@hospio/api/api/schema";
 import type { HotelSetupSection } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note } from "@hospio/ui/shared/detail-list";
 import { FieldRow, SelectField, TextField } from "@hospio/ui/shared/field";
@@ -57,7 +57,7 @@ export function OwnerSettings({
 	const [transfer, setTransfer] = useState(false);
 	const [confirm, setConfirm] = useState(false);
 	const [newOwner, setNewOwner] = useState("");
-	const demo = useDemoAction();
+	const demo = useNotConnectedAction();
 
 	return (
 		<>

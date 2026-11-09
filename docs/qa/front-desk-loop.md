@@ -102,7 +102,12 @@ ends on the booking summary.
 
 1. Folios → the guest's folio is open with the room charge and the payment, balance ₦0.
 2. In the folio: Post a charge "Minibar", ₦4,000 → balance ₦4,000. (Manager only: Discount ₦1,000 with a
-   reason → balance ₦3,000; Void the minibar line with a reason → balance back.)
+   reason → balance ₦3,000; Void the minibar line with a reason → balance back.) Front office: Discount →
+   "Send for approval" → "Sent to the manager to approve"; it shows in the manager's Approvals and the
+   discount lands on the folio when approved (over the manager's limit it goes to the owner). Void stays
+   manager-only (the button is disabled for front office with a note).
+   - Print or send → WhatsApp or Email → Send → "Folio sent to …"; the "What we would have sent" card shows
+     the stay summary (nothing is really sent on staging).
 3. Bookings → In-house → Check out: one panel with the bill as the folio has it now (room charges, extras,
    paid, balance). With a balance the button reads "Take ₦X": the payment steps run inside the same panel,
    "Back to check-out" returns with "nothing left to pay", then Check out. Status becomes Checked out and the
@@ -136,6 +141,12 @@ After any payment the booking summary (Paid/Balance), the folio (after check-in)
 till (cash only, when a till is open: Till screen) and Today's money (`/finance/today`, manager) agree. Cash
 taken with no open till still counts in Today's money and is flagged as unattached cash.
 - Payments → request a refund on a payment → it appears for the manager under Payments → Refunds.
+- Manager Payments → an approved payment → Resend receipt (panel or row menu) → "Receipt resent to …" and
+  the card shows the receipt (WhatsApp to the guest's phone, else email; a payment with neither says so).
+- Manager Payments → a Declined (or No response) card payment → Retry on POS → a new payment for the same
+  amount goes to the POS of the desk that took it ("sent to the POS again"); the declined one stays in the
+  list. To make a declined payment on staging: take a card payment, then
+  `POST /payment/webhooks/pos/logging` with `{"paymentRequestId":"<id>","status":"DECLINED"}`.
 
 ## What to report
 

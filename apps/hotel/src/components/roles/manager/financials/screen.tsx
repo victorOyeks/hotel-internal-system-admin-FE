@@ -14,7 +14,6 @@ import {
 import Link from "next/link";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { EmptyState } from "@hospio/ui/shared/empty-state";
@@ -464,9 +463,7 @@ export function FinancialsScreen(p: FinancialsProps) {
 								onChange={setSearch}
 								placeholder="Search…"
 							/>
-							<ExportButton
-								onClick={() => toast.info("Exports are not available yet")}
-							/>
+							<ExportButton />
 						</>
 					)
 				}

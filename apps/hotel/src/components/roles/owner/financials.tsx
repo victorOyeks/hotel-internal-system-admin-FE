@@ -37,7 +37,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type {
 	ApprovalRow,
 	ExpenseRow,
@@ -958,7 +958,7 @@ function PayrollTab({
 }) {
 	const [hotel, setHotel] = useState("");
 	const [run, setRun] = useState(false);
-	const { run: go, pending } = useDemoAction();
+	const { run: go, pending } = useNotConnectedAction();
 	const rows = payroll.filter(
 		(p) => !hotel || hotels.find((h) => h.hotelId === hotel)?.name === p.hotel,
 	);
@@ -1087,7 +1087,7 @@ function OrganizationsTab({
 	organizations: OrganizationRow[];
 }) {
 	const [approve, setApprove] = useState<OrganizationRow | null>(null);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const cols: ColumnDef<OrganizationRow, unknown>[] = [
 		{
 			accessorKey: "name",

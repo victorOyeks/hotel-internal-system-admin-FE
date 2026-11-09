@@ -8,6 +8,7 @@ import {
 	SendIcon,
 	XIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
@@ -32,6 +33,7 @@ import {
 	decideApproval,
 	escalateApproval,
 } from "@hospio/api/actions/approvals";
+import { answerExpense } from "@hospio/api/actions/finance";
 import { useAction } from "@hospio/api/actions/use-action";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type { ApprovalRow } from "@hospio/api/data/types";
@@ -90,11 +92,17 @@ export function ApprovalsScreen({
 	rows,
 	limit,
 	ownerName,
+	meId,
 }: {
 	rows: ApprovalRow[];
 	limit: number;
 	ownerName: string;
+	/** The signed-in user: a question on their own expense gets an answer box. */
+	meId?: string;
 }) {
+	const router = useRouter();
+	const [answering, setAnswering] = useState(false);
+	const [answer, setAnswer] = useState("");
 	const [tab, setTab] = useState<"waiting" | "decided" | "owner">("waiting");
 	const [search, setSearch] = useState("");
 	const [open, setOpen] = useQueryState("open");
@@ -103,8 +111,11 @@ export function ApprovalsScreen({
 	const [reason, setReason] = useState("");
 	const { run, pending } = useAction();
 
+	// Waiting on the manager: requests to decide, and questions asked about their own requests.
 	const waiting = rows.filter(
-		(r) => r.status === "PENDING" && r.approverLevel === "MANAGER",
+		(r) =>
+			(r.status === "PENDING" && r.approverLevel === "MANAGER") ||
+			(r.status === "QUESTION" && !!meId && r.requesterId === meId),
 	);
 	const ownerQueue = rows.filter(
 		(r) =>
@@ -125,7 +136,17 @@ export function ApprovalsScreen({
 		setDecline(false);
 		setAsk(false);
 		setReason("");
+		setAnswering(false);
+		setAnswer("");
 	};
+	/** The owner (or a manager) asked the signed-in user something about their own expense. */
+	const canAnswer =
+		!!current &&
+		current.status === "QUESTION" &&
+		current.kind === "EXPENSE" &&
+		!!current.sourceRef &&
+		!!meId &&
+		current.requesterId === meId;
 	const withOwner = current?.approverLevel === "OWNER";
 	const overLimit = current
 		? withOwner ||
@@ -213,10 +234,14 @@ export function ApprovalsScreen({
 			header: "",
 			cell: ({ row }) => (
 				<span className="text-[13px] font-semibold text-brand">
-					{row.original.status === "PENDING" &&
-					row.original.approverLevel === "MANAGER"
-						? "Review"
-						: "Open"}{" "}
+					{row.original.status === "QUESTION" &&
+					!!meId &&
+					row.original.requesterId === meId
+						? "Answer"
+						: row.original.status === "PENDING" &&
+								row.original.approverLevel === "MANAGER"
+							? "Review"
+							: "Open"}{" "}
 					→
 				</span>
 			),
@@ -316,32 +341,16 @@ export function ApprovalsScreen({
 							: undefined
 				}
 				footer={
-					current?.status === "PENDING" &&
-					!withOwner &&
-					(overLimit ? (
-						<Button
-							className={btn.primary}
-							disabled={pending}
-							onClick={() =>
-								current &&
-								run(
-									() =>
-										withDeliveries(
-											escalateApproval(current.id, reason),
-											`Approval for ${current.requesterName}`,
-										),
-									`Sent to ${ownerName}`,
-									close,
-								)
-							}
-						>
-							<SendIcon className="size-4" /> Send to owner
+					canAnswer ? (
+						<Button className={btn.primary} onClick={() => setAnswering(true)}>
+							<MessageCircleQuestionIcon className="size-4" /> Answer
 						</Button>
 					) : (
-						<>
+						current?.status === "PENDING" &&
+						!withOwner &&
+						(overLimit ? (
 							<Button
-								variant="outline"
-								className={btn.secondary}
+								className={btn.primary}
 								disabled={pending}
 								onClick={() =>
 									current &&
@@ -358,35 +367,57 @@ export function ApprovalsScreen({
 							>
 								<SendIcon className="size-4" /> Send to owner
 							</Button>
-							<Button
-								variant="outline"
-								className={btn.secondary}
-								onClick={() => setAsk(true)}
-							>
-								<MessageCircleQuestionIcon className="size-4" /> Ask
-							</Button>
-							<Button
-								variant="outline"
-								className={btn.dangerSoft}
-								onClick={() => setDecline(true)}
-							>
-								<XIcon className="size-4" /> Decline
-							</Button>
-							<Button
-								className={btn.primary}
-								disabled={pending}
-								onClick={() =>
-									decide(
-										"APPROVED",
-										`Approved · ${current.requesterName} has been told`,
-									)
-								}
-							>
-								<CheckIcon className="size-4" /> Approve
-								{current.amount ? ` ${naira(current.amount)}` : ""}
-							</Button>
-						</>
-					))
+						) : (
+							<>
+								<Button
+									variant="outline"
+									className={btn.secondary}
+									disabled={pending}
+									onClick={() =>
+										current &&
+										run(
+											() =>
+												withDeliveries(
+													escalateApproval(current.id, reason),
+													`Approval for ${current.requesterName}`,
+												),
+											`Sent to ${ownerName}`,
+											close,
+										)
+									}
+								>
+									<SendIcon className="size-4" /> Send to owner
+								</Button>
+								<Button
+									variant="outline"
+									className={btn.secondary}
+									onClick={() => setAsk(true)}
+								>
+									<MessageCircleQuestionIcon className="size-4" /> Ask
+								</Button>
+								<Button
+									variant="outline"
+									className={btn.dangerSoft}
+									onClick={() => setDecline(true)}
+								>
+									<XIcon className="size-4" /> Decline
+								</Button>
+								<Button
+									className={btn.primary}
+									disabled={pending}
+									onClick={() =>
+										decide(
+											"APPROVED",
+											`Approved · ${current.requesterName} has been told`,
+										)
+									}
+								>
+									<CheckIcon className="size-4" /> Approve
+									{current.amount ? ` ${naira(current.amount)}` : ""}
+								</Button>
+							</>
+						))
+					)
 				}
 			>
 				{current && (
@@ -434,6 +465,13 @@ export function ApprovalsScreen({
 							<Note tone="info">
 								{current.status === "QUESTION" ? "Question: " : "Note: "}
 								{current.note}
+							</Note>
+						)}
+						{canAnswer && (
+							<Note tone="warning">
+								{current.approverLevel === "OWNER" ? ownerName : "The approver"}{" "}
+								asked about your expense. It waits until you answer; your answer
+								sends it back to them.
 							</Note>
 						)}
 						{overLimit && current.status === "PENDING" && (
@@ -521,6 +559,49 @@ export function ApprovalsScreen({
 					value={reason}
 					onChange={setReason}
 					placeholder="e.g. Which supplier quoted this price?"
+				/>
+			</Modal>
+			<Modal
+				open={answering}
+				onOpenChange={setAnswering}
+				title="Answer the question"
+				subtitle={current?.note ? `Question: ${current.note}` : undefined}
+				size="confirm"
+				footer={
+					<>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							onClick={() => setAnswering(false)}
+						>
+							Cancel
+						</Button>
+						<Button
+							className={btn.primary}
+							disabled={pending || answer.trim().length < 2}
+							onClick={() =>
+								current?.sourceRef &&
+								run(
+									() =>
+										answerExpense(current.sourceRef as string, answer.trim()),
+									`Answer sent · back to ${current.approverLevel === "OWNER" ? ownerName : "the approver"}`,
+									() => {
+										close();
+										router.refresh();
+									},
+								)
+							}
+						>
+							<SendIcon className="size-4" /> Send answer
+						</Button>
+					</>
+				}
+			>
+				<TextareaField
+					label="Your answer"
+					value={answer}
+					onChange={setAnswer}
+					placeholder="e.g. The generator part was quoted by two suppliers; this was the cheaper one"
 				/>
 			</Modal>
 		</>

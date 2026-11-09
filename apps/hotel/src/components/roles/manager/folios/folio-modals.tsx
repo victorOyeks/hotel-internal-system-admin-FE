@@ -10,10 +10,10 @@ import { Modal } from "@hospio/ui/shared/modal";
 import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { WhatHappens } from "@hospio/ui/shared/side-panel";
 import { btn } from "@hospio/ui/shared/ui";
-import { giveDiscount, moveLines, postCharge, staySummary } from "@hospio/api/actions/folio";
+import { giveDiscount, moveLines, postCharge, sendFolio, staySummary } from "@hospio/api/actions/folio";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { recordPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
 import type { FolioLine, FolioRow, PaymentMethod } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 
@@ -151,24 +151,22 @@ function TransferModal({ f, others, onClose, onPatch }: { f: FolioRow; others: F
 }
 
 function PrintModal({ f, onClose }: { f: FolioRow; onClose: () => void }) {
-	const demo = useDemoAction();
+	const send = useAction();
 	const act = useAction();
 	const [how, setHow] = useState<"print" | "email" | "whatsapp">("print");
-	const [detail, setDetail] = useState(true);
 	const [summary, setSummary] = useState<string | null>(null);
 	const [copied, setCopied] = useState(false);
 	useEffect(() => {
 		act.run(() => staySummary(f.id), "Stay summary ready", (text) => setSummary(text));
 	}, [f.id, act.run]);
-	const pending = demo.pending || act.pending;
+	const pending = send.pending || act.pending;
 	return (
 		<Modal open onOpenChange={(o) => !o && onClose()} title="Print or send the folio" subtitle={`${f.guestName} · ${f.reference}`} icon={PrinterIcon} size="form"
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Close</Button>{how === "print" ? <Button className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</Button> : <Button className={btn.primary} disabled={pending} onClick={() => demo.run(`Folio sent by ${how === "email" ? "email" : "WhatsApp"}`, onClose, { tone: "info" })}>Send</Button>}</>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Close</Button>{how === "print" ? <Button className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</Button> : <Button className={btn.primary} disabled={pending} onClick={() => send.run(() => withDeliveries(sendFolio(f.id, how === "email" ? "EMAIL" : "WHATSAPP", (how === "email" ? f.guestEmail : f.guestPhone) ?? ""), `Folio for ${f.guestName}`), `Folio sent to ${f.guestName} by ${how === "email" ? "email" : "WhatsApp"}`, onClose)}>Send</Button>}</>}
 		>
 			<div className="flex flex-col gap-4">
 				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "print", label: "Print / copy", hint: "Front desk" }, { value: "email", label: "Email", hint: f.guestEmail ?? "No email", disabled: !f.guestEmail }, { value: "whatsapp", label: "WhatsApp", hint: f.guestPhone ?? "No phone", disabled: !f.guestPhone }]} />
-				<ToggleField label="Show every line" hint="Off = totals by category only" checked={detail} onChange={setDetail} />
-				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} onChange={() => undefined} rows={10} hint={how === "print" ? "Copy it to the desk printer or a document" : "Messaging is not connected yet · sending is a demo"} />
+				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} rows={10} hint={how === "print" ? "Copy it to the desk printer or a document" : `Sent to ${how === "email" ? f.guestEmail : f.guestPhone} as written here`} />
 			</div>
 		</Modal>
 	);

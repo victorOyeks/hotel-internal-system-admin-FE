@@ -1,7 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
-
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	AlertTriangleIcon,
@@ -35,9 +33,9 @@ import {
 	Toolbar,
 } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { verifyPayment } from "@hospio/api/actions/payment";
+import { resendReceipt, verifyPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
 	DisputeRow,
 	FolioRow,
@@ -104,7 +102,6 @@ export function PaymentsScreen({
 	const [terminal, setTerminal] = useState<TerminalRow | null>(null);
 	const [refund, setRefund] = useState<RefundRow | null>(null);
 	const [dispute, setDispute] = useState<DisputeRow | null>(null);
-	const { run } = useDemoAction();
 	const live = useAction();
 	const active = (TABS.includes(tab as Tab) ? tab : "all") as Tab;
 	const selected = payments.find((p) => p.id === openId) ?? null;
@@ -208,7 +205,15 @@ export function PaymentsScreen({
 							{ label: "Open payment", onClick: () => setOpenId(p.id) },
 							{
 								label: "Resend receipt",
-								onClick: () => run(`Receipt resent to ${p.guestName}`),
+								onClick: () =>
+									live.run(
+										() =>
+											withDeliveries(
+												resendReceipt(p.id),
+												`Receipt for ${p.guestName}`,
+											),
+										`Receipt resent to ${p.guestName}`,
+									),
 								disabled: p.status !== "APPROVED",
 							},
 							...(p.status === "NO_RESPONSE" || p.status === "PROCESSING"
@@ -265,11 +270,7 @@ export function PaymentsScreen({
 				title="Payments"
 				subtitle={`${hotelName} · every payment taken at the desk, bar, kitchen and laundry`}
 			>
-				<ExportButton
-					onClick={() =>
-						toast.info("Export is not connected yet · nothing was downloaded")
-					}
-				/>
+				<ExportButton />
 				<Button className={btn.primary} onClick={() => setIsNew("1")}>
 					<PlusIcon className="size-[15px]" /> Record payment
 				</Button>

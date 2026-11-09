@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	ArrowLeftToLineIcon,
@@ -325,11 +324,7 @@ export function BookingsScreen({
 				title="Bookings"
 				subtitle={`${hotelName} · ${arrivals.length} arrivals and ${departures.length} departures today · ${fmtDay(today())}`}
 			>
-				<ExportButton
-					onClick={() =>
-						toast.info("Export is not connected yet · nothing was downloaded")
-					}
-				/>
+				<ExportButton />
 				<Button className={btn.primary} onClick={() => setIsNew("1")}>
 					<PlusIcon className="size-[15px]" /> New booking
 				</Button>

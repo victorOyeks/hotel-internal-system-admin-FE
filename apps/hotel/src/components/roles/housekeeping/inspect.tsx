@@ -25,7 +25,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { assignRoom, inspectTask } from "@hospio/api/actions/housekeeping";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type {
 	CleaningTaskRow,
 	RoomRow,
@@ -79,7 +79,7 @@ export function InspectScreen({
 	const [pendingWriteOffs, setPendingWriteOffs] = useState(writeOffs);
 	const { run, pending } = useAction();
 	// Write-offs have no backend yet: they stay on the demo flow and are only shown in demo mode.
-	const { run: demoRun, pending: demoPending } = useDemoAction();
+	const { run: demoRun, pending: demoPending } = useNotConnectedAction();
 
 	const current = list.find((t) => t.id === open) ?? null;
 	const toInspect = list.filter((t) => t.status === "DONE");

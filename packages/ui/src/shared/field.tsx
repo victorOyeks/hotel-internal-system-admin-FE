@@ -180,7 +180,8 @@ export function TextareaField({
 }: {
 	label: string;
 	value: string;
-	onChange: (v: string) => void;
+	/** Without it the text is read only (shown for copying, not edited). */
+	onChange?: (v: string) => void;
 	placeholder?: string;
 	hint?: ReactNode;
 	error?: string;
@@ -191,7 +192,8 @@ export function TextareaField({
 		<Field label={label} hint={hint} error={error} className={className}>
 			<textarea
 				value={value}
-				onChange={(e) => onChange(e.target.value)}
+				readOnly={!onChange}
+				onChange={(e) => onChange?.(e.target.value)}
 				placeholder={placeholder}
 				rows={rows}
 				className={cn(textareaCls, error && "border-danger")}

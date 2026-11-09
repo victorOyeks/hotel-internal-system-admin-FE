@@ -10,19 +10,23 @@ import { SectionCard } from "@hospio/ui/shared/section-card";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { toast } from "sonner";
+import { openSupportTicket } from "@hospio/api/actions/payment";
+import { useAction } from "@hospio/api/actions/use-action";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 
 type Topic = { key: string; title: string; body: string; articles: number };
 type Faq = { q: string; a: string };
 
 /** Everywhere · Help: topics, FAQ and a line to H.M.S support. */
-export function HelpScreen({ topics, faq }: { topics: Topic[]; faq: Faq[] }) {
+export function HelpScreen({ topics, faq, tickets = true }: { topics: Topic[]; faq: Faq[]; /** false where there is no business to open a ticket for (the admin app). */ tickets?: boolean }) {
 	const [search, setSearch] = useState("");
 	const [contact, setContact] = useState(false);
 	const [subject, setSubject] = useState("");
 	const [body, setBody] = useState("");
 	const [priority, setPriority] = useState<"LOW" | "NORMAL" | "HIGH" | "URGENT">("NORMAL");
-	const { run, pending } = useDemoAction();
+	const { run } = useNotConnectedAction();
+	const ticket = useAction();
 	const q = search.toLowerCase();
 	const visibleTopics = topics.filter((t) => !q || `${t.title} ${t.body}`.toLowerCase().includes(q));
 	const visibleFaq = faq.filter((f) => !q || `${f.q} ${f.a}`.toLowerCase().includes(q));
@@ -71,7 +75,7 @@ export function HelpScreen({ topics, faq }: { topics: Topic[]; faq: Faq[] }) {
 
 			<SidePanel open={contact} onOpenChange={setContact} title="Contact H.M.S support" subtitle="You get a ticket number by WhatsApp within a minute" icon={HeadsetIcon}
 				footerInfo="Support can see your screens only with your permission, and every change they make is logged"
-				footer={<><Button variant="outline" className={btn.secondary} onClick={() => setContact(false)}>Cancel</Button><Button className={btn.primary} disabled={pending || !subject.trim() || !body.trim()} onClick={() => run("Ticket #4421 sent", () => { setContact(false); setSubject(""); setBody(""); }, { description: "Support replies on WhatsApp and in Notifications." })}><SendIcon className="size-4" /> Send ticket</Button></>}>
+				footer={<><Button variant="outline" className={btn.secondary} onClick={() => setContact(false)}>Cancel</Button><Button className={btn.primary} disabled={!tickets || ticket.pending || !subject.trim() || !body.trim()} title={tickets ? undefined : "Not connected yet for this app"} onClick={() => ticket.run(() => openSupportTicket({ subject, body, priority }), "Ticket sent to H.M.S support", (r) => { toast.info(`Ticket ${r.reference} opened · H.M.S replies in Notifications`); setContact(false); setSubject(""); setBody(""); })}><SendIcon className="size-4" /> Send ticket</Button></>}>
 				<div className="flex flex-col gap-5">
 					<TextField label="What is it about?" value={subject} onChange={setSubject} placeholder="e.g. Bar POS not showing payments" />
 					<TextareaField label="Tell us what happened" value={body} onChange={setBody} rows={5} placeholder="What you did, what you expected, what you saw" />

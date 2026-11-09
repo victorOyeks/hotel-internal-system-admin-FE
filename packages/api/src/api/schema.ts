@@ -689,6 +689,7 @@ export const Approval = z.object({
 	kind: z.string(),
 	amount: z.number().nullable(),
 	requesterName: z.string().nullable(),
+	requesterId: z.string().nullable().optional(),
 	approverLevel: z.string(),
 	description: z.string().nullable(),
 	status: z.string(),
@@ -1317,6 +1318,24 @@ export const schema = createSchema({
 		input: z.array(MemberRequest),
 		output: envelope(z.array(OrganizationMember)),
 	},
+	"@put/folio/organizations/:id/status": {
+		query: z.object({ status: z.string() }),
+		output: envelope(Organization),
+	},
+	"@put/folio/organizations/:id/members/:memberId/active": {
+		query: z.object({ active: z.boolean() }),
+		output: envelope(OrganizationMember),
+	},
+	"@post/folio/organizations/:id/statement": {
+		output: envelope(
+			z.object({ to: z.string(), channel: z.string(), deliveries: Deliveries }),
+		),
+	},
+	"@post/folio/organizations/:id/reminder": {
+		output: envelope(
+			z.object({ to: z.string(), channel: z.string(), deliveries: Deliveries }),
+		),
+	},
 	"@get/folio/organizations/:id/stays": {
 		output: envelope(z.array(OrganizationStay)),
 	},
@@ -1356,6 +1375,15 @@ export const schema = createSchema({
 		input: z.object({ amount: z.number(), reason: z.string() }),
 		output: envelope(Folio),
 	},
+	"@post/folio/folios/:id/send": {
+		input: z.object({
+			channel: z.string(),
+			to: z.string().nullable().optional(),
+		}),
+		output: envelope(
+			z.object({ to: z.string(), channel: z.string(), deliveries: Deliveries }),
+		),
+	},
 	"@post/folio/folios/:id/lines/:lineId/void": {
 		input: z.object({ reason: z.string() }),
 		output: envelope(Folio),
@@ -1377,6 +1405,17 @@ export const schema = createSchema({
 		output: envelope(PaymentResponse),
 	},
 	"@post/payment/payments/:id/verify": { output: envelope(PaymentResponse) },
+	"@post/payment/payments/:id/retry": { output: envelope(PaymentResponse) },
+	"@post/payment/payments/:id/receipt/resend": {
+		output: envelope(
+			z.object({
+				receiptNumber: z.string(),
+				sentTo: z.string(),
+				sentVia: z.string(),
+				deliveries: Deliveries,
+			}),
+		),
+	},
 	"@post/payment/payments/:id/cancel": { output: envelope(PaymentResponse) },
 	"@get/payment/terminals": { output: envelope(z.array(Terminal)) },
 	"@post/payment/terminals": {

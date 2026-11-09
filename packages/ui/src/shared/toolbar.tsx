@@ -133,6 +133,7 @@ export function FilterButton({
 	);
 }
 
+/** Without `onClick` there is no export behind it yet: shown disabled with a "Not connected yet" tooltip. */
 export function ExportButton({
 	onClick,
 	label = "Export",
@@ -140,11 +141,19 @@ export function ExportButton({
 	onClick?: () => void;
 	label?: string;
 }) {
+	const connected = !!onClick;
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			className={cn(btn.secondary, "flex items-center gap-2 py-[9px]")}
+			disabled={!connected}
+			title={connected ? undefined : "Export is not connected yet"}
+			aria-label={connected ? undefined : `${label} · not connected yet`}
+			className={cn(
+				btn.secondary,
+				"flex items-center gap-2 py-[9px]",
+				!connected && "cursor-not-allowed opacity-50",
+			)}
 		>
 			<DownloadIcon className="size-4" /> {label}
 		</button>

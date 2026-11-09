@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@hospio/api/actions";
 import { api, errorMessage } from "@hospio/api/api/client";
+import type { Delivery } from "@hospio/api/api/routes-admin";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import type { PaymentMethod, PaymentStatus } from "@hospio/api/data/types";
@@ -421,4 +422,83 @@ export async function requestProviderAccount(
 		ok: true,
 		data: { reference: `TKT-${data.data.id.slice(0, 6).toUpperCase()}` },
 	};
+}
+
+/** Help · Contact support: opens a real H.M.S support ticket for the hotel's business. */
+export async function openSupportTicket(input: {
+	subject: string;
+	body: string;
+	priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+}): Promise<ActionResult<{ reference: string }>> {
+	if (!live("platform"))
+		return {
+			ok: false,
+			error: "Support tickets are not connected in demo mode",
+		};
+	const { data, error } = await api("@post/platform/support/tickets", {
+		...(await withSession()),
+		body: {
+			subject: input.subject.trim(),
+			body: input.body.trim(),
+			priority: input.priority,
+		},
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The ticket could not be opened"),
+		};
+	return {
+		ok: true,
+		data: { reference: `TKT-${data.data.id.slice(0, 6).toUpperCase()}` },
+	};
+}
+
+/**
+ * Resend receipt: payment-service sends the approved payment's receipt to the guest again (WhatsApp when
+ * the payment has a phone, otherwise email). On staging the delivery comes back for the deliveries panel.
+ */
+export async function resendReceipt(paymentId: string): Promise<
+	ActionResult<{
+		receiptNumber: string;
+		sentTo: string;
+		sentVia: string;
+		deliveries?: Delivery[] | null;
+	}>
+> {
+	if (!live("payment"))
+		return { ok: false, error: "Receipts are not connected in demo mode" };
+	const { data, error } = await api(
+		"@post/payment/payments/:id/receipt/resend",
+		{ ...(await withSession()), params: { id: paymentId } },
+	);
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The receipt could not be sent"),
+		};
+	refreshPayments();
+	return { ok: true, data: data.data };
+}
+
+/**
+ * Retry on POS: a declined (or unanswered) card payment is sent again as a new request for the same
+ * amount, guest and booking, to the POS of the desk that took it. The first one stays in the history.
+ */
+export async function retryPayment(
+	paymentId: string,
+): Promise<ActionResult<{ id: string; status: PaymentStatus }>> {
+	if (!live("payment"))
+		return { ok: false, error: "The POS is not connected in demo mode" };
+	const { data, error } = await api("@post/payment/payments/:id/retry", {
+		...(await withSession()),
+		params: { id: paymentId },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The payment could not be sent to the POS"),
+		};
+	refreshPayments();
+	return { ok: true, data: { id: data.data.id, status: data.data.status } };
 }

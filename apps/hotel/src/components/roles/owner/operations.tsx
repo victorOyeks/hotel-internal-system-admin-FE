@@ -16,7 +16,7 @@ import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-pan
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { ActivityRow, DepartmentLive, PlatformChangeRow } from "@hospio/api/data/types";
 import type { OwnerHotelFinance } from "@hospio/api/demo/fixtures/owner";
 import { DownloadModal, HotelFilter, useParam } from "./common";
@@ -28,10 +28,11 @@ export function OwnerOperations({ hotels, departments, activity, changes }: { ho
 	const [open, setOpen] = useParam("open");
 	const [hotel, setHotel] = useParam("hotel");
 	const [search, setSearch] = useState("");
+	const [dept, setDept] = useState("");
 	const [exportOpen, setExportOpen] = useState(false);
 	const [undo, setUndo] = useState<PlatformChangeRow | null>(null);
-	const { run, pending } = useDemoAction();
-	const rows = activity.map((a, i) => ({ ...a, hotelName: hotels[i % 5 === 4 ? 1 : 0].name })).filter((a) => !hotel || hotels.find((h) => h.hotelId === hotel)?.name === a.hotelName);
+	const { run, pending } = useNotConnectedAction();
+	const rows = activity.map((a, i) => ({ ...a, hotelName: hotels[i % 5 === 4 ? 1 : 0].name })).filter((a) => !hotel || hotels.find((h) => h.hotelId === hotel)?.name === a.hotelName).filter((a) => !dept || a.department === dept);
 	const selected = rows.find((a) => a.id === open) ?? null;
 	const cols: ColumnDef<(typeof rows)[number], unknown>[] = [
 		{ accessorKey: "at", header: "When", cell: ({ row }) => fmtWhen(row.original.at) },
@@ -79,7 +80,7 @@ export function OwnerOperations({ hotels, departments, activity, changes }: { ho
 
 			{tab === "activity" && (
 				<>
-					<Toolbar left={<SearchBox value={search} onChange={setSearch} placeholder="Who, what, room" />} right={<FilterSelect value="" onChange={() => undefined} all="All departments" options={[...new Set(activity.map((a) => a.department))].map((d) => ({ value: d, label: d }))} />} />
+					<Toolbar left={<SearchBox value={search} onChange={setSearch} placeholder="Who, what, room" />} right={<FilterSelect value={dept} onChange={setDept} all="All departments" options={[...new Set(activity.map((a) => a.department))].map((d) => ({ value: d, label: d }))} />} />
 					<DataTable columns={cols} data={rows} search={search} onRowClick={(a) => setOpen(a.id)} pageSize={12} />
 				</>
 			)}

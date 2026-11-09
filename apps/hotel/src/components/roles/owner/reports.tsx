@@ -13,7 +13,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { ReportRow } from "@hospio/api/data/types";
 import { DownloadModal, useParam } from "./common";
 
@@ -79,7 +79,7 @@ function ScheduleModal({ report, onClose }: { report: ReportRow | null; onClose:
 	const [time, setTime] = useState("07:00");
 	const [me, setMe] = useState(true);
 	const [managers, setManagers] = useState(false);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<Modal open={!!report} onOpenChange={(o) => !o && onClose()} title="Schedule this report" subtitle={report?.name} icon={CalendarClockIcon} size="form" footerInfo="Sent by email as PDF" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run(`${report?.name} scheduled · ${every}`, onClose)}>Save schedule</Button></>}>
 			<div className="flex flex-col gap-4">

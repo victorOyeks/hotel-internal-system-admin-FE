@@ -11,7 +11,7 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn, textarea } from "@hospio/ui/shared/ui";
 import type { ConversationRow, TemplateRow } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { cn } from "@hospio/ui/utils";
 
 const channelTone = { WHATSAPP: "success", SMS: "info", EMAIL: "grey", IN_APP: "brand" } as const;
@@ -23,7 +23,7 @@ export function MessagesScreen({ conversations: initial, templates, title = "Mes
 	const [tab, setTab] = useQueryState("tab");
 	const [search, setSearch] = useState("");
 	const [draft, setDraft] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const active = tab ?? "all";
 	const shown = convs.filter((c) => (active === "all" || (active === "unread" ? c.unread > 0 : c.kind === active.toUpperCase())) && (!search || `${c.name} ${c.subject} ${c.preview}`.toLowerCase().includes(search.toLowerCase())));
 	const conv = convs.find((c) => c.id === openId) ?? shown[0] ?? null;

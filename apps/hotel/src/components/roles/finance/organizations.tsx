@@ -26,7 +26,11 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { recordOrgPayment } from "@hospio/api/actions/organizations";
+import {
+	recordOrgPayment,
+	sendOrgMessage,
+} from "@hospio/api/actions/organizations";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { useAction } from "@hospio/api/actions/use-action";
 import { billingCycleLabel } from "@hospio/api/data/mappers/organizations";
 import type {
@@ -51,10 +55,8 @@ const pctUsed = (o: OrganizationRow) =>
 	o.creditLimit > 0 ? Math.round((o.outstanding / o.creditLimit) * 100) : 0;
 const day = (iso: string | undefined) => (iso ? fmtDay(iso.slice(0, 10)) : "—");
 
-/** folio-service has no route for this: say so instead of pretending it happened. */
-function notConnected(what: string) {
-	toast.info(`${what} is not connected yet · nothing was sent or changed`);
-}
+/** Not wired yet (no invoice email or PDF): the button is shown disabled with this tooltip. */
+const NOT_CONNECTED = "Not connected yet";
 
 /** Finance 6.1 · Organizations list. */
 export function OrganizationsList({
@@ -227,6 +229,7 @@ export function OrganizationAccount({
 	);
 	const [ref, setRef] = useState("");
 	const { run, pending } = useAction();
+	const statement = useAction();
 	const active = tab ?? "invoices";
 	const inv = invoices.find((i) => i.id === openInv) ?? null;
 	const invoiced = invoices.reduce((s, i) => s + (i.amount - i.paid), 0);
@@ -289,7 +292,17 @@ export function OrganizationAccount({
 				<button
 					type="button"
 					className={btn.secondary}
-					onClick={() => notConnected("Statements")}
+					disabled={statement.pending}
+					onClick={() =>
+						statement.run(
+							() =>
+								withDeliveries(
+									sendOrgMessage(org.id, "statement"),
+									`Statement to ${org.name}`,
+								),
+							`Statement sent to ${org.contactEmail || org.contactName || org.name}`,
+						)
+					}
 				>
 					<FileTextIcon className="mr-1 inline size-4" /> Statement
 				</button>
@@ -536,15 +549,17 @@ export function OrganizationAccount({
 						<>
 							<button
 								type="button"
-								className={btn.secondary}
-								onClick={() => notConnected("Emailing invoices")}
+								className={`${btn.secondary} cursor-not-allowed opacity-50`}
+								disabled
+								title={`Emailing invoices · ${NOT_CONNECTED}`}
 							>
 								<SendIcon className="mr-1 inline size-4" /> Send
 							</button>
 							<button
 								type="button"
-								className={btn.secondary}
-								onClick={() => notConnected("Invoice PDFs")}
+								className={`${btn.secondary} cursor-not-allowed opacity-50`}
+								disabled
+								title={`Invoice PDFs · ${NOT_CONNECTED}`}
 							>
 								<DownloadIcon className="mr-1 inline size-4" /> PDF
 							</button>

@@ -32,7 +32,7 @@ import {
 import { useAction } from "@hospio/api/actions/use-action";
 import type { HotelStatus, UserCreated } from "@hospio/api/api/schema";
 import type { OwnerHotelRow } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
@@ -1160,7 +1160,7 @@ export function ContactManagerPanel({
 	onClose: () => void;
 }) {
 	const [msg, setMsg] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<SidePanel
 			open={!!hotel}

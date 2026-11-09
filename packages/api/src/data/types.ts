@@ -685,6 +685,8 @@ export type ApprovalRow = {
 	description: string;
 	amount?: number;
 	requesterName: string;
+	/** The user who raised it: lets the requester answer a question on their own request. */
+	requesterId?: string;
 	requesterRole: string;
 	approverLevel: "MANAGER" | "OWNER";
 	status: "PENDING" | "APPROVED" | "DECLINED" | "QUESTION";

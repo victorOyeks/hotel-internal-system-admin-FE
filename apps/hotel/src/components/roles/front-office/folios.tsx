@@ -17,9 +17,9 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import type { FolioLine, FolioRow, TerminalRow } from "@hospio/api/data/types";
-import { giveDiscount, postCharge, staySummary, voidLine } from "@hospio/api/actions/folio";
+import { giveDiscount, postCharge, sendFolio, staySummary, voidLine } from "@hospio/api/actions/folio";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
 import { cn } from "@hospio/ui/utils";
 import { type PaymentTarget, TakePaymentPanel } from "./take-payment";
 
@@ -157,16 +157,16 @@ function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: 
 	const [lineId, setLineId] = useState("");
 	const [amount, setAmount] = useState<number | "">("");
 	const [reason, setReason] = useState("");
-	const demo = useDemoAction();
 	const act = useAction();
-	const pending = demo.pending || act.pending;
+	const pending = act.pending;
 	const amt = typeof amount === "number" ? amount : 0;
 	const line = folio.lines.find((l) => l.id === lineId);
 	const needsOwner = amt > 50000;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title={kind === "DISCOUNT" ? "Give a discount" : "Void a line"} subtitle={`${folio.guestName} · Folio ${folio.reference}`} icon={PercentIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || (kind === "DISCOUNT" ? amt <= 0 : !lineId) || pending} onClick={() => {
+		<Modal open={open} onOpenChange={onOpenChange} title={kind === "DISCOUNT" ? "Give a discount" : "Void a line"} subtitle={`${folio.guestName} · Folio ${folio.reference}`} icon={PercentIcon} footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!reason || (kind === "DISCOUNT" ? amt <= 0 : !lineId) || (!isManager && kind === "VOID") || pending} onClick={() => {
 					const done = () => { setReason(""); setAmount(""); onOpenChange(false); };
-					if (!isManager) { void demo.run(`Sent to the ${needsOwner ? "owner" : "manager"} to approve`, done, { tone: "info" }); return; }
+					// Front office: folio-service records the discount as waiting and sends it to the manager (owner over the limit).
+					if (!isManager) { if (kind === "DISCOUNT") void act.run(() => giveDiscount(folio.id, amt, reason, folio), `Sent to the ${needsOwner ? "owner" : "manager"} to approve`, done); return; }
 					if (kind === "VOID" && line) {
 						void act.run(() => voidLine(folio.id, line.id, reason, { ...folio, charges: folio.charges - line.amount, tax: folio.tax - line.tax, balance: folio.balance - (line.amount + line.tax), lines: folio.lines.map((l) => (l.id === line.id ? { ...l, voided: true, voidReason: reason } : l)) }), "Line voided", (updated) => { onApplied(updated); done(); });
 						return;
@@ -178,7 +178,7 @@ function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: 
 				<ChoiceCards value={kind} onChange={setKind} columns={2} options={[{ value: "DISCOUNT", label: "Discount", hint: "Take an amount off the bill" }, { value: "VOID", label: "Void a line", hint: "Posted by mistake" }]} />
 				{kind === "VOID" ? <SelectField label="Line" value={lineId} onChange={setLineId} options={folio.lines.filter((l) => l.kind === "CHARGE" && !l.voided).map((l) => ({ value: l.id, label: `${l.description} · ${naira(l.amount + l.tax)}` }))} /> : <MoneyField label="Discount amount" value={amount} onChange={setAmount} required />}
 				<SelectField label="Reason" value={reason} onChange={setReason} options={["Guest complaint", "Posted by mistake", "Loyal guest", "Owner's guest", "Service issue", "Other"]} setupLink="reasons" />
-				{!isManager && <Note tone="info">Only a manager can change a bill. Your request is sent with the reason and they're told right away.</Note>}
+				{!isManager && <Note tone="info">{kind === "VOID" ? "Voiding a line needs a manager: ask them to void it from their folio screen." : "Only a manager can change a bill. Your discount is sent with the reason to their approvals and applied when they approve it."}</Note>}
 			</div>
 		</Modal>
 	);
@@ -190,20 +190,20 @@ function SendFolioModal({ folio, open, onOpenChange }: { folio: FolioRow; open: 
 	const [to, setTo] = useState(folio.guestEmail ?? folio.guestPhone ?? "");
 	const [summary, setSummary] = useState<string | null>(null);
 	const [copied, setCopied] = useState(false);
-	const demo = useDemoAction();
+	const send = useAction();
 	const act = useAction();
 	useEffect(() => {
 		if (!open) return;
 		setCopied(false);
 		void act.run(() => staySummary(folio.id), "Stay summary ready", (text) => setSummary(text));
 	}, [open, folio.id, act.run]);
-	const pending = demo.pending || act.pending;
+	const pending = send.pending || act.pending;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title="Print or send the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="form" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Close</button>{how === "PRINT" ? <button type="button" className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</button> : <button type="button" className={btn.primary} disabled={pending} onClick={() => void demo.run(`Folio sent by ${how === "EMAIL" ? "email" : "WhatsApp"}`, () => onOpenChange(false), { tone: "info" })}>Send</button>}</>}>
+		<Modal open={open} onOpenChange={onOpenChange} title="Print or send the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="form" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Close</button>{how === "PRINT" ? <button type="button" className={btn.primary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</button> : <button type="button" className={btn.primary} disabled={pending || !to.trim()} onClick={() => void send.run(() => withDeliveries(sendFolio(folio.id, how, to), `Folio for ${folio.guestName}`), `Folio sent to ${to.trim()} by ${how === "EMAIL" ? "email" : "WhatsApp"}`, () => onOpenChange(false))}>Send</button>}</>}>
 			<div className="flex flex-col gap-4">
 				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "PRINT", label: "Print / copy" }, { value: "WHATSAPP", label: "WhatsApp" }, { value: "EMAIL", label: "Email" }]} />
 				{how !== "PRINT" && <TextField label={how === "EMAIL" ? "Email" : "WhatsApp number"} value={to} onChange={setTo} />}
-				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} onChange={() => undefined} rows={10} hint={how === "PRINT" ? "Copy it to the desk printer or a document" : "Messaging is not connected yet · sending is a demo"} />
+				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} rows={10} hint={how === "PRINT" ? "Copy it to the desk printer or a document" : "This summary is what the guest receives"} />
 			</div>
 		</Modal>
 	);

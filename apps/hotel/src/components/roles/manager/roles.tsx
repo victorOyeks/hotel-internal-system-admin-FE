@@ -17,7 +17,7 @@ import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-pan
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { PermissionModule, StaffAccessRow } from "@hospio/api/demo/fixtures/manager-admin";
 import { type HotelRole, roleDescriptions, roleIcons, roleLabels } from "@hospio/api/roles";
 
@@ -43,7 +43,7 @@ export function RolesScreen({ permissions, managerOnly, access, hotelName }: { p
 	const [newLevel, setNewLevel] = useState<Level>("EDIT");
 	const [until, setUntil] = useState("");
 	const [reason, setReason] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	const currentRole = openRole && openRole in roleLabels ? (openRole as HotelRole) : null;
 	const holders = (role: string) => access.filter((a) => a.grants.some((g) => g.role === role));

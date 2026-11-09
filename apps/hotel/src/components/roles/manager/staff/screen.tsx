@@ -1,7 +1,6 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { toast } from "sonner";
 import {
 	CalendarDaysIcon,
 	KeyRoundIcon,
@@ -407,13 +406,7 @@ export function StaffScreen({
 								placeholder="Search staff…"
 							/>
 						)}
-						<ExportButton
-							onClick={() =>
-								toast.info(
-									"Export is not connected yet · nothing was downloaded",
-								)
-							}
-						/>
+						<ExportButton />
 					</>
 				}
 			/>

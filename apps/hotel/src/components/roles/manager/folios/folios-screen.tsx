@@ -1,7 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
-
 import type { ColumnDef } from "@tanstack/react-table";
 import { ReceiptIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
@@ -211,11 +209,7 @@ export function FoliosScreen({
 				title="Folios"
 				subtitle={`${hotelName} · ${plural(open.length, "open folio")} · every charge and payment for a stay`}
 			>
-				<ExportButton
-					onClick={() =>
-						toast.info("Export is not connected yet · nothing was downloaded")
-					}
-				/>
+				<ExportButton />
 			</PageHeader>
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard

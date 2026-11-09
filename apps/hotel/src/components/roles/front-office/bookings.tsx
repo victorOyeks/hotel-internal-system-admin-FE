@@ -65,7 +65,7 @@ import {
 } from "@hospio/api/actions/reservation";
 import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { actionAllowed } from "../manager/bookings/booking-helpers";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
 import {
@@ -1403,7 +1403,7 @@ function MessageGuestModal({
 }) {
 	const [template, setTemplate] = useState("");
 	const [body, setBody] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	if (!booking) return null;
 	const templates = [
 		{
