@@ -312,18 +312,16 @@ export function OwnerDashboard({
 									}
 								/>
 								<div className="flex items-center justify-between text-xs">
-									<span className="text-ink-3">Health</span>
+									<span className="text-ink-3">Profit this month</span>
 									<StatusPill
 										dot={false}
 										tone={
-											h.health >= 80
+											h.revenueMonth - h.expensesMonth >= 0
 												? "success"
-												: h.health >= 60
-													? "warning"
-													: "danger"
+												: "danger"
 										}
 									>
-										{h.health}/100
+										{nairaShort(h.revenueMonth - h.expensesMonth)}
 									</StatusPill>
 								</div>
 							</Link>
