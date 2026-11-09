@@ -1,6 +1,7 @@
 import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
+import { fnbRoutes } from "./routes-fnb";
 import { opsRoutes } from "./routes-ops";
 import { paymentRoutes } from "./routes-payments";
 
@@ -666,6 +667,9 @@ export const MoneyToday = z.object({
 	inHouse: z.number().nullable().optional(),
 	unattachedCash: z.number().nullable().optional(),
 	pendingApprovals: z.number().nullable().optional(),
+	// restaurant-bar contract: what the outlets sold today (fnb internal sales), next to income by role
+	/** Parsed leniently by the mapper: the day's sales object, a list of outlets, or a total. */
+	outletSales: z.unknown().optional(),
 });
 
 export const Shift = z.object({
@@ -895,6 +899,7 @@ export const schema = createSchema({
 	...adminRoutes,
 	...opsRoutes,
 	...paymentRoutes,
+	...fnbRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),
@@ -1291,11 +1296,6 @@ export const schema = createSchema({
 		query: z.object({ all: z.boolean() }).partial().optional(),
 		output: envelope(z.array(Repair)),
 	},
-	"@get/inventory/items": { output: envelope(z.array(StockItem)) },
-	"@get/inventory/levels": {
-		query: z.object({ storeId: z.string() }).partial().optional(),
-		output: envelope(z.array(StockLevel)),
-	},
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
 	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
 	"@post/folio/organizations": {
@@ -1401,6 +1401,10 @@ export const schema = createSchema({
 			guestEmail: z.string().nullable().optional(),
 			description: z.string().nullable().optional(),
 			receiptPreference: z.string().nullable().optional(),
+			/** The kitchen or bar order this payment settles; the order closes when it is approved. */
+			orderId: z.string().nullable().optional(),
+			/** The desk taking the payment (one of the caller's roles). */
+			role: z.string().nullable().optional(),
 		}),
 		output: envelope(PaymentResponse),
 	},

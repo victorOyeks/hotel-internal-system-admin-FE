@@ -19,6 +19,10 @@ export type RecordPaymentInput = {
 	guestEmail?: string;
 	description?: string;
 	receipt?: "WHATSAPP" | "EMAIL" | "NONE";
+	/** The kitchen or bar order this payment settles; the order closes itself when the payment is approved. */
+	orderId?: string;
+	/** The desk taking the payment (KITCHEN, BAR, …): must be one of the caller's roles. */
+	role?: string;
 };
 
 export type RecordedPayment = {
@@ -69,6 +73,8 @@ export async function recordPayment(
 			guestEmail: input.guestEmail ?? null,
 			description: input.description ?? "Room charges",
 			receiptPreference: input.receipt ?? "WHATSAPP",
+			orderId: input.orderId ?? null,
+			role: input.role ?? null,
 		},
 	});
 	if (error || !data)
@@ -77,6 +83,11 @@ export async function recordPayment(
 			error: errorMessage(error, "The payment could not be recorded"),
 		};
 	for (const p of [
+		"/kitchen",
+		"/kitchen/payments",
+		"/bar",
+		"/bar/tabs",
+		"/bar/payments",
 		"/manager/bookings",
 		"/manager/folios",
 		"/manager/payments",

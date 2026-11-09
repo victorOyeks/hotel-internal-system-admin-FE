@@ -4,6 +4,19 @@ import { data } from "@hospio/api/data";
 export const dynamic = "force-dynamic";
 
 export default async function KitchenStorePage() {
-	const items = await data.inventory.items();
-	return <StoreScreen items={items.filter((i) => i.storeId === "st-kitchen")} title="Kitchen store" subtitle="Food and dry goods on the kitchen shelf · Mariam Bello keeps it" />;
+	const outlet = await data.outlets.forRole("KITCHEN");
+	const [items, requests] = await Promise.all([
+		data.inventory.items(),
+		data.inventory.requests(),
+	]);
+	return (
+		<StoreScreen
+			items={items.filter((i) => i.storeId === outlet?.storeId)}
+			requests={requests}
+			team="KITCHEN"
+			storeId={outlet?.storeId}
+			title="Kitchen store"
+			subtitle="Food and dry goods on the kitchen shelf"
+		/>
+	);
 }

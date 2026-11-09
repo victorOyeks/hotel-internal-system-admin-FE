@@ -23,6 +23,7 @@ import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { ProgressBar } from "@hospio/ui/shared/progress-bar";
 import { SectionCard } from "@hospio/ui/shared/section-card";
+import { OutletSalesCard } from "../manager/outlet-sales";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import type { Me } from "@hospio/api/api/schema";
@@ -32,6 +33,7 @@ import type {
 	OwnerHotelRow,
 	SeriesPointRow,
 	WorthRow,
+	OutletSalesDayRow,
 } from "@hospio/api/data/types";
 import { ApprovalPanel } from "./approval-panel";
 import {
@@ -57,6 +59,7 @@ export function OwnerDashboard({
 	dailyScope,
 	worth,
 	limit,
+	outletSales,
 }: {
 	user: Me;
 	businessName: string;
@@ -67,6 +70,8 @@ export function OwnerDashboard({
 	dailyScope: string;
 	worth: WorthRow[];
 	limit: number;
+	/** What the restaurant and bar sold today at the active hotel (null when it cannot be read). */
+	outletSales?: OutletSalesDayRow | null;
 }) {
 	const [open, setOpen] = useParam("open");
 	const [download, setDownload] = useState(false);
@@ -388,6 +393,8 @@ export function OwnerDashboard({
 					</ul>
 				</SectionCard>
 			</div>
+
+			<OutletSalesCard sales={outletSales} />
 
 			<ApprovalPanel
 				approval={selected}

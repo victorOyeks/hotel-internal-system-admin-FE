@@ -59,6 +59,7 @@ export const managerLinks: NavLink[] = [
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
 	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
+	{ title: "Menus", url: "/dashboard/menus", icon: BookOpenIcon },
 	{ title: "Reports", url: "/dashboard/reports", icon: FolderIcon },
 	{ title: "Tasks", url: "/dashboard/tasks", icon: ClipboardListIcon },
 	{
@@ -138,6 +139,7 @@ export const kitchenLinks: NavLink[] = [
 	{ title: "Menu", url: "/dashboard/menu", icon: BookOpenIcon },
 	{ title: "Kitchen store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
+	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
@@ -148,6 +150,7 @@ export const barLinks: NavLink[] = [
 	{ title: "Menu", url: "/dashboard/menu", icon: BookOpenIcon },
 	{ title: "Bar stock", url: "/dashboard/stock", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
+	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];

@@ -46,7 +46,9 @@ async function openItemsFor(key: string): Promise<{ title: string; items: OpenIt
 		}
 		case "KITCHEN":
 		case "BAR": {
-			const o = await data.outlets.orders(key === "KITCHEN" ? "Restaurant" : "Bar");
+			const outlets = await data.outlets.list();
+			const mine = outlets.filter((x) => (key === "BAR" ? x.kind === "BAR" : x.kind !== "BAR"));
+			const o = (await Promise.all(mine.map((x) => data.outlets.orders(x.id)))).flat();
 			return { title: key === "KITCHEN" ? "Orders cooking" : "Open tabs and sales", items: o.filter((x) => x.status !== "CLOSED" && x.status !== "CANCELLED").map((x) => ({ id: x.id, title: `${x.number} · ${x.tableNo ? `Table ${x.tableNo}` : x.roomNumber ? `Room ${x.roomNumber}` : x.kind.toLowerCase()}`, detail: `${x.lines.map((l) => `${l.qty}× ${l.name}`).join(", ")} · ${naira(x.total)}`, status: x.status.toLowerCase(), tone: x.status === "READY" || x.status === "SERVED" ? "success" : x.status === "SENT" ? "info" : "grey" })) };
 		}
 		case "INVENTORY": {

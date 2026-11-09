@@ -460,6 +460,8 @@ export type MoneyTodayRow = {
 	inHouse?: number;
 	unattachedCash?: number;
 	pendingApprovals?: number;
+	/** What the outlets sold today (restaurant-bar contract); absent until the service sends it. */
+	outletSales?: OutletSalesDayRow;
 };
 /** Month to date: revenue and expenses from the daily series; budget and unpaid guests only where a source exists. */
 export type MonthSummaryRow = {
@@ -758,6 +760,13 @@ export type DepartmentLive = {
 	tone: "success" | "warning" | "danger" | "grey";
 };
 
+/** One group of choices on a dish or drink (size, extras, how it is cooked). */
+export type OptionGroup = {
+	group: string;
+	choices: { name: string; priceDelta: number }[];
+	required: boolean;
+	multiple: boolean;
+};
 export type MenuItemRow = {
 	id: Id;
 	outletId: Id;
@@ -766,32 +775,62 @@ export type MenuItemRow = {
 	name: string;
 	price: number;
 	available: boolean;
+	/** The choice names, flat, for places that only list them. */
 	options?: string[];
 	description?: string;
+	/** The groups behind `options`, with price differences and required / multiple. */
+	optionGroups?: OptionGroup[];
+	/** False once the item is taken off the menu (manage menu shows it, the pickers do not). */
+	active?: boolean;
+	taxRate?: number;
+	sortOrder?: number;
+	/** Stock drawn per portion when the order is settled. */
+	recipe?: { stockItemId: Id; quantity: number }[];
+	/** A price change waiting for the manager (set by the screen after the 202 answer). */
+	pendingPrice?: number;
+};
+export type OrderLineRow = {
+	id?: Id;
+	menuItemId?: Id;
+	name: string;
+	qty: number;
+	price: number;
+	/** Happy hour discount taken off the line. */
+	discount?: number;
+	options?: string;
+	notes?: string;
+	/** NEW, SENT (cooking), READY, SERVED or CANCELLED. */
+	status: string;
 };
 export type OrderRow = {
 	id: Id;
 	number: string;
 	outlet: string;
+	outletId?: Id;
 	kind: "DINE_IN" | "ROOM_SERVICE" | "TAB" | "TAKEAWAY";
+	tableId?: Id;
 	tableNo?: string;
+	roomId?: Id;
 	roomNumber?: string;
+	bookingId?: Id;
 	guestName?: string;
 	status: "OPEN" | "SENT" | "READY" | "SERVED" | "CLOSED" | "CANCELLED";
-	lines: {
-		name: string;
-		qty: number;
-		price: number;
-		options?: string;
-		status: string;
-	}[];
+	lines: OrderLineRow[];
 	subtotal: number;
 	tax: number;
+	discount?: number;
 	total: number;
 	paid: boolean;
 	chargedToRoom: boolean;
+	paymentId?: Id;
 	openedBy: string;
 	openedAt: string;
+	sentAt?: string;
+	closedAt?: string;
+	closedByName?: string;
+	/** PAYMENT, ROOM, COMPLIMENTARY or CANCELLED once the order is settled or closed. */
+	settledBy?: string;
+	notes?: string;
 };
 
 export type CleaningTaskRow = {
@@ -1011,3 +1050,65 @@ export function pendingByBooking(
 	}
 	return out;
 }
+
+// ---- restaurant and bar ------------------------------------------------------------------------------
+
+export type OutletKind = "KITCHEN" | "BAR" | "RESTAURANT";
+export type TableRow = {
+	id: Id;
+	outletId: Id;
+	number: string;
+	seats: number;
+	active: boolean;
+};
+export type OutletRow = {
+	id: Id;
+	name: string;
+	kind: OutletKind;
+	status: "OPEN" | "CLOSED";
+	/** The inventory store the outlet draws from. */
+	storeId?: Id;
+	tables: TableRow[];
+};
+export type CategoryRow = {
+	id: Id;
+	name: string;
+	sortOrder: number;
+	active: boolean;
+};
+export type HappyHourRow = {
+	id: Id;
+	name: string;
+	from: string;
+	to: string;
+	/** MON,TUE,… as the service stores them. */
+	days: string;
+	discountPct: number;
+	active: boolean;
+};
+export type OutletSalesRow = {
+	outletId: Id;
+	name: string;
+	kind?: string;
+	orders: number;
+	sales: number;
+	paidAtOutlet: number;
+	chargedToRooms: number;
+	cancelled: number;
+	byMethod: Record<string, number>;
+	topItems: { name: string; qty: number; sales: number }[];
+};
+export type OutletSalesDayRow = {
+	date?: string;
+	outlets: OutletSalesRow[];
+	totals: Omit<OutletSalesRow, "outletId" | "name" | "kind" | "topItems">;
+};
+/** What the hotel's settings say about the outlets and tax. */
+export type OutletSettingsRow = {
+	roomCharge: boolean;
+	tabs: boolean;
+	tabLimit: number;
+	vatPct: number;
+	serviceChargePct: number;
+	pricesIncludeTax: boolean;
+};

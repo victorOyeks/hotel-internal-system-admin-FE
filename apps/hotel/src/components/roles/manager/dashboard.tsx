@@ -26,8 +26,9 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import type { Hotel, Me } from "@hospio/api/api/schema";
 import type { bookingBuckets } from "@hospio/api/data";
-import type { ApprovalRow, FolioRow, RepairRow, RoomRow, ShiftRow, StockItemRow } from "@hospio/api/data/types";
+import type { ApprovalRow, FolioRow, OutletSalesDayRow, RepairRow, RoomRow, ShiftRow, StockItemRow } from "@hospio/api/data/types";
 import { GuestsTable } from "./guests-table";
+import { OutletSalesCard } from "./outlet-sales";
 
 export type DashboardData = {
 	buckets: ReturnType<typeof bookingBuckets>;
@@ -38,6 +39,8 @@ export type DashboardData = {
 	items: StockItemRow[];
 	folios: FolioRow[];
 	shifts: ShiftRow[];
+	/** What the restaurant and bar sold today (null when it cannot be read). */
+	outletSales?: OutletSalesDayRow | null;
 };
 
 function greeting() {
@@ -57,7 +60,7 @@ const quickActions = [
 export function ManagerDashboard({ user, hotel, data }: { user: Me; hotel: Hotel | null; data: DashboardData }) {
 	const firstName = user.fullName.split(" ")[0];
 	const now = new Date();
-	const { buckets, rooms, money, approvals, repairs, items, folios, shifts } = data;
+	const { buckets, rooms, money, approvals, repairs, items, folios, shifts, outletSales } = data;
 
 	// ---- derived numbers --------------------------------------------------------------------------
 	const totalRooms = rooms.length || hotel?.roomCount || 0;
@@ -296,6 +299,8 @@ export function ManagerDashboard({ user, hotel, data }: { user: Me; hotel: Hotel
 						<TruckIcon className="size-4 text-ink-2" /> Deliveries land in Inventory → Deliveries
 					</p>
 				</SectionCard>
+
+				<OutletSalesCard sales={outletSales} className="md:col-span-3" />
 			</div>
 		</>
 	);

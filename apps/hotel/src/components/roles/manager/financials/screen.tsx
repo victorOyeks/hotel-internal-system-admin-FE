@@ -44,6 +44,7 @@ import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	ExpenseRow,
 	MoneyTodayRow,
+	OutletSalesDayRow,
 	MonthSummaryRow,
 	SeriesPointRow,
 	TillRow,
@@ -64,6 +65,7 @@ import {
 	expenseLabel,
 	expenseTone,
 } from "./panels";
+import { OutletSalesCard } from "../outlet-sales";
 
 type Tab = "overview" | "expenses" | "transactions" | "requests" | "tills";
 
@@ -73,6 +75,8 @@ export type FinancialsProps = {
 	tills: TillRow[];
 	transactions: TransactionRow[];
 	today: MoneyTodayRow;
+	/** What the restaurant and bar sold today; sales, not money received. */
+	outletSales?: OutletSalesDayRow | null;
 	month: MonthSummaryRow;
 	/** Budget, income sources and bills have no API yet: null shows "Not connected yet". */
 	budget: typeof demoBudget | null;
@@ -592,6 +596,7 @@ export function FinancialsScreen(p: FinancialsProps) {
 								</Button>
 							</div>
 						</SectionCard>
+						<OutletSalesCard sales={p.outletSales} />
 					</div>
 
 					<div className="grid gap-4 xl:grid-cols-[1fr_380px]">

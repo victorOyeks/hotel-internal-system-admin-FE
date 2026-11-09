@@ -23,6 +23,7 @@ export default async function FinancialsPage() {
 		income,
 		settings,
 		business,
+		outletSales,
 	] = await Promise.all([
 		getActiveHotel(),
 		data.finance.expenses(),
@@ -34,6 +35,7 @@ export default async function FinancialsPage() {
 		data.finance.income(),
 		data.hotels.limits(),
 		data.business.mine(),
+		data.outlets.managementSales(),
 	]);
 	// Budgets and bills have no endpoint yet: only the demo has them.
 	const demo = !live("finance");
@@ -44,6 +46,7 @@ export default async function FinancialsPage() {
 			tills={tills}
 			transactions={transactions}
 			today={today}
+			outletSales={outletSales}
 			month={month}
 			budget={demo ? demoBudget : null}
 			income={income}

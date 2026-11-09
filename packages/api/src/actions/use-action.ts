@@ -25,10 +25,13 @@ function readable(error: string) {
  *
  *   const { run, pending } = useAction();
  *   run(() => saveRoom(input), "Room added", (room) => { patch(room); close(); });
+ *
+ * `message` can be a function of the result when the answer decides what to say (a price change that is
+ * applied at once or is waiting for approval).
  */
 export function useAction() {
 	const [pending, setPending] = useState(false);
-	const run = useCallback(async <T,>(action: () => Promise<ActionResult<T>>, message: string, after?: (data: T) => void) => {
+	const run = useCallback(async <T,>(action: () => Promise<ActionResult<T>>, message: string | ((data: T) => string), after?: (data: T) => void) => {
 		setPending(true);
 		try {
 			const result = await action();
@@ -36,7 +39,7 @@ export function useAction() {
 				toast.error(readable(result.error), { duration: 8000 });
 				return;
 			}
-			toast.success(message);
+			toast.success(typeof message === "function" ? message(result.data) : message);
 			after?.(result.data);
 		} catch (e) {
 			toast.error(readable(e instanceof Error ? e.message : "Something went wrong"), { duration: 8000 });

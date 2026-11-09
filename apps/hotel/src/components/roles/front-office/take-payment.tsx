@@ -41,6 +41,10 @@ export type PaymentTarget = {
 	description?: string;
 	guestPhone?: string;
 	guestEmail?: string;
+	/** A kitchen or bar order this payment settles; the order closes itself when it is approved. */
+	orderId?: string;
+	/** The desk taking the payment (KITCHEN, BAR): sent to payment-service so the right POS and till are used. */
+	role?: string;
 };
 export type TakenPayment = {
 	id: string;
@@ -185,6 +189,8 @@ export function usePaymentSteps(
 			guestEmail: tgt?.guestEmail,
 			description,
 			receipt: "WHATSAPP",
+			orderId: tgt?.orderId,
+			role: tgt?.role,
 		})
 			.then((r) => {
 				if (cancelled) return;
@@ -266,6 +272,8 @@ export function usePaymentSteps(
 				guestEmail: tgt?.guestEmail,
 				description: contact ? `${description} · ${contact}` : description,
 				receipt,
+				orderId: tgt?.orderId,
+				role: tgt?.role,
 			}).catch(
 				(e: unknown) =>
 					({

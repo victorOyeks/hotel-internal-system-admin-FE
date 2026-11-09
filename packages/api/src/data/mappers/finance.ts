@@ -19,6 +19,8 @@ import type {
 	TransactionRow,
 } from "@hospio/api/data/types";
 
+import { toTodayOutletSales } from "./fnb";
+
 /** finance-service responses → the rows the money screens render. Amounts are naira already. */
 
 const TZ = "Africa/Lagos";
@@ -44,6 +46,7 @@ export function toMoneyToday(m: MoneyToday): MoneyTodayRow {
 		inHouse: m.inHouse ?? undefined,
 		unattachedCash: m.unattachedCash ?? undefined,
 		pendingApprovals: m.pendingApprovals ?? undefined,
+		outletSales: toTodayOutletSales(m.outletSales),
 	};
 }
 

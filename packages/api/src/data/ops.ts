@@ -14,6 +14,7 @@ import { demoDelay } from "@hospio/api/demo/mode";
 import * as hotel from "@hospio/api/demo/fixtures/hotel";
 import * as ops from "@hospio/api/demo/fixtures/ops";
 import * as owner from "@hospio/api/demo/fixtures/owner";
+import { demoSales } from "@hospio/api/demo/fixtures/fnb";
 import * as managerOps from "@hospio/api/demo/fixtures/manager-ops";
 import { live } from "./live";
 import { toApprovalRow } from "./mappers/approvals";
@@ -82,6 +83,7 @@ const demoToday: MoneyTodayRow = {
 	unattachedCash: 0,
 	pendingApprovals: ops.demoApprovals.filter((a) => a.status === "PENDING")
 		.length,
+	outletSales: demoSales,
 };
 
 export const opsData = {
@@ -217,12 +219,11 @@ export const opsData = {
 			return res.data.map(toTillRow);
 		},
 		/** The open till of the caller's paying role, or null. */
-		myTill: async (): Promise<TillRow | null> => {
+		myTill: async (role = "FRONT_OFFICE"): Promise<TillRow | null> => {
 			if (!live("finance"))
 				return give(
-					ops.demoTills.find(
-						(t) => t.role === "FRONT_OFFICE" && t.status === "OPEN",
-					) ?? null,
+					ops.demoTills.find((t) => t.role === role && t.status === "OPEN") ??
+						null,
 				);
 			const { data: res, error } = await api(
 				"@get/finance/tills/mine",
@@ -232,12 +233,10 @@ export const opsData = {
 			return res.data ? toTillRow(res.data) : null;
 		},
 		/** The caller's role's tills closed in the last 7 days. */
-		myClosedTills: async (): Promise<TillRow[]> => {
+		myClosedTills: async (role = "FRONT_OFFICE"): Promise<TillRow[]> => {
 			if (!live("finance"))
 				return give(
-					ops.demoTills.filter(
-						(t) => t.role === "FRONT_OFFICE" && t.status === "CLOSED",
-					),
+					ops.demoTills.filter((t) => t.role === role && t.status === "CLOSED"),
 				);
 			const { data: res, error } = await api(
 				"@get/finance/tills/mine/closed",
