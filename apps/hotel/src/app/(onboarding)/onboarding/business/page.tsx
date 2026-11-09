@@ -7,6 +7,7 @@ export default async function Page() {
 	const load = await loadOnboarding();
 	return (
 		<BusinessStep
+			key={load.version}
 			business={load.business}
 			draft={load.draft}
 			user={load.user}

@@ -1,4 +1,5 @@
 import { VerifyPhoneForm } from "@/components/auth/verify-phone-form";
+import { redirect } from "next/navigation";
 import { getUser } from "@hospio/api/dal";
 import { DEMO } from "@hospio/api/demo/mode";
 
@@ -15,6 +16,9 @@ export default async function VerifyPhonePage({
 	searchParams: Promise<{ sent?: string }>;
 }) {
 	const [user, params] = await Promise.all([getUser(), searchParams]);
+	if (!user) redirect("/auth");
+	// Already confirmed (e.g. the Back button after verifying): no second code, straight on.
+	if (user.verified) redirect("/onboarding");
 	return (
 		<VerifyPhoneForm
 			phone={user?.phoneNumber ?? ""}

@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckCircle2Icon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CheckCircle2Icon, InfoIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { saveMyOnboardingStep } from "@hospio/api/actions/onboarding";
 import { createRoomsBulk, createRoomType } from "@hospio/api/actions/property";
 import { useAction } from "@hospio/api/actions/use-action";
@@ -15,6 +15,7 @@ import { naira, plural } from "@hospio/ui/shared/format";
 import { btn, input as inputCls } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import { SideCard, StepCard, StepFooter, StepPage, gridHead } from "./common";
+import { useFreshOnOpen } from "./persist";
 import { stepHref } from "./steps";
 
 type Row = {
@@ -56,6 +57,27 @@ export function roomNumbers(start: string, count: number): string[] {
 	);
 }
 
+/** ["101","102","103","201"] → "101–103, 201" */
+export function ranges(numbers: string[]): string {
+	const out: string[] = [];
+	let i = 0;
+	while (i < numbers.length) {
+		let j = i;
+		const num = (s: string) =>
+			Number.parseInt(s.match(/(\d+)$/)?.[1] ?? "", 10);
+		const pre = (s: string) => s.replace(/\d+$/, "");
+		while (
+			j + 1 < numbers.length &&
+			pre(numbers[j + 1]) === pre(numbers[i]) &&
+			num(numbers[j + 1]) === num(numbers[j]) + 1
+		)
+			j++;
+		out.push(j > i ? `${numbers[i]}–${numbers[j]}` : numbers[i]);
+		i = j + 1;
+	}
+	return out.length > 6 ? `${out.slice(0, 6).join(", ")} …` : out.join(", ");
+}
+
 /** The floor a number sits on, when it reads like 101/A204: the hundreds. */
 function floorOf(number: string): string | undefined {
 	const m = number.match(/(\d+)$/);
@@ -67,14 +89,17 @@ function floorOf(number: string): string | undefined {
 /** Step 3 · Rooms & prices (Figma 3164:16373): room types → POST /property/room-types, rooms → POST /property/rooms/bulk, both with the new hotel's id. */
 export function RoomsStep({
 	draft,
+	user,
 }: {
 	draft: OwnerOnboardingData;
 	business?: Business | null;
 	user?: Me | null;
 }) {
 	const router = useRouter();
+	useFreshOnOpen();
 	const hotel = draft.hotel;
 	const saved = draft.rooms?.roomTypes ?? [];
+
 	const [rows, setRows] = useState<Row[]>(() => {
 		const existing = saved.map((t, i) =>
 			newRow(i, {
@@ -89,10 +114,40 @@ export function RoomsStep({
 		return existing.length ? existing : DEFAULTS.map((d, i) => newRow(i, d));
 	});
 	const [numberForMe, setNumberForMe] = useState(true);
+	// Rows typed but not created yet are kept in this browser, so Back / Save and finish later lose nothing.
+	const storeKey = `hospio:onboarding:${user?.id ?? "me"}:rooms`;
+	const restored = useRef(false);
+	useEffect(() => {
+		try {
+			const raw = localStorage.getItem(storeKey);
+			if (raw) {
+				const kept = JSON.parse(raw) as Row[];
+				if (kept.length)
+					setRows((rs) => [
+						...rs.filter((r) => r.roomTypeId),
+						...kept.map((r, i) => ({ ...r, key: `k${i}${r.key}` })),
+					]);
+			}
+		} catch {
+			// ignore
+		}
+		restored.current = true;
+	}, [storeKey]);
+	useEffect(() => {
+		if (!restored.current) return;
+		try {
+			const fresh = rows.filter((r) => !r.roomTypeId);
+			if (fresh.some((r) => r.count || r.price || r.name))
+				localStorage.setItem(storeKey, JSON.stringify(fresh));
+		} catch {
+			// ignore
+		}
+	}, [rows, storeKey]);
 	const [result, setResult] = useState<{
 		created: number;
 		skipped: string[];
 		types: number;
+		numbers: string[];
 	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const { run, pending } = useAction();
@@ -129,19 +184,53 @@ export function RoomsStep({
 		);
 	}
 
+	/** Every problem with the rows, or null. Numbers must not repeat inside a type or across types. */
+	function problem(): string | null {
+		if (rows.length === 0) return "Add at least one room type";
+		const names = new Set(saved.map((t) => t.name.trim().toLowerCase()));
+		const taken = new Map<string, string>();
+		for (const r of fresh) {
+			const name = r.name.trim();
+			if (name.length < 2 || name.replace(/[^\p{L}]/gu, "").length < 2)
+				return "Every room type needs a name with letters, like Regular or Deluxe";
+			if (name.length > 60)
+				return `Keep "${name.slice(0, 20)}…" under 60 characters`;
+			if (names.has(name.toLowerCase()))
+				return `There is already a room type called ${name}`;
+			names.add(name.toLowerCase());
+			const guests = Number.parseInt(r.guests, 10);
+			if (!(guests >= 1 && guests <= 20))
+				return `Guests for ${name} must be between 1 and 20`;
+			const count = Number.parseInt(r.count, 10);
+			if (!(count >= 1))
+				return `How many ${name} rooms are there? Enter 1 or more`;
+			if (count > 500) return `${name}: at most 500 rooms per type here`;
+			const price = Number.parseFloat(r.price);
+			if (!(price >= 100))
+				return `Enter a price per night for ${name} (at least ₦100)`;
+			if (price > 100_000_000) return `The price for ${name} looks too high`;
+			if (numberForMe) {
+				const start = r.start.trim();
+				if (!start) return `Enter the first room number for ${name}`;
+				if (!/^[A-Za-z]{0,3}\d{1,5}$/.test(start))
+					return `First room number for ${name} should look like 101 or A101`;
+				for (const n of roomNumbers(start, count)) {
+					const other = taken.get(n.toUpperCase());
+					if (other)
+						return other === name
+							? `${name}'s numbers repeat`
+							: `${name} and ${other} would both have room ${n}. Give ${name} a different first room number`;
+					taken.set(n.toUpperCase(), name);
+				}
+			}
+		}
+		return null;
+	}
+
 	function submit() {
 		setError(null);
-		for (const r of fresh) {
-			if (!r.name.trim()) return setError("Every room type needs a name");
-			if (!(Number.parseFloat(r.price) > 0))
-				return setError(
-					`Enter a price per night for ${r.name.trim() || "each type"}`,
-				);
-			if (!(Number.parseInt(r.count, 10) > 0))
-				return setError(`How many ${r.name.trim() || ""} rooms are there?`);
-			if (numberForMe && !r.start.trim())
-				return setError(`Enter the first room number for ${r.name.trim()}`);
-		}
+		const p = problem();
+		if (p) return setError(p);
 		if (fresh.length === 0) {
 			router.push(stepHref("manager"));
 			return;
@@ -200,6 +289,12 @@ export function RoomsStep({
 					created,
 				});
 				if (!step.ok) return step;
+				try {
+					localStorage.removeItem(storeKey);
+				} catch {
+					// ignore
+				}
+				const skippedSet = new Set(skipped);
 				return {
 					ok: true as const,
 					data: {
@@ -207,6 +302,9 @@ export function RoomsStep({
 							toCreate.length > 0 ? created - (draft.rooms?.created ?? 0) : 0,
 						skipped,
 						types: fresh.length,
+						numbers: toCreate
+							.map((t) => t.number)
+							.filter((n) => !skippedSet.has(n)),
 					},
 				};
 			},
@@ -237,9 +335,38 @@ export function RoomsStep({
 						<p>
 							A room board with{" "}
 							{total > 0 ? `all ${total} rooms` : "every room"}, ready for the
-							first booking. Numbers follow the first room you give each type:
-							A101 → A101, A102, …
+							first booking.
+							{numberForMe
+								? " Each type counts up from its first room number: 101 → 101, 102, 103 …"
+								: " You add each room's number yourself in Rooms."}
 						</p>
+						{numberForMe &&
+							rows.some(
+								(r) => !r.roomTypeId && Number.parseInt(r.count, 10) > 0,
+							) && (
+								<ul className="flex flex-col gap-1">
+									{rows
+										.filter(
+											(r) => !r.roomTypeId && Number.parseInt(r.count, 10) > 0,
+										)
+										.map((r) => {
+											const nums = roomNumbers(
+												r.start,
+												Math.min(Number.parseInt(r.count, 10), 500),
+											);
+											return (
+												<li key={r.key} className="flex justify-between gap-2">
+													<span className="truncate">
+														{r.name.trim() || "Room type"}
+													</span>
+													<span className="font-semibold text-ink">
+														{r.start.trim() ? ranges(nums) : "first number?"}
+													</span>
+												</li>
+											);
+										})}
+								</ul>
+							)}
 					</SideCard>
 				</>
 			}
@@ -276,7 +403,7 @@ export function RoomsStep({
 										value={r.name}
 										onChange={(e) => update(r.key, { name: e.target.value })}
 										disabled={locked}
-										placeholder="Regular"
+										placeholder="e.g. Regular"
 										className={cn(inputCls, "py-2")}
 									/>
 									<input
@@ -301,7 +428,7 @@ export function RoomsStep({
 										}
 										disabled={locked}
 										inputMode="numeric"
-										placeholder="46"
+										placeholder="e.g. 20"
 										className={cn(inputCls, "py-2")}
 									/>
 									<div className="relative">
@@ -322,7 +449,7 @@ export function RoomsStep({
 											}
 											disabled={locked}
 											inputMode="decimal"
-											placeholder="46,000"
+											placeholder="e.g. 45000"
 											className={cn(inputCls, "py-2 pl-7")}
 										/>
 									</div>
@@ -356,12 +483,23 @@ export function RoomsStep({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2 rounded-xl bg-success-soft/60 px-4 py-3 text-[13px] text-success">
-					<CheckCircle2Icon className="size-4" />
+				<div
+					className={cn(
+						"flex items-center gap-2 rounded-xl px-4 py-3 text-[13px]",
+						total > 0
+							? "bg-success-soft/60 text-success"
+							: "bg-subtle text-ink-2",
+					)}
+				>
+					{total > 0 ? (
+						<CheckCircle2Icon className="size-4" />
+					) : (
+						<InfoIcon className="size-4" />
+					)}
 					<span className="flex-1 font-semibold">
 						{total > 0
 							? `${plural(total, "room")} across ${plural(rows.length, "type")}`
-							: "Add at least one room type"}
+							: "Add at least one room type with how many rooms and the price"}
 					</span>
 					<span className="text-xs">
 						{rows.some((r) => r.price)
@@ -379,7 +517,8 @@ export function RoomsStep({
 				{result && (
 					<Note tone="success">
 						{plural(result.types, "room type")} and{" "}
-						{plural(result.created, "room")} created for {hotelName}.
+						{plural(result.created, "room")} created for {hotelName}
+						{result.numbers.length > 0 && `: ${ranges(result.numbers)}`}.
 						{result.skipped.length > 0 &&
 							` ${result.skipped.length} already existed and were kept: ${result.skipped.slice(0, 8).join(", ")}${result.skipped.length > 8 ? "…" : ""}.`}
 					</Note>

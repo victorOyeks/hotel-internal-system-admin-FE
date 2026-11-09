@@ -3,6 +3,7 @@
 import {
 	ArrowRightIcon,
 	CheckIcon,
+	ClockIcon,
 	CircleIcon,
 	Loader2Icon,
 	PartyPopperIcon,
@@ -18,6 +19,7 @@ import { plural } from "@hospio/ui/shared/format";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import { SideCard, StepCard, StepPage } from "./common";
+import { forgetAllSteps } from "./persist";
 import { stepHref } from "./steps";
 
 /** All set (Figma 3165:16555): what is in, what is still open, then POST /tenant/onboarding/mine/complete → the dashboard. */
@@ -25,19 +27,30 @@ export function DoneStep({
 	draft,
 	business,
 	firstName,
+	ownerId,
 }: {
 	draft: OwnerOnboardingData;
 	business: Business | null;
 	firstName: string;
+	ownerId?: string;
 }) {
 	const router = useRouter();
 	const { run, pending } = useAction();
-	const rooms = draft.rooms?.roomTypes.reduce((s, t) => s + t.count, 0) ?? 0;
+	// What the hotel really has (the board), not what was typed: retries and skipped numbers don't inflate it.
+	const hotelRow = business?.hotels?.find((h) => h.id === draft.hotel?.hotelId);
+	const typeCount = new Set(
+		(draft.rooms?.roomTypes ?? []).map((t) => t.roomTypeId || t.name),
+	).size;
+	const rooms =
+		hotelRow?.roomCount ??
+		draft.rooms?.roomTypes.reduce((s, t) => s + t.count, 0) ??
+		0;
 	const hotelName = draft.hotel?.name ?? "Your hotel";
 	const items: {
 		label: string;
 		detail: string;
 		done: boolean;
+		pending?: boolean;
 		href?: string;
 		action?: string;
 	}[] = [
@@ -56,7 +69,7 @@ export function DoneStep({
 		{
 			label: "First hotel and rooms",
 			detail: draft.hotel
-				? `${hotelName}${rooms ? ` · ${plural(rooms, "room")} · ${plural(draft.rooms?.roomTypes.length ?? 0, "type")}` : " · rooms not added yet"}`
+				? `${hotelName}${rooms ? ` · ${plural(rooms, "room")} · ${plural(typeCount, "type")}` : " · rooms not added yet"}`
 				: "No hotel yet",
 			done: !!draft.hotel && rooms > 0,
 			href: draft.hotel ? stepHref("rooms") : stepHref("hotel"),
@@ -66,9 +79,11 @@ export function DoneStep({
 				? `${draft.manager.fullName} hasn't accepted yet`
 				: "Invite a manager",
 			detail: draft.manager
-				? `Invite ready · ${draft.manager.email} · the link works for 7 days`
+				? `Invite sent to ${draft.manager.email} · waiting for them to accept · the link works for 7 days`
 				: "Skipped · invite one from Users whenever you like",
-			done: !!draft.manager,
+			// An invite is only done once it is accepted; until then it stays open.
+			done: false,
+			pending: !!draft.manager,
 			href: stepHref("manager"),
 			action: draft.manager ? "See invite" : "Invite",
 		},
@@ -163,11 +178,15 @@ export function DoneStep({
 										"flex size-6 shrink-0 items-center justify-center rounded-full",
 										it.done
 											? "bg-success-soft text-success"
-											: "border border-line text-ink-3",
+											: it.pending
+												? "bg-warning-soft text-warning"
+												: "border border-line text-ink-3",
 									)}
 								>
 									{it.done ? (
 										<CheckIcon className="size-3" />
+									) : it.pending ? (
+										<ClockIcon className="size-3" />
 									) : (
 										<CircleIcon className="size-2" />
 									)}
@@ -199,7 +218,10 @@ export function DoneStep({
 							run(
 								() => completeMyOnboarding(),
 								"Welcome to your dashboard",
-								() => router.replace("/dashboard"),
+								() => {
+									forgetAllSteps(ownerId);
+									router.replace("/dashboard");
+								},
 							)
 						}
 					>

@@ -1,7 +1,6 @@
 "use client";
 
 import { Loader2Icon, SmartphoneIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -24,7 +23,7 @@ function maskPhone(phone: string) {
 	return `${digits.slice(0, -7)} ${digits.slice(-7, -4).replace(/\d/g, "•")} ${digits.slice(-4)}`;
 }
 
-/** Check your phone (Figma 3163:16180): the code is sent on open, six boxes, resend with a cool-down, skip allowed. */
+/** Check your phone (Figma 3163:16180): the code is sent on open, six boxes, resend with a cool-down. A self-serve owner must confirm before the wizard opens. */
 export function VerifyPhoneForm({
 	phone,
 	staging,
@@ -44,6 +43,7 @@ export function VerifyPhoneForm({
 	const [sending, setSending] = useState(false);
 	const [pending, startTransition] = useTransition();
 	const sent = useRef(false);
+	const otpRef = useRef<HTMLInputElement>(null);
 
 	const send = useCallback(async () => {
 		setSending(true);
@@ -53,6 +53,8 @@ export function VerifyPhoneForm({
 			toast.error(result.error);
 			return;
 		}
+		setError(null);
+		setCode("");
 		setLeft(RESEND_SECONDS);
 	}, []);
 
@@ -78,6 +80,9 @@ export function VerifyPhoneForm({
 			const result = await verifyPhone(value);
 			if (!result.ok) {
 				setError(result.error);
+				// Clear the boxes so the next code can be typed straight away.
+				setCode("");
+				requestAnimationFrame(() => otpRef.current?.focus());
 				return;
 			}
 			toast.success("Phone confirmed");
@@ -106,6 +111,7 @@ export function VerifyPhoneForm({
 			</div>
 
 			<InputOTP
+				ref={otpRef}
 				maxLength={6}
 				value={code}
 				onChange={(v) => setCode(v.replace(/\D/g, ""))}
@@ -161,10 +167,6 @@ export function VerifyPhoneForm({
 						{sending ? "Sending…" : "Send the code again"}
 					</button>
 				)}
-				{" · "}
-				<Link href={next} className="font-semibold text-brand hover:underline">
-					Skip for now
-				</Link>
 			</p>
 		</form>
 	);

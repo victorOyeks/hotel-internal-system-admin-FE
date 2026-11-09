@@ -10,7 +10,16 @@ import type { OwnerOnboardingData } from "@hospio/api/types";
 import { FieldRow, SelectField, TextField } from "@hospio/ui/shared/field";
 import { naira } from "@hospio/ui/shared/format";
 import { SideCard, StepCard, StepFooter, StepPage } from "./common";
+import { useFreshOnOpen, useSaveLater, useStepForm } from "./persist";
 import { stepHref } from "./steps";
+import {
+	checkAddress,
+	checkCity,
+	checkEmail,
+	checkName,
+	checkPhone,
+	only,
+} from "./validate";
 
 const TIMEZONES = [
 	"Africa/Lagos",
@@ -38,7 +47,8 @@ export function BusinessStep({
 }) {
 	const router = useRouter();
 	const saved = draft.business;
-	const [form, setForm] = useState({
+	useFreshOnOpen();
+	const { form, update, forget } = useStepForm("business", user?.id, {
 		name: saved?.name ?? business?.name ?? "",
 		legalName: saved?.legalName ?? business?.legalName ?? "",
 		registrationNumber:
@@ -52,19 +62,25 @@ export function BusinessStep({
 		timezone: saved?.timezone ?? business?.timezone ?? "Africa/Lagos",
 	});
 	const set = <K extends keyof typeof form>(k: K, v: string) =>
-		setForm((f) => ({ ...f, [k]: v }));
+		update({ [k]: v } as Partial<typeof form>);
 	const { run, pending } = useAction();
 	const [errors, setErrors] = useState<
 		Partial<Record<keyof typeof form, string>>
 	>({});
 
-	function submit() {
-		const e: typeof errors = {};
-		if (form.name.trim().length < 2) e.name = "Enter the trading name";
-		if (form.email && !/^\S+@\S+\.\S+$/.test(form.email))
-			e.email = "Enter a valid email";
-		setErrors(e);
-		if (Object.keys(e).length) return;
+	const check = () =>
+		only({
+			name: checkName(form.name, "the trading name"),
+			legalName: form.legalName.trim()
+				? checkName(form.legalName, "the registered name", 160)
+				: undefined,
+			email: checkEmail(form.email),
+			phone: checkPhone(form.phone),
+			address: checkAddress(form.address),
+			city: checkCity(form.city),
+		});
+
+	async function save() {
 		const body = {
 			name: form.name.trim(),
 			legalName: form.legalName.trim() || null,
@@ -78,26 +94,34 @@ export function BusinessStep({
 			logoUrl: business?.logoUrl ?? null,
 			brandColour: business?.brandColour ?? null,
 		};
-		run(
-			async () => {
-				const r = await updateMyBusiness(body);
-				if (!r.ok) return r;
-				return saveMyOnboardingStep("business", {
-					name: body.name,
-					legalName: body.legalName ?? undefined,
-					registrationNumber: body.registrationNumber ?? undefined,
-					businessType: body.businessType ?? undefined,
-					email: body.email ?? undefined,
-					phone: body.phone ?? undefined,
-					address: body.address ?? undefined,
-					city: body.city ?? undefined,
-					timezone: body.timezone ?? undefined,
-				});
-			},
-			"Business saved",
-			() => router.push(stepHref("hotel")),
-		);
+		const r = await updateMyBusiness(body);
+		if (!r.ok) return r;
+		const step = await saveMyOnboardingStep("business", {
+			name: body.name,
+			legalName: body.legalName ?? undefined,
+			registrationNumber: body.registrationNumber ?? undefined,
+			businessType: body.businessType ?? undefined,
+			email: body.email ?? undefined,
+			phone: body.phone ?? undefined,
+			address: body.address ?? undefined,
+			city: body.city ?? undefined,
+			timezone: body.timezone ?? undefined,
+		});
+		if (step.ok) forget();
+		return step;
 	}
+
+	function submit() {
+		const e = check();
+		setErrors(e);
+		if (Object.keys(e).length) return;
+		run(save, "Business saved", () => router.push(stepHref("hotel")));
+	}
+
+	useSaveLater(async () => {
+		if (Object.keys(check()).length) return "kept";
+		return (await save()).ok ? "saved" : "failed";
+	});
 
 	const receiptName = form.name.trim() || "Your trading name";
 	const legal = [form.legalName.trim(), form.registrationNumber.trim()]
@@ -173,6 +197,8 @@ export function BusinessStep({
 							value={form.legalName}
 							onChange={(v) => set("legalName", v)}
 							placeholder="Royal Suites Ltd"
+							error={errors.legalName}
+							hint="Optional"
 						/>
 					</FieldRow>
 					<FieldRow>
@@ -181,6 +207,7 @@ export function BusinessStep({
 							value={form.registrationNumber}
 							onChange={(v) => set("registrationNumber", v)}
 							placeholder="RC 1458823"
+							hint="Optional"
 						/>
 						<SelectField
 							label="Business type"
@@ -194,6 +221,8 @@ export function BusinessStep({
 						value={form.address}
 						onChange={(v) => set("address", v)}
 						placeholder="14 Adeola Odeku Street, Victoria Island, Lagos"
+						required
+						error={errors.address}
 					/>
 					<FieldRow>
 						<TextField
@@ -201,6 +230,8 @@ export function BusinessStep({
 							value={form.city}
 							onChange={(v) => set("city", v)}
 							placeholder="Lagos"
+							required
+							error={errors.city}
 						/>
 						<SelectField
 							label="Time zone"
@@ -216,6 +247,7 @@ export function BusinessStep({
 							value={form.email}
 							onChange={(v) => set("email", v)}
 							placeholder="hello@simpashotels.com"
+							required
 							error={errors.email}
 							hint="On receipts and invoices"
 						/>
@@ -224,7 +256,9 @@ export function BusinessStep({
 							type="tel"
 							value={form.phone}
 							onChange={(v) => set("phone", v)}
-							placeholder="+234 …"
+							placeholder="+234 803 555 0192"
+							required
+							error={errors.phone}
 						/>
 					</FieldRow>
 					<StepFooter

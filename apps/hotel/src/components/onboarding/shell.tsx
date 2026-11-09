@@ -2,14 +2,16 @@
 
 import { CheckIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { PropsWithChildren } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { type PropsWithChildren, useState } from "react";
+import { toast } from "sonner";
 import {
 	OWNER_ONBOARDING_STEPS,
 	type OwnerOnboardingStep,
 } from "@hospio/api/types";
 import { HomeIcon } from "@hospio/ui/svgs/home";
 import { cn } from "@hospio/ui/utils";
+import { saveForLater } from "./persist";
 import { STEP_META, stepHref } from "./steps";
 
 /**
@@ -93,18 +95,46 @@ export function OnboardingShell({ children }: PropsWithChildren) {
 					</ol>
 				)}
 				{!bar && <span className="mx-auto" />}
-				{!handover && (
-					<Link
-						href="/dashboard"
-						className="text-[13px] font-semibold text-brand hover:underline"
-					>
-						Save and finish later
-					</Link>
-				)}
+				{!handover && <SaveLater />}
 			</header>
 			<div className="flex flex-1 flex-col items-center px-4 py-10">
 				{children}
 			</div>
 		</main>
+	);
+}
+
+/**
+ * Saves the open step when its entries are complete (or keeps them in this browser when they are not),
+ * then leaves the wizard. Signing in again opens the checklist at the first unfinished step.
+ */
+function SaveLater() {
+	const router = useRouter();
+	const [busy, setBusy] = useState(false);
+	return (
+		<button
+			type="button"
+			disabled={busy}
+			onClick={async () => {
+				setBusy(true);
+				const r = await saveForLater();
+				setBusy(false);
+				if (r === "failed") {
+					toast.error(
+						"This step couldn't be saved. Check the form and try again",
+					);
+					return;
+				}
+				toast.success(
+					r === "kept"
+						? "Progress kept. This step isn't complete yet, so its entries are kept on this device; finish it any time"
+						: "Progress saved. Sign in any time to carry on where you stopped",
+				);
+				router.push("/onboarding");
+			}}
+			className="text-[13px] font-semibold text-brand hover:underline disabled:opacity-60"
+		>
+			{busy ? "Saving…" : "Save and finish later"}
+		</button>
 	);
 }
