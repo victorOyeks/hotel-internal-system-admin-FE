@@ -47,6 +47,7 @@ import {
 	takeRoomOutOfOrder,
 	uploadWorkOrderPhoto,
 	workOrderStep,
+	loadWorkOrder,
 	workOrderWithReason,
 } from "@hospio/api/actions/maintenance";
 import { useAction } from "@hospio/api/actions/use-action";
@@ -156,6 +157,22 @@ export function WorkOrdersScreen({
 	const { run, pending } = useAction();
 
 	const current = rows.find((r) => r.id === openId) ?? null;
+	// List rows carry no updates: load the full work order when its panel opens.
+	useEffect(() => {
+		if (!openId) return;
+		let live = true;
+		void loadWorkOrder(openId).then((r) => {
+			if (live && r.ok)
+				setRows((rs) =>
+					rs.some((x) => x.id === r.data.id)
+						? rs.map((x) => (x.id === r.data.id ? r.data : x))
+						: [r.data, ...rs],
+				);
+		});
+		return () => {
+			live = false;
+		};
+	}, [openId]);
 	const open = rows.filter(isOpen);
 	const mine = open.filter((r) => r.assignedTo === me.id);
 	const overdue = open.filter((r) => r.overdue);
@@ -655,12 +672,14 @@ export function WorkOrdersScreen({
 							sub === "hold" ? "hold" : sub === "reopen" ? "reopen" : "cancel"
 						}
 						w={current}
+						me={me}
 						onClose={() => setSub(null)}
 						onDone={done$}
 					/>
 					<CompleteModal
 						open={sub === "complete"}
 						w={current}
+						me={me}
 						parts={parts}
 						onClose={() => setSub(null)}
 						onDone={done$}
@@ -1045,12 +1064,14 @@ function ReasonModal({
 	open,
 	kind,
 	w,
+	me,
 	onClose,
 	onDone,
 }: {
 	open: boolean;
 	kind: "hold" | "reopen" | "cancel";
 	w: WorkOrderRow;
+	me: Person;
 	onClose: () => void;
 	onDone: (w: WorkOrderRow) => void;
 }) {
@@ -1064,7 +1085,7 @@ function ReasonModal({
 			title: "Put on hold",
 			label: "Why is it on hold",
 			ph: "e.g. Waiting for a compressor from the supplier",
-			done: `${w.number} on hold · ${w.reportedByName} told`,
+			done: `${w.number} on hold${w.reportedBy && w.reportedBy !== me.id ? ` · ${w.reportedByName} told` : ""}`,
 			icon: PauseIcon,
 		},
 		reopen: {
@@ -1128,12 +1149,14 @@ function ReasonModal({
 function CompleteModal({
 	open,
 	w,
+	me,
 	parts,
 	onClose,
 	onDone,
 }: {
 	open: boolean;
 	w: WorkOrderRow;
+	me: Person;
 	parts: StockItemRow[];
 	onClose: () => void;
 	onDone: (w: WorkOrderRow) => void;
@@ -1202,7 +1225,7 @@ function CompleteModal({
 										vendorCost: vendorCost === "" ? null : vendorCost,
 									}),
 								(r) =>
-									`${r.number} done${w.roomOutOfOrder ? ` · room ${w.roomNumber} back in service` : ""} · ${r.reportedByName} told`,
+									`${r.number} done${w.roomOutOfOrder ? ` · room ${w.roomNumber} back in service` : ""}${r.reportedBy && r.reportedBy !== me.id ? ` · ${r.reportedByName} told` : ""}`,
 								onDone,
 							)
 						}

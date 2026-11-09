@@ -348,3 +348,20 @@ export async function runDueSchedules(): Promise<
 	revalidateOps();
 	return { ok: true, data: data.data };
 }
+
+/** One work order with its updates (the list rows carry none). */
+export async function loadWorkOrder(
+	id: string,
+): Promise<ActionResult<WorkOrderRow>> {
+	if (!live("maintenance")) return NOT_LIVE;
+	const { data, error } = await api("@get/maintenance/repairs/:id", {
+		...(await withSession()),
+		params: { id },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The work order could not be loaded"),
+		};
+	return { ok: true, data: toWorkOrderRow(data.data) };
+}
