@@ -2,6 +2,7 @@ import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
 import { fnbRoutes } from "./routes-fnb";
+import { inventoryRoutes } from "./routes-inventory";
 import { opsRoutes } from "./routes-ops";
 import { paymentRoutes } from "./routes-payments";
 
@@ -900,6 +901,7 @@ export const schema = createSchema({
 	...opsRoutes,
 	...paymentRoutes,
 	...fnbRoutes,
+	...inventoryRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),

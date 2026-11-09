@@ -1,11 +1,12 @@
-import { OwnerInventory } from "@/components/roles/owner/inventory";
-import { data } from "@hospio/api/data";
-import { ownerHotels } from "@hospio/api/demo/fixtures/owner";
+import { InventoryPage } from "@/components/roles/inventory/page";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 14 Inventory. */
-export default async function Page() {
-	const items = await data.inventory.items();
-	return <OwnerInventory items={items} hotels={ownerHotels} />;
+/** Inventory for managers and owners: every store screen as a tab (?screen=requests|orders|deliveries|counts|suppliers). */
+export default function Page({
+	searchParams,
+}: {
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+	return <InventoryPage mode="tabs" searchParams={searchParams} />;
 }

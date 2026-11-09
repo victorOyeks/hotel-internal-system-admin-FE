@@ -1,13 +1,14 @@
-import { redirect } from "next/navigation";
-import { OrdersScreen } from "@/components/roles/inventory/orders";
-import { getUser } from "@hospio/api/dal";
-import { data } from "@hospio/api/data";
+import { InventoryPage } from "@/components/roles/inventory/page";
 
 export const dynamic = "force-dynamic";
 
-export default async function InventoryOrdersPage() {
-	const user = await getUser();
-	if (!user) redirect("/auth");
-	const [orders, items, suppliers] = await Promise.all([data.inventory.purchaseOrders(), data.inventory.items(), data.inventory.suppliers()]);
-	return <OrdersScreen orders={orders} items={items} suppliers={suppliers} me={user.fullName} />;
+/** Inventory · orders (docs/inventory-stores.md). */
+export default function Page({
+	searchParams,
+}: {
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+	return (
+		<InventoryPage screen="orders" mode="role" searchParams={searchParams} />
+	);
 }
