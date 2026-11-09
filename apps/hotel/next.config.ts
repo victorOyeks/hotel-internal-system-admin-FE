@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
 	// Which product this is; the shared packages read it (roles, sign-in, hand-off to the other app).
 	env: { NEXT_PUBLIC_APP: "hotel" },
 	output: "standalone",
+	// The commit being deployed; after a deploy, navigating from an old page loads the new build.
+	deploymentId: process.env.NEXT_PUBLIC_BUILD_ID || undefined,
 	// The standalone bundle must include the hoisted workspace node_modules and the shared packages.
 	outputFileTracingRoot: path.join(__dirname, "../../"),
 	typescript: {
