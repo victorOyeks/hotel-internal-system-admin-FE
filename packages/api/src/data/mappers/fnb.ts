@@ -451,6 +451,10 @@ export function toStockItemRows(
 				storeId: l.storeId,
 				storeName: byStore.get(l.storeId)?.name ?? "Store",
 				lastMovement: l.updatedAt ?? undefined,
+				supplierId: it.supplierId ?? undefined,
+				supplierName: it.supplierName ?? undefined,
+				parLevel: num(it.parLevel),
+				onHand: it.onHand == null ? undefined : num(it.onHand),
 			},
 		];
 	});
@@ -468,6 +472,7 @@ export function toStoreRows(stores: Store[], rows: StockItemRow[]): StoreRow[] {
 				items: mine.length,
 				lowItems: mine.filter((r) => r.quantity <= r.minLevel).length,
 				keeper: "—",
+				value: s.value == null ? undefined : num(s.value),
 			};
 		});
 }
@@ -485,14 +490,20 @@ export function toStockRequestRow(r: Request, items: Item[]): StockRequestRow {
 					{
 						name: String(o.name ?? it?.name ?? "Item"),
 						quantity: num(o.quantity),
-						unit: it?.unit ?? "pcs",
+						unit: typeof o.unit === "string" ? o.unit : (it?.unit ?? "pcs"),
+						itemId: typeof o.itemId === "string" ? o.itemId : undefined,
+						issued: num(o.issued),
 					},
 				];
 			})
 		: [];
-	const status = ["REQUESTED", "ISSUED", "PART_ISSUED", "DECLINED"].includes(
-		r.status,
-	)
+	const status = [
+		"REQUESTED",
+		"ISSUED",
+		"PART_ISSUED",
+		"DECLINED",
+		"CLOSED",
+	].includes(r.status)
 		? r.status
 		: "REQUESTED";
 	return {
@@ -503,5 +514,10 @@ export function toStockRequestRow(r: Request, items: Item[]): StockRequestRow {
 		note: r.note ?? undefined,
 		status: status as StockRequestRow["status"],
 		createdAt: r.createdAt ?? new Date().toISOString(),
+		storeId: r.storeId ?? undefined,
+		storeName: r.storeName ?? undefined,
+		issuedBy: r.issuedByName ?? undefined,
+		issuedAt: r.issuedAt ?? undefined,
+		reason: r.reason ?? undefined,
 	};
 }

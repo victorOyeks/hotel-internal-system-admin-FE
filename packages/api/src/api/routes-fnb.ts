@@ -202,6 +202,10 @@ export const StoreItem = z.object({
 	name: z.string(),
 	kind: str,
 	active: bool,
+	items: num,
+	lowItems: num,
+	/** Stock value of the store (null for callers who don't see money). */
+	value: num,
 });
 
 export const StockItemFull = z.object({
@@ -213,6 +217,9 @@ export const StockItemFull = z.object({
 	unitCost: num,
 	supplierId: str,
 	active: bool,
+	parLevel: num,
+	supplierName: str,
+	onHand: num,
 });
 
 export const StockLevelItem = z.object({
@@ -234,6 +241,11 @@ export const StockRequestItem = z.object({
 	requestedBy: str,
 	requestedByName: str,
 	createdAt: str,
+	storeName: str,
+	issuedByName: str,
+	issuedAt: str,
+	/** Why the store declined or closed it short. */
+	reason: str,
 });
 
 const StockLine = z.object({
@@ -430,7 +442,10 @@ export const fnbRoutes = {
 		output: envelope(StockCountItem),
 	},
 	"@put/inventory/counts/:id": {
-		input: z.object({ lines: z.array(StockLine) }),
+		input: z.object({
+			lines: z.array(StockLine),
+			note: z.string().nullable().optional(),
+		}),
 		output: envelope(StockCountItem),
 	},
 } as const;

@@ -562,6 +562,8 @@ export type StoreRow = {
 	items: number;
 	lowItems: number;
 	keeper: string;
+	/** Stock value of the store (live; absent when the caller doesn't see money). */
+	value?: number;
 };
 export type StockItemRow = {
 	id: Id;
@@ -575,26 +577,68 @@ export type StockItemRow = {
 	storeId: Id;
 	storeName: string;
 	lastMovement?: string;
+	supplierId?: string;
+	/** Reorder up to (0 = twice the minimum). */
+	parLevel?: number;
+	/** Held across every store. */
+	onHand?: number;
 };
 export type StockRequestRow = {
 	id: Id;
 	fromTeam: string;
 	requestedBy: string;
-	lines: { name: string; quantity: number; unit: string }[];
+	lines: {
+		name: string;
+		quantity: number;
+		unit: string;
+		itemId?: string;
+		issued?: number;
+	}[];
 	note?: string;
-	status: "REQUESTED" | "ISSUED" | "PART_ISSUED" | "DECLINED";
+	status: "REQUESTED" | "ISSUED" | "PART_ISSUED" | "DECLINED" | "CLOSED";
 	createdAt: string;
+	storeId?: string;
+	storeName?: string;
+	issuedBy?: string;
+	issuedAt?: string;
+	/** Why it was declined or closed short. */
+	reason?: string;
 };
 export type PurchaseOrderRow = {
 	id: Id;
 	number: string;
 	supplierName: string;
-	lines: { name: string; quantity: number; unit: string; unitCost: number }[];
+	lines: {
+		name: string;
+		quantity: number;
+		unit: string;
+		unitCost: number;
+		itemId?: string;
+		received?: number;
+		damaged?: number;
+	}[];
 	total: number;
-	status: "DRAFT" | "PENDING_APPROVAL" | "SENT" | "RECEIVED" | "CANCELLED";
+	status:
+		| "DRAFT"
+		| "PENDING_APPROVAL"
+		| "SENT"
+		| "PARTIAL"
+		| "RECEIVED"
+		| "CLOSED"
+		| "CANCELLED";
 	expectedOn?: string;
 	createdBy: string;
 	createdAt: string;
+	supplierId?: string;
+	storeId?: string;
+	storeName?: string;
+	receivedValue?: number;
+	note?: string;
+	sentAt?: string;
+	sentTo?: string;
+	approverLevel?: string;
+	decisionNote?: string;
+	cancelReason?: string;
 };
 export type DeliveryRow = {
 	id: Id;
@@ -605,15 +649,48 @@ export type DeliveryRow = {
 	receivedBy: string;
 	receivedAt: string;
 	note?: string;
+	purchaseOrderId?: string;
+	storeName?: string;
+	invoiceNumber?: string;
+	/** "2 short · 1 damaged" */
+	summary?: string;
+	items?: {
+		itemId: string;
+		name: string;
+		unit: string;
+		quantity: number;
+		unitCost: number;
+		damaged: number;
+		ordered?: number;
+		short: number;
+		over: number;
+		note?: string;
+	}[];
 };
 export type StockCountRow = {
 	id: Id;
 	storeName: string;
-	status: "OPEN" | "COUNTED" | "APPROVED";
+	status: "OPEN" | "COUNTED" | "APPROVED" | "CANCELLED";
 	startedBy: string;
 	startedAt: string;
 	variance?: number;
-	lines?: { name: string; expected: number; counted: number }[];
+	lines?: {
+		name: string;
+		expected: number;
+		counted: number;
+		itemId?: string;
+		unit?: string;
+		unitCost?: number;
+		value?: number;
+	}[];
+	storeId?: string;
+	/** Money value of the variance (counted − system, at cost). */
+	varianceValue?: number;
+	note?: string;
+	countedBy?: string;
+	approvedBy?: string;
+	cancelReason?: string;
+	closedAt?: string;
 };
 export type SupplierRow = {
 	id: Id;
@@ -624,6 +701,112 @@ export type SupplierRow = {
 	terms: string;
 	items: number;
 	lastOrder?: string;
+	address?: string;
+	notes?: string;
+	active?: boolean;
+	itemIds?: string[];
+	openOrders?: number;
+	/** Received from them in the last 30 days. */
+	spent?: number;
+};
+
+/** GET /inventory/value: what the stock is worth, low items with a reorder suggestion, what is still to arrive. */
+export type StockValue = {
+	total: number;
+	stores: {
+		id: string;
+		name: string;
+		kind: string;
+		items: number;
+		lowItems: number;
+		value: number;
+	}[];
+	low: {
+		itemId: string;
+		name: string;
+		unit: string;
+		storeId: string;
+		storeName: string;
+		quantity: number;
+		minLevel: number;
+		suggest: number;
+		unitCost: number;
+		supplierId?: string;
+		supplierName?: string;
+	}[];
+	onOrder: number;
+};
+
+/** GET /inventory/usage: what moved, at cost, per store and per team for a date range. */
+export type StockUsage = {
+	from: string;
+	to: string;
+	stores: {
+		storeId: string;
+		name: string;
+		kind: string;
+		received: number;
+		transferredIn: number;
+		issuedOut: number;
+		used: number;
+		wasted: number;
+		counted: number;
+	}[];
+	teams: { team: string; issued: number }[];
+	totals: {
+		received: number;
+		issued: number;
+		used: number;
+		wasted: number;
+		counted: number;
+	};
+};
+
+export type StockMovementRow = {
+	id: string;
+	at: string;
+	itemName: string;
+	unit: string;
+	storeName: string;
+	kind: string;
+	quantity: number;
+	value?: number;
+	reference?: string;
+	note?: string;
+	team?: string;
+	by?: string;
+};
+
+export type StockItemDetail = {
+	id: string;
+	name: string;
+	category: string;
+	unit: string;
+	minLevel: number;
+	parLevel: number;
+	unitCost: number;
+	supplierId?: string;
+	supplierName?: string;
+	onHand: number;
+	levels: {
+		storeId: string;
+		storeName: string;
+		quantity: number;
+		value?: number;
+	}[];
+	movements: StockMovementRow[];
+};
+
+export type StockTransferRow = {
+	reference: string;
+	at: string;
+	fromStore: string;
+	toStore?: string;
+	team?: string;
+	lines: { name: string; quantity: number; unit: string }[];
+	value: number;
+	by?: string;
+	note?: string;
 };
 
 export type RepairRow = {

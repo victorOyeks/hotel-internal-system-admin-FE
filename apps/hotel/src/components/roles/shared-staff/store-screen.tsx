@@ -14,7 +14,7 @@ import {
 	SelectField,
 	TextareaField,
 } from "@hospio/ui/shared/field";
-import { naira, nairaShort, plural } from "@hospio/ui/shared/format";
+import { fmtWhen, naira, nairaShort, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
@@ -162,6 +162,7 @@ export function StoreScreen({
 					</BigButton>
 				</div>
 			)}
+			<MyRequests requests={mine} />
 			{children}
 			<Toolbar
 				left={
@@ -474,5 +475,51 @@ export function StoreScreen({
 				</div>
 			</Modal>
 		</>
+	);
+}
+
+const REQUEST_TONE: Record<
+	StockRequestRow["status"],
+	{ label: string; tone: "success" | "warning" | "danger" | "info" | "grey" }
+> = {
+	REQUESTED: { label: "Waiting", tone: "warning" },
+	ISSUED: { label: "Issued", tone: "success" },
+	PART_ISSUED: { label: "Part issued", tone: "info" },
+	DECLINED: { label: "Declined", tone: "danger" },
+	CLOSED: { label: "Closed short", tone: "grey" },
+};
+
+/** The team's latest requests to the store with what was issued, or why the store declined. */
+function MyRequests({ requests }: { requests: StockRequestRow[] }) {
+	if (requests.length === 0) return null;
+	return (
+		<details className="rounded-card border border-line bg-card px-5 py-3">
+			<summary className="cursor-pointer text-[15px] font-semibold text-ink">
+				Your requests to the store · {requests.length}
+			</summary>
+			<ul className="mt-2 divide-y divide-line text-[13px]">
+				{requests.slice(0, 10).map((r) => (
+					<li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
+						<span className="text-ink-3">{fmtWhen(r.createdAt)}</span>
+						<span className="flex-1 text-ink">
+							{r.lines
+								.map(
+									(l) =>
+										`${l.quantity} ${l.unit} ${l.name}${l.issued ? ` (${l.issued} issued)` : ""}`,
+								)
+								.join(", ")}
+						</span>
+						<StatusPill tone={REQUEST_TONE[r.status].tone}>
+							{REQUEST_TONE[r.status].label}
+						</StatusPill>
+						{r.reason && (
+							<span className="w-full text-xs text-danger">
+								Store said: {r.reason}
+							</span>
+						)}
+					</li>
+				))}
+			</ul>
+		</details>
 	);
 }

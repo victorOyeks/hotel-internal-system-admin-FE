@@ -35,6 +35,7 @@ import {
 import { toPortalUserRow, toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
 import { fnbData } from "./fnb";
+import { inventoryData } from "./inventory";
 import { opsData } from "./ops";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import {
@@ -875,14 +876,10 @@ export const data = {
 	},
 	finance: opsData.finance,
 	inventory: {
-		// Stores, stock and team requests are the live reads the kitchen and bar use. The purchasing screens
-		// (orders, deliveries, counts, suppliers) are not wired yet: empty once inventory is live, never demo rows.
+		// Stores, stock and team requests (./fnb, also what the kitchen and bar read) plus the store's own
+		// screens (./inventory): orders, deliveries, counts, suppliers, transfers, value and usage.
 		...fnbData.inventory,
-		purchaseOrders: () =>
-			live("inventory") ? give([]) : give(ops.demoPurchaseOrders),
-		deliveries: () => (live("inventory") ? give([]) : give(ops.demoDeliveries)),
-		counts: () => (live("inventory") ? give([]) : give(ops.demoStockCounts)),
-		suppliers: () => (live("inventory") ? give([]) : give(ops.demoSuppliers)),
+		...inventoryData,
 	},
 	maintenance: {
 		repairs: () => give(ops.demoRepairs),
