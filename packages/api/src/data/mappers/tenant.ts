@@ -277,6 +277,13 @@ export function toSetupTemplateRow(t: SetupTemplate): SetupTemplateRow {
 			settings = {};
 		}
 	} else settings = t.settings;
+	// tenant-service stores a template as {sections: {SECTION: {...}}, lists: {LIST: [...]}}; the screens read
+	// sections at the top level with `lists` beside them, so the seeded shape is flattened here.
+	const nested = settings.sections;
+	if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+		const { sections: _sections, ...rest } = settings;
+		settings = { ...(nested as Record<string, unknown>), ...rest };
+	}
 	return {
 		id: t.id,
 		name: t.name,
