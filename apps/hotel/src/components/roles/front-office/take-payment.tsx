@@ -185,25 +185,36 @@ export function usePaymentSteps(
 			guestEmail: tgt?.guestEmail,
 			description,
 			receipt: "WHATSAPP",
-		}).then((r) => {
-			if (cancelled) return;
-			if (!r.ok) {
-				setCardError(r.error);
+		})
+			.then((r) => {
+				if (cancelled) return;
+				if (!r.ok) {
+					setCardError(r.error);
+					setCard("no_response");
+					return;
+				}
+				setRecorded({
+					...r.data,
+					guestName,
+					folioId: folioId || tgt?.folioId,
+					bookingId: tgt?.bookingId,
+				});
+				if (r.data.status === "APPROVED") setCard("approved");
+				else if (r.data.status === "DECLINED" || r.data.status === "FAILED")
+					setCard("declined");
+				else if (r.data.status === "NO_RESPONSE") setCard("no_response");
+				else setCard("sent");
+			})
+			.catch((e: unknown) => {
+				// The call itself failed (network, a new deployment): say so instead of spinning forever.
+				if (cancelled) return;
+				setCardError(
+					e instanceof Error
+						? `The payment could not be sent: ${e.message}. Nothing was charged.`
+						: "The payment could not be sent. Nothing was charged.",
+				);
 				setCard("no_response");
-				return;
-			}
-			setRecorded({
-				...r.data,
-				guestName,
-				folioId: folioId || tgt?.folioId,
-				bookingId: tgt?.bookingId,
 			});
-			if (r.data.status === "APPROVED") setCard("approved");
-			else if (r.data.status === "DECLINED" || r.data.status === "FAILED")
-				setCard("declined");
-			else if (r.data.status === "NO_RESPONSE") setCard("no_response");
-			else setCard("sent");
-		});
 		return () => {
 			cancelled = true;
 			clearTimeout(t);
@@ -255,7 +266,16 @@ export function usePaymentSteps(
 				guestEmail: tgt?.guestEmail,
 				description: contact ? `${description} · ${contact}` : description,
 				receipt,
-			});
+			}).catch(
+				(e: unknown) =>
+					({
+						ok: false,
+						error:
+							e instanceof Error
+								? `The payment could not be recorded: ${e.message}`
+								: "The payment could not be recorded",
+					}) as const,
+			);
 			if (!r.ok) {
 				setSending(false);
 				toast.error(r.error);
