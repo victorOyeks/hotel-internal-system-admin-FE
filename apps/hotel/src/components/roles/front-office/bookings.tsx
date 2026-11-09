@@ -134,7 +134,19 @@ export function BookingsScreen({
 	const [isNew, setIsNew] = useQueryState("new");
 	const [action, setAction] = useQueryState("action");
 	const [search, setSearch] = useState("");
-	const [bookings, setBookings] = useState(all);
+	// Company stays carry only the organization id from reservation-service; name it from the accounts list.
+	const [bookings, setBookings] = useState(() =>
+		all.map((b) =>
+			b.organizationId && !b.organizationName
+				? {
+						...b,
+						organizationName: organizations.find(
+							(o) => o.id === b.organizationId,
+						)?.name,
+					}
+				: b,
+		),
+	);
 	const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 	const [payOpen, setPayOpen] = useState(false);
 	// Card payments the POS has not confirmed yet, per booking: the summary shows them instead of a paid amount.
@@ -1005,7 +1017,7 @@ function CheckInPanel({
 				) : (
 					<Note tone="success">
 						{b.paymentPlan === "ORGANIZATION"
-							? `${b.organizationName} pays on their account`
+							? `${b.organizationName ?? "the company"} pays on their account`
 							: b.paymentPlan === "PAY_AT_CHECKOUT" ||
 									b.priceKind === "COMPLIMENTARY"
 								? "Nothing to collect now"
@@ -1235,8 +1247,8 @@ function CheckOutPanel({
 				/>
 				{company && (
 					<Note tone="info">
-						{b.organizationName} is billed on their monthly statement · nothing
-						to collect from the guest.
+						{b.organizationName ?? "The company"} is billed on their monthly
+						statement · nothing to collect from the guest.
 					</Note>
 				)}
 				{held + onPos > 0 && due > 0 && (
@@ -1260,7 +1272,7 @@ function CheckOutPanel({
 					items={[
 						`Room ${b.roomNumber} goes to housekeeping as Needs cleaning`,
 						company
-							? `Charges go on ${b.organizationName}'s account`
+							? `Charges go on ${b.organizationName ?? "the company"}'s account`
 							: "The folio closes paid in full",
 						"Thank-you message goes to the guest",
 					]}

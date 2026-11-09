@@ -8,7 +8,12 @@ this script writes to the real staging database and shows up for every role.
 - Accounts (password `Hospio123!`): manager `tunde@royalsuites.ng`, front office `victor@royalsuites.ng` and
   `toyin@royalsuites.ng`, owner `godwin@royalsuites.ng`
 - Screens still on sample data: staff, financials, inventory, tasks, messaging, reports, hotel setup (except
-  rooms), the tablet roles, owner and platform admin. They open and behave, but saves do not persist.
+  rooms), organizations (the manager's company-account screens), the tablet roles, owner and platform admin.
+  They open and behave, but saves do not persist. New booking's "Company account" list is live (folio-service
+  organizations); staging has "QA Org Ltd" for testing.
+- Test data: start guest names with "QA " so it is recognisable. A new guest is matched by phone number: a
+  phone that already belongs to a guest books that guest (their name, not the one typed), so use a fresh
+  phone per test guest.
 
 ## 1 · Sign in and roles
 
@@ -37,14 +42,22 @@ ends on the booking summary.
 1. Bookings → New booking: new guest (name + phone), check-in in three days, check-out the day after,
    Deluxe, Normal price, **50% deposit**. The check-in date is not today, so there is no "Checking in now"
    switch. The buttons read "Save, take payment later" and "Save & take ₦X" (half the total).
+   Save stays disabled with a missing name or phone, a check-in date in the past, or a check-out on or before
+   the check-in (the footer says why). Front office: Special rate and Complimentary are greyed out ("Manager
+   only"); the manager books those prices (a special price needs the nightly rate; complimentary books as
+   pay at check-out with nothing due).
 2. "Save & take ₦X": the same panel moves on to "How is the guest paying?" → Cash → cash received →
    receipt → done. The panel then ends on the booking summary: Paid = the deposit, Balance = the rest,
    listed under Upcoming.
 3. Repeat with "Pay at check-out" → the only button is "Save booking" and it goes straight to the summary.
    With "Save, take payment later" on a deposit booking → the summary opens with nothing paid.
 4. Card on the POS: the step shows "sent to the POS" and you can continue to the receipt and finish; the
-   summary shows a note that the amount is with the POS (staging terminals stay Processing). Cash and
-   transfer are approved at once.
+   summary shows a note that the amount is with the POS (staging terminals stay Processing), also after a
+   reload. Cash and transfer are approved at once: a transfer is recorded when the desk confirms it landed
+   ("I've confirmed the transfer"); finance matches it to the bank line later. A role with no POS assigned
+   (e.g. the manager on staging) gets "The card wasn't sent" with the reason and "Try another way".
+5. Closing the panel on any payment step (X or Escape) keeps the booking: the panel lands on the summary with
+   nothing paid. Reloading mid-payment records nothing.
 
 ### 3b · Walk-in (check in now)
 
@@ -64,7 +77,10 @@ ends on the booking summary.
 ### 3c · Check in an existing booking
 
 1. Open a booked arrival (summary) → Check in. The check-in panel shows the room picker, the amount due
-   before the key and "ID seen and captured".
+   before the key and "ID seen and captured" (off until you tick it; Check in stays disabled without it).
+   The picker offers ready rooms of the type; rooms with a guest in them show as occupied on the Rooms board
+   and are never offered, and a room held for another arrival can't be picked. A room that isn't clean shows
+   a warning: the front office picks another room; the manager can switch on "Check in to this room anyway".
 2. "Take ₦X" (front office) runs the payment steps inside that same panel; finishing ("Back to check-in")
    returns to the check-in view with the amount marked paid ("Fully paid") and Check in enabled. Pick the
    ready room, tick the ID, Check in → the summary shows In house.
@@ -75,27 +91,50 @@ ends on the booking summary.
 ### 3d · Record payment
 
 1. From the booking summary → Record payment: the payment steps open directly on the method step for the
-   deposit, or the balance when the deposit is already paid (amount can be changed for a part payment).
-2. Transfer or cash → receipt → done; Done returns to the summary with Paid and Balance updated.
+   deposit, or the balance when the deposit is already paid (once checked in: the folio balance, extras
+   included). The amount can be changed for a part payment or an overpayment.
+2. Transfer or cash → receipt → done; Done returns to the summary with Paid and Balance updated. Paying more
+   than the stay shows the extra as "Credit". Zero is refused (the button stays disabled).
+3. Cancelled bookings have no Record payment (summary and row menu); a cancelled booking shows nothing owing
+   (what was paid shows as credit to refund).
 
 ### 3e · Folio and check-out
 
 1. Folios → the guest's folio is open with the room charge and the payment, balance ₦0.
 2. In the folio: Post a charge "Minibar", ₦4,000 → balance ₦4,000. (Manager only: Discount ₦1,000 with a
    reason → balance ₦3,000; Void the minibar line with a reason → balance back.)
-3. Bookings → In-house → Check out: the balance from the folio is shown; "Collect balance now", Cash →
-   "Collect … & check out". Status becomes Checked out; the folio closes; Rooms board shows the room as
-   "Needs cleaning".
+3. Bookings → In-house → Check out: one panel with the bill as the folio has it now (room charges, extras,
+   paid, balance). With a balance the button reads "Take ₦X": the payment steps run inside the same panel,
+   "Back to check-out" returns with "nothing left to pay", then Check out. Status becomes Checked out and the
+   panel lands on the summary; the folio closes at ₦0; the Rooms board shows the room as "Needs cleaning"
+   until housekeeping marks it clean. A company-account stay shows "Billed to <company>" and checks out
+   with nothing to take. Manager only: "Check out with balance" (logged, folio stays open) and a late
+   check-out charge, posted to the folio as its own line before the balance is taken.
 4. Payments → the cash payments appear with Approved status and the amounts above.
 
 ## 4 · Other booking actions
 
-- Change dates on an upcoming booking → nights and total recalculate and persist.
-- Cancel an upcoming booking (manager) with a reason → status Cancelled; the room type is free again.
+- Change dates on an upcoming booking → nights and total recalculate and persist; the summary shows the new
+  total and balance. Zero nights or a check-in in the past keeps "Save new dates" disabled; for a guest in
+  house only the check-out date can change.
+- Cancel an upcoming booking (manager) with a reason → status Cancelled; the room type is free again. The
+  front office has no cancel button.
+- A link that names an action that no longer applies (e.g. `?action=check-in` on a guest already in house,
+  or on a cancelled booking) opens the booking summary instead.
+- No-shows: the manager's "Guest arrived" / "Mark as arrived" are gone (they never reached the server); a
+  no-show is rebooked as a new booking.
+- Refunds: one payment's refunds together can't exceed it ("Only ₦X of this payment is left to refund").
 - Record payment on an in-house booking by Transfer → Approved; by Card → "sent to the POS" and stays
   Processing until the POS confirms (staging has logging-only terminals).
 - As front office, "Check in without payment" is shown but disabled (manager only); the manager has it on
-  their own Bookings screen.
+  their own Bookings screen (the balance stays on the folio).
+- After closing any panel the page stays clickable.
+
+## Money agrees everywhere
+
+After any payment the booking summary (Paid/Balance), the folio (after check-in), Payments, the front office
+till (cash only, when a till is open: Till screen) and Today's money (`/finance/today`, manager) agree. Cash
+taken with no open till still counts in Today's money and is flagged as unattached cash.
 - Payments → request a refund on a payment → it appears for the manager under Payments → Refunds.
 
 ## What to report

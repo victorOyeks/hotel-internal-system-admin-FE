@@ -109,7 +109,19 @@ export function BookingsScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [action, setAction] = useQueryState("action");
 	const [isNew, setIsNew] = useQueryState("new");
-	const [bookings, setBookings] = useState(initial);
+	// Company stays carry only the organization id from reservation-service; name it from the accounts list.
+	const [bookings, setBookings] = useState(() =>
+		initial.map((b) =>
+			b.organizationId && !b.organizationName
+				? {
+						...b,
+						organizationName: organizations.find(
+							(o) => o.id === b.organizationId,
+						)?.name,
+					}
+				: b,
+		),
+	);
 	const [search, setSearch] = useState("");
 	const { run } = useDemoAction();
 	// Card payments the POS has not confirmed yet, per booking.
