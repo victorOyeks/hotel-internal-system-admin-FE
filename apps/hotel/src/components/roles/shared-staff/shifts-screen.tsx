@@ -441,9 +441,7 @@ export function ShiftsScreen({
 									))}
 							</div>
 						</PanelSection>
-						<Note tone="info">
-							Swaps need the other person to accept and your manager to approve.
-						</Note>
+						<Note tone="info">Swaps need your manager's approval.</Note>
 					</div>
 				)}
 			</SidePanel>
@@ -521,9 +519,9 @@ export function ShiftsScreen({
 					/>
 					<WhatHappens
 						items={[
-							"They accept or decline on their tablet",
-							"Your manager approves the swap",
-							"Both rotas update",
+							"Your manager approves or declines it",
+							"Once approved the shift moves to them on the rota",
+							"You get an alert in Notifications when it's decided",
 						]}
 					/>
 				</div>
@@ -608,8 +606,8 @@ export function ShiftsScreen({
 					<WhatHappens
 						items={[
 							"Your manager approves, declines or suggests other dates",
-							"You get an alert when it's decided",
-							"Approved leave shows on the rota so cover can be found",
+							"You get an alert in Notifications when it's decided",
+							"Approved leave cancels your shifts on those days",
 						]}
 					/>
 				</div>
@@ -649,9 +647,8 @@ export function ShiftsScreen({
 			>
 				<WhatHappens
 					items={[
-						"Anything still assigned to you is handed to the next shift",
-						"Your hours go to the attendance report",
-						"Clocking out early is flagged to your manager",
+						"Your time on shift is saved for attendance",
+						"You can clock in again later if you come back",
 					]}
 				/>
 			</Modal>

@@ -206,7 +206,7 @@ export function LeaveTable({
 											decideLeave(
 												change.id,
 												"CHANGE_REQUESTED",
-												`Suggested ${from} to ${to}${reason.trim() ? `: ${reason.trim()}` : ""}`,
+												`Suggested ${fmtDay(from)} to ${fmtDay(to)}${reason.trim() ? `: ${reason.trim()}` : ""}`,
 												change,
 											),
 											`Leave for ${change.staffName}`,
