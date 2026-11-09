@@ -24,7 +24,7 @@ export default async function BookingsPage() {
 		data.rooms.types(),
 		data.guests.list(),
 		data.folios.list(),
-		data.organizations.list(),
+		data.organizations.forBooking(),
 		data.payments.terminals(),
 		data.payments.list(),
 	]);
