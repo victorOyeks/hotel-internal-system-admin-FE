@@ -52,7 +52,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import type { ShiftRow, StaffRow } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { toast } from "sonner";
 import { cn } from "@hospio/ui/utils";
 
 export const ROLE_OPTIONS = [
@@ -399,10 +399,9 @@ export function StaffFormPanel({
 	inviterName?: string;
 }) {
 	const router = useRouter();
-	const demo = useDemoAction();
 	const { run, pending: saving } = useAction();
 	const [created, setCreated] = useState<UserCreated | null>(null);
-	const pending = demo.pending || saving;
+	const pending = saving;
 	const [form, setForm] = useState({
 		fullName: staff?.fullName ?? "",
 		phone: staff?.phone ?? "",
@@ -492,7 +491,14 @@ export function StaffFormPanel({
 								(!editing && (!emailOk || !hotelId))
 							}
 							onClick={
-								editing ? () => demo.run("Staff details saved", onClose) : add
+								editing
+									? () => {
+											toast.info(
+												"Editing a person's details is not connected yet · nothing was changed",
+											);
+											onClose();
+										}
+									: add
 							}
 						>
 							{editing ? "Save changes" : "Add staff"}
@@ -981,7 +987,7 @@ export function MessageModal({
 	staff: StaffRow | null;
 	onClose: () => void;
 }) {
-	const { run, pending } = useDemoAction();
+	const pending = false;
 	const [body, setBody] = useState("");
 	return (
 		<Modal
@@ -989,7 +995,7 @@ export function MessageModal({
 			onOpenChange={(o) => !o && onClose()}
 			icon={MessageSquareIcon}
 			title={`Message ${staff?.fullName.split(" ")[0] ?? ""}`}
-			subtitle="Goes to the app and WhatsApp"
+			subtitle="Not connected yet · nothing is sent"
 			footer={
 				<>
 					<Button variant="outline" className={btn.secondary} onClick={onClose}>
@@ -998,7 +1004,12 @@ export function MessageModal({
 					<Button
 						className={btn.primary}
 						disabled={!body || pending}
-						onClick={() => run("Message sent", onClose)}
+						onClick={() => {
+							toast.info(
+								"Messaging staff is not connected yet · nothing was sent",
+							);
+							onClose();
+						}}
 					>
 						Send
 					</Button>

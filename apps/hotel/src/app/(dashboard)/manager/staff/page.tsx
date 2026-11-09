@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** Manager · Staff: list, rota, leave and shift requests. */
 export default async function StaffPage() {
-	const [hotel, staff, shifts, leave, requests, business, user] =
+	const [hotel, staff, shifts, leave, requests, business, user, clockedIn] =
 		await Promise.all([
 			getActiveHotel(),
 			data.staff.list(),
@@ -15,6 +15,7 @@ export default async function StaffPage() {
 			data.staff.shiftRequests(),
 			data.business.mine(),
 			getUser(),
+			data.staff.clockedIn(),
 		]);
 	return (
 		<StaffScreen
@@ -26,6 +27,7 @@ export default async function StaffPage() {
 			hotelId={hotel?.id}
 			businessName={business?.name}
 			inviterName={user?.fullName}
+			clockedIn={[...clockedIn.keys()]}
 		/>
 	);
 }

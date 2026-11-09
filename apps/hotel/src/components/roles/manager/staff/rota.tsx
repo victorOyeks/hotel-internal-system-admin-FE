@@ -190,8 +190,9 @@ export function RotaGrid({
 				{people.length === 0
 					? "Nobody is on the rota yet: open a person in All staff → Change shift to add their first shift. "
 					: ""}
-				Tap a shift to swap or cancel it, or a gap to find cover. Shift times
-				come from Hotel setup → Staff & shifts.
+				Tap a shift to swap or cancel it, or a gap to find cover. Shifts are
+				Morning 6am–2pm, Afternoon 2pm–10pm and Night 10pm–6am (ends the next
+				morning); late after the minutes set in Hotel setup → Staff & shifts.
 			</p>
 		</div>
 	);

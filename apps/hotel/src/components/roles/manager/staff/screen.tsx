@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { toast } from "sonner";
 import {
 	CalendarDaysIcon,
 	KeyRoundIcon,
@@ -24,14 +25,12 @@ import { AvatarName } from "@hospio/ui/shared/detail-list";
 import {
 	fmtWhen,
 	humanize,
-	nairaShort,
 	plural,
 } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { RowActions } from "@hospio/ui/shared/row-actions";
-import { StatusPill } from "@hospio/ui/shared/status-pill";
 import {
 	ExportButton,
 	FilterSelect,
@@ -76,7 +75,9 @@ export function StaffScreen({
 	hotelId,
 	businessName,
 	inviterName,
+	clockedIn = [],
 }: {
+	clockedIn?: string[];
 	staff: StaffRow[];
 	shifts: ShiftRow[];
 	leave: LeaveRow[];
@@ -104,14 +105,31 @@ export function StaffScreen({
 	const today = new Intl.DateTimeFormat("en-CA", {
 		timeZone: "Africa/Lagos",
 	}).format(new Date());
-	const onShift = shifts.filter(
+	// Who is clocked in right now (from the clock, so someone in without a rota shift still counts).
+	const clocked = new Set(clockedIn);
+	const onShift = clocked.size;
+	const todays = shifts.filter(
+		(s) => s.date === today && s.status !== "CANCELLED",
+	);
+	const scheduled = todays.length;
+	const notIn = todays.filter(
 		(s) =>
-			s.date === today &&
-			(s.clockedIn !== undefined
-				? s.clockedIn
-				: s.status !== "ABSENT" && s.status !== "CANCELLED"),
+			!clocked.has(s.staffId) && s.status !== "PRESENT" && s.status !== "LATE",
 	).length;
-	const scheduled = shifts.filter((s) => s.date === today).length;
+	// Attendance this week: shifts that were worked (present or late) out of those whose outcome is known.
+	const weekStart = (() => {
+		const d = new Date(`${today}T12:00:00Z`);
+		d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+		return d.toISOString().slice(0, 10);
+	})();
+	const decided = shifts.filter(
+		(s) =>
+			s.date >= weekStart &&
+			s.date <= today &&
+			(s.status === "PRESENT" || s.status === "LATE" || s.status === "ABSENT"),
+	);
+	const worked = decided.filter((s) => s.status !== "ABSENT").length;
+	const late = decided.filter((s) => s.status === "LATE").length;
 	const pendingCount =
 		leave.filter(
 			(l) => l.status === "PENDING" || l.status === "CHANGE_REQUESTED",
@@ -327,24 +345,27 @@ export function StaffScreen({
 					label="On shift now"
 					value={onShift}
 					icon={UserCheckIcon}
-					hint={`of ${scheduled} scheduled · ${scheduled - onShift} not in`}
+					hint={`clocked in · ${scheduled} on today's rota · ${notIn} not in`}
 				/>
 				<KpiCard
 					label="Attendance this week"
-					value="95.8%"
-					icon={PercentIcon}
-					pill={
-						<StatusPill tone="success" dot={false}>
-							↑ 0.6 pts
-						</StatusPill>
+					value={
+						decided.length
+							? `${Math.round((worked / decided.length) * 100)}%`
+							: "—"
 					}
-					hint="vs last week"
+					icon={PercentIcon}
+					hint={
+						decided.length
+							? `${worked} of ${plural(decided.length, "shift")} worked · ${late} late`
+							: "No shifts worked yet this week"
+					}
 				/>
 				<KpiCard
 					label="Payroll · this month"
-					value={nairaShort(2_200_000)}
+					value="—"
 					icon={WalletIcon}
-					hint="Paid on the 28th · 17% of revenue"
+					hint="Not connected yet"
 				/>
 			</div>
 
@@ -390,7 +411,13 @@ export function StaffScreen({
 								placeholder="Search staff…"
 							/>
 						)}
-						<ExportButton onClick={() => {}} />
+						<ExportButton
+							onClick={() =>
+								toast.info(
+									"Export is not connected yet · nothing was downloaded",
+								)
+							}
+						/>
 					</>
 				}
 			/>
