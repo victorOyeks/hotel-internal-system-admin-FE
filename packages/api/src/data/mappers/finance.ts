@@ -212,6 +212,10 @@ export function toNightAuditRow(
 	a: NightAuditDay,
 	fallbackDate: string,
 ): NightAuditRow {
+	const report = parseReport(a.report);
+	// The report carries who closed the day by name; the audit row itself only has their user id.
+	const closedByName =
+		typeof report?.closedBy === "string" ? report.closedBy : undefined;
 	return {
 		id: a.id ?? `na-${a.businessDate ?? fallbackDate}`,
 		date: a.businessDate ?? fallbackDate,
@@ -225,10 +229,10 @@ export function toNightAuditRow(
 		noShows: a.noShows ?? 0,
 		inHouse: a.inHouse ?? undefined,
 		rooms: a.rooms ?? undefined,
-		closedBy: a.closedBy ?? undefined,
+		closedBy: closedByName ?? a.closedBy ?? undefined,
 		closedAt: a.closedAt ?? undefined,
 		note: a.note ?? undefined,
 		checklist: checklistOf(a),
-		report: parseReport(a.report),
+		report,
 	};
 }

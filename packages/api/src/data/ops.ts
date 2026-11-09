@@ -269,10 +269,10 @@ export const opsData = {
 			return res.data.map(toTransactionRow);
 		},
 		/** Tonight's audit (computed checklist) first, then closed audits, newest first. */
-		nightAudits: async (): Promise<NightAuditRow[]> => {
+		nightAudits: async (day?: string): Promise<NightAuditRow[]> => {
 			if (!live("finance")) return give(ops.demoNightAudits);
 			const s = await withSession();
-			const date = lagosDate();
+			const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : lagosDate();
 			const [now, past] = await Promise.all([
 				api("@get/finance/night-audit", { ...s, query: { date } }),
 				api("@get/finance/night-audit/past", s),
