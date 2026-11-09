@@ -2,26 +2,41 @@ import { notFound } from "next/navigation";
 import { BusinessPage } from "@/components/roles/admin/business-page";
 import { getActiveRole } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
-import { demoBusinessUsers, demoOtherHotels } from "@hospio/api/demo/fixtures/platform-extra";
+import { adminData } from "@hospio/api/data/admin";
 import { adminRole } from "../../role";
 
 export const dynamic = "force-dynamic";
 
-export default async function BusinessDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BusinessDetailPage({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}) {
 	const { id } = await params;
-	const [role, business] = await Promise.all([getActiveRole(), data.platform.business(id)]);
+	const [role, business] = await Promise.all([
+		getActiveRole(),
+		data.platform.business(id),
+	]);
+	// Null means tenant-service answered 404; any other failure threw and error.tsx offers a retry.
 	if (!business) notFound();
-	const [summaries, fees, tickets, changes] = await Promise.all([data.hotels.summaries(), data.platform.feeStatements(), data.platform.tickets(), data.platform.changes()]);
-	const hotels = business.id === "biz-1" ? summaries : (demoOtherHotels[business.id] ?? []);
+	const [hotels, users, admins, fees, tickets, changes] = await Promise.all([
+		data.platform.businessHotels(business.id),
+		data.platform.businessUsers(business.id),
+		adminData.team.list(),
+		adminData.fees.statements({ businessId: business.id, size: 24 }),
+		adminData.support.tickets({ businessId: business.id, size: 50 }),
+		adminData.changes.list({ businessId: business.id, size: 50 }),
+	]);
 	return (
 		<BusinessPage
 			role={adminRole(role)}
 			business={business}
 			hotels={hotels}
-			users={demoBusinessUsers.filter((u) => u.businessId === business.id)}
-			fees={fees.filter((f) => f.businessName === business.name)}
-			tickets={tickets.filter((t) => t.businessName === business.name)}
-			changes={changes.filter((c) => c.businessName === business.name)}
+			users={users}
+			admins={admins}
+			fees={fees.content}
+			tickets={tickets.content}
+			changes={changes.content}
 		/>
 	);
 }

@@ -38,18 +38,23 @@ export function decodeSession(token: string): Session | null {
 				levels[role] = (level as "FULL" | "EDIT" | "VIEW") ?? "FULL";
 			}
 		}
-		return { ...claims, hotels: claims.hotels ?? [], token, roleSet, levels };
+		return { ...claims, hotels: claims.hotels ?? [], token, roleSet, levels, actedBy: claims.act || undefined };
 	} catch {
 		return null;
 	}
 }
 
-export async function createSession(accessToken: string, refreshToken: string, refreshDays = 30) {
+/**
+ * Store the session cookies. A support-access token comes without a refresh token: the session then
+ * ends with the token, and any refresh cookie left from an earlier sign-in is cleared.
+ */
+export async function createSession(accessToken: string, refreshToken?: string | null, refreshDays = 30) {
 	const session = decodeSession(accessToken);
 	if (!session) throw new Error("The server returned a token we couldn't read");
 	const jar = await cookies();
 	jar.set(COOKIES.token, accessToken, cookieOptions(new Date(session.exp * 1000)));
-	jar.set(COOKIES.refresh, refreshToken, cookieOptions(new Date(Date.now() + refreshDays * 86_400_000)));
+	if (refreshToken) jar.set(COOKIES.refresh, refreshToken, cookieOptions(new Date(Date.now() + refreshDays * 86_400_000)));
+	else jar.set(COOKIES.refresh, "", cookieOptions(new Date(0)));
 	return session;
 }
 

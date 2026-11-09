@@ -1,4 +1,4 @@
-import type { Hotel, Me } from "@hospio/api/api/schema";
+import type { Business, Hotel, Me } from "@hospio/api/api/schema";
 import type { HotelSummary, LeaveRow, RoomRow, RoomState, RoomTypeRow, ShiftRequestRow, ShiftRow, StaffRow } from "@hospio/api/data/types";
 import { addDays, formatISO } from "date-fns";
 
@@ -20,6 +20,40 @@ export const demoHotels: Hotel[] = [
 	{ id: "a0000000-0000-4000-8000-000000000003", businessId: BUSINESS_ID, name: "Simpas Abuja", city: "Abuja", address: "Plot 9, Ademola Adetokunbo Cres, Wuse 2", phone: "+234 801 000 0003", email: "abuja@simpashotels.com", timezone: "Africa/Lagos", status: "ACTIVE", roomCount: 64 },
 	{ id: "a0000000-0000-4000-8000-000000000004", businessId: BUSINESS_ID, name: "Simpas Port Harcourt", city: "Port Harcourt", address: "22 Aba Road, GRA Phase 2", phone: "+234 801 000 0004", email: "ph@simpashotels.com", timezone: "Africa/Lagos", status: "ACTIVE", roomCount: 48 },
 ];
+
+/** The demo owner's business as GET /tenant/businesses/mine would answer: live, onboarding done. */
+export const demoBusiness: Business = {
+	id: BUSINESS_ID,
+	name: BUSINESS_NAME,
+	legalName: "Royal Suites Limited",
+	registrationNumber: "RC 1203944",
+	businessType: "Limited company",
+	ownerUserId: "demo-user",
+	ownerName: "Godwin Kwin",
+	ownerEmail: "godwin@royalsuites.ng",
+	ownerPhone: "+234 801 000 0001",
+	stage: "LIVE",
+	source: "BACK_OFFICE",
+	accountManagerId: "au-2",
+	marketerId: "mk-1",
+	feeModel: "PER_ROOM_NIGHT",
+	feeValue: 1500,
+	currency: "NGN",
+	country: "NG",
+	timezone: "Africa/Lagos",
+	city: "Lagos",
+	address: "7 Oba Akinjobi Way, Ikeja GRA, Lagos",
+	email: "godwin@royalsuites.ng",
+	phone: "+234 801 000 0001",
+	logoUrl: null,
+	brandColour: "#4c091e",
+	contractStartsOn: "2024-01-10",
+	contractNotes: null,
+	hotelCount: 4,
+	createdAt: "2024-01-10T09:00:00Z",
+	hotels: demoHotels,
+	onboarding: { status: "DONE", step: 10, completedSteps: ["business", "owner", "fee", "hotels", "rooms", "template", "people", "connections", "golive", "handover"] },
+};
 
 export const demoHotelSummaries: HotelSummary[] = [
 	{ id: demoHotels[0].id, name: "Simpas Ikeja", city: "Lagos", address: demoHotels[0].address ?? "", rooms: 120, timezone: "Africa/Lagos", occupancy: 84, manager: "Tunde Bakare" },

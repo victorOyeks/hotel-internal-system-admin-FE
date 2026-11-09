@@ -5,8 +5,14 @@ import { rolePaths } from "./roles";
 import { COOKIES, decodeSession } from "./session";
 
 const PREFIX = "/dashboard";
-const PUBLIC = ["/auth", "/forgot-password", "/reset-password"];
-const ROLE_FREE = ["/select-role"];
+const PUBLIC = ["/auth", "/auth/support", "/forgot-password", "/reset-password", "/sign-up", "/accept-invite"];
+/**
+ * Public screens a signed-in user may still open: the invite flow signs a different user in, and the
+ * support link (/auth/support?token=) replaces whatever session the browser holds with the owner view.
+ */
+const PUBLIC_WHEN_SIGNED_IN = ["/auth/support", "/reset-password", "/sign-up", "/accept-invite"];
+/** Need a session but no role cookie: the role picker, phone check, the owner's wizard and handover. */
+const ROLE_FREE = ["/select-role", "/verify-phone", "/onboarding", "/handover"];
 /** Screens every role shares (Figma "Everywhere" / Staff · Shared): served from /shared/* for any role. */
 const SHARED = ["/notifications", "/profile", "/help", "/shifts"];
 
@@ -25,7 +31,7 @@ export async function appMiddleware(request: NextRequest) {
 	const session = token ? decodeSession(token) : null;
 
 	if (startsWithAny(pathname, PUBLIC)) {
-		return session && pathname !== "/reset-password"
+		return session && !startsWithAny(pathname, PUBLIC_WHEN_SIGNED_IN)
 			? NextResponse.redirect(new URL("/dashboard", request.url))
 			: NextResponse.next();
 	}

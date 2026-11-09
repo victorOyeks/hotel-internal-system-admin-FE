@@ -28,6 +28,7 @@ import {
 	SettingsIcon,
 	ShieldCheckIcon,
 	ShirtIcon,
+	SlidersHorizontalIcon,
 	SprayCanIcon,
 	TruckIcon,
 	UserCircleIcon,
@@ -50,13 +51,21 @@ export const managerLinks: NavLink[] = [
 	{ title: "Staff", url: "/dashboard/staff", icon: IdCardIcon },
 	{ title: "Financials", url: "/dashboard/financials", icon: BarChart3Icon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
-	{ title: "Organizations", url: "/dashboard/organizations", icon: HandshakeIcon },
+	{
+		title: "Organizations",
+		url: "/dashboard/organizations",
+		icon: HandshakeIcon,
+	},
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
 	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
 	{ title: "Reports", url: "/dashboard/reports", icon: FolderIcon },
 	{ title: "Tasks", url: "/dashboard/tasks", icon: ClipboardListIcon },
-	{ title: "Roles & Permissions", url: "/dashboard/roles", icon: ShieldCheckIcon },
+	{
+		title: "Roles & Permissions",
+		url: "/dashboard/roles",
+		icon: ShieldCheckIcon,
+	},
 	{ title: "Activity log", url: "/dashboard/activity", icon: BookOpenIcon },
 	{ title: "Hotel setup", url: "/dashboard/hotel-setup", icon: SettingsIcon },
 ];
@@ -70,10 +79,19 @@ export const ownerLinks: NavLink[] = [
 	{ title: "Payments", url: "/dashboard/payments", icon: WalletIcon },
 	{ title: "Reports", url: "/dashboard/reports", icon: FolderIcon },
 	{ title: "Users", url: "/dashboard/users", icon: UsersIcon },
-	{ title: "Roles & Permissions", url: "/dashboard/roles", icon: ShieldCheckIcon },
+	{
+		title: "Roles & Permissions",
+		url: "/dashboard/roles",
+		icon: ShieldCheckIcon,
+	},
 	{ title: "Operations", url: "/dashboard/operations", icon: ActivityIcon },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
 	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
+	{
+		title: "Hotel setup",
+		url: "/dashboard/hotel-setup",
+		icon: SlidersHorizontalIcon,
+	},
 	{ title: "Settings", url: "/dashboard/settings", icon: SettingsIcon },
 ];
 
@@ -150,14 +168,22 @@ export const financeLinks: NavLink[] = [
 	{ title: "Expenses", url: "/dashboard/expenses", icon: ReceiptIcon },
 	{ title: "Tills", url: "/dashboard/tills", icon: WalletIcon },
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
-	{ title: "Organizations", url: "/dashboard/organizations", icon: HandshakeIcon },
+	{
+		title: "Organizations",
+		url: "/dashboard/organizations",
+		icon: HandshakeIcon,
+	},
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
 export const adminLinks: NavLink[] = [
 	{ title: "Dashboard", url: "/dashboard", icon: HomeIcon },
 	{ title: "Businesses", url: "/dashboard/businesses", icon: BuildingIcon },
-	{ title: "Onboarding", url: "/dashboard/onboarding", icon: ClipboardCheckIcon },
+	{
+		title: "Onboarding",
+		url: "/dashboard/onboarding",
+		icon: ClipboardCheckIcon,
+	},
 	{ title: "Support", url: "/dashboard/support", icon: HeadsetIcon },
 	{ title: "Fees & billing", url: "/dashboard/fees", icon: CoinsIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },

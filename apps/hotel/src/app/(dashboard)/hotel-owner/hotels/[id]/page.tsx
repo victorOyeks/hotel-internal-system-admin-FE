@@ -1,17 +1,33 @@
 import { notFound } from "next/navigation";
 import { OwnerHotelDetail } from "@/components/roles/owner/hotel-detail";
 import { data } from "@hospio/api/data";
-import { ownerHotels } from "@hospio/api/demo/fixtures/owner";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 03 Hotel details & rooms. */
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+/** Hotel Owner · 03 Hotel details & rooms. The hotel is live; rooms and staff come from the active hotel's services. */
+export default async function Page({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}) {
 	const { id } = await params;
-	const hotel = ownerHotels.find((h) => h.hotelId === id);
+	const hotel = await data.hotels.get(id);
 	if (!hotel) notFound();
-	const [rooms, types, staff] = await Promise.all([data.rooms.list(), data.rooms.types(), data.staff.list()]);
-	// The fixtures describe Ikeja; other branches show a slice sized to their room count.
-	const scaled = rooms.slice(0, hotel.rooms).map((r) => ({ ...r, id: `${hotel.hotelId}-${r.id}` }));
-	return <OwnerHotelDetail hotel={hotel} rooms={scaled} types={types} staff={staff.filter((s) => s.role !== "OWNER")} />;
+	const [rooms, types, staff] = await Promise.all([
+		data.rooms.list(),
+		data.rooms.types(),
+		data.staff.list(),
+	]);
+	// Rooms and staff are read for the active hotel; another branch shows a slice sized to its room count.
+	const scaled = rooms
+		.slice(0, hotel.rooms)
+		.map((r) => ({ ...r, id: `${hotel.hotelId}-${r.id}` }));
+	return (
+		<OwnerHotelDetail
+			hotel={hotel}
+			rooms={scaled}
+			types={types}
+			staff={staff.filter((s) => s.role !== "OWNER")}
+		/>
+	);
 }

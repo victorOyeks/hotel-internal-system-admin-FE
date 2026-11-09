@@ -1,11 +1,15 @@
 import { MarketerBusinesses } from "@/components/roles/marketer/businesses";
-import { data } from "@hospio/api/data";
-import { demoCommissions } from "@hospio/api/demo/fixtures/platform-extra";
-import { demoMarketer } from "../me";
+import { adminData } from "@hospio/api/data/admin";
+import { NotAMarketer } from "../not-a-marketer";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketerBusinessesPage() {
-	const [me, businesses] = await Promise.all([demoMarketer(), data.platform.businesses()]);
-	return <MarketerBusinesses me={me} businesses={businesses} ledger={demoCommissions.filter((c) => c.marketerId === me.id)} />;
+	const [me, businesses, ledger] = await Promise.all([
+		adminData.marketer.me(),
+		adminData.marketer.businesses(),
+		adminData.marketer.commissions(),
+	]);
+	if (!me) return <NotAMarketer />;
+	return <MarketerBusinesses me={me} businesses={businesses} ledger={ledger} />;
 }

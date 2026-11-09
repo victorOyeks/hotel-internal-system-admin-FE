@@ -2,40 +2,15 @@
  * Owner-portal sample data: the business across its four hotels. Numbers line up with
  * demoHotelSummaries (occupancy, managers) in ./hotel.
  */
-import { at, day, demoHotelSummaries } from "./hotel";
+import type { OwnerHotelRow, PortalUserRow } from "@hospio/api/data/types";
+import { BUSINESS_ID, at, day, demoHotelSummaries } from "./hotel";
 
-export type OwnerHotelFinance = {
-	hotelId: string;
-	name: string;
-	city: string;
-	code: string;
-	rooms: number;
-	occupancy: number;
-	manager: string;
-	status: "ACTIVE" | "RENOVATION" | "INACTIVE";
-	revenueToday: number;
-	revenueMonth: number;
-	expensesMonth: number;
-	payrollMonth: number;
-	revenueLastMonth: number;
-	onShift: number;
-	scheduled: number;
-	openIssues: number;
-	lastAction: string;
-	lastAt: string;
-	health: number;
-	posProvider: string;
-	grossSettled: number;
-	posFees: number;
-	nextPayout: string;
-	nextPayoutAmount: number;
-	phone: string;
-	email: string;
-};
+/** Kept for the owner screens; the row type now lives in data/types as OwnerHotelRow. */
+export type OwnerHotelFinance = OwnerHotelRow;
 
 const ids = demoHotelSummaries.map((h) => h.id);
 
-export const ownerHotels: OwnerHotelFinance[] = [
+export const ownerHotels: OwnerHotelRow[] = [
 	{ hotelId: ids[0], name: "Simpas Ikeja", city: "Lagos", code: "#001", rooms: 120, occupancy: 84, manager: "Tunde Bakare", status: "ACTIVE", revenueToday: 1232000, revenueMonth: 67500000, expensesMonth: 43200000, payrollMonth: 12400000, revenueLastMonth: 61900000, onShift: 14, scheduled: 16, openIssues: 5, lastAction: "Checked in Ngozi Okonkwo · B110", lastAt: at(0, 11, 24), health: 92, posProvider: "Moniepoint", grossSettled: 48200000, posFees: 361500, nextPayout: day(1), nextPayoutAmount: 1980000, phone: "+234 801 000 0001", email: "ikeja@simpashotels.com" },
 	{ hotelId: ids[1], name: "Simpas Lekki", city: "Lagos", code: "#002", rooms: 86, occupancy: 71, manager: "Amaka Eze", status: "ACTIVE", revenueToday: 840500, revenueMonth: 41200000, expensesMonth: 29800000, payrollMonth: 8900000, revenueLastMonth: 39600000, onShift: 10, scheduled: 11, openIssues: 3, lastAction: "Generator repair quote raised", lastAt: at(0, 9, 0), health: 78, posProvider: "Moniepoint", grossSettled: 30100000, posFees: 225750, nextPayout: day(1), nextPayoutAmount: 1210000, phone: "+234 801 000 0002", email: "lekki@simpashotels.com" },
 	{ hotelId: ids[2], name: "Simpas Abuja", city: "Abuja", code: "#003", rooms: 64, occupancy: 62, manager: "Ibrahim Musa", status: "ACTIVE", revenueToday: 512000, revenueMonth: 24800000, expensesMonth: 19900000, payrollMonth: 6200000, revenueLastMonth: 26100000, onShift: 7, scheduled: 8, openIssues: 2, lastAction: "Night audit closed", lastAt: at(0, 0, 50), health: 66, posProvider: "OPay", grossSettled: 17600000, posFees: 132000, nextPayout: day(2), nextPayoutAmount: 720000, phone: "+234 801 000 0003", email: "abuja@simpashotels.com" },
@@ -111,15 +86,29 @@ export const ownerPayroll: PayrollRow[] = [
 	{ id: "py-10", name: "Ada Okeke", role: "Room attendant", hotel: "Simpas Ikeja", salary: 90000, allowances: 8000, deductions: 7200, net: 90800, status: "ON_HOLD" },
 ];
 
-export type PortalUserRow = { id: string; fullName: string; email: string; phone: string; role: "OWNER" | "MANAGER" | "FINANCE" | "INVENTORY" | "FRONT_OFFICE"; hotels: string[]; status: "ACTIVE" | "INVITED" | "PAUSED"; twoStep: boolean; lastSignIn?: string };
+export type { PortalUserRow };
+
+const grant = (id: string, role: string, hotelId?: string, paused = false): PortalUserRow["grants"][number] => ({ id, role, level: "FULL", hotelId, paused });
+const pu = (u: { id: string; fullName: string; email: string; phone: string; role: PortalUserRow["role"]; hotels: string[]; hotelIds: string[]; status: PortalUserRow["status"]; twoStep: boolean; lastSignIn?: string }): PortalUserRow => ({
+	...u,
+	userId: u.id,
+	businessId: BUSINESS_ID,
+	level: "FULL",
+	hotel: u.hotels[0],
+	grants: u.hotelIds.length ? u.hotelIds.map((h, i) => grant(`${u.id}-g${i}`, u.role, h, u.status === "PAUSED")) : [grant(`${u.id}-g0`, u.role, undefined, u.status === "PAUSED")],
+	inviteStatus: u.status === "INVITED" ? "PENDING" : "ACCEPTED",
+	mustChangePassword: u.status === "INVITED",
+	createdAt: "2024-01-10T09:00:00Z",
+});
+
 export const ownerPortalUsers: PortalUserRow[] = [
-	{ id: "pu-1", fullName: "Godwin Kwin", email: "godwin@royalsuites.ng", phone: "+234 801 000 0001", role: "OWNER", hotels: ["All hotels"], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 7, 10) },
-	{ id: "pu-2", fullName: "Tunde Bakare", email: "tunde@simpashotels.com", phone: "+234 801 000 0002", role: "MANAGER", hotels: ["Simpas Ikeja"], status: "ACTIVE", twoStep: false, lastSignIn: at(0, 6, 55) },
-	{ id: "pu-3", fullName: "Amaka Eze", email: "amaka@simpashotels.com", phone: "+234 801 000 0102", role: "MANAGER", hotels: ["Simpas Lekki"], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 8, 20) },
-	{ id: "pu-4", fullName: "Ibrahim Musa", email: "ibrahim@simpashotels.com", phone: "+234 801 000 0103", role: "MANAGER", hotels: ["Simpas Abuja"], status: "ACTIVE", twoStep: true, lastSignIn: at(-1, 19, 5) },
-	{ id: "pu-5", fullName: "Blessing Okoro", email: "blessing@simpashotels.com", phone: "+234 801 000 0104", role: "MANAGER", hotels: ["Simpas Port Harcourt"], status: "ACTIVE", twoStep: true, lastSignIn: at(-2, 10, 40) },
-	{ id: "pu-6", fullName: "Femi Ojo", email: "femi@simpashotels.com", phone: "+234 801 000 0019", role: "FINANCE", hotels: ["Simpas Ikeja", "Simpas Lekki"], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 8, 1) },
-	{ id: "pu-7", fullName: "Kemi Lawson", email: "kemi.lawson@royalsuites.ng", phone: "+234 802 000 0200", role: "FINANCE", hotels: ["All hotels"], status: "INVITED", twoStep: false },
+	pu({ id: "pu-1", fullName: "Godwin Kwin", email: "godwin@royalsuites.ng", phone: "+234 801 000 0001", role: "OWNER", hotels: ["All hotels"], hotelIds: [], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 7, 10) }),
+	pu({ id: "pu-2", fullName: "Tunde Bakare", email: "tunde@simpashotels.com", phone: "+234 801 000 0002", role: "MANAGER", hotels: ["Simpas Ikeja"], hotelIds: [ids[0]], status: "ACTIVE", twoStep: false, lastSignIn: at(0, 6, 55) }),
+	pu({ id: "pu-3", fullName: "Amaka Eze", email: "amaka@simpashotels.com", phone: "+234 801 000 0102", role: "MANAGER", hotels: ["Simpas Lekki"], hotelIds: [ids[1]], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 8, 20) }),
+	pu({ id: "pu-4", fullName: "Ibrahim Musa", email: "ibrahim@simpashotels.com", phone: "+234 801 000 0103", role: "MANAGER", hotels: ["Simpas Abuja"], hotelIds: [ids[2]], status: "ACTIVE", twoStep: true, lastSignIn: at(-1, 19, 5) }),
+	pu({ id: "pu-5", fullName: "Blessing Okoro", email: "blessing@simpashotels.com", phone: "+234 801 000 0104", role: "MANAGER", hotels: ["Simpas Port Harcourt"], hotelIds: [ids[3]], status: "ACTIVE", twoStep: true, lastSignIn: at(-2, 10, 40) }),
+	pu({ id: "pu-6", fullName: "Femi Ojo", email: "femi@simpashotels.com", phone: "+234 801 000 0019", role: "FINANCE", hotels: ["Simpas Ikeja", "Simpas Lekki"], hotelIds: [ids[0], ids[1]], status: "ACTIVE", twoStep: true, lastSignIn: at(0, 8, 1) }),
+	pu({ id: "pu-7", fullName: "Kemi Lawson", email: "kemi.lawson@royalsuites.ng", phone: "+234 802 000 0200", role: "FINANCE", hotels: ["All hotels"], hotelIds: [], status: "INVITED", twoStep: false }),
 ];
 
 export const ownerManagerThreads = [

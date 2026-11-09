@@ -48,10 +48,11 @@ export const demoPlatformChanges: PlatformChangeRow[] = [
 	{ id: "pc-4", businessName: "Pearl Inn Enugu", area: "Hotel setup · Rooms", description: "Added room type 'Twin' ₦22,000", reason: "Onboarding", madeBy: "Ngozi Umeh", at: at(-12, 14), undoUntil: at(-5, 14), undone: true },
 ];
 
+const ADMIN_STEPS = ["business", "owner", "fee", "hotels", "rooms", "template", "people", "connections", "golive", "handover"];
 export const demoOnboarding: OnboardingRow[] = [
-	{ id: "ob-1", businessName: "Blue Reef Resort", step: 4, totalSteps: 8, assignedTo: "Ngozi Umeh", startedAt: at(-19, 10), status: "IN_PROGRESS", nextAction: "Import rooms from the owner's spreadsheet" },
-	{ id: "ob-2", businessName: "Pearl Inn Enugu", step: 8, totalSteps: 8, assignedTo: "Ngozi Umeh", startedAt: at(-40, 10), status: "DONE", nextAction: "—" },
-	{ id: "ob-3", businessName: "Kano Crown Hotel", step: 1, totalSteps: 8, assignedTo: "Dapo Ajala", startedAt: at(-7, 10), status: "IN_PROGRESS", nextAction: "Owner to sign the agreement" },
+	{ id: "ob-1", businessId: "biz-4", businessName: "Blue Reef Resort", source: "BACK_OFFICE", step: 5, totalSteps: 10, completedSteps: ADMIN_STEPS.slice(0, 4), assignedTo: "Ngozi Umeh", assignedToId: "au-3", startedAt: at(-19, 10), updatedAt: at(-1, 13), status: "IN_PROGRESS", nextAction: "Import rooms from the owner's spreadsheet", data: { business: { name: "Blue Reef Resort", city: "Calabar" }, owner: { ownerName: "Chief Obi Nwankwo", ownerEmail: "obi@bluereef.ng" }, fee: { feeModel: "PER_ROOM_NIGHT", feeValue: 1500 }, hotels: { hotelIds: ["h-bluereef-1"] } } },
+	{ id: "ob-2", businessId: "biz-5", businessName: "Pearl Inn Enugu", source: "BACK_OFFICE", step: 10, totalSteps: 10, completedSteps: ADMIN_STEPS, assignedTo: "Ngozi Umeh", assignedToId: "au-3", startedAt: at(-40, 10), updatedAt: at(-8, 10), status: "DONE", nextAction: "—", data: {} },
+	{ id: "ob-3", businessId: "biz-6", businessName: "Kano Crown Hotel", source: "BACK_OFFICE", step: 1, totalSteps: 10, completedSteps: [], assignedTo: "Dapo Ajala", assignedToId: "au-2", startedAt: at(-7, 10), updatedAt: at(-7, 10), status: "IN_PROGRESS", nextAction: "Owner to sign the agreement", data: {} },
 ];
 
 export const demoAdminUsers: AdminUserRow[] = [

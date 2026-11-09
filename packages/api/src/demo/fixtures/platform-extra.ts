@@ -4,6 +4,7 @@
  * Money model (developer handoff): H.M.S takes its share per business; marketers earn 20% of that
  * share for 24 months; 5% WHT is deducted from what the marketer is paid.
  */
+import type { SetupTemplateRow } from "@hospio/api/data/types";
 import { at, day } from "./hotel";
 
 export type AdminRole = "SUPER_ADMIN" | "SUPPORT" | "FINANCE_ADMIN";
@@ -27,6 +28,13 @@ export const ONBOARDING_STEPS = [
 	{ key: "whatsapp", label: "WhatsApp connected", help: "Guest messages go out from the hotel number" },
 	{ key: "handover", label: "Handover call done", help: "Owner and managers walked through the first day" },
 ] as const;
+
+/** Setup templates (tenant `/setup-templates`): what a new hotel starts with. */
+export const demoSetupTemplates: SetupTemplateRow[] = [
+	{ id: "tpl-standard", name: "Standard Nigerian hotel", description: "14:00 check-in, 12:00 check-out, NGN with 7.5% VAT, cash, card and transfer, three shifts", active: true, settings: { BASICS: { checkInTime: "14:00", checkOutTime: "12:00", timezone: "Africa/Lagos" }, TAXES_CURRENCY: { currency: "NGN", vatPct: 7.5, serviceChargePct: 0, pricesIncludeTax: true }, PAYMENTS: { allowCash: true, allowCard: true, allowTransfer: true, depositPct: 0 }, lists: { SHIFTS: ["Morning 07–15", "Afternoon 15–23", "Night 23–07"], PAYMENT_METHODS: ["Cash", "Card", "Transfer"] } } },
+	{ id: "tpl-guesthouse", name: "Guest house", description: "Cash and transfer only, no service charge, one shift", active: true, settings: { PAYMENTS: { allowCash: true, allowCard: false, allowTransfer: true, depositPct: 50 }, TAXES_CURRENCY: { currency: "NGN", vatPct: 7.5, serviceChargePct: 0 }, lists: { SHIFTS: ["Day 08–20"], PAYMENT_METHODS: ["Cash", "Transfer"] } } },
+	{ id: "tpl-business", name: "Business hotel", description: "Card-first with 10% service charge, room charging and bar tabs on", active: true, settings: { PAYMENTS: { allowCash: true, allowCard: true, allowTransfer: true, depositPct: 0 }, TAXES_CURRENCY: { currency: "NGN", vatPct: 7.5, serviceChargePct: 10 }, OUTLETS: { roomCharge: true, tabs: true, tabLimit: 100000 } } },
+];
 
 export const demoSettlements: SettlementRow[] = [
 	{ id: "stl-1", businessId: "biz-1", businessName: "Royal Suites Ltd", provider: "Moniepoint", period: "2026-11-07", gross: 2184000, providerFees: 10920, hmsShare: 32760, net: 2140320, status: "SETTLED", settledAt: at(0, 7, 5), payoutBatch: "PB-2026-312" },

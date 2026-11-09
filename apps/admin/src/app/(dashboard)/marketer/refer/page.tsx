@@ -1,10 +1,14 @@
 import { MarketerRefer } from "@/components/roles/marketer/refer";
-import { demoReferrals } from "@hospio/api/demo/fixtures/platform-extra";
-import { demoMarketer } from "../me";
+import { adminData } from "@hospio/api/data/admin";
+import { NotAMarketer } from "../not-a-marketer";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketerReferPage() {
-	const me = await demoMarketer();
-	return <MarketerRefer me={me} referrals={demoReferrals.filter((r) => r.marketerId === me.id)} />;
+	const [me, referrals] = await Promise.all([
+		adminData.marketer.me(),
+		adminData.marketer.referrals(),
+	]);
+	if (!me) return <NotAMarketer />;
+	return <MarketerRefer me={me} referrals={referrals} />;
 }

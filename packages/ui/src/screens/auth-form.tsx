@@ -9,9 +9,17 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@hospio/ui/primitives/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@hospio/ui/primitives/form";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@hospio/ui/primitives/form";
 import { Input } from "@hospio/ui/primitives/input";
 import { login } from "@hospio/api/actions";
+import { isAppRole, OTHER_APP_URL } from "@hospio/api/app";
 
 const schema = z.object({
 	email: z.email("Enter your email"),
@@ -22,13 +30,28 @@ export function AuthForm({ from }: { from?: string }) {
 	const router = useRouter();
 	const [show, setShow] = useState(false);
 	const [pending, startTransition] = useTransition();
-	const form = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
+	const form = useForm({
+		resolver: zodResolver(schema),
+		defaultValues: { email: "", password: "" },
+	});
 
 	function onSubmit(values: z.infer<typeof schema>) {
 		startTransition(async () => {
 			const result = await login(values);
 			if (!result.ok) {
 				form.setError("password", { message: result.error });
+				return;
+			}
+			// An account with none of this app's roles belongs on the other app: go there with a full
+			// navigation. A client-side push would be redirected cross-origin by the middleware and the
+			// RSC fetch would fail on CORS before the browser fell back to a plain navigation.
+			if (
+				result.data.roles.length > 0 &&
+				!result.data.roles.some((r) => isAppRole(r))
+			) {
+				window.location.assign(
+					`${OTHER_APP_URL}/auth?switch=${encodeURIComponent(values.email)}`,
+				);
 				return;
 			}
 			toast.success("Signed in");
@@ -40,7 +63,12 @@ export function AuthForm({ from }: { from?: string }) {
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+			{/* method="post": a submit before hydration must never put the credentials in the URL. */}
+			<form
+				method="post"
+				onSubmit={form.handleSubmit(onSubmit)}
+				className="flex flex-col gap-4"
+			>
 				<div>
 					<h1 className="text-[28px] font-bold text-ink">Sign in</h1>
 					<p className="mt-2 text-sm text-ink-3">Welcome back to Hospio360</p>
@@ -51,7 +79,9 @@ export function AuthForm({ from }: { from?: string }) {
 					name="email"
 					render={({ field }) => (
 						<FormItem className="gap-[6px]">
-							<FormLabel className="text-[13px] font-medium text-ink-2">Email or phone</FormLabel>
+							<FormLabel className="text-[13px] font-medium text-ink-2">
+								Email or phone
+							</FormLabel>
 							<FormControl>
 								<Input
 									{...field}
@@ -71,7 +101,9 @@ export function AuthForm({ from }: { from?: string }) {
 					name="password"
 					render={({ field }) => (
 						<FormItem className="gap-[6px]">
-							<FormLabel className="text-[13px] font-medium text-ink-2">Password</FormLabel>
+							<FormLabel className="text-[13px] font-medium text-ink-2">
+								Password
+							</FormLabel>
 							<FormControl>
 								<div className="relative">
 									<Input
@@ -87,7 +119,11 @@ export function AuthForm({ from }: { from?: string }) {
 										className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
 										aria-label={show ? "Hide password" : "Show password"}
 									>
-										{show ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+										{show ? (
+											<EyeOffIcon className="size-4" />
+										) : (
+											<EyeIcon className="size-4" />
+										)}
 									</button>
 								</div>
 							</FormControl>
@@ -96,12 +132,23 @@ export function AuthForm({ from }: { from?: string }) {
 					)}
 				/>
 
-				<Link href="/forgot-password" className="text-[13px] font-semibold text-brand hover:underline">
+				<Link
+					href="/forgot-password"
+					className="text-[13px] font-semibold text-brand hover:underline"
+				>
 					Forgot your password?
 				</Link>
 
-				<Button type="submit" disabled={pending} className="h-auto w-full rounded-control bg-brand py-[10px] text-[13px] font-semibold text-white hover:bg-brand/90">
-					{pending ? <Loader2Icon className="size-4 animate-spin" /> : "Sign in"}
+				<Button
+					type="submit"
+					disabled={pending}
+					className="h-auto w-full rounded-control bg-brand py-[10px] text-[13px] font-semibold text-white hover:bg-brand/90"
+				>
+					{pending ? (
+						<Loader2Icon className="size-4 animate-spin" />
+					) : (
+						"Sign in"
+					)}
 				</Button>
 			</form>
 		</Form>

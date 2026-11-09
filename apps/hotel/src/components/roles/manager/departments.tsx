@@ -23,7 +23,7 @@ export function DepartmentsScreen({ departments, hotelName, approvalsWaiting, ro
 	const attention = departments.filter((d) => d.tone === "warning" || d.tone === "danger").reduce((s, d) => s + d.open, 0);
 	return (
 		<>
-			<PageHeader title="Departments" subtitle={`${hotelName} · what every team is doing right now · ${fmtTime(new Date())}`}>
+			<PageHeader title="Departments" subtitle={<span suppressHydrationWarning>{`${hotelName} · what every team is doing right now · ${fmtTime(new Date())}`}</span>}>
 				<StatusPill tone="success">Live · updates every minute</StatusPill>
 			</PageHeader>
 

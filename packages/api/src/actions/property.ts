@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ActionResult } from "@hospio/api/actions";
+import type { ActionResult } from "@hospio/api/actions/auth";
 import { api, errorMessage } from "@hospio/api/api/client";
+import type { RoomsBulkResult } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import { toRoomRow, toRoomTypeRow } from "@hospio/api/data/mappers/property";
@@ -15,20 +16,21 @@ import { demoDelay } from "@hospio/api/demo/mode";
  * demo mode the caller's own row is echoed back after a short pause so the screens behave the same.
  */
 
-const ROOM_PATHS = ["/manager/rooms", "/front-desk/rooms", "/manager/hotel-setup", "/manager"];
+const ROOM_PATHS = ["/manager/rooms", "/front-desk/rooms", "/manager/hotel-setup", "/manager", "/hotel-owner/hotels", "/onboarding", "/admin/onboarding"];
 function revalidateRooms() {
 	for (const p of ROOM_PATHS) revalidatePath(p);
 }
 
 export type RoomTypeInput = { name: string; basePrice: number; capacityAdults: number; capacityChildren: number; facilities: string[]; description?: string };
 
-export async function saveRoomType(input: RoomTypeInput, id?: string, fallback?: RoomTypeRow): Promise<ActionResult<RoomTypeRow>> {
+/** `hotelId` overrides X-Hotel-Id: the wizards create room types for a hotel the caller is not "in". */
+export async function saveRoomType(input: RoomTypeInput, id?: string, fallback?: RoomTypeRow, hotelId?: string): Promise<ActionResult<RoomTypeRow>> {
 	if (!live("property")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback ?? { id: id ?? `rt-${Date.now()}`, ...input, rooms: 0, specialPrices: [] } };
 	}
 	const body = { name: input.name, description: input.description ?? null, basePrice: input.basePrice, capacityAdults: input.capacityAdults, capacityChildren: input.capacityChildren, facilities: input.facilities.join(","), active: true };
-	const s = await withSession();
+	const s = await withSession(hotelId ? { hotelId } : undefined);
 	const { data, error } = id
 		? await api("@put/property/room-types/:id", { ...s, params: { id }, body })
 		: await api("@post/property/room-types", { ...s, body });
@@ -86,4 +88,38 @@ export async function backInService(id: string, areas: AreaRow[]): Promise<Actio
 	if (error || !data) return { ok: false, error: errorMessage(error, "The room could not be put back in service") };
 	revalidateRooms();
 	return { ok: true, data: toRoomRow(data.data, areas) };
+}
+
+/** A new room type for the active hotel, or for `hotelId` (the onboarding wizards). */
+export async function createRoomType(input: RoomTypeInput, hotelId?: string): Promise<ActionResult<RoomTypeRow>> {
+	return saveRoomType(input, undefined, undefined, hotelId);
+}
+
+/** DELETE /property/room-types/{id}: deactivates the type; 409 while rooms still use it. */
+export async function deleteRoomType(id: string, hotelId?: string): Promise<ActionResult<null>> {
+	if (!live("property")) {
+		await demoDelay(400);
+		return { ok: true, data: null };
+	}
+	const { error } = await api("@delete/property/room-types/:id", { ...(await withSession(hotelId ? { hotelId } : undefined)), params: { id } });
+	if (error) return { ok: false, error: errorMessage(error, error?.status === 409 ? "Rooms still use this type. Move them first" : "The room type could not be removed") };
+	revalidateRooms();
+	return { ok: true, data: null };
+}
+
+export type BulkRoomInput = { number: string; roomTypeId: string; floor?: string; areaId?: string };
+
+/** POST /property/rooms/bulk: up to 500 rooms at once; numbers already present are skipped, not failed. */
+export async function createRoomsBulk(rooms: BulkRoomInput[], hotelId?: string): Promise<ActionResult<RoomsBulkResult>> {
+	if (rooms.length === 0) return { ok: false, error: "Add at least one room" };
+	if (rooms.length > 500) return { ok: false, error: "Up to 500 rooms at a time" };
+	if (!live("property")) {
+		await demoDelay(600);
+		return { ok: true, data: { created: rooms.length, skipped: [] } };
+	}
+	const body = { rooms: rooms.map((r) => ({ number: r.number, roomTypeId: r.roomTypeId, floor: r.floor ?? null, areaId: r.areaId ?? null })) };
+	const { data, error } = await api("@post/property/rooms/bulk", { ...(await withSession(hotelId ? { hotelId } : undefined)), body });
+	if (error || !data) return { ok: false, error: errorMessage(error, "The rooms could not be created") };
+	revalidateRooms();
+	return { ok: true, data: data.data };
 }

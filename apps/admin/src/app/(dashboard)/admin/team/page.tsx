@@ -1,11 +1,21 @@
 import { TeamScreen } from "@/components/roles/admin/team";
-import { getActiveRole } from "@hospio/api/dal";
-import { data } from "@hospio/api/data";
+import { getActiveRole, getUser } from "@hospio/api/dal";
+import { adminData } from "@hospio/api/data/admin";
 import { adminRole } from "../role";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-	const [role, users] = await Promise.all([getActiveRole(), data.platform.adminUsers()]);
-	return <TeamScreen role={adminRole(role)} users={users} />;
+	const [role, user, users] = await Promise.all([
+		getActiveRole(),
+		getUser(),
+		adminData.team.list(),
+	]);
+	return (
+		<TeamScreen
+			role={adminRole(role)}
+			users={users}
+			inviterName={user?.fullName ?? "H.M.S"}
+		/>
+	);
 }
