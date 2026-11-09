@@ -34,6 +34,7 @@ import type {
 import type { TakenPayment } from "../../front-office/take-payment";
 import { BookingDetailsPanel } from "./booking-details";
 import {
+	actionAllowed,
 	balance,
 	bookingStatus,
 	paymentStatus,
@@ -117,6 +118,11 @@ export function BookingsScreen({
 	const active = (TABS.includes(tab as Tab) ? tab : "arrivals") as Tab;
 	const rows = bookings.filter((b) => bucket(b, active));
 	const selected = bookings.find((b) => b.id === openId) ?? null;
+	// A stale ?action= (check in on a stay already in house…) falls back to the summary.
+	const act =
+		selected && actionAllowed(selected, action)
+			? (action as BookingAction)
+			: null;
 	const patch = (id: string, changes: Partial<BookingRow>) =>
 		setBookings((bs) =>
 			bs.map((b) => (b.id === id ? { ...b, ...changes } : b)),
@@ -274,7 +280,7 @@ export function BookingsScreen({
 							{
 								label: "Record payment",
 								onClick: () => openAction(b.id, "payment"),
-								disabled: b.status === "CANCELLED",
+								disabled: b.status === "CANCELLED" || b.status === "NO_SHOW",
 							},
 							{
 								label: "Change dates",
@@ -286,17 +292,6 @@ export function BookingsScreen({
 								label: "Message guest",
 								onClick: () => openAction(b.id, "message"),
 							},
-							...(b.status === "NO_SHOW"
-								? [
-										{
-											label: "Mark as arrived",
-											onClick: () =>
-												run(`${b.guestName} marked as arrived`, () =>
-													patch(b.id, { status: "BOOKED" }),
-												),
-										},
-									]
-								: []),
 							{
 								label: "Cancel booking",
 								tone: "danger" as const,
@@ -402,7 +397,7 @@ export function BookingsScreen({
 			/>
 
 			<BookingDetailsPanel
-				booking={action ? null : selected}
+				booking={act ? null : selected}
 				folio={
 					selected
 						? (folios.find((f) => f.bookingId === selected.id) ?? null)
@@ -414,7 +409,7 @@ export function BookingsScreen({
 			/>
 			<BookingModals
 				booking={selected}
-				action={(action as BookingAction | null) ?? null}
+				action={act}
 				rooms={rooms}
 				folio={
 					selected
