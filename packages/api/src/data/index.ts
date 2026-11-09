@@ -429,10 +429,15 @@ export const data = {
 		list: async (): Promise<RoomRow[]> => {
 			if (!live("property")) return give(hotel.demoRooms);
 			const s = await withSession();
-			const [areas, rooms, cleanliness] = await Promise.all([
+			const [areas, rooms, cleanliness, today] = await Promise.all([
 				data.rooms.areas(),
 				api("@get/property/rooms", { ...s, query: {} }),
 				api("@get/housekeeping/room-status", s).catch(() => ({ data: null })),
+				live("reservation")
+					? api("@get/reservation/bookings/today", s).catch(() => ({
+							data: null,
+						}))
+					: Promise.resolve({ data: null }),
 			]);
 			if (rooms.error || !rooms.data) {
 				console.error("property-service rooms:", rooms.error);
@@ -441,7 +446,39 @@ export const data = {
 			const clean = new Map(
 				(cleanliness.data?.data ?? []).map((c) => [c.roomId, c]),
 			);
-			return rooms.data.data.map((r) => toRoomRow(r, areas, clean.get(r.id)));
+			// Reservation says who is in a room (occupied) and which rooms wait for today's arrivals (held).
+			const inHouse = new Map(
+				(today.data?.data.inHouse ?? [])
+					.filter((b) => b.roomId)
+					.map((b) => [b.roomId as string, b]),
+			);
+			const arriving = new Map(
+				(today.data?.data.arrivals ?? [])
+					.filter((b) => b.roomId)
+					.map((b) => [b.roomId as string, b]),
+			);
+			return rooms.data.data.map((r) => {
+				const row = toRoomRow(r, areas, clean.get(r.id));
+				if (row.state === "out_of_order") return row;
+				const stay = inHouse.get(r.id);
+				if (stay)
+					return {
+						...row,
+						state: "occupied" as const,
+						guestName: stay.guestName,
+						checkOut: stay.checkOutDate,
+					};
+				const arrival = arriving.get(r.id);
+				if (arrival && row.state === "ready")
+					return {
+						...row,
+						state: "held" as const,
+						guestName: arrival.guestName,
+						note: `Arriving today · ${arrival.guestName}`,
+						heldFor: arrival.id,
+					};
+				return row;
+			});
 		},
 		types: async (): Promise<RoomTypeRow[]> => {
 			if (!live("property")) return give(hotel.demoRoomTypes);
@@ -926,7 +963,10 @@ export const data = {
 			]);
 			const rolesOf = new Map<string, string[]>();
 			for (const a of assigned?.data?.data ?? [])
-				rolesOf.set(a.terminalId, [...(rolesOf.get(a.terminalId) ?? []), a.role]);
+				rolesOf.set(a.terminalId, [
+					...(rolesOf.get(a.terminalId) ?? []),
+					a.role,
+				]);
 			if (error || !res) {
 				console.error("payment-service terminals:", error);
 				return [];

@@ -842,11 +842,14 @@ function CheckInPanel({
 	const candidates = rooms.filter(
 		(r) =>
 			r.typeName === b.roomTypeName &&
-			(r.state === "ready" || r.state === "held" || r.id === b.roomId),
+			(r.state === "ready" || r.id === b.roomId),
 	);
 	const chosen = rooms.find((r) => r.id === roomId);
+	// A held room is only this guest's when it is the one on their booking.
 	const roomOk =
-		chosen && (chosen.state === "ready" || chosen.state === "held");
+		chosen &&
+		(chosen.state === "ready" ||
+			(chosen.state === "held" && chosen.id === b.roomId));
 	const canGo = roomOk && idSeen && due <= 0;
 	const paymentTarget: PaymentTarget = {
 		guestName: b.guestName,
