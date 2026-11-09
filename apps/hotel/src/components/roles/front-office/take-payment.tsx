@@ -222,7 +222,9 @@ export function usePaymentSteps(
 				: card === "declined"
 					? "Declined on the terminal"
 					: card === "no_response"
-						? "No response from the terminal"
+						? cardError
+							? "The card wasn't sent"
+							: "No response from the terminal"
 						: card === "sent"
 							? "Sent to the POS"
 							: "Waiting for the guest on the POS",
@@ -620,7 +622,9 @@ export function usePaymentSteps(
 											? `${naira(amt)} sent to the POS`
 											: card === "declined"
 												? "The bank declined this card"
-												: "The terminal didn't answer"}
+												: cardError
+													? "The card wasn't sent"
+													: "The terminal didn't answer"}
 						</p>
 						<p className="mt-1 max-w-sm text-[13px] text-ink-3">
 							{card === "approved"
