@@ -353,3 +353,13 @@ export async function clockOut(
 			: { clockedIn: false, todayMinutes: 0 },
 	};
 }
+
+/** GET /finance/workforce/clock/me for the tablet's shift pill: on or off the clock, since when. */
+export async function myClock(): Promise<ClockStatus | null> {
+	if (!live("finance")) return null;
+	const { data, error } = await api(
+		"@get/finance/workforce/clock/me",
+		await withSession(),
+	);
+	return error || !data ? null : toClockStatus(data.data);
+}
