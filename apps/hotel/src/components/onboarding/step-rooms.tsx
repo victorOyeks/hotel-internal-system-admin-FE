@@ -143,12 +143,31 @@ export function RoomsStep({
 			// ignore
 		}
 	}, [rows, storeKey]);
-	const [result, setResult] = useState<{
+	type Result = {
 		created: number;
 		skipped: string[];
 		types: number;
 		numbers: string[];
-	} | null>(null);
+	};
+	// The step re-reads the server copy after saving (and remounts), so the result note is kept for the visit.
+	const resultKey = `hospio:onboarding:${user?.id ?? "me"}:rooms-result`;
+	const [result, setResultState] = useState<Result | null>(null);
+	useEffect(() => {
+		try {
+			const raw = sessionStorage.getItem(resultKey);
+			if (raw) setResultState(JSON.parse(raw) as Result);
+		} catch {
+			// ignore
+		}
+	}, [resultKey]);
+	const setResult = (r: Result) => {
+		setResultState(r);
+		try {
+			sessionStorage.setItem(resultKey, JSON.stringify(r));
+		} catch {
+			// ignore
+		}
+	};
 	const [error, setError] = useState<string | null>(null);
 	const { run, pending } = useAction();
 
