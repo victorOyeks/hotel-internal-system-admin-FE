@@ -157,7 +157,7 @@ export function WorkOrdersScreen({
 	const { run, pending } = useAction();
 
 	const current = rows.find((r) => r.id === openId) ?? null;
-	// List rows carry no updates: load the full work order when its panel opens.
+	// List rows carry no updates: load the full work order when its panel opens, and again after the list refreshes.
 	useEffect(() => {
 		if (!openId) return;
 		let live = true;
@@ -172,7 +172,7 @@ export function WorkOrdersScreen({
 		return () => {
 			live = false;
 		};
-	}, [openId]);
+	}, [openId, initial]);
 	const open = rows.filter(isOpen);
 	const mine = open.filter((r) => r.assignedTo === me.id);
 	const overdue = open.filter((r) => r.overdue);
