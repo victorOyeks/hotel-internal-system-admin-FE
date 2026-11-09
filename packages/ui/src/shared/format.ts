@@ -48,7 +48,11 @@ export function fmtWhen(value?: string | Date | null) {
 /** "12 min ago" · "3 hours ago" */
 export function fmtAgo(value?: string | Date | null) {
 	if (!value) return "—";
-	return `${formatDistanceToNowStrict(toDate(value))} ago`;
+	const d = toDate(value);
+	// Under a minute reads "just now": second-level text differs between the server render and the
+	// client's hydration a moment later and React reports a mismatch.
+	if (Math.abs(Date.now() - d.getTime()) < 60_000) return "just now";
+	return `${formatDistanceToNowStrict(d)} ago`;
 }
 
 /** "Today" · "Tomorrow" · "Sat 8 Nov" for date-only strings. */

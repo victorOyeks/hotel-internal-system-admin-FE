@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { BuildingIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import {
 	ChoiceCards,
@@ -66,8 +66,14 @@ export function BusinessesScreen({
 	const [tab, setTab] = useQueryState("tab");
 	const [isNew, setNew] = useQueryState("new");
 	// Set when a business was just created: the panel closes without touching the URL (a nuqs write
-	// here would cancel the push to the wizard) and the page navigates away.
-	const [created, setCreated] = useState(false);
+	// here would cancel a client-side push) and the browser loads the wizard afresh. A soft push here
+	// left the app router's action queue stuck behind the create action's revalidation, so the first
+	// save on the wizard never reached the server unless the admin waited several seconds.
+	const [createdId, setCreatedId] = useState<string | null>(null);
+	useEffect(() => {
+		if (createdId)
+			window.location.assign(`/dashboard/onboarding/${createdId}?created=1`);
+	}, [createdId]);
 	const [search, setSearch] = useState("");
 	const active = (tab ?? "ALL") as (typeof STAGES)[number];
 	const rows = useMemo(
@@ -223,12 +229,9 @@ export function BusinessesScreen({
 			/>
 
 			<NewBusinessPanel
-				open={isNew === "1" && !created}
+				open={isNew === "1" && !createdId}
 				onOpenChange={(o) => void setNew(o ? "1" : null)}
-				onCreated={(business) => {
-					setCreated(true);
-					router.push(`/dashboard/onboarding/${business.id}`);
-				}}
+				onCreated={(business) => setCreatedId(business.id)}
 				marketers={marketers}
 				admins={admins}
 			/>

@@ -67,8 +67,11 @@ export function SignUpForm() {
 				city: values.city || undefined,
 			});
 			if (!result.ok) {
+				// A taken address comes back as "Someone already signs in with …": that belongs under the email.
 				form.setError(
-					result.error.toLowerCase().includes("email") ? "email" : "password",
+					/email|already|sign in instead|exists/i.test(result.error)
+						? "email"
+						: "password",
 					{ message: result.error },
 				);
 				return;
@@ -81,6 +84,7 @@ export function SignUpForm() {
 	return (
 		<Form {...form}>
 			<form
+				method="post"
 				onSubmit={form.handleSubmit(onSubmit)}
 				className="flex flex-col gap-4"
 			>

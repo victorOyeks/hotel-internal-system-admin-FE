@@ -151,7 +151,10 @@ export function OnboardingScreen({
 													max={r.totalSteps}
 													tone={g.key === "DONE" ? "success" : undefined}
 												/>
-												<p className="text-xs text-ink-3">
+												<p
+													className="text-xs text-ink-3"
+													suppressHydrationWarning
+												>
 													{r.source === "SELF_SERVE"
 														? "Owner"
 														: `H.M.S · ${r.assignedTo}`}{" "}

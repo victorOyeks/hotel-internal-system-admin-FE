@@ -3,7 +3,7 @@
 import { ArrowLeftIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
 import { useQueryState } from "nuqs";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { saveOnboardingStep } from "@hospio/api/actions/tenant";
 import type {
@@ -130,6 +130,13 @@ export function OnboardingWizard({
 				Math.min(ADMIN_ONBOARDING_STEPS.length, Math.max(1, draft.step)) - 1
 			] ?? "business");
 	const [stepParam, setStepParam] = useQueryState("step");
+	// Arriving from "Set up a business for them" (a full navigation, so the list's toast is gone).
+	const [created, setCreated] = useQueryState("created");
+	useEffect(() => {
+		if (created !== "1") return;
+		toast.success(`${initialBusiness.name} created · onboarding started`);
+		void setCreated(null);
+	}, [created, initialBusiness.name, setCreated]);
 	const step: AdminOnboardingStep = isAdminStep(stepParam)
 		? stepParam
 		: defaultStep;
@@ -227,7 +234,11 @@ export function OnboardingWizard({
 			</Link>
 			<PageHeader
 				title={handedOver ? business.name : `Set up ${business.name}`}
-				subtitle={`Back-office onboarding · ${draft.assignedTo === "Unassigned" ? "not assigned yet" : `by ${draft.assignedTo}`}${draft.updatedAt ? ` · saved ${fmtAgo(draft.updatedAt)}` : ""}`}
+				subtitle={
+					<span suppressHydrationWarning>
+						{`Back-office onboarding · ${draft.assignedTo === "Unassigned" ? "not assigned yet" : `by ${draft.assignedTo}`}${draft.updatedAt ? ` · saved ${fmtAgo(draft.updatedAt)}` : ""}`}
+					</span>
+				}
 			>
 				<StagePill stage={business.stage} />
 			</PageHeader>
