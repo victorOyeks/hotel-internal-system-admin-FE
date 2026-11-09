@@ -7,8 +7,8 @@ import { live } from "@hospio/api/data/live";
 export const dynamic = "force-dynamic";
 
 /**
- * Front office · Till. The desk only reads its own till (`/tills/mine`) and that till's entries; the
- * demo also lists the closed tills of the day. The default float comes from Hotel setup → Money.
+ * Front office · Till. The desk reads its own till (`/tills/mine`), that till's entries and its role's
+ * tills closed in the last 7 days. The default float comes from Hotel setup → Money.
  */
 export default async function FrontDeskTillPage() {
 	const user = await getUser();
@@ -20,13 +20,10 @@ export default async function FrontDeskTillPage() {
 		data.staff.list(),
 		data.hotels.limits(),
 	]);
-	const [entries, tills] = await Promise.all([
+	const [entries, past] = await Promise.all([
 		till && !isDemo ? data.finance.tillEntries(till.id) : Promise.resolve([]),
-		isDemo ? data.finance.tills() : Promise.resolve([]),
+		data.finance.myClosedTills(),
 	]);
-	const past = tills.filter(
-		(t) => t.role === "FRONT_OFFICE" && t.status === "CLOSED",
-	);
 	return (
 		<TillScreen
 			till={till}

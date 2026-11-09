@@ -85,9 +85,7 @@ export function TillScreen({
 			p.role === role &&
 			p.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10),
 	);
-	const paidOut = entries
-		.filter((e) => e.kind === "PAY_OUT" || e.kind === "REFUND")
-		.reduce((s, e) => s + Math.abs(e.amount), 0);
+	const paidOut = open?.cashOut ?? 0;
 	const variance =
 		open && typeof counted === "number" ? counted - open.expected : 0;
 	const closeAll = () => {
@@ -159,7 +157,7 @@ export function TillScreen({
 					label="Paid out"
 					value={naira(paidOut)}
 					icon={WalletIcon}
-					hint="Petty cash and cash refunds from this till"
+					hint="Pay-outs, cash refunds and expenses paid from this till"
 				/>
 				<KpiCard
 					label="Should be in the drawer"
@@ -253,7 +251,7 @@ export function TillScreen({
 				</SectionCard>
 				<SectionCard
 					title="Past tills"
-					subtitle="Closed tills of the last days"
+					subtitle="Closed in the last 7 days"
 					flush
 				>
 					<ul className="divide-y divide-line">
@@ -513,7 +511,8 @@ export function TillScreen({
 						<TotalsList
 							rows={[
 								{ label: "Opening float", value: naira(open.openingFloat) },
-								{ label: "Cash taken", value: naira(open.cashIn) },
+								{ label: "Cash in", value: naira(open.cashIn) },
+								{ label: "Paid out", value: `− ${naira(open.cashOut ?? 0)}` },
 								{
 									label: "Expected",
 									value: naira(open.expected),

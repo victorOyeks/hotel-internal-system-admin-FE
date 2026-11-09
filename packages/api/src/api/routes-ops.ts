@@ -100,6 +100,7 @@ export const TillItem = z.object({
 	openedAt: str,
 	openingFloat: z.number(),
 	cashIn: num,
+	cashOut: num,
 	expectedCash: z.number(),
 	countedCash: num,
 	variance: num,
@@ -361,6 +362,7 @@ export const opsRoutes = {
 	// finance · tills and deposits
 	"@get/finance/tills": { output: envelope(z.array(TillItem)) },
 	"@get/finance/tills/mine": { output: envelope(TillItem.nullable()) },
+	"@get/finance/tills/mine/closed": { output: envelope(z.array(TillItem)) },
 	"@post/finance/tills": {
 		input: z.object({
 			role: z.string(),

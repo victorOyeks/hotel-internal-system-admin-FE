@@ -231,6 +231,22 @@ export const opsData = {
 			if (error || !res) return failed("finance-service my till", error, null);
 			return res.data ? toTillRow(res.data) : null;
 		},
+		/** The caller's role's tills closed in the last 7 days. */
+		myClosedTills: async (): Promise<TillRow[]> => {
+			if (!live("finance"))
+				return give(
+					ops.demoTills.filter(
+						(t) => t.role === "FRONT_OFFICE" && t.status === "CLOSED",
+					),
+				);
+			const { data: res, error } = await api(
+				"@get/finance/tills/mine/closed",
+				await withSession(),
+			);
+			if (error || !res)
+				return failed("finance-service my closed tills", error, []);
+			return res.data.map(toTillRow);
+		},
 		tillEntries: async (tillId: string): Promise<TillEntryRow[]> => {
 			if (!live("finance")) return give([]);
 			const { data: res, error } = await api("@get/finance/tills/:id/entries", {
