@@ -39,7 +39,6 @@ export function Field({
 	children: ReactNode;
 	className?: string;
 }) {
-	// Hotel setup is the manager's and owner's; other roles would prefetch a 404.
 	// Setup links appear only on manager and owner forms; prefetch is off so other roles never preload a page they cannot open.
 	const canSetup = true;
 	return (
