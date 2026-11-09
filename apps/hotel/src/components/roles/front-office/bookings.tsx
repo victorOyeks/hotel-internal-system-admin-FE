@@ -261,7 +261,7 @@ export function BookingsScreen({
 												bookingId: b.id,
 												guestPhone: b.guestPhone,
 												guestEmail: b.guestEmail,
-												amountDue: Math.max(0, b.totalAmount - b.paid),
+												amountDue: dueOnBooking(b) || Math.max(0, b.totalAmount - b.paid),
 												description: `Booking ${b.reference}`,
 											});
 											setPayOpen(true);
@@ -391,7 +391,7 @@ export function BookingsScreen({
 						bookingId: selected.id,
 						guestPhone: selected.guestPhone,
 						guestEmail: selected.guestEmail,
-						amountDue: Math.max(0, selected.totalAmount - selected.paid),
+						amountDue: dueOnBooking(selected) || Math.max(0, selected.totalAmount - selected.paid),
 						description: `Booking ${selected.reference}`,
 					});
 					setPayOpen(true);
