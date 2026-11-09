@@ -765,6 +765,64 @@ export const Organization = z.object({
 	agreementNotes: z.string().nullable().optional(),
 	status: z.string().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
+	address: z.string().nullable().optional(),
+});
+
+/** POST /folio/organizations and PUT /folio/organizations/:id (manager). PUT replaces every field. */
+export const OrganizationRequest = z.object({
+	name: z.string(),
+	contactName: z.string().nullable().optional(),
+	contactPhone: z.string().nullable().optional(),
+	contactEmail: z.string().nullable().optional(),
+	address: z.string().nullable().optional(),
+	creditLimit: z.number().nullable().optional(),
+	dailyCap: z.number().nullable().optional(),
+	billingCycle: z.string().nullable().optional(),
+	paymentTermsDays: z.number().nullable().optional(),
+	agreementNotes: z.string().nullable().optional(),
+});
+
+export const OrganizationMember = z.object({
+	id: z.string(),
+	organizationId: z.string(),
+	fullName: z.string(),
+	staffRef: z.string().nullable().optional(),
+	phone: z.string().nullable().optional(),
+	email: z.string().nullable().optional(),
+	active: z.boolean().nullable().optional(),
+	createdAt: z.string().nullable().optional(),
+});
+
+export const MemberRequest = z.object({
+	fullName: z.string(),
+	staffRef: z.string().nullable().optional(),
+	phone: z.string().nullable().optional(),
+	email: z.string().nullable().optional(),
+});
+
+export const Invoice = z.object({
+	id: z.string(),
+	organizationId: z.string(),
+	number: z.string(),
+	periodFrom: z.string(),
+	periodTo: z.string(),
+	amount: z.number(),
+	paidAmount: z.number().nullable().optional(),
+	dueDate: z.string(),
+	status: z.string(),
+	sentAt: z.string().nullable().optional(),
+	createdAt: z.string().nullable().optional(),
+});
+
+export const OrganizationPayment = z.object({
+	id: z.string(),
+	organizationId: z.string(),
+	invoiceId: z.string().nullable().optional(),
+	amount: z.number(),
+	method: z.string(),
+	reference: z.string().nullable().optional(),
+	receivedAt: z.string().nullable().optional(),
+	recordedBy: z.string().nullable().optional(),
 });
 
 export const Folio = z.object({
@@ -786,6 +844,11 @@ export const Folio = z.object({
 	openedAt: z.string(),
 	closedAt: z.string().nullable(),
 	lines: z.array(FolioLine).nullable(),
+});
+
+/** GET /folio/organizations/:id/stays answers with the folio rows themselves, without their lines. */
+export const OrganizationStay = Folio.extend({
+	lines: z.array(FolioLine).nullable().optional(),
 });
 
 export const PaymentResponse = z.object({
@@ -1228,6 +1291,50 @@ export const schema = createSchema({
 	},
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
 	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
+	"@post/folio/organizations": {
+		input: OrganizationRequest,
+		output: envelope(Organization),
+	},
+	"@get/folio/organizations/:id": { output: envelope(Organization) },
+	"@put/folio/organizations/:id": {
+		input: OrganizationRequest,
+		output: envelope(Organization),
+	},
+	"@get/folio/organizations/:id/members": {
+		output: envelope(z.array(OrganizationMember)),
+	},
+	"@post/folio/organizations/:id/members": {
+		input: MemberRequest,
+		output: envelope(OrganizationMember),
+	},
+	"@post/folio/organizations/:id/members/import": {
+		input: z.array(MemberRequest),
+		output: envelope(z.array(OrganizationMember)),
+	},
+	"@get/folio/organizations/:id/stays": {
+		output: envelope(z.array(OrganizationStay)),
+	},
+	"@get/folio/organizations/:id/outstanding": { output: envelope(z.number()) },
+	"@get/folio/organizations/:id/invoices": {
+		output: envelope(z.array(Invoice)),
+	},
+	"@post/folio/organizations/:id/invoices": {
+		input: z.object({
+			periodFrom: z.string(),
+			periodTo: z.string(),
+			dueDate: z.string().nullable().optional(),
+		}),
+		output: envelope(Invoice),
+	},
+	"@post/folio/organizations/:id/payments": {
+		input: z.object({
+			amount: z.number(),
+			method: z.string(),
+			reference: z.string().nullable().optional(),
+			invoiceId: z.string().nullable().optional(),
+		}),
+		output: envelope(OrganizationPayment),
+	},
 	"@get/folio/folios/:id": { output: envelope(Folio) },
 	"@get/folio/folios/by-booking/:bookingId": { output: envelope(Folio) },
 	"@post/folio/folios/:id/charges": {
@@ -1327,4 +1434,7 @@ export type Repair = z.infer<typeof Repair>;
 export type StockItem = z.infer<typeof StockItem>;
 export type StockLevel = z.infer<typeof StockLevel>;
 export type Folio = z.infer<typeof Folio>;
+export type Organization = z.infer<typeof Organization>;
+export type OrganizationMember = z.infer<typeof OrganizationMember>;
+export type Invoice = z.infer<typeof Invoice>;
 export type Notification = z.infer<typeof Notification>;

@@ -517,8 +517,10 @@ export type OrganizationRow = {
 	contactName: string;
 	contactPhone: string;
 	contactEmail: string;
+	address?: string;
 	creditLimit: number;
 	dailyCap?: number;
+	/** folio-service's code (MONTHLY, TWICE_MONTHLY, PER_STAY); billingCycleLabel says it. */
 	billingCycle: string;
 	termsDays: number;
 	status: "ACTIVE" | "ON_HOLD";
@@ -981,16 +983,26 @@ export type AdminUserRow = {
 };
 
 /** What the booking's payment plan asks for now: a 50% deposit or the full stay, less what is already paid. */
-export function dueOnBooking(b: Pick<BookingRow, "paymentPlan" | "totalAmount" | "paid">): number {
-	const target = b.paymentPlan === "PAY_IN_FULL" ? b.totalAmount : b.paymentPlan === "DEPOSIT_50" ? Math.round(b.totalAmount / 2) : 0;
+export function dueOnBooking(
+	b: Pick<BookingRow, "paymentPlan" | "totalAmount" | "paid">,
+): number {
+	const target =
+		b.paymentPlan === "PAY_IN_FULL"
+			? b.totalAmount
+			: b.paymentPlan === "DEPOSIT_50"
+				? Math.round(b.totalAmount / 2)
+				: 0;
 	return Math.max(0, target - b.paid);
 }
 
 /** Card payments sent to the POS and not confirmed yet, per booking: the summaries show them as pending. */
-export function pendingByBooking(payments: Pick<PaymentRow, "bookingId" | "status" | "amount">[]): Record<string, number> {
+export function pendingByBooking(
+	payments: Pick<PaymentRow, "bookingId" | "status" | "amount">[],
+): Record<string, number> {
 	const out: Record<string, number> = {};
 	for (const p of payments) {
-		if (!p.bookingId || (p.status !== "PROCESSING" && p.status !== "PENDING")) continue;
+		if (!p.bookingId || (p.status !== "PROCESSING" && p.status !== "PENDING"))
+			continue;
 		out[p.bookingId] = (out[p.bookingId] ?? 0) + p.amount;
 	}
 	return out;
