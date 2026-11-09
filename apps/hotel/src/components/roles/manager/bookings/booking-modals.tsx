@@ -196,7 +196,7 @@ function CheckInPanel({
 			r.state === "held"
 				? "Held for this guest"
 				: r.state === "ready"
-					? `Ready · cleaned by ${r.attendant}`
+					? `Ready${r.attendant ? ` · cleaned by ${r.attendant}` : ""}`
 					: `Not ready · ${r.state.replace("_", " ")}`,
 	}));
 	const target: PaymentTarget = {

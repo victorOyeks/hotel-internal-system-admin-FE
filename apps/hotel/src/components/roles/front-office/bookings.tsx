@@ -241,7 +241,8 @@ export function BookingsScreen({
 						secondary={
 							row.original.paymentPlan === "ORGANIZATION"
 								? "Company pays"
-								: row.original.totalAmount - row.original.paid > 0
+								: row.original.status !== "CANCELLED" &&
+										row.original.totalAmount - row.original.paid > 0
 									? `${naira(row.original.totalAmount - row.original.paid)} due`
 									: "Paid"
 						}
@@ -603,7 +604,8 @@ export function BookingPanel({
 }) {
 	if (!booking) return null;
 	const b = booking;
-	const due = b.totalAmount - b.paid;
+	// A cancelled booking owes nothing; what was paid shows as credit to refund.
+	const due = b.status === "CANCELLED" ? -b.paid : b.totalAmount - b.paid;
 	return (
 		<SidePanel
 			open={open}

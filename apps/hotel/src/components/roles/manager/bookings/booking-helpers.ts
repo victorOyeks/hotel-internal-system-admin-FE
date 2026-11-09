@@ -40,6 +40,11 @@ export function paymentStatus(b: BookingRow): {
 	label: string;
 	tone: PillTone;
 } {
+	if (b.status === "CANCELLED")
+		return {
+			label: b.paid > 0 ? "Paid · refund or credit" : "Nothing due",
+			tone: "grey",
+		};
 	if (b.priceKind === "COMPLIMENTARY")
 		return { label: "Complimentary", tone: "brand" };
 	if (b.paymentPlan === "ORGANIZATION")
@@ -62,7 +67,9 @@ export const priceKindLabels: Record<PriceKind, string> = {
 	COMPLIMENTARY: "Complimentary",
 };
 
-export const balance = (b: BookingRow) => Math.max(0, b.totalAmount - b.paid);
+/** What the guest still owes on the stay; nothing once the booking is cancelled. */
+export const balance = (b: BookingRow) =>
+	b.status === "CANCELLED" ? 0 : Math.max(0, b.totalAmount - b.paid);
 
 /** Whether an action from the URL (?action=) still applies to the booking: a stale link must not open check-in on a stay that is in house or cancelled. */
 export function actionAllowed(b: BookingRow, action: string | null): boolean {
