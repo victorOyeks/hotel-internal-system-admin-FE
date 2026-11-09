@@ -459,6 +459,8 @@ export const opsRoutes = {
 			roomsOccupied: z.number().nullable().optional(),
 			note: z.string().nullable().optional(),
 			markNoShows: z.boolean().optional(),
+			/** Manager or owner: close with open tabs and unsettled orders at the outlets (listed in the report). */
+			carryOpenTabs: z.boolean().optional(),
 		}),
 		output: envelope(NightAuditDay),
 	},

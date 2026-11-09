@@ -157,6 +157,10 @@ export function KitchenOrdersScreen({
 		(o) => o.status === "OPEN" || o.status === "SENT" || o.status === "READY",
 	).length;
 	const settled = (o: OrderRow) => o.paid || o.chargedToRoom;
+	// Staff cancel an order only before anything on it went to the kitchen; after that it needs a manager.
+	const untouched = (o: OrderRow) =>
+		o.status === "OPEN" &&
+		o.lines.every((l) => l.status === "NEW" || l.status === "CANCELLED");
 
 	// new order
 	const [lines, setLines] = useState<CartLine[]>([]);
@@ -437,6 +441,7 @@ export function KitchenOrdersScreen({
 							{list.map((o) => (
 								<BoardCard
 									key={o.id}
+									label={`Open ${o.number}`}
 									onClick={() => {
 										setPanel({ kind: "ticket", id: o.id });
 										void setOpen(o.id);
@@ -751,7 +756,12 @@ export function KitchenOrdersScreen({
 						)}
 						{!settled(current) &&
 							["OPEN", "SENT", "READY", "SERVED"].includes(current.status) && (
-								<div className="grid grid-cols-2 gap-2">
+								<div
+									className={cn(
+										"grid gap-2",
+										untouched(current) ? "grid-cols-2" : "grid-cols-1",
+									)}
+								>
 									<BigButton
 										tone="secondary"
 										disabled={roomChargeOff || inHouse.length === 0}
@@ -768,15 +778,25 @@ export function KitchenOrdersScreen({
 									>
 										<BedDoubleIcon className="size-5" /> Charge to room
 									</BigButton>
-									<BigButton
-										tone="dangerSoft"
-										onClick={() =>
-											setCancel({ id: current.id, label: current.number })
-										}
-									>
-										<BanIcon className="size-5" /> Cancel order
-									</BigButton>
+									{untouched(current) && (
+										<BigButton
+											tone="dangerSoft"
+											onClick={() =>
+												setCancel({ id: current.id, label: current.number })
+											}
+										>
+											<BanIcon className="size-5" /> Cancel order
+										</BigButton>
+									)}
 								</div>
+							)}
+						{!settled(current) &&
+							!untouched(current) &&
+							["SENT", "READY", "SERVED"].includes(current.status) && (
+								<p className="text-xs text-ink-3">
+									This order already went to the kitchen: take single dishes off
+									with ✕, or ask a manager to cancel the whole order.
+								</p>
 							)}
 						{roomChargeOff && !settled(current) && (
 							<p className="text-xs text-ink-3">
