@@ -600,6 +600,7 @@ export const opsRoutes = {
 					kind: z.string(),
 					amount: num,
 					requesterName: str,
+					requesterId: str,
 					requesterRole: str,
 					approverLevel: z.string(),
 					description: str,
