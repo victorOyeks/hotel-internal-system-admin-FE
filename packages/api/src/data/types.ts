@@ -397,6 +397,8 @@ export type TillRow = {
 	openedAt: string;
 	openingFloat: number;
 	cashIn: number;
+	/** Pay-outs, cash refunds and expenses paid from the drawer. */
+	cashOut?: number;
 	expected: number;
 	counted?: number;
 	variance?: number;

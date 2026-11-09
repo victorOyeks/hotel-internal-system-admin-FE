@@ -56,6 +56,7 @@ export function toTillRow(t: TillItem): TillRow {
 		openedAt: t.openedAt ?? "",
 		openingFloat: t.openingFloat,
 		cashIn: t.cashIn ?? 0,
+		cashOut: t.cashOut ?? 0,
 		expected: t.expectedCash,
 		counted: t.countedCash ?? undefined,
 		variance: t.variance ?? undefined,
