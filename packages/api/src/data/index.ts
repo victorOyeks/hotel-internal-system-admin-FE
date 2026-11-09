@@ -1260,6 +1260,16 @@ export function notificationLink(
 	if (link.startsWith("/dashboard")) return link;
 	const [rawFirst, second] = link.replace(/^\/+/, "").split("/");
 	if (!rawFirst) return "/dashboard";
+	// A work order opens on the screen that role follows work orders on.
+	if (rawFirst === "repairs" && second && role) {
+		const at: Record<string, string> = {
+			MAINTENANCE: "/dashboard",
+			MANAGER: "/dashboard/tasks",
+			FRONT_OFFICE: "/dashboard/repairs",
+			HOUSEKEEPING: "/dashboard/repairs",
+		};
+		if (at[role]) return `${at[role]}?open=${second}`;
+	}
 	const alias = role ? SCREEN_ALIASES[role]?.[rawFirst] : undefined;
 	const first = alias ?? rawFirst;
 	if (first === "") return "/dashboard";
