@@ -88,6 +88,8 @@ function NotConnected({ title, what }: { title: string; what: string }) {
 }
 
 export type FinancialsProps = {
+	/** Revenue this month by the desk that took it (live). */
+	income?: { source: string; amount: number; pct: number }[];
 	/** True while the finance domain is on fixtures: the sections below then show their sample data, otherwise "Not connected yet". */
 	demo: boolean;
 	businessName: string;
@@ -408,10 +410,34 @@ export function OwnerFinancials(props: FinancialsProps) {
 								title="Where the money went"
 								what="Budgets by category"
 							/>
-							<NotConnected
+							<SectionCard
 								title="Where the money came from"
-								what="Income by source"
-							/>
+								subtitle={`This month · ${props.hotelName}`}
+								action={{
+									label: "View transactions",
+									href: "/dashboard/financials?tab=transactions",
+								}}
+								bodyClassName="gap-3 pt-2"
+							>
+								{(props.income ?? []).length === 0 ? (
+									<p className="text-[13px] text-ink-3">
+										No money taken this month yet.
+									</p>
+								) : (
+									(props.income ?? []).map((s) => (
+										<div
+											key={s.source}
+											className="flex items-center gap-3 text-[13px]"
+										>
+											<span className="flex-1 text-ink">{s.source}</span>
+											<span className="text-ink-3">{s.pct}%</span>
+											<span className="w-20 text-right font-semibold text-ink">
+												{nairaShort(s.amount)}
+											</span>
+										</div>
+									))
+								)}
+							</SectionCard>
 						</div>
 					)}
 				</>

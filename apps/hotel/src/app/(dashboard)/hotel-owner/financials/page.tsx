@@ -28,6 +28,7 @@ export default async function Page() {
 		business,
 		settings,
 		active,
+		income,
 	] = await Promise.all([
 		data.hotels.withMoney(),
 		data.finance.transactions(),
@@ -38,6 +39,7 @@ export default async function Page() {
 		data.business.mine(),
 		data.hotels.limits(),
 		getActiveHotel(),
+		data.finance.income(),
 	]);
 	const worth = await data.hotels.worth(hotels, approvals);
 	return (
@@ -52,6 +54,7 @@ export default async function Page() {
 			trend={ownerTrend}
 			budgets={ownerBudgets}
 			sources={ownerRevenueSources}
+			income={income}
 			payMix={ownerPayMix}
 			transactions={transactions}
 			expenses={expenses}
