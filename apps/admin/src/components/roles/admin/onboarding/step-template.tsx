@@ -66,7 +66,7 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 	);
 	const [picked, setPicked] = useState<string[]>(hotels.map((h) => h.id));
 	const [appliedTo, setAppliedTo] = useState<string[]>(saved?.appliedTo ?? []);
-	const { pending, call, busy } = useWizardSave();
+	const { pending, busy } = useWizardSave();
 	const template = templates.find((t) => t.id === templateId);
 	const toggle = (id: string) =>
 		setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -79,8 +79,12 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 			}
 			const done: string[] = [...appliedTo];
 			for (const hotelId of picked) {
-				const ok = await call(() => applyTemplate({ templateId }, hotelId));
-				if (ok === null) break;
+				// applyTemplate answers {ok: true, data: null} on success, so the result itself is checked, not its data.
+				const result = await applyTemplate({ templateId }, hotelId);
+				if (!result.ok) {
+					toast.error(result.error, { duration: 8000 });
+					break;
+				}
 				if (!done.includes(hotelId)) done.push(hotelId);
 			}
 			setAppliedTo(done);
