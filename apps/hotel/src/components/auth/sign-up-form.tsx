@@ -81,7 +81,8 @@ export function SignUpForm() {
 				return;
 			}
 			toast.success("Account created");
-			router.replace("/verify-phone");
+			// Sign-up already sent the code; the check page must not send (and so replace) a second one.
+			router.replace("/verify-phone?sent=1");
 		});
 	}
 

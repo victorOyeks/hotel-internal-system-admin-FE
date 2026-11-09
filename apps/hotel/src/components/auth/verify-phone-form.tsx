@@ -29,10 +29,13 @@ export function VerifyPhoneForm({
 	phone,
 	staging,
 	next = "/onboarding",
+	alreadySent = false,
 }: {
 	phone: string;
 	staging: boolean;
 	next?: string;
+	/** True when sign-up has just sent a code: sending again would replace it. */
+	alreadySent?: boolean;
 }) {
 	const router = useRouter();
 	const [code, setCode] = useState("");
@@ -56,8 +59,8 @@ export function VerifyPhoneForm({
 	useEffect(() => {
 		if (sent.current) return;
 		sent.current = true;
-		void send();
-	}, [send]);
+		if (!alreadySent) void send();
+	}, [send, alreadySent]);
 
 	useEffect(() => {
 		if (left <= 0) return;
@@ -127,7 +130,8 @@ export function VerifyPhoneForm({
 			{staging && (
 				<p className="rounded-[10px] bg-info-soft px-4 py-3 text-xs text-info">
 					<span className="font-semibold">Staging accepts 123456.</span> No SMS
-					is sent yet; the real code is in the identity-service log.
+					is sent yet; the code also shows in the notice at the top of the
+					screen.
 				</p>
 			)}
 
