@@ -49,8 +49,12 @@ export function BookingDetailsPanel({
 	const status = bookingStatus(b);
 	const pay = paymentStatus(b);
 	const due = balance(b);
+	// Paid more than the stay: the rest is the guest's credit.
+	const credit = Math.max(0, b.paid - b.totalAmount);
 	const paidPct =
-		b.totalAmount > 0 ? Math.round((b.paid / b.totalAmount) * 100) : 100;
+		b.totalAmount > 0
+			? Math.min(100, Math.round((b.paid / b.totalAmount) * 100))
+			: 100;
 
 	return (
 		<SidePanel
@@ -236,8 +240,10 @@ export function BookingDetailsPanel({
 										label:
 											b.paymentPlan === "ORGANIZATION"
 												? `Billed to ${b.organizationName}`
-												: "Balance",
-										value: naira(due),
+												: credit > 0
+													? "Credit"
+													: "Balance",
+										value: naira(credit > 0 ? credit : due),
 										strong: true,
 										tone:
 											due > 0 && b.paymentPlan !== "ORGANIZATION"

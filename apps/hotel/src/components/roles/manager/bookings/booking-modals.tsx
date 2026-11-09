@@ -457,7 +457,11 @@ function CheckOutPanel({
 		setPosting(true);
 		const r = await postCharge(
 			folio.id,
-			{ description: "Late check-out", amount: fee, category: "Accommodation" },
+			{
+				description: "Late check-out",
+				amount: fee,
+				category: "Late check-out",
+			},
 			folio,
 		);
 		setPosting(false);

@@ -1184,7 +1184,8 @@ function CheckOutPanel({
 									? folio.lines
 											.filter(
 												(l) =>
-													l.kind === "CHARGE" && l.category === "Accommodation",
+													l.kind === "CHARGE" &&
+													l.category.toUpperCase() === "ACCOMMODATION",
 											)
 											.reduce((s, l) => s + l.amount, 0)
 									: b.totalAmount,
@@ -1197,7 +1198,8 @@ function CheckOutPanel({
 									? folio.lines
 											.filter(
 												(l) =>
-													l.kind === "CHARGE" && l.category !== "Accommodation",
+													l.kind === "CHARGE" &&
+													l.category.toUpperCase() !== "ACCOMMODATION",
 											)
 											.reduce((s, l) => s + l.amount + l.tax, 0)
 									: 0,
