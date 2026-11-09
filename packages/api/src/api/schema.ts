@@ -942,6 +942,8 @@ export const schema = createSchema({
 		output: envelope(AuthResponse),
 	},
 	"@get/identity/users/me": { output: envelope(Me) },
+	/** The people at the active hotel (names and roles only) for any staff member: swap and cover pickers. */
+	"@get/identity/users/colleagues": { output: envelope(z.array(UserSummary)) },
 	"@get/identity/users": {
 		query: z
 			.object({
@@ -965,6 +967,10 @@ export const schema = createSchema({
 	"@post/identity/users/:id/resend-invite": {
 		params: z.object({ id: z.string() }),
 		output: envelope(UserCreated),
+	},
+	"@post/identity/auth/set-pin": {
+		input: z.object({ pin: z.string() }),
+		output: envelope(z.null().optional()),
 	},
 	"@post/identity/users/:id/reset-password": {
 		params: z.object({ id: z.string() }),

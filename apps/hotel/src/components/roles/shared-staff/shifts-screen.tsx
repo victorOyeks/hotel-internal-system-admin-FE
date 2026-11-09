@@ -9,7 +9,6 @@ import {
 	LogInIcon,
 	LogOutIcon,
 	PalmtreeIcon,
-	TimerIcon,
 } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
@@ -33,13 +32,13 @@ import {
 	requestLeave,
 	requestShiftChange,
 } from "@hospio/api/actions/workforce";
+import { setMyPin } from "@hospio/api/actions/identity";
 import type {
 	ClockStatus,
 	LeaveRow,
 	ShiftRow,
 	StaffRow,
 } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
 import { cn } from "@hospio/ui/utils";
 import { BigButton } from "./tablet";
 
@@ -50,7 +49,6 @@ type Panel =
 	| { kind: "clockout" }
 	| { kind: "pin" }
 	| { kind: "lang" }
-	| { kind: "idle" }
 	| null;
 
 /**
@@ -108,10 +106,7 @@ export function ShiftsScreen({
 		why: "Annual leave",
 		note: "",
 	});
-	const [pin, setPin] = useState({ current: "", next: "", again: "" });
-	const [lang, setLang] = useState("English");
-	// Change PIN, language and the idle check have no backend in this flow: they stay on the demo pause and toast.
-	const { run: demoRun, pending: demoPending } = useDemoAction();
+	const [pin, setPin] = useState({ next: "", again: "" });
 	const { run, pending } = useAction();
 
 	useEffect(() => {
@@ -156,9 +151,6 @@ export function ShiftsScreen({
 			>
 				<BigButton tone="secondary" onClick={() => setPanel({ kind: "leave" })}>
 					<PalmtreeIcon className="size-5" /> Ask for leave
-				</BigButton>
-				<BigButton tone="ghost" onClick={() => setPanel({ kind: "idle" })}>
-					<TimerIcon className="size-5" /> Idle check demo
 				</BigButton>
 			</PageHeader>
 
@@ -230,7 +222,7 @@ export function ShiftsScreen({
 							tone="secondary"
 							className="h-11"
 							onClick={() => {
-								setPin({ current: "", next: "", again: "" });
+								setPin({ next: "", again: "" });
 								setPanel({ kind: "pin" });
 							}}
 						>
@@ -241,7 +233,7 @@ export function ShiftsScreen({
 							className="h-11"
 							onClick={() => setPanel({ kind: "lang" })}
 						>
-							<GlobeIcon className="size-4" /> {lang}
+							<GlobeIcon className="size-4" /> English
 						</BigButton>
 					</div>
 				</SectionCard>
@@ -678,11 +670,11 @@ export function ShiftsScreen({
 							Cancel
 						</BigButton>
 						<BigButton
-							pending={demoPending}
-							disabled={
-								pin.next.length !== 4 || pin.next !== pin.again || !pin.current
+							pending={pending}
+							disabled={pin.next.length !== 4 || pin.next !== pin.again}
+							onClick={() =>
+								run(() => setMyPin(pin.next), "PIN changed", close)
 							}
-							onClick={() => demoRun("PIN changed", close)}
 						>
 							Change PIN
 						</BigButton>
@@ -690,14 +682,6 @@ export function ShiftsScreen({
 				}
 			>
 				<div className="flex flex-col gap-4">
-					<TextField
-						label="Current PIN"
-						type="password"
-						value={pin.current}
-						onChange={(v) =>
-							setPin({ ...pin, current: v.replace(/\D/g, "").slice(0, 4) })
-						}
-					/>
 					<div className="grid grid-cols-2 gap-3">
 						<TextField
 							label="New PIN"
@@ -722,7 +706,7 @@ export function ShiftsScreen({
 						/>
 					</div>
 					<Note tone="info">
-						Forgot it? Your manager can reset it from Staff.
+						Use it to sign in on a shared tablet. Pick 4 digits only you know.
 					</Note>
 				</div>
 			</Modal>
@@ -732,68 +716,14 @@ export function ShiftsScreen({
 				open={panel?.kind === "lang"}
 				onOpenChange={(o) => !o && close()}
 				title="Language"
-				subtitle="For this tablet only"
+				subtitle="Not connected yet · the app shows English for now"
 				icon={GlobeIcon}
 				size="confirm"
-				footer={
-					<BigButton onClick={() => demoRun(`Language set to ${lang}`, close)}>
-						Done
-					</BigButton>
-				}
+				footer={<BigButton onClick={close}>Close</BigButton>}
 			>
-				<div className="grid grid-cols-2 gap-2">
-					{["English", "Yorùbá", "Hausa", "Igbo", "Pidgin", "Français"].map(
-						(l) => (
-							<button
-								key={l}
-								type="button"
-								onClick={() => setLang(l)}
-								className={cn(
-									"h-12 rounded-control border text-[15px] font-semibold",
-									lang === l
-										? "border-brand bg-brand-soft/40 text-brand"
-										: "border-line text-ink hover:bg-subtle",
-								)}
-							>
-								{l}
-							</button>
-						),
-					)}
-				</div>
-			</Modal>
-
-			{/* Still there? */}
-			<Modal
-				open={panel?.kind === "idle"}
-				onOpenChange={(o) => !o && close()}
-				title="Still there?"
-				subtitle="You've been away for 5 minutes · the tablet locks in 30 seconds"
-				icon={TimerIcon}
-				size="confirm"
-				footer={
-					<>
-						<BigButton
-							tone="secondary"
-							pending={demoPending}
-							onClick={() =>
-								demoRun(
-									"Signed out · the next person can sign in",
-									() => {
-										close();
-									},
-									{ tone: "info" },
-								)
-							}
-						>
-							Sign out
-						</BigButton>
-						<BigButton onClick={close}>I'm here</BigButton>
-					</>
-				}
-			>
-				<Note tone="warning">
-					Shared tablets lock when nobody touches them so the next person signs
-					in as themselves. Clock-in is not affected.
+				<Note tone="info">
+					Choosing another language is not connected yet. Everything stays in
+					English for now.
 				</Note>
 			</Modal>
 		</>
