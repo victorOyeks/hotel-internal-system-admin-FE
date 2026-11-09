@@ -6,7 +6,6 @@ import {
 	demoBills,
 	demoBudget,
 	demoExpenseCategories,
-	demoIncomeSources,
 } from "@hospio/api/demo/fixtures/manager-ops";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +20,7 @@ export default async function FinancialsPage() {
 		today,
 		month,
 		week,
+		income,
 		settings,
 		business,
 	] = await Promise.all([
@@ -31,10 +31,11 @@ export default async function FinancialsPage() {
 		data.finance.today(),
 		data.finance.month(),
 		data.finance.series(),
+		data.finance.income(),
 		data.hotels.limits(),
 		data.business.mine(),
 	]);
-	// Budgets, income sources and bills have no endpoint yet: only the demo has them.
+	// Budgets and bills have no endpoint yet: only the demo has them.
 	const demo = !live("finance");
 	return (
 		<FinancialsScreen
@@ -45,7 +46,7 @@ export default async function FinancialsPage() {
 			today={today}
 			month={month}
 			budget={demo ? demoBudget : null}
-			income={demo ? demoIncomeSources : null}
+			income={income}
 			bills={demo ? demoBills : null}
 			week={week}
 			categories={demoExpenseCategories}

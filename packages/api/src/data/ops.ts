@@ -307,6 +307,20 @@ export const opsData = {
 			return toMoneyToday(res.data);
 		},
 		/** Revenue and expenses per day (default: the last 7 days). */
+		/** Revenue this month (or a range) by the desk that took it. */
+		income: async (
+			from?: string,
+			to?: string,
+		): Promise<{ source: string; amount: number; pct: number }[]> => {
+			if (!live("finance")) return give(managerOps.demoIncomeSources);
+			const end = to ?? lagosDate();
+			const { data: res, error } = await api("@get/finance/income", {
+				...(await withSession()),
+				query: { from: from ?? `${end.slice(0, 8)}01`, to: end },
+			});
+			if (error || !res) return failed("finance-service income", error, []);
+			return res.data;
+		},
 		series: async (from?: string, to?: string): Promise<SeriesPointRow[]> => {
 			if (!live("finance")) {
 				const wide =
