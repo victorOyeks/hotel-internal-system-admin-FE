@@ -168,7 +168,7 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 									label={SECTION_LABELS[section] ?? section}
 									last={i === arr.length - 1}
 								>
-									<span className="text-xs">
+									<span className="block min-w-0 break-words text-xs">
 										{describe(section, value) || "—"}
 									</span>
 								</KeyRow>
