@@ -1,6 +1,26 @@
 import { env } from "@hospio/api/env";
 import { createFetch } from "@better-fetch/fetch";
+import { apiLogEnabled, recordApiCall } from "./debug-log";
 import { ApiError, schema } from "./schema";
+
+/** Staging API log (NEXT_PUBLIC_API_LOG=true): records each server-side call, see ./debug-log.ts. */
+const loggedFetch: typeof fetch | undefined =
+	typeof window === "undefined" && apiLogEnabled()
+		? async (input, init) => {
+				const started = Date.now();
+				const method = (init?.method ?? "GET").toUpperCase();
+				const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+				try {
+					const res = await fetch(input, init);
+					const responseText = await res.clone().text().catch(() => "");
+					void recordApiCall({ method, url, body: init?.body, status: res.status, ms: Date.now() - started, responseText }).catch(() => {});
+					return res;
+				} catch (e) {
+					void recordApiCall({ method, url, body: init?.body, status: 0, ms: Date.now() - started, responseText: String(e) }).catch(() => {});
+					throw e;
+				}
+			}
+		: undefined;
 
 /**
  * One client for every service behind the gateway. Pass `auth` and the `X-Hotel-Id` header on
@@ -11,6 +31,7 @@ export const api = createFetch({
 	schema,
 	errorSchema: ApiError,
 	timeout: 30_000,
+	...(loggedFetch ? { customFetchImpl: loggedFetch } : {}),
 	retry: {
 		type: "linear",
 		attempts: 2,

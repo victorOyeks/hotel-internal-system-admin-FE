@@ -59,6 +59,8 @@ import type {
 	OnboardingRow,
 	OwnerHotelRow,
 	PaymentRow,
+	RefundRow,
+	DisputeRow,
 	PortalUserRow,
 	RoomRow,
 	RoomTypeRow,
@@ -602,8 +604,60 @@ export const data = {
 			}));
 		},
 		terminals: (hotelId?: string) => data.terminals.list(hotelId),
-		refunds: () => give(stay.demoRefunds),
-		disputes: () => give(stay.demoDisputes),
+		refunds: async (): Promise<RefundRow[]> => {
+			if (!live("payment")) return give(stay.demoRefunds);
+			const s = await withSession();
+			const [res, payments] = await Promise.all([
+				api("@get/payment/payments/refunds", s),
+				data.payments.list(),
+			]);
+			if (res.error || !res.data) {
+				console.error("payment-service refunds:", res.error);
+				return [];
+			}
+			const byId = new Map(payments.map((p) => [p.id, p]));
+			return res.data.data
+				.map((r) => ({
+					id: r.id,
+					paymentId: r.paymentId,
+					guestName: byId.get(r.paymentId)?.guestName ?? "—",
+					amount: Number(r.amount),
+					reason: r.reason ?? "",
+					status: (["APPROVED", "DECLINED"].includes(r.status)
+						? r.status
+						: "PENDING_APPROVAL") as RefundRow["status"],
+					requestedBy: "—",
+					createdAt: r.createdAt,
+				}))
+				.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+		},
+		disputes: async (): Promise<DisputeRow[]> => {
+			if (!live("payment")) return give(stay.demoDisputes);
+			const s = await withSession();
+			const [res, payments] = await Promise.all([
+				api("@get/payment/payments/disputes", s),
+				data.payments.list(),
+			]);
+			if (res.error || !res.data) {
+				console.error("payment-service disputes:", res.error);
+				return [];
+			}
+			const byId = new Map(payments.map((p) => [p.id, p]));
+			return res.data.data
+				.map((d) => ({
+					id: d.id,
+					paymentId: d.paymentId,
+					guestName: byId.get(d.paymentId)?.guestName ?? "—",
+					amount: byId.get(d.paymentId)?.amount ?? 0,
+					reason: d.reason ?? "",
+					status: (d.status === "RESOLVED"
+						? "RESOLVED"
+						: "OPEN") as DisputeRow["status"],
+					openedAt: d.createdAt,
+					resolution: d.resolution ?? undefined,
+				}))
+				.sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+		},
 	},
 	organizations: {
 		list: () => give(stay.demoOrganizations),
@@ -864,10 +918,14 @@ export const data = {
 		/** POS terminals of the active hotel (or `hotelId`), retired ones left out. */
 		list: async (hotelId?: string): Promise<TerminalRow[]> => {
 			if (!live("payment")) return give(stay.demoTerminals);
-			const { data: res, error } = await api(
-				"@get/payment/terminals",
-				await withSession(hotelId ? { hotelId } : undefined),
-			);
+			const session = await withSession(hotelId ? { hotelId } : undefined);
+			const [{ data: res, error }, assigned] = await Promise.all([
+				api("@get/payment/terminals", session),
+				api("@get/payment/terminals/assignments", session).catch(() => null),
+			]);
+			const rolesOf = new Map<string, string[]>();
+			for (const a of assigned?.data?.data ?? [])
+				rolesOf.set(a.terminalId, [...(rolesOf.get(a.terminalId) ?? []), a.role]);
 			if (error || !res) {
 				console.error("payment-service terminals:", error);
 				return [];
@@ -881,7 +939,7 @@ export const data = {
 					ref: t.terminalRef,
 					status:
 						t.status === "ONLINE" ? ("ONLINE" as const) : ("OFFLINE" as const),
-					roles: [],
+					roles: rolesOf.get(t.id) ?? [],
 					lastSeen: t.lastSeenAt ?? t.updatedAt ?? t.createdAt ?? "",
 					todayCount: 0,
 					todayAmount: 0,

@@ -2,6 +2,7 @@
 
 import { AlertTriangleIcon, CreditCardIcon, RotateCcwIcon, WifiIcon } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DetailList, Note, Timeline, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -12,12 +13,15 @@ import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
+import { approveRefund, declineRefund, linkTerminal, openDispute, reassignTerminal, recordPayment, removeTerminal, renameTerminal, requestProviderAccount, requestRefund, resolveDispute, setTerminalStatus, type TerminalRole, verifyPayment } from "@hospio/api/actions/payment";
+import { useAction } from "@hospio/api/actions/use-action";
 import { useDemoAction } from "@hospio/api/demo/actions";
 import type { DisputeRow, FolioRow, PaymentMethod, PaymentRow, RefundRow, TerminalRow } from "@hospio/api/data/types";
 import { methodLabel, paymentTone } from "./payments-screen";
 
-export function PaymentPanel({ payment: p, onClose, onRefund, onDispute }: { payment: PaymentRow | null; onClose: () => void; onRefund: (p: PaymentRow) => void; onDispute: (p: PaymentRow) => void }) {
+export function PaymentPanel({ payment: p, onClose, onRefund, onDispute, onStatus }: { payment: PaymentRow | null; onClose: () => void; onRefund: (p: PaymentRow) => void; onDispute: (p: PaymentRow) => void; onStatus: (id: string, status: PaymentRow["status"]) => void }) {
 	const { run, pending } = useDemoAction();
+	const live = useAction();
 	if (!p) return null;
 	return (
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={naira(p.amount)} subtitle={<span className="flex items-center gap-2">{p.reference} · {p.guestName} <StatusPill tone={paymentTone[p.status]}>{humanize(p.status)}</StatusPill></span>} icon={CreditCardIcon}
@@ -26,7 +30,7 @@ export function PaymentPanel({ payment: p, onClose, onRefund, onDispute }: { pay
 				{p.status === "APPROVED" && <Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(`Receipt resent to ${p.guestName}`)}>Resend receipt</Button>}
 				{p.status === "APPROVED" && <Button className={btn.primary} onClick={() => { onClose(); onRefund(p); }}><RotateCcwIcon className="size-4" /> Refund</Button>}
 				{(p.status === "DECLINED" || p.status === "FAILED") && <Button className={btn.primary} disabled={pending} onClick={() => run("Retry sent to the POS", onClose, { tone: "info" })}>Retry on POS</Button>}
-				{(p.status === "NO_RESPONSE" || p.status === "PROCESSING") && <Button className={btn.primary} disabled={pending} onClick={() => run("Checked with the provider · still waiting", onClose, { tone: "info" })}>Check with provider</Button>}
+				{(p.status === "NO_RESPONSE" || p.status === "PROCESSING") && <Button className={btn.primary} disabled={pending || live.pending} onClick={() => live.run(() => verifyPayment(p.id), "Checked with the provider", (r) => { onStatus(p.id, r.status); onClose(); })}>Check with provider</Button>}
 			</>}
 		>
 			<div className="flex flex-col gap-6">
@@ -54,15 +58,24 @@ export function PaymentPanel({ payment: p, onClose, onRefund, onDispute }: { pay
 	);
 }
 
-export function TerminalPanel({ terminal: t, payments, onClose }: { terminal: TerminalRow | null; payments: PaymentRow[]; onClose: () => void }) {
-	const { run, pending } = useDemoAction();
+const TERMINAL_ROLES: TerminalRole[] = ["FRONT_OFFICE", "BAR", "KITCHEN", "LAUNDRY"];
+const PROVIDERS = [{ value: "logging", label: "Logging", hint: "Staging default · records the charge, moves no money" }, { value: "moniepoint", label: "Moniepoint" }, { value: "opay", label: "OPay" }];
+
+export function TerminalPanel({ terminal: t, payments, onClose, onChanged, onRemoved }: { terminal: TerminalRow | null; payments: PaymentRow[]; onClose: () => void; onChanged: (t: TerminalRow) => void; onRemoved: (id: string) => void }) {
+	const { run: demo, pending: demoPending } = useDemoAction();
+	const { run, pending } = useAction();
+	const [name, setName] = useState("");
+	const [role, setRole] = useState("");
+	useEffect(() => { setName(t?.name ?? ""); setRole(""); }, [t]);
 	if (!t) return null;
+	const busy = pending || demoPending;
 	const recent = payments.filter((p) => p.terminal === t.name).slice(0, 6);
 	return (
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={t.name} subtitle={`${t.provider} · ${t.ref} · last seen ${fmtWhen(t.lastSeen)}`} icon={WifiIcon}
 			footer={<>
-				<Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run("Test charge of ₦100 sent to the terminal", undefined, { tone: "info" })}>Send test</Button>
-				<Button className={btn.primary} disabled={pending} onClick={() => run(t.status === "ONLINE" ? "Terminal paused · staff see it as unavailable" : "Reconnect requested · ask staff to restart the POS", onClose, { tone: "info" })}>{t.status === "ONLINE" ? "Pause terminal" : "Reconnect"}</Button>
+				<Button variant="outline" className={btn.dangerSoft} disabled={busy} onClick={() => run(() => removeTerminal(t.id), "Terminal removed", () => { onRemoved(t.id); onClose(); })}>Remove</Button>
+				<Button variant="outline" className={btn.secondary} disabled={busy} onClick={() => demo("Test charge of ₦100 sent to the terminal", undefined, { tone: "info" })}>Send test</Button>
+				<Button className={btn.primary} disabled={busy} onClick={() => { const next = t.status === "ONLINE" ? "OFFLINE" : "ONLINE"; run(() => setTerminalStatus(t.id, next), next === "OFFLINE" ? "Terminal paused · staff see it as unavailable" : "Terminal back online", () => onChanged({ ...t, status: next })); }}>{t.status === "ONLINE" ? "Pause terminal" : "Reconnect"}</Button>
 			</>}
 		>
 			<div className="flex flex-col gap-6">
@@ -71,11 +84,23 @@ export function TerminalPanel({ terminal: t, payments, onClose }: { terminal: Te
 						<div key={l} className="rounded-xl bg-subtle/70 px-4 py-3"><p className="text-[11px] font-medium uppercase tracking-[0.04em] text-ink-3">{l}</p><p className="text-base font-bold text-ink">{v}</p></div>
 					))}
 				</div>
-				{t.status === "OFFLINE" && <Note tone="danger">Offline since {fmtWhen(t.lastSeen)} · staff on {t.roles.map(humanize).join(", ")} can only take cash or transfer.</Note>}
-				<PanelSection title="Used by"><div className="flex flex-wrap gap-2">{t.roles.map((r) => <StatusPill key={r} tone="grey" dot={false}>{humanize(r)}</StatusPill>)}</div></PanelSection>
+				{t.status === "OFFLINE" && <Note tone="danger">Offline since {fmtWhen(t.lastSeen)} · staff on {t.roles.map(humanize).join(", ") || "no desk"} can only take cash or transfer.</Note>}
+				<PanelSection title="Name">
+					<div className="flex items-end gap-2">
+						<div className="flex-1"><TextField label="Terminal name" value={name} onChange={setName} /></div>
+						<Button variant="outline" className={btn.secondary} disabled={busy || !name.trim() || name === t.name} onClick={() => run(() => renameTerminal({ id: t.id, provider: t.provider, ref: t.ref }, name.trim()), "Terminal renamed", () => onChanged({ ...t, name: name.trim() }))}>Rename</Button>
+					</div>
+				</PanelSection>
+				<PanelSection title="Used by">
+					<div className="flex flex-wrap gap-2">{t.roles.length === 0 ? <p className="text-xs text-ink-3">No desk uses this terminal yet</p> : t.roles.map((r) => <StatusPill key={r} tone="grey" dot={false}>{humanize(r)}</StatusPill>)}</div>
+					<div className="mt-3 flex items-end gap-2">
+						<div className="flex-1"><SelectField label="Give a desk this terminal" value={role} onChange={setRole} options={TERMINAL_ROLES.map((r) => ({ value: r, label: humanize(r) }))} hint="A desk has one POS; this moves it here" /></div>
+						<Button className={btn.primary} disabled={busy || !role} onClick={() => run(() => reassignTerminal(t.id, role as TerminalRole), `${humanize(role)} now uses this terminal`, () => { onChanged({ ...t, roles: t.roles.includes(role) ? t.roles : [...t.roles, role] }); setRole(""); })}>Assign</Button>
+					</div>
+				</PanelSection>
 				<PanelSection title="Recent payments">
 					{recent.length === 0 ? <p className="text-xs text-ink-3">Nothing yet today</p> : (
-						<ul className="divide-y divide-line rounded-xl border border-line">{recent.map((p) => <li key={p.id} className="flex items-center gap-3 px-3 py-2 text-[13px]"><span className="flex-1 font-medium text-ink">{p.guestName} · {p.description}</span><span className="text-xs text-ink-3">{fmtWhen(p.createdAt)}</span><StatusPill tone={paymentTone[p.status]} dot={false}>{naira(p.amount)}</StatusPill></li>)}</ul>
+						<ul className="divide-y divide-line rounded-xl border border-line">{recent.map((p) => <li key={p.id} className="flex items-center gap-3 px-3 py-2 text-[13px]"><span className="flex-1 font-medium text-ink">{p.guestName} · {p.description}</span><span className="text-xs text-ink-3">{fmtWhen(p.createdAt)}</span></li>)}</ul>
 					)}
 				</PanelSection>
 			</div>
@@ -83,8 +108,33 @@ export function TerminalPanel({ terminal: t, payments, onClose }: { terminal: Te
 	);
 }
 
+export function LinkTerminalPanel({ open, onClose, onLinked }: { open: boolean; onClose: () => void; onLinked: (t: TerminalRow) => void }) {
+	const { run, pending } = useAction();
+	const ticket = useAction();
+	const [name, setName] = useState("");
+	const [provider, setProvider] = useState("logging");
+	const [ref, setRef] = useState("");
+	const [role, setRole] = useState<TerminalRole>("FRONT_OFFICE");
+	useEffect(() => { if (open) { setName(""); setProvider("logging"); setRef(""); setRole("FRONT_OFFICE"); } }, [open]);
+	return (
+		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="Link a terminal" subtitle="Add a POS and give it to a desk" icon={WifiIcon}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name.trim() || !ref.trim()} onClick={() => run(() => linkTerminal({ name: name.trim(), provider, terminalRef: ref.trim(), role }), `${name.trim()} linked to ${humanize(role)}`, (r) => { onLinked({ id: r.id, name: name.trim(), provider, ref: ref.trim(), status: "ONLINE", roles: [role], lastSeen: new Date().toISOString(), todayCount: 0, todayAmount: 0 }); onClose(); })}>Link terminal</Button></>}
+		>
+			<div className="flex flex-col gap-5">
+				<TextField label="Terminal name" value={name} onChange={setName} placeholder="e.g. Front desk POS" required />
+				<SelectField label="Provider" value={provider} onChange={setProvider} options={PROVIDERS} required />
+				<TextField label="Terminal or serial ref" value={ref} onChange={setRef} placeholder="Printed on the back of the device" required />
+				<SelectField label="Desk" value={role} onChange={(v) => setRole(v as TerminalRole)} options={TERMINAL_ROLES.map((r) => ({ value: r, label: humanize(r) }))} required />
+				<button type="button" disabled={ticket.pending} onClick={() => ticket.run(() => requestProviderAccount(provider, `Hotel needs a ${provider} account to link ${name || "a POS terminal"}.`), "Ticket opened with H.M.S", (r) => toast.info(`Ticket ${r.reference} opened. H.M.S will be in touch`))} className="self-start text-[13px] font-semibold text-brand hover:underline">Need a provider account? Ask H.M.S</button>
+			</div>
+		</SidePanel>
+	);
+}
+
+const asRefundStatus = (s: string): RefundRow["status"] => (s === "APPROVED" || s === "DECLINED" ? s : "PENDING_APPROVAL");
+
 export function RefundModal({ refund, isNew, onClose, onSaved }: { refund: RefundRow | null; isNew: boolean; onClose: () => void; onSaved: (r: RefundRow) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [amount, setAmount] = useState<number | "">("");
 	const [reason, setReason] = useState("");
 	const [note, setNote] = useState("");
@@ -96,10 +146,10 @@ export function RefundModal({ refund, isNew, onClose, onSaved }: { refund: Refun
 			footerInfo={<span className="flex items-center gap-2"><ManagerMark /> refunds over ₦50,000 also go to the owner</span>}
 			footer={decided ? <Button className={btn.primary} onClick={onClose}>Close</Button> : isNew ? <>
 				<Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button>
-				<Button className={btn.primary} disabled={pending || amount === "" || !reason} onClick={() => amount !== "" && run("Refund requested · waiting for approval", () => { onSaved({ ...refund, amount, reason }); onClose(); }, { tone: "info" })}>Request refund</Button>
+				<Button className={btn.primary} disabled={pending || amount === "" || !reason} onClick={() => amount !== "" && run(() => requestRefund(refund.paymentId, amount, reason), "Refund requested · waiting for approval", (r) => { onSaved({ ...refund, id: r.id, amount, reason, status: asRefundStatus(r.status) }); onClose(); })}>Request refund</Button>
 			</> : <>
-				<Button variant="outline" className={btn.dangerSoft} disabled={pending} onClick={() => run("Refund declined · requester told", () => { onSaved({ ...refund, status: "DECLINED" }); onClose(); })}>Decline</Button>
-				<Button className={btn.primary} disabled={pending} onClick={() => run(`${naira(refund.amount)} refund approved`, () => { onSaved({ ...refund, status: "APPROVED" }); onClose(); })}>Approve refund</Button>
+				<Button variant="outline" className={btn.dangerSoft} disabled={pending} onClick={() => run(() => declineRefund(refund.id), "Refund declined · requester told", (r) => { onSaved({ ...refund, status: asRefundStatus(r.status) }); onClose(); })}>Decline</Button>
+				<Button className={btn.primary} disabled={pending} onClick={() => run(() => approveRefund(refund.id), `${naira(refund.amount)} refund approved`, (r) => { onSaved({ ...refund, status: asRefundStatus(r.status) }); onClose(); })}>Approve refund</Button>
 			</>}
 		>
 			<div className="flex flex-col gap-4">
@@ -117,7 +167,7 @@ export function RefundModal({ refund, isNew, onClose, onSaved }: { refund: Refun
 }
 
 export function DisputePanel({ dispute, payment, isNew, onClose, onSaved }: { dispute: DisputeRow | null; payment: PaymentRow | null; isNew: boolean; onClose: () => void; onSaved: (d: DisputeRow) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [reason, setReason] = useState("");
 	const [resolution, setResolution] = useState("");
 	const [outcome, setOutcome] = useState<"ok" | "refund" | "reissue">("ok");
@@ -128,10 +178,10 @@ export function DisputePanel({ dispute, payment, isNew, onClose, onSaved }: { di
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={isNew ? "Open a dispute" : `Dispute · ${dispute.guestName}`} subtitle={`${naira(dispute.amount)}${payment ? ` · ${payment.reference} · ${methodLabel[payment.method]}` : ""}`} icon={AlertTriangleIcon} tone={resolved ? "default" : "danger"}
 			footer={resolved ? <Button className={btn.primary} onClick={onClose}>Close</Button> : isNew ? <>
 				<Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button>
-				<Button className={btn.primary} disabled={pending || !reason} onClick={() => run("Dispute opened · finance is told", () => { onSaved({ ...dispute, reason }); onClose(); }, { tone: "info" })}>Open dispute</Button>
+				<Button className={btn.primary} disabled={pending || !reason} onClick={() => run(() => openDispute(dispute.paymentId, reason), "Dispute opened · finance is told", (r) => { onSaved({ ...dispute, id: r.id, reason }); onClose(); })}>Open dispute</Button>
 			</> : <>
 				<Button variant="outline" className={btn.secondary} onClick={onClose}>Later</Button>
-				<Button className={btn.primary} disabled={pending || !resolution} onClick={() => run("Dispute resolved · guest told", () => { onSaved({ ...dispute, status: "RESOLVED", resolution }); onClose(); })}>Resolve</Button>
+				<Button className={btn.primary} disabled={pending || !resolution} onClick={() => run(() => resolveDispute(dispute.id, resolution), "Dispute resolved · guest told", () => { onSaved({ ...dispute, status: "RESOLVED", resolution }); onClose(); })}>Resolve</Button>
 			</>}
 		>
 			<div className="flex flex-col gap-6">
@@ -149,7 +199,7 @@ export function DisputePanel({ dispute, payment, isNew, onClose, onSaved }: { di
 }
 
 export function NewPaymentPanel({ open, folios, preselect, onClose, onSaved }: { open: boolean; folios: FolioRow[]; preselect: string | null; onClose: () => void; onSaved: (p: PaymentRow) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const [folioId, setFolioId] = useState("");
 	const [payer, setPayer] = useState("");
 	const [desc, setDesc] = useState("Room charges");
@@ -162,7 +212,7 @@ export function NewPaymentPanel({ open, folios, preselect, onClose, onSaved }: {
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="Record a payment" subtitle="For a folio, or a walk-in sale without a room" icon={CreditCardIcon}
 			footerInfo={folio ? `${naira(folio.balance)} due on ${folio.roomNumber}` : undefined}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || amount === "" || amount <= 0} onClick={() => amount !== "" && run(method === "CARD" ? "Sent to the front desk POS · waiting for the tap" : `${naira(amount)} recorded`, () => { onSaved({ id: `p-${Date.now()}`, reference: `PAY-${String(Date.now()).slice(-5)}`, folioId: folio?.id, guestName: name, roomNumber: folio?.roomNumber, role: "MANAGER", takenBy: "Tunde Bakare", method, amount, status: method === "CARD" ? "PROCESSING" : "APPROVED", terminal: method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: method === "CARD" ? undefined : new Date().toISOString(), receiptSent: receipt, description: desc }); onClose(); }, method === "CARD" ? { tone: "info" } : undefined)}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || amount === "" || amount <= 0} onClick={() => amount !== "" && run(() => recordPayment({ method, amount, folioId: folio?.id, guestName: name, description: desc, receipt }), method === "CARD" ? "Sent to the front desk POS · waiting for the tap" : `${naira(amount)} recorded`, (r) => { onSaved({ id: r.id, reference: `PAY-${r.id.slice(0, 6).toUpperCase()}`, folioId: folio?.id, guestName: name, roomNumber: folio?.roomNumber, role: "MANAGER", takenBy: "You", method, amount, status: r.status, terminal: method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: method === "CARD" ? undefined : new Date().toISOString(), receiptSent: receipt, description: desc }); onClose(); })}>{method === "CARD" ? "Send to POS" : "Record payment"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<SelectField label="Folio" value={folioId} onChange={(v) => { setFolioId(v); const f = folios.find((x) => x.id === v); if (f) setAmount(f.balance); }} placeholder="No folio · walk-in" options={folios.map((f) => ({ value: f.id, label: `${f.guestName} · ${f.roomNumber}`, hint: `${naira(f.balance)} due` }))} />
