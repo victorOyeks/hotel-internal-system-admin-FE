@@ -6,16 +6,24 @@ import "server-only";
  * matching `api("@get/...")` call and the screen above it does not change.
  */
 
+import { cache } from "react";
 import { api } from "@hospio/api/api/client";
 import type {
 	Business,
 	Hotel,
+	Invoice,
 	ListItem,
+	Organization,
 	SetupSection,
 	UserSummary,
 } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
-import { getActiveHotel, getBusiness, getHotels } from "@hospio/api/dal";
+import {
+	getActiveHotel,
+	getActiveRole,
+	getBusiness,
+	getHotels,
+} from "@hospio/api/dal";
 import { demoDelay } from "@hospio/api/demo/mode";
 import { isHotelRole } from "@hospio/api/roles";
 import { live } from "./live";
@@ -28,6 +36,12 @@ import { toPortalUserRow, toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
 import { opsData } from "./ops";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
+import {
+	type OrganizationParts,
+	toInvoiceRow,
+	toOrganizationRow,
+	toOrgMemberRow,
+} from "./mappers/organizations";
 import { toBookingRow, toFolioRow, toGuestRow } from "./mappers/reservation";
 import {
 	toBusinessRow,
@@ -52,9 +66,12 @@ import type {
 	BookingStatus,
 	BusinessRow,
 	MarketerRow,
+	NotificationRow,
 	FolioRow,
 	GuestRow,
 	HotelSetupSection,
+	InvoiceRow,
+	OrgMemberRow,
 	HotelSummary,
 	OnboardingRow,
 	OwnerHotelRow,
@@ -122,6 +139,19 @@ async function listUsers(
 	});
 	if (error || !res) {
 		console.error("identity-service users:", error);
+		return [];
+	}
+	return res.data;
+}
+
+/** The active hotel's people for a staff member (names and this hotel's roles only). */
+async function listColleagues(): Promise<UserSummary[]> {
+	const { data: res, error } = await api(
+		"@get/identity/users/colleagues",
+		await withSession(),
+	);
+	if (error || !res) {
+		console.error("identity-service colleagues:", error);
 		return [];
 	}
 	return res.data;
@@ -211,6 +241,58 @@ const demoBusinessUsers = (businessId: string): PortalUserRow[] =>
 					twoStep: false,
 					lastSignIn: u.lastSignIn,
 				}));
+
+/** folio-service's organizations for the active hotel, once per request. */
+const liveOrganizations = cache(async (): Promise<Organization[]> => {
+	const { data: res, error } = await api(
+		"@get/folio/organizations",
+		await withSession(),
+	);
+	if (error || !res) {
+		console.error("folio-service organizations:", error);
+		return [];
+	}
+	return res.data;
+});
+
+const organizationInvoices = cache(async (id: string): Promise<Invoice[]> => {
+	const { data: res, error } = await api(
+		"@get/folio/organizations/:id/invoices",
+		{ ...(await withSession()), params: { id } },
+	);
+	if (error || !res) {
+		console.error("folio-service organization invoices:", error);
+		return [];
+	}
+	return res.data;
+});
+
+/** An account's members, folios and outstanding balance, once per request (the list and the account page share them). */
+const organizationParts = cache(
+	async (id: string): Promise<OrganizationParts> => {
+		const s = await withSession();
+		const [members, stays, outstanding] = await Promise.all([
+			api("@get/folio/organizations/:id/members", { ...s, params: { id } }),
+			api("@get/folio/organizations/:id/stays", { ...s, params: { id } }),
+			api("@get/folio/organizations/:id/outstanding", {
+				...s,
+				params: { id },
+			}),
+		]);
+		if (members.error)
+			console.error("folio-service org members:", members.error);
+		if (stays.error) console.error("folio-service org stays:", stays.error);
+		if (outstanding.error)
+			console.error("folio-service org outstanding:", outstanding.error);
+		return {
+			members: (members.data?.data ?? []).map(toOrgMemberRow),
+			stays: (stays.data?.data ?? []).map((f) =>
+				toFolioRow({ ...f, lines: f.lines ?? null }),
+			),
+			outstanding: outstanding.data ? Number(outstanding.data.data) : null,
+		};
+	},
+);
 
 export const data = {
 	business: {
@@ -699,45 +781,71 @@ export const data = {
 		},
 	},
 	organizations: {
-		list: () => give(stay.demoOrganizations),
+		/** Every company account with what it owes, who can book and its stays this month (folio-service). */
+		list: async (): Promise<OrganizationRow[]> => {
+			if (!live("folio")) return give(stay.demoOrganizations);
+			const orgs = await liveOrganizations();
+			return Promise.all(
+				orgs.map(async (o) =>
+					toOrganizationRow(o, await organizationParts(o.id)),
+				),
+			);
+		},
 		/** The company accounts a booking can be billed to: folio-service's organizations when it is live. */
 		forBooking: async (): Promise<OrganizationRow[]> => {
 			if (!live("folio")) return give(stay.demoOrganizations);
-			const { data: res, error } = await api(
-				"@get/folio/organizations",
-				await withSession(),
-			);
-			if (error || !res) {
-				console.error("folio-service organizations:", error);
-				return [];
-			}
-			return res.data.map((o) => ({
-				id: o.id,
-				name: o.name,
-				contactName: o.contactName ?? "",
-				contactPhone: o.contactPhone ?? "",
-				contactEmail: o.contactEmail ?? "",
-				creditLimit: Number(o.creditLimit ?? 0),
-				dailyCap: o.dailyCap ? Number(o.dailyCap) : undefined,
-				billingCycle: o.billingCycle ?? "MONTHLY",
-				termsDays: o.paymentTermsDays ?? 30,
-				status: o.status === "ON_HOLD" ? "ON_HOLD" : "ACTIVE",
-				outstanding: 0,
-				staffCount: 0,
-				staysThisMonth: 0,
-				agreementNotes: o.agreementNotes ?? undefined,
-				since: o.createdAt ?? "",
-			}));
+			return (await liveOrganizations()).map((o) => toOrganizationRow(o));
 		},
-		get: (id: string) =>
-			give(stay.demoOrganizations.find((o) => o.id === id) ?? null),
-		members: (id: string) => give(stay.demoOrgMembers[id] ?? []),
-		invoices: (id?: string) =>
-			give(
-				id
-					? stay.demoInvoices.filter((i) => i.organizationId === id)
-					: stay.demoInvoices,
-			),
+		get: async (id: string): Promise<OrganizationRow | null> => {
+			if (!live("folio"))
+				return give(stay.demoOrganizations.find((o) => o.id === id) ?? null);
+			const { data: res, error } = await api("@get/folio/organizations/:id", {
+				...(await withSession()),
+				params: { id },
+			});
+			if (error || !res) {
+				if (error?.status !== 404)
+					console.error("folio-service organization:", error);
+				return null;
+			}
+			return toOrganizationRow(res.data, await organizationParts(id));
+		},
+		members: async (id: string): Promise<OrgMemberRow[]> => {
+			if (!live("folio")) return give(stay.demoOrgMembers[id] ?? []);
+			return (await organizationParts(id)).members;
+		},
+		/** The account's folios, newest first: what each stay charged, what was paid and what is left. */
+		stays: async (id: string): Promise<FolioRow[]> => {
+			if (!live("folio")) {
+				const org = stay.demoOrganizations.find((o) => o.id === id);
+				return give(
+					org
+						? stay.demoFolios.filter((f) => f.organizationName === org.name)
+						: [],
+				);
+			}
+			return (await organizationParts(id)).stays;
+		},
+		/** One account's invoices, or every account's when no id is given. */
+		invoices: async (id?: string): Promise<InvoiceRow[]> => {
+			if (!live("folio"))
+				return give(
+					id
+						? stay.demoInvoices.filter((i) => i.organizationId === id)
+						: stay.demoInvoices,
+				);
+			const orgs = (await liveOrganizations()).filter(
+				(o) => !id || o.id === id,
+			);
+			const lists = await Promise.all(
+				orgs.map(async (o) =>
+					(await organizationInvoices(o.id)).map((i) =>
+						toInvoiceRow(i, o.name),
+					),
+				),
+			);
+			return lists.flat().sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+		},
 	},
 	staff: {
 		/** The active hotel's people from identity (every grant on this hotel plus the business-wide owner). */
@@ -748,7 +856,12 @@ export const data = {
 				getHotels(),
 			]);
 			if (!active) return [];
-			const users = await listUsers({ hotelId: active.id });
+			// Only managers and owners may list the hotel's people; everyone else gets their colleagues' names and roles.
+			const role = await getActiveRole();
+			const users =
+				role === "MANAGER" || role === "OWNER"
+					? await listUsers({ hotelId: active.id })
+					: await listColleagues();
 			const names = hotelNameMap(hotels);
 			return users
 				.map((u) => toStaffRow(u, active.id, names))
@@ -779,9 +892,29 @@ export const data = {
 	},
 	approvals: opsData.approvals,
 	notifications: {
-		list: () => give(ops.demoNotifications),
-		unreadCount: () =>
-			give(ops.demoNotifications.filter((n) => !n.read).length),
+		/** messaging-service's notifications for the signed-in person: their own plus their roles' at this hotel. */
+		list: async (): Promise<NotificationRow[]> => {
+			if (!live("messaging")) return give(ops.demoNotifications);
+			const { data: res, error } = await api("@get/messaging/notifications", {
+				...(await withSession()),
+				query: { unreadOnly: false },
+			});
+			if (error || !res) {
+				console.error("messaging-service notifications:", error);
+				return [];
+			}
+			const role = await getActiveRole();
+			return res.data.map((n) => toNotificationRow(role, n));
+		},
+		unreadCount: async (): Promise<number> => {
+			if (!live("messaging"))
+				return give(ops.demoNotifications.filter((n) => !n.read).length);
+			const { data: res, error } = await api("@get/messaging/notifications", {
+				...(await withSession()),
+				query: { unreadOnly: true },
+			});
+			return error || !res ? 0 : res.data.length;
+		},
 	},
 	messaging: {
 		conversations: () => give(ops.demoConversations),
@@ -1020,3 +1153,137 @@ export const data = {
 };
 
 export type Data = typeof data;
+
+const DANGER_KINDS = new Set([
+	"POS_OFFLINE",
+	"ROOM_OUT_OF_ORDER",
+	"PROBLEM",
+	"SOLD_OUT",
+]);
+const WARNING_KINDS = new Set([
+	"STOCK_LOW",
+	"APPROVAL",
+	"LEAVE",
+	"SHIFT",
+	"TILL_SHORT",
+	"REPAIR",
+]);
+
+/** The screens each role has under /dashboard (besides the shared ones), so a notification only links where the role can go. */
+const ROLE_SCREENS: Record<string, string[]> = {
+	OWNER: [
+		"bookings",
+		"financials",
+		"hotel-setup",
+		"hotels",
+		"inventory",
+		"messaging",
+		"operations",
+		"payments",
+		"reports",
+		"roles",
+		"settings",
+		"staff",
+		"users",
+	],
+	MANAGER: [
+		"activity",
+		"approvals",
+		"bookings",
+		"departments",
+		"financials",
+		"folios",
+		"hotel-setup",
+		"inventory",
+		"messaging",
+		"night-audit",
+		"organizations",
+		"payments",
+		"reports",
+		"roles",
+		"rooms",
+		"staff",
+		"tasks",
+	],
+	FRONT_OFFICE: [
+		"bookings",
+		"folios",
+		"guests",
+		"messages",
+		"payments",
+		"rooms",
+		"till",
+	],
+	HOUSEKEEPING: ["inspect", "linen", "lost-found"],
+	FINANCE: ["expenses", "month", "night-audit", "organizations", "tills"],
+	INVENTORY: ["counts", "deliveries", "orders", "requests", "suppliers"],
+	MAINTENANCE: ["jobs", "parts", "rooms"],
+	KITCHEN: ["menu", "payments", "store"],
+	BAR: ["menu", "payments", "stock", "tabs"],
+	LAUNDRY: ["linen", "payments"],
+};
+const SHARED_SCREENS = ["notifications", "profile", "help", "shifts"];
+/** Where a service link lands per role when the role has no screen of that name. */
+const SCREEN_ALIASES: Record<string, Record<string, string>> = {
+	OWNER: { approvals: "", "night-audit": "financials" },
+	FINANCE: { financials: "", "night-audit": "night-audit" },
+	MANAGER: { repairs: "tasks", inventory: "inventory" },
+	FRONT_OFFICE: { orders: "", menu: "" },
+	HOUSEKEEPING: { rooms: "", repairs: "" },
+	MAINTENANCE: { repairs: "jobs" },
+	INVENTORY: { inventory: "requests" },
+};
+
+/** messaging-service links are service paths (/bookings/{id}, /approvals/{id}, /staff/leave …); open them through /dashboard, or not at all when the role has no such screen. */
+export function notificationLink(
+	link: string | null | undefined,
+	role: string | null,
+): string | undefined {
+	if (!link) return undefined;
+	if (link.startsWith("/dashboard")) return link;
+	const [rawFirst, second] = link.replace(/^\/+/, "").split("/");
+	if (!rawFirst) return "/dashboard";
+	const alias = role ? SCREEN_ALIASES[role]?.[rawFirst] : undefined;
+	const first = alias ?? rawFirst;
+	if (first === "") return "/dashboard";
+	const screens = [
+		...(role ? (ROLE_SCREENS[role] ?? []) : []),
+		...SHARED_SCREENS,
+	];
+	if (!screens.includes(first)) return undefined;
+	if (first === "bookings" && second)
+		return `/dashboard/bookings?tab=all&open=${second}`;
+	if (first === "staff" && second) return `/dashboard/staff?tab=${second}`;
+	return `/dashboard/${first}`;
+}
+
+function toNotificationRow(
+	role: string | null,
+	n: {
+		id: string;
+		kind: string;
+		title: string;
+		body: string | null;
+		link: string | null;
+		readAt: string | null;
+		createdAt: string;
+	},
+): NotificationRow {
+	const decided = /\b(declined|rejected|short|over)\b/i.test(n.title);
+	return {
+		id: n.id,
+		kind: n.kind,
+		title: n.title,
+		body: n.body ?? undefined,
+		link: notificationLink(n.link, role),
+		at: n.createdAt,
+		read: n.readAt !== null,
+		tone: DANGER_KINDS.has(n.kind)
+			? "danger"
+			: decided || WARNING_KINDS.has(n.kind)
+				? "warning"
+				: n.kind.endsWith("_DECIDED") || n.kind === "DAY_CLOSED"
+					? "success"
+					: "info",
+	};
+}

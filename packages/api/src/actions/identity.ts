@@ -254,3 +254,21 @@ export async function resendInvite(
 	revalidateUsers(businessId);
 	return { ok: true, data: data.data };
 }
+
+/** POST /identity/auth/set-pin: the signed-in person's own tablet PIN (4–6 digits). */
+export async function setMyPin(pin: string): Promise<ActionResult<null>> {
+	if (!live("identity")) {
+		await demoDelay(400);
+		return { ok: true, data: null };
+	}
+	const { error } = await api("@post/identity/auth/set-pin", {
+		...(await withSession()),
+		body: { pin },
+	});
+	if (error)
+		return {
+			ok: false,
+			error: errorMessage(error, "The PIN could not be changed"),
+		};
+	return { ok: true, data: null };
+}

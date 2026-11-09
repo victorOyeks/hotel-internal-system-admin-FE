@@ -4,6 +4,7 @@ import { fmtWhen } from "@hospio/ui/shared/format";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
+import { MarkAllRead } from "@/components/roles/shared-staff/mark-all-read";
 import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
@@ -14,25 +15,54 @@ export default async function NotificationsPage() {
 	const unread = items.filter((n) => !n.read).length;
 	return (
 		<>
-			<PageHeader title="Notifications" subtitle={`${unread} unread · approvals, payments, repairs, stock and messages`} />
+			<PageHeader
+				title="Notifications"
+				subtitle={`${unread} unread · approvals, payments, repairs, stock and messages`}
+			>
+				<MarkAllRead disabled={unread === 0} />
+			</PageHeader>
 			<SectionCard title="All notifications" flush count={items.length}>
 				{items.length === 0 ? (
-					<EmptyState title="Nothing yet" hint="Approvals, stock alerts, offline POS and messages show up here." className="mx-5 mb-5" />
+					<EmptyState
+						title="Nothing yet"
+						hint="Approvals, stock alerts, offline POS and messages show up here."
+						className="mx-5 mb-5"
+					/>
 				) : (
 					<ul className="divide-y divide-line">
 						{items.map((n) => (
-							<li key={n.id} className={`flex items-start gap-3 px-5 py-3 ${n.read ? "" : "bg-brand-soft/20"}`}>
-								<span className={`mt-2 size-2 shrink-0 rounded-full ${n.read ? "bg-line-strong" : "bg-brand"}`} />
+							<li
+								key={n.id}
+								className={`flex items-start gap-3 px-5 py-3 ${n.read ? "" : "bg-brand-soft/20"}`}
+							>
+								<span
+									className={`mt-2 size-2 shrink-0 rounded-full ${n.read ? "bg-line-strong" : "bg-brand"}`}
+								/>
 								<div className="min-w-0 flex-1">
 									<p className="text-sm font-semibold text-ink">{n.title}</p>
 									{n.body && <p className="text-xs text-ink-2">{n.body}</p>}
 									<p className="text-[11px] text-ink-3">{fmtWhen(n.at)}</p>
 								</div>
-								<StatusPill dot={false} tone={n.tone === "danger" ? "danger" : n.tone === "warning" ? "warning" : n.tone === "success" ? "success" : "info"}>
+								<StatusPill
+									dot={false}
+									tone={
+										n.tone === "danger"
+											? "danger"
+											: n.tone === "warning"
+												? "warning"
+												: n.tone === "success"
+													? "success"
+													: "info"
+									}
+								>
 									{n.kind.toLowerCase().replace(/_/g, " ")}
 								</StatusPill>
 								{n.link && (
-									<Link href={n.link} className="text-[13px] font-semibold text-brand">
+									<Link
+										href={n.link}
+										prefetch={false}
+										className="text-[13px] font-semibold text-brand"
+									>
 										Open →
 									</Link>
 								)}
