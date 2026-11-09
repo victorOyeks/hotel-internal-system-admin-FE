@@ -16,7 +16,7 @@ import { SectionCard } from "@hospio/ui/shared/section-card";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { changePassword } from "@hospio/api/actions";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { Me } from "@hospio/api/api/schema";
 import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
 
@@ -27,7 +27,7 @@ type Pref = { key: string; label: string; inApp: boolean; email: boolean; whatsa
 export function ProfileScreen({ user, role, sessions, prefs }: { user: Me; role: HotelRole | null; sessions: Session[]; prefs: Pref[] }) {
 	const [tab, setTab] = useQueryState("tab");
 	const active = (tab ?? "profile") as "profile" | "security" | "notifications";
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	// profile
 	const [name, setName] = useState(user.fullName);

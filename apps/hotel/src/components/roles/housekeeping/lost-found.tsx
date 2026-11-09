@@ -13,7 +13,7 @@ import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import type { LostFoundRow } from "@hospio/api/data/types";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { BigButton, ShiftPill } from "../shared-staff/tablet";
 
 /** Housekeeping · Lost & found (3240:14342), log found item (3240:14594), hand back (3240:14799). */
@@ -24,7 +24,7 @@ export function LostFoundScreen({ items, me, places }: { items: LostFoundRow[]; 
 	const [handing, setHanding] = useState<LostFoundRow | null>(null);
 	const [draft, setDraft] = useState({ what: "", where: "", note: "" });
 	const [to, setTo] = useState({ name: "", id: "", how: "In person" });
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	const list = rows.filter((r) => (tab === "held" ? r.status === "FOUND" : tab === "returned" ? r.status === "RETURNED" : true));
 

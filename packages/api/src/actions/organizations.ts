@@ -17,14 +17,15 @@ import type {
 	OrganizationRow,
 } from "@hospio/api/data/types";
 import { demoDelay } from "@hospio/api/demo/mode";
+import type { Delivery } from "@hospio/api/api/routes-admin";
 
 /**
  * Company accounts (folio-service /folio/organizations): add or change an account and its agreement
  * (manager), add or import the staff who can book on it (manager), invoice its stays and record what it
  * pays (manager, or finance with edit access). In demo mode the caller's own row is echoed back.
  *
- * There is no route to put an account on hold, remove a member, send a statement or reminder, or
- * download an invoice: the screens say "Not connected yet" for those.
+ * Put an account on hold, remove (or allow again) a member, and send a statement or payment reminder
+ * to the account's contact are wired too. There is no invoice PDF: the screens say "Not connected yet".
  */
 
 function revalidateOrganizations() {
@@ -271,4 +272,83 @@ export async function recordOrgPayment(
 		ok: true,
 		data: { id: data.data.id, amount: Number(data.data.amount) },
 	};
+}
+
+/** Manager. ON_HOLD stops new stays on account (the booking screens refuse an account on hold). */
+export async function setOrganizationStatus(
+	orgId: string,
+	status: "ACTIVE" | "ON_HOLD",
+): Promise<ActionResult<OrganizationRow>> {
+	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
+	const { data, error } = await api("@put/folio/organizations/:id/status", {
+		...(await withSession()),
+		params: { id: orgId },
+		query: { status },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The account could not be changed"),
+		};
+	revalidateOrganizations();
+	return { ok: true, data: toOrganizationRow(data.data) };
+}
+
+/** Manager. Removing a member keeps them on the list as not allowed; they can be allowed again. */
+export async function setOrgMemberActive(
+	orgId: string,
+	memberId: string,
+	active: boolean,
+): Promise<ActionResult<OrgMemberRow>> {
+	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
+	const { data, error } = await api(
+		"@put/folio/organizations/:id/members/:memberId/active",
+		{
+			...(await withSession()),
+			params: { id: orgId, memberId },
+			query: { active },
+		},
+	);
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The staff member could not be changed"),
+		};
+	revalidateOrganizations();
+	return { ok: true, data: toOrgMemberRow(data.data) };
+}
+
+export type OrgSent = {
+	to: string;
+	channel: string;
+	deliveries?: Delivery[] | null;
+};
+
+/** Manager or finance. Emails (or texts) the account's contact a statement or a payment reminder. */
+export async function sendOrgMessage(
+	orgId: string,
+	what: "statement" | "reminder",
+): Promise<ActionResult<OrgSent>> {
+	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
+	const { data, error } =
+		what === "statement"
+			? await api("@post/folio/organizations/:id/statement", {
+					...(await withSession()),
+					params: { id: orgId },
+				})
+			: await api("@post/folio/organizations/:id/reminder", {
+					...(await withSession()),
+					params: { id: orgId },
+				});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(
+				error,
+				what === "statement"
+					? "The statement could not be sent"
+					: "The reminder could not be sent",
+			),
+		};
+	return { ok: true, data: data.data };
 }

@@ -17,7 +17,7 @@ import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-pan
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { BookingRow } from "@hospio/api/data/types";
 import type { OwnerHotelFinance } from "@hospio/api/demo/fixtures/owner";
 import { DownloadModal, HotelFilter, useParam } from "./common";
@@ -108,7 +108,7 @@ export function BookingPanel({ booking: b, mode, onClose }: { booking: OwnerBook
 	const [method, setMethod] = useState("CARD");
 	const [msg, setMsg] = useState("");
 	const [reason, setReason] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const close = () => {
 		setAction(null);
 		onClose();
@@ -181,8 +181,8 @@ export function BookingPanel({ booking: b, mode, onClose }: { booking: OwnerBook
 			<Modal open={action === "dates"} onOpenChange={(o) => !o && setAction(null)} title="Change dates" subtitle={b?.guestName} icon={CalendarIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={() => setAction(null)}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run("Dates changed · guest told", close)}>Save new dates</Button></>}>
 				<div className="flex flex-col gap-4">
 					<FieldRow>
-						<TextField label="Check-in" value={b?.checkInDate ?? ""} onChange={() => undefined} type="date" />
-						<TextField label="Check-out" value={b?.checkOutDate ?? ""} onChange={() => undefined} type="date" />
+						<TextField label="Check-in" value={b?.checkInDate ?? ""} onChange={() => undefined} type="date" disabled />
+						<TextField label="Check-out" value={b?.checkOutDate ?? ""} onChange={() => undefined} type="date" disabled />
 					</FieldRow>
 					<Note tone="info">The price is recalculated at the current rate and the guest is told by WhatsApp.</Note>
 				</div>
@@ -212,7 +212,7 @@ export function NewBookingPanel({ open, hotels, onClose }: { open: boolean; hote
 	const [plan, setPlan] = useState("PAY_IN_FULL");
 	const rate = { Regular: 35000, Deluxe: 45000, Executive: 65000, Suite: 120000 }[type] ?? 45000;
 	const total = rate * (Number(nights) || 1);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="New booking" subtitle="The front desk can finish check-in later" icon={PlusIcon} width="md" footerInfo={`${naira(rate)} × ${nights} nights`} footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !guest} onClick={() => run(`Booking for ${guest} saved`, onClose)}>Save booking · {naira(total)}</Button></>}>
 			<div className="flex flex-col gap-4">

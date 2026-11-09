@@ -41,11 +41,16 @@ import type {
 } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 import {
+	sendOrgMessage,
+	setOrgMemberActive,
+} from "@hospio/api/actions/organizations";
+import { useAction } from "@hospio/api/actions/use-action";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
+import {
 	AddStaffPanel,
 	AgreementPanel,
 	ImportStaffModal,
 	InvoiceModal,
-	notConnected,
 	OrgPaymentModal,
 } from "./organization-panels";
 
@@ -101,6 +106,18 @@ export function OrganizationScreen({
 			? Math.round((org.outstanding / org.creditLimit) * 100)
 			: 0;
 	const a = (x: OrgAction) => setAction(x);
+	const { run } = useAction();
+	const send = (what: "statement" | "reminder") =>
+		run(
+			() =>
+				withDeliveries(
+					sendOrgMessage(org.id, what),
+					`${what === "statement" ? "Statement" : "Reminder"} to ${org.name}`,
+				),
+			what === "statement"
+				? `Statement sent to ${org.contactEmail || org.contactName || org.name}`
+				: `Payment reminder sent to ${org.contactEmail || org.contactName || org.name}`,
+		);
 
 	const stayColumns: ColumnDef<FolioRow, unknown>[] = [
 		{
@@ -227,12 +244,21 @@ export function OrganizationScreen({
 								: "Allow again",
 							tone: row.original.active ? "danger" : "default",
 							separatorBefore: true,
-							onClick: () =>
-								notConnected(
-									row.original.active
-										? "Removing staff from an account"
-										: "Allowing staff again",
-								),
+							onClick: () => {
+								const next = !row.original.active;
+								run(
+									() => setOrgMemberActive(org.id, row.original.id, next),
+									next
+										? `${row.original.fullName} can stay on account again`
+										: `${row.original.fullName} removed from the account`,
+									() =>
+										setMembers((ms) =>
+											ms.map((m) =>
+												m.id === row.original.id ? { ...m, active: next } : m,
+											),
+										),
+								);
+							},
 						},
 					]}
 				/>
@@ -310,11 +336,11 @@ export function OrganizationScreen({
 						)}
 					<button
 						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							notConnected("Invoice PDFs");
-						}}
-						className={`${btn.ghost} ${btn.small}`}
+						disabled
+						title="Invoice PDFs are not connected yet"
+						aria-label="Invoice PDF · not connected yet"
+						onClick={(e) => e.stopPropagation()}
+						className={`${btn.ghost} ${btn.small} cursor-not-allowed opacity-50`}
 					>
 						PDF
 					</button>
@@ -338,7 +364,7 @@ export function OrganizationScreen({
 				<Button
 					variant="outline"
 					className={btn.secondary}
-					onClick={() => notConnected("Statements")}
+					onClick={() => send("statement")}
 				>
 					<PrinterIcon className="size-4" /> Send statement
 				</Button>
@@ -445,16 +471,8 @@ export function OrganizationScreen({
 							[
 								["Create invoice", FileTextIcon, () => a("invoice")],
 								["Record payment", CreditCardIcon, () => a("payment")],
-								[
-									"Send reminder",
-									BellIcon,
-									() => notConnected("Payment reminders"),
-								],
-								[
-									"Send statement",
-									PrinterIcon,
-									() => notConnected("Statements"),
-								],
+								["Send reminder", BellIcon, () => send("reminder")],
+								["Send statement", PrinterIcon, () => send("statement")],
 								["Change terms", PencilIcon, () => a("agreement")],
 							] as const
 						).map(([label, I, fn]) => (
@@ -587,7 +605,7 @@ export function OrganizationScreen({
 						<Button
 							variant="outline"
 							className={btn.secondary}
-							onClick={() => notConnected("Statements")}
+							onClick={() => send("statement")}
 						>
 							<PrinterIcon className="size-4" /> Create statement
 						</Button>

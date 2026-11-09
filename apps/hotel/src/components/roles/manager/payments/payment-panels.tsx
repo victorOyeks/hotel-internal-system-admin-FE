@@ -2,6 +2,7 @@
 
 import { AlertTriangleIcon, CreditCardIcon, RotateCcwIcon, WifiIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
@@ -13,23 +14,26 @@ import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { approveRefund, declineRefund, linkTerminal, openDispute, reassignTerminal, recordPayment, removeTerminal, renameTerminal, requestProviderAccount, requestRefund, resolveDispute, setTerminalStatus, type TerminalRole, verifyPayment } from "@hospio/api/actions/payment";
+import { approveRefund, declineRefund, linkTerminal, openDispute, reassignTerminal, recordPayment, removeTerminal, renameTerminal, requestProviderAccount, requestRefund, resendReceipt, resolveDispute, retryPayment, setTerminalStatus, type TerminalRole, verifyPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type { DisputeRow, FolioRow, PaymentMethod, PaymentRow, RefundRow, TerminalRow } from "@hospio/api/data/types";
 import { methodLabel, paymentTone } from "./payments-screen";
 
 export function PaymentPanel({ payment: p, onClose, onRefund, onDispute, onStatus }: { payment: PaymentRow | null; onClose: () => void; onRefund: (p: PaymentRow) => void; onDispute: (p: PaymentRow) => void; onStatus: (id: string, status: PaymentRow["status"]) => void }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useAction();
 	const live = useAction();
+	const router = useRouter();
 	if (!p) return null;
+	const retry = () => run(() => retryPayment(p.id), `${naira(p.amount)} sent to the POS again`, (r) => { toast.info(r.status === "PROCESSING" ? "A new payment is waiting on the POS · the declined one stays in the list" : "The POS did not answer · try again or take cash"); onClose(); router.refresh(); });
 	return (
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={naira(p.amount)} subtitle={<span className="flex items-center gap-2">{p.reference} · {p.guestName} <StatusPill tone={paymentTone[p.status]}>{humanize(p.status)}</StatusPill></span>} icon={CreditCardIcon}
 			footerInfo={p.status === "APPROVED" ? `Receipt ${p.receiptSent === "NONE" ? "not sent" : `sent by ${p.receiptSent?.toLowerCase()}`}` : undefined}
 			footer={<>
-				{p.status === "APPROVED" && <Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(`Receipt resent to ${p.guestName}`)}>Resend receipt</Button>}
+				{p.status === "APPROVED" && <Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(() => withDeliveries(resendReceipt(p.id), `Receipt for ${p.guestName}`), `Receipt resent to ${p.guestName}`)}>Resend receipt</Button>}
 				{p.status === "APPROVED" && <Button className={btn.primary} onClick={() => { onClose(); onRefund(p); }}><RotateCcwIcon className="size-4" /> Refund</Button>}
-				{(p.status === "DECLINED" || p.status === "FAILED") && <Button className={btn.primary} disabled={pending} onClick={() => run("Retry sent to the POS", onClose, { tone: "info" })}>Retry on POS</Button>}
+				{(p.status === "DECLINED" || p.status === "FAILED") && p.method === "CARD" && <Button className={btn.primary} disabled={pending} onClick={retry}>Retry on POS</Button>}
+				{p.status === "NO_RESPONSE" && p.method === "CARD" && <Button variant="outline" className={btn.secondary} disabled={pending || live.pending} onClick={retry}>Retry on POS</Button>}
 				{(p.status === "NO_RESPONSE" || p.status === "PROCESSING") && <Button className={btn.primary} disabled={pending || live.pending} onClick={() => live.run(() => verifyPayment(p.id), "Checked with the provider", (r) => { onStatus(p.id, r.status); onClose(); })}>Check with provider</Button>}
 			</>}
 		>
@@ -62,19 +66,18 @@ const TERMINAL_ROLES: TerminalRole[] = ["FRONT_OFFICE", "BAR", "KITCHEN", "LAUND
 const PROVIDERS = [{ value: "logging", label: "Logging", hint: "Staging default · records the charge, moves no money" }, { value: "moniepoint", label: "Moniepoint" }, { value: "opay", label: "OPay" }];
 
 export function TerminalPanel({ terminal: t, payments, onClose, onChanged, onRemoved }: { terminal: TerminalRow | null; payments: PaymentRow[]; onClose: () => void; onChanged: (t: TerminalRow) => void; onRemoved: (id: string) => void }) {
-	const { run: demo, pending: demoPending } = useDemoAction();
 	const { run, pending } = useAction();
 	const [name, setName] = useState("");
 	const [role, setRole] = useState("");
 	useEffect(() => { setName(t?.name ?? ""); setRole(""); }, [t]);
 	if (!t) return null;
-	const busy = pending || demoPending;
+	const busy = pending;
 	const recent = payments.filter((p) => p.terminal === t.name).slice(0, 6);
 	return (
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={t.name} subtitle={`${t.provider} · ${t.ref} · last seen ${fmtWhen(t.lastSeen)}`} icon={WifiIcon}
 			footer={<>
 				<Button variant="outline" className={btn.dangerSoft} disabled={busy} onClick={() => run(() => removeTerminal(t.id), "Terminal removed", () => { onRemoved(t.id); onClose(); })}>Remove</Button>
-				<Button variant="outline" className={btn.secondary} disabled={busy} onClick={() => demo("Test charge of ₦100 sent to the terminal", undefined, { tone: "info" })}>Send test</Button>
+				<Button variant="outline" className={btn.secondary} disabled title="Test charges are not connected yet · the POS provider has no test route">Send test · not connected yet</Button>
 				<Button className={btn.primary} disabled={busy} onClick={() => { const next = t.status === "ONLINE" ? "OFFLINE" : "ONLINE"; run(() => setTerminalStatus(t.id, next), next === "OFFLINE" ? "Terminal paused · staff see it as unavailable" : "Terminal back online", () => onChanged({ ...t, status: next })); }}>{t.status === "ONLINE" ? "Pause terminal" : "Reconnect"}</Button>
 			</>}
 		>

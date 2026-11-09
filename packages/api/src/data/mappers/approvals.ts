@@ -10,6 +10,7 @@ type ApprovalLike = {
 	createdAt: string;
 	amount?: number | null;
 	requesterName?: string | null;
+	requesterId?: string | null;
 	description?: string | null;
 	sourceRef?: string | null;
 	requesterRole?: string | null;
@@ -26,6 +27,7 @@ export function toApprovalRow(a: ApprovalLike): ApprovalRow {
 		description: a.description ?? a.kind,
 		amount: a.amount ?? undefined,
 		requesterName: a.requesterName ?? "—",
+		requesterId: a.requesterId ?? undefined,
 		requesterRole: a.requesterRole ?? "",
 		approverLevel: a.approverLevel === "OWNER" ? "OWNER" : "MANAGER",
 		status:

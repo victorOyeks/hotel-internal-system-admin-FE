@@ -12,7 +12,7 @@ import { PageHeader } from "@hospio/ui/shared/page-header";
 import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn, input } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { ConversationRow } from "@hospio/api/data/types";
 import type { OwnerHotelFinance } from "@hospio/api/demo/fixtures/owner";
 import { cn } from "@hospio/ui/utils";
@@ -24,7 +24,7 @@ export function OwnerMessaging({ conversations, hotels }: { conversations: Conve
 	const [all, setAll] = useState(false);
 	const [search, setSearch] = useState("");
 	const [reply, setReply] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const list = conversations.filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()));
 	const active = conversations.find((c) => c.id === open) ?? list[0] ?? null;
 
@@ -86,7 +86,7 @@ function NewMessagePanel({ open, hotels, onClose }: { open: boolean; hotels: Own
 	const [to, setTo] = useState(hotels[0]?.manager ?? "");
 	const [subject, setSubject] = useState("");
 	const [body, setBody] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="New message" subtitle="To a manager or a whole team" icon={MessageSquareIcon} footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !body} onClick={() => run(`Message sent to ${to}`, onClose)}>Send</Button></>}>
 			<div className="flex flex-col gap-4">
@@ -101,7 +101,7 @@ function NewMessagePanel({ open, hotels, onClose }: { open: boolean; hotels: Own
 function MessageAllModal({ open, onClose, hotels }: { open: boolean; onClose: () => void; hotels: OwnerHotelFinance[] }) {
 	const [body, setBody] = useState("");
 	const [wa, setWa] = useState(true);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<Modal open={open} onOpenChange={(o) => !o && onClose()} title="Message all managers" subtitle={`${hotels.length} managers · ${hotels.map((h) => h.manager.split(" ")[0]).join(", ")}`} icon={MegaphoneIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !body} onClick={() => run(`Sent to ${hotels.length} managers`, () => { setBody(""); onClose(); })}>Send to all</Button></>}>
 			<div className="flex flex-col gap-4">

@@ -16,7 +16,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn, textarea as textareaCls } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { ConversationRow, StaffRow, TemplateRow } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 
@@ -37,7 +37,7 @@ export function MessagingScreen({ conversations, templates, staff, hotelName }: 
 	const [shiftPanel, setShiftPanel] = useState(false);
 	const [templatePick, setTemplatePick] = useState(false);
 	const [editTemplate, setEditTemplate] = useState<TemplateRow | null>(null);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	const unanswered = conversations.filter((c) => c.unread > 0 && c.messages[c.messages.length - 1]?.direction === "IN");
 	const lists: Record<Exclude<Tab, "templates">, ConversationRow[]> = {

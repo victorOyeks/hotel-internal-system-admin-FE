@@ -63,11 +63,6 @@ const termsOptions = (days: number) =>
 		? TERMS
 		: [...TERMS, { value: String(days), label: `${days} days` }];
 
-/** An action folio-service has no route for: say so instead of pretending it happened. */
-export function notConnected(what: string) {
-	toast.info(`${what} is not connected yet · nothing was sent or changed`);
-}
-
 const OWNER_LIMIT_NOTE =
 	"A credit limit above what managers may set is refused · the owner sets it";
 

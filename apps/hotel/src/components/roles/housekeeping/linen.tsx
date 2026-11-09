@@ -11,7 +11,7 @@ import { ProgressBar } from "@hospio/ui/shared/progress-bar";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import type { LinenRow } from "@hospio/api/demo/fixtures/tablet";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { BigButton, ShiftPill, Stepper } from "../shared-staff/tablet";
 
 /** Housekeeping · linen on hand per type and a request to Laundry. */
@@ -20,7 +20,7 @@ export function LinenScreen({ linen }: { linen: LinenRow[] }) {
 	const [req, setReq] = useState<Record<string, number>>(() => Object.fromEntries(linen.map((l) => [l.name, Math.max(0, Math.round(l.par / 2) - l.clean)])));
 	const [floor, setFloor] = useState("Floor A2 trolley");
 	const [note, setNote] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const short = linen.filter((l) => l.clean < l.par * 0.5);
 
 	return (

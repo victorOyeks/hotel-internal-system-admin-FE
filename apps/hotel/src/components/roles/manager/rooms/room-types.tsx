@@ -13,7 +13,7 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { addSpecialPrice, saveRoomType } from "@hospio/api/actions/property";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { RoomTypeRow } from "@hospio/api/data/types";
 
 type ModalState = null | { kind: "price"; type: RoomTypeRow } | { kind: "special"; type: RoomTypeRow } | { kind: "add" } | { kind: "edit"; type: RoomTypeRow };
@@ -74,7 +74,7 @@ export function RoomTypesTab({ types: initial, roomsByType }: { types: RoomTypeR
 }
 
 function ChangePriceModal({ item, onClose, onSaved }: { item: RoomTypeRow | null; onClose: () => void; onSaved: (id: string, price: number) => void }) {
-	const demo = useDemoAction();
+	const demo = useNotConnectedAction();
 	const act = useAction();
 	const pending = demo.pending || act.pending;
 	const [price, setPrice] = useState<number | "">("");

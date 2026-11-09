@@ -17,7 +17,7 @@ import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-pan
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { StaffRow } from "@hospio/api/data/types";
 import type { OwnerHotelFinance } from "@hospio/api/demo/fixtures/owner";
 import { roleLabels, isHotelRole } from "@hospio/api/roles";
@@ -40,7 +40,7 @@ export function OwnerStaffScreen({ staff, hotels }: { staff: OwnerStaff[]; hotel
 	const [search, setSearch] = useState("");
 	const [exportOpen, setExportOpen] = useState(false);
 	const [modal, setModal] = useState<{ kind: "suspend" | "remove" | "reset" | "shift" | "message" | "edit"; s: OwnerStaff } | null>(null);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	const scoped = useMemo(() => staff.filter((s) => !hotel || s.hotelId === hotel), [staff, hotel]);
 	const rows = scoped.filter((s) => tab === "all" || (tab === "active" && s.status === "ACTIVE") || (tab === "leave" && s.status === "ON_LEAVE") || (tab === "paused" && (s.status === "PAUSED" || s.status === "SUSPENDED")));
@@ -115,14 +115,14 @@ export function OwnerStaffScreen({ staff, hotels }: { staff: OwnerStaff[]; hotel
 function StaffModals({ modal, onClose }: { modal: { kind: string; s: OwnerStaff } | null; onClose: () => void }) {
 	const [shift, setShift] = useState("Morning");
 	const [msg, setMsg] = useState("");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const s = modal?.s;
 	return (
 		<>
 			<Modal open={modal?.kind === "shift"} onOpenChange={(o) => !o && onClose()} title="Change shift" subtitle={`${s?.fullName} · now ${s?.shift}`} icon={CalendarIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run(`${s?.fullName} moved to ${shift} shift`, onClose)}>Change shift</Button></>}>
 				<div className="flex flex-col gap-4">
 					<SelectField label="New shift" value={shift} onChange={setShift} options={["Morning", "Afternoon", "Night"]} setupLink="shifts" />
-					<TextField label="From" value={new Date().toISOString().slice(0, 10)} onChange={() => undefined} type="date" />
+					<TextField label="From" value={new Date().toISOString().slice(0, 10)} onChange={() => undefined} type="date" disabled hint="From today" />
 					<Note tone="info">The manager and the staff member are told. The rota updates from that date.</Note>
 				</div>
 			</Modal>
@@ -131,8 +131,8 @@ function StaffModals({ modal, onClose }: { modal: { kind: string; s: OwnerStaff 
 			</Modal>
 			<Modal open={modal?.kind === "edit"} onOpenChange={(o) => !o && onClose()} title="Edit staff" subtitle={s?.fullName} icon={PencilIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run("Staff updated", onClose)}>Save changes</Button></>}>
 				<div className="flex flex-col gap-4">
-					<FieldRow><TextField label="Full name" value={s?.fullName ?? ""} onChange={() => undefined} /><TextField label="Phone" value={s?.phone ?? ""} onChange={() => undefined} /></FieldRow>
-					<FieldRow><TextField label="Job title" value={s?.jobTitle ?? ""} onChange={() => undefined} /><SelectField label="Department" value={s?.department ?? ""} onChange={() => undefined} options={["Front office", "Housekeeping", "Laundry", "Maintenance", "Kitchen", "Bar", "Store", "Finance", "Management"]} setupLink="departments" /></FieldRow>
+					<FieldRow><TextField label="Full name" value={s?.fullName ?? ""} onChange={() => undefined} disabled /><TextField label="Phone" value={s?.phone ?? ""} onChange={() => undefined} disabled /></FieldRow>
+					<FieldRow><TextField label="Job title" value={s?.jobTitle ?? ""} onChange={() => undefined} disabled /><SelectField label="Department" value={s?.department ?? ""} onChange={() => undefined} disabled options={["Front office", "Housekeeping", "Laundry", "Maintenance", "Kitchen", "Bar", "Store", "Finance", "Management"]} setupLink="departments" /></FieldRow>
 				</div>
 			</Modal>
 		</>
@@ -146,7 +146,7 @@ function AddStaffPanel({ open, hotels, onClose }: { open: boolean; hotels: Owner
 	const [role, setRole] = useState("FRONT_OFFICE");
 	const [level, setLevel] = useState("EDIT");
 	const [invite, setInvite] = useState(true);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="Add staff" subtitle="They sign in on the staff tablet with a PIN" icon={PlusIcon} footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name} onClick={() => run(`${name} added${invite ? " · invite sent" : ""}`, onClose)}>Add staff</Button></>}>
 			<div className="flex flex-col gap-4">

@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 
 /** Everywhere · Help, served for every role at /dashboard/help. */
 export default function SharedHelpPage() {
-	return <HelpScreen topics={demoHelpTopics} faq={demoFaq} />;
+	return <HelpScreen topics={demoHelpTopics} faq={demoFaq} tickets={false} />;
 }

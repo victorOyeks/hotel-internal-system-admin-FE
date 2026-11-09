@@ -189,6 +189,10 @@ recorded straight away.
 5. **Do:** as Tunde, open QA C → Send to owner. **Expect:** "Sent to Godwin Kwin".
 6. **Do:** as Tunde, Financials → Record expense ₦5,000 → "Expense recorded"; again for ₦260,000 → the button
    reads "Send to owner" → "Sent to Godwin Kwin for approval".
+   - **Ask manager:** as Godwin, open Tunde's ₦260,000 expense → Ask → "QA which supplier?". As Tunde,
+     Approvals → Waiting shows it with "Answer →" (status "Question asked") and the owner's question → Answer
+     → "QA Bello & Sons" → Send answer. **Expect:** "Answer sent · back to Godwin Kwin"; the row leaves
+     Waiting and Godwin sees it waiting again with the answer.
 7. **Do:** as Godwin, Dashboard → Approvals waiting → Review each QA item → Approve. **Expect:** "<item>
    approved"; the count goes down.
 8. **Do:** as Femi, open QA A → Mark paid (bank); open QA D → Mark paid (from the till; a front-desk till
@@ -250,8 +254,15 @@ Negative checks
 4. **Do:** as Femi, Today / Month / Tills / Expenses. **Expect:** the same figures as the manager's; Tills
    lists today's tills with expected, counted and variance.
 5. **Do:** Organizations (Tunde, Femi). **Expect:** the real company accounts from the server (no sample
-   companies). Reminders, statements, putting on hold, invoice PDFs and export say "not connected yet ·
-   nothing was sent or changed".
+   companies).
+   - Row menu → Send reminder (needs something owed and a contact email or phone) → "Payment reminder sent
+     to …" and the "What we would have sent" card shows the reminder. With nothing owed: "<name> owes
+     nothing right now".
+   - Open an account → Send statement (Tunde) / Statement (Femi) → "Statement sent to …" plus the card.
+   - Row menu → Put on hold → "<name> is on hold · no new stays on account"; the pill says On hold and the
+     booking screens refuse it; Take off hold puts it back.
+   - Staff tab → row menu → Remove from account → the person shows as removed; Allow again restores them.
+   - Invoice PDF, emailing an invoice and Export are greyed out with a "Not connected yet" tooltip.
 
 ## Numbers must agree
 
@@ -274,8 +285,11 @@ Check these at the same moment (nobody taking money in between):
 - A day closed early (for testing, during the day) keeps the report as it was at the close; money taken after
   that still shows in Today's money but not in that day's report.
 - Not connected yet (they say so on screen): payroll, bills, budgets, bank balance, branch P&L, organization
-  credit, organization reminders/statements/holds/invoice PDFs, every Export button, staff messages, editing a
-  person's details, language, receipt photos.
+  credit, invoice PDFs and emailing invoices, every Export button (greyed out with a tooltip), the terminal
+  "Send test", staff messages, guest messaging screens, editing a person's details, language, receipt photos.
+- Any other button that has no server route yet answers "Not connected yet · nothing was saved or sent"
+  (blue notice) and leaves the screen as it was. A green success toast always means the server saved it;
+  if you ever see a green toast and the API log has no matching 2xx call, report it.
 - Emails and SMS are not sent on staging; read the delivery notice and Notifications instead.
 - Services read hotel settings at most a minute late: wait a minute after changing a limit or the till float.
 

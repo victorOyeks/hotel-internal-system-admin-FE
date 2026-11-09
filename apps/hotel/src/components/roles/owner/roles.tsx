@@ -8,7 +8,7 @@ import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { HOTEL_ROLES, roleDescriptions, roleIcons, roleLabels } from "@hospio/api/roles";
 import { cn } from "@hospio/ui/utils";
 
@@ -30,7 +30,7 @@ const counts: Record<string, number> = { OWNER: 1, MANAGER: 4, FRONT_OFFICE: 14,
 /** Owner · 09 Roles & permissions. */
 export function OwnerRoles() {
 	const [open, setOpen] = useState<string | null>(null);
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const roles = HOTEL_ROLES.filter((r) => permissionsByRole[r]);
 	const role = open;
 	return (

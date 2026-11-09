@@ -27,7 +27,13 @@ import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { billingCycleLabel } from "@hospio/api/data/mappers/organizations";
 import type { InvoiceRow, OrganizationRow } from "@hospio/api/data/types";
-import { NewOrganizationPanel, notConnected } from "./organization-panels";
+import {
+	sendOrgMessage,
+	setOrganizationStatus,
+} from "@hospio/api/actions/organizations";
+import { useAction } from "@hospio/api/actions/use-action";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
+import { NewOrganizationPanel } from "./organization-panels";
 
 export function OrganizationsScreen({
 	hotelName,
@@ -42,6 +48,7 @@ export function OrganizationsScreen({
 	const [isNew, setIsNew] = useQueryState("new");
 	const [orgs, setOrgs] = useState(initial);
 	const [search, setSearch] = useState("");
+	const { run } = useAction();
 	const outstanding = orgs.reduce((s, o) => s + o.outstanding, 0);
 	const overdue = invoices.filter((i) => i.status === "OVERDUE");
 	const onHold = orgs.filter((o) => o.status === "ON_HOLD");
@@ -165,7 +172,15 @@ export function OrganizationsScreen({
 						},
 						{
 							label: "Send reminder",
-							onClick: () => notConnected("Payment reminders"),
+							onClick: () =>
+								run(
+									() =>
+										withDeliveries(
+											sendOrgMessage(row.original.id, "reminder"),
+											`Reminder to ${row.original.name}`,
+										),
+									`Payment reminder sent to ${row.original.name}`,
+								),
 						},
 						{
 							label:
@@ -175,12 +190,22 @@ export function OrganizationsScreen({
 							tone: "danger" as const,
 							managerOnly: true,
 							separatorBefore: true,
-							onClick: () =>
-								notConnected(
-									row.original.status === "ON_HOLD"
-										? "Taking an account off hold"
-										: "Putting an account on hold",
-								),
+							onClick: () => {
+								const next =
+									row.original.status === "ON_HOLD" ? "ACTIVE" : "ON_HOLD";
+								run(
+									() => setOrganizationStatus(row.original.id, next),
+									next === "ON_HOLD"
+										? `${row.original.name} is on hold · no new stays on account`
+										: `${row.original.name} is active again`,
+									() =>
+										setOrgs((os) =>
+											os.map((o) =>
+												o.id === row.original.id ? { ...o, status: next } : o,
+											),
+										),
+								);
+							},
 						},
 					]}
 				/>
@@ -194,7 +219,7 @@ export function OrganizationsScreen({
 				title="Organizations"
 				subtitle={`${hotelName} · companies that book on account and pay by invoice`}
 			>
-				<ExportButton onClick={() => notConnected("Export")} />
+				<ExportButton />
 				<Button className={btn.primary} onClick={() => setIsNew("1")}>
 					<PlusIcon className="size-[15px]" /> New organization
 				</Button>

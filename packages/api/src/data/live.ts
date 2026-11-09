@@ -33,3 +33,8 @@ const configured = new Set(
 export function live(domain: LiveDomain): boolean {
 	return !DEMO || configured.has(domain);
 }
+
+/** True once any backend domain is wired (staging, production): actions without a route must not pretend. */
+export function anyLive(): boolean {
+	return !DEMO || configured.size > 0;
+}

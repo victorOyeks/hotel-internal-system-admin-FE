@@ -6,6 +6,7 @@ import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import { toFolioRow } from "@hospio/api/data/mappers/reservation";
+import type { Delivery } from "@hospio/api/api/routes-admin";
 import type { FolioRow } from "@hospio/api/data/types";
 import { demoDelay } from "@hospio/api/demo/mode";
 
@@ -93,4 +94,14 @@ export async function staySummary(folioId: string): Promise<ActionResult<string>
 	const json = (await res.json().catch(() => null)) as { status?: boolean; message?: string; data?: string } | null;
 	if (!res.ok || !json?.status) return { ok: false, error: json?.message ?? "The summary could not be produced" };
 	return { ok: true, data: json.data ?? "" };
+}
+
+export type Sent = { to: string; channel: string; deliveries?: Delivery[] | null };
+
+/** Email or WhatsApp the stay summary to the guest (folio-service builds and sends it). */
+export async function sendFolio(folioId: string, channel: "EMAIL" | "WHATSAPP", to: string): Promise<ActionResult<Sent>> {
+	if (!live("folio")) return { ok: false, error: "Sending folios is not connected in demo mode" };
+	const { data, error } = await api("@post/folio/folios/:id/send", { ...(await withSession()), params: { id: folioId }, body: { channel, to: to.trim() || null } });
+	if (error || !data) return { ok: false, error: errorMessage(error, "The folio could not be sent") };
+	return { ok: true, data: data.data };
 }

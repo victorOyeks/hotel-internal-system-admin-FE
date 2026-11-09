@@ -34,7 +34,7 @@ import {
 } from "@hospio/api/actions/reservation";
 import { folioForBooking, postCharge } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type {
 	BookingRow,
 	FolioRow,
@@ -928,7 +928,7 @@ function MessageGuestModal({
 	b: BookingRow;
 	onClose: () => void;
 }) {
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 	const [channel, setChannel] = useState<"WHATSAPP" | "SMS" | "EMAIL">(
 		"WHATSAPP",
 	);

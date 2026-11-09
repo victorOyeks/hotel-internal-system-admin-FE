@@ -15,7 +15,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useDemoAction } from "@hospio/api/demo/actions";
+import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { ActivityRow } from "@hospio/api/data/types";
 import { Button } from "@hospio/ui/primitives/button";
 
@@ -41,7 +41,7 @@ export function ActivityLogScreen({ rows, hotelName }: { rows: ActivityRow[]; ho
 	const [exporting, setExporting] = useState(false);
 	const [exportRange, setExportRange] = useState("7");
 	const [format, setFormat] = useState<"CSV" | "PDF">("CSV");
-	const { run, pending } = useDemoAction();
+	const { run, pending } = useNotConnectedAction();
 
 	const departments = useMemo(() => Array.from(new Set(rows.map((r) => r.department))).map((d) => ({ value: d, label: d })), [rows]);
 	const filtered = rows.filter((r) => {
