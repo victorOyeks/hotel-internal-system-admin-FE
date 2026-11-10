@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
+import { MyPaymentsScreen } from "@/components/roles/front-office/payments";
 import {
-	MyPaymentsScreen,
 	PAYMENT_TABS,
 	type PaymentTab,
-} from "@/components/roles/front-office/payments";
+} from "@/components/roles/front-office/tabs";
 import { getUser } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import {

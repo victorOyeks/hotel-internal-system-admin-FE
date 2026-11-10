@@ -1,7 +1,5 @@
-import {
-	BookingsScreen,
-	FO_TABS,
-} from "@/components/roles/front-office/bookings";
+import { BookingsScreen } from "@/components/roles/front-office/bookings";
+import { FO_TABS } from "@/components/roles/front-office/tabs";
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import {

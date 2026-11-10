@@ -38,14 +38,9 @@ export const payTone: Record<PaymentStatus, { label: string; tone: "success" | "
 	REFUNDED: { label: "Refunded", tone: "grey" },
 };
 
-/** The tabs as the service's filters: today's, what I took, still to verify, everything (the last 90 days). */
-export const PAYMENT_TABS = {
-	today: { today: true },
-	mine: { mine: true },
-	verify: { status: "PENDING,PROCESSING,NO_RESPONSE" },
-	all: {},
-} as const;
-export type PaymentTab = keyof typeof PAYMENT_TABS;
+import { PAYMENT_TABS, type PaymentTab } from "./tabs";
+
+export { PAYMENT_TABS, type PaymentTab };
 
 /**
  * Front office 8.x · My payments: everything taken by the signed-in person, with the take-payment panel on top. The list is
