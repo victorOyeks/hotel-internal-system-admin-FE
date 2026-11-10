@@ -15,7 +15,8 @@ export async function DeskTill({ desk }: { desk: "KITCHEN" | "BAR" }) {
 	const isDemo = !live("finance");
 	const [till, payments, staff, settings] = await Promise.all([
 		data.finance.myTill(desk),
-		data.payments.list(),
+		// Today's cash at this desk is all the till reads (bounded by the day).
+		data.payments.list({ today: true, method: "CASH", role: desk }),
 		data.staff.list(),
 		data.hotels.limits(),
 	]);

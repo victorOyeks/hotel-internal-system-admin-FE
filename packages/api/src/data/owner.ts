@@ -26,6 +26,7 @@ import type {
 	ActivityRow,
 	ApprovalRow,
 	AtHotel,
+	BookingQuery,
 	BookingRow,
 	CreditRequestRow,
 	DepartmentLive,
@@ -36,13 +37,13 @@ import type {
 	OwnerStaffRow,
 	OwnerThreadMessage,
 	OwnerThreadRow,
+	PaymentQuery,
 	PaymentRow,
 	ReportRunRow,
 	ReportScheduleRow,
 	SettlementView,
 	TransferRequestRow,
 } from "./types";
-import { pendingByBooking } from "./types";
 
 /** FRONT_OFFICE or REVENUE → "Front office", "Revenue". */
 const humanize = (code: string) => {
@@ -248,69 +249,76 @@ export const ownerData = {
 		);
 	},
 
-	/** Every hotel's bookings, newest stay first, and each hotel's rooms, folios, terminals and accounts for the panels. */
-	bookings: async (): Promise<{
-		bookings: (BookingRow & AtHotel)[];
+	/**
+	 * One page of every hotel's bookings (one business-wide call; `hotelId` narrows to a hotel), newest stay first, with
+	 * the view counts and the money over the whole range (so "All hotels" is the sum of the hotels), each row tagged
+	 * with its hotel; and each hotel's rooms, open folios, terminals, accounts and card payments still with the POS for
+	 * the panels (each bounded).
+	 */
+	bookings: async (
+		q: BookingQuery = {},
+	): Promise<{
+		bookings: PageResult<BookingRow & AtHotel>;
 		contexts: OwnerHotelContext[];
 	}> => {
 		const data = await seam();
 		const hotels = await hotelsOf();
-		const contexts = await Promise.all(
-			hotels.map((h) =>
-				atHotel(h.id, async () => {
-					const [
-						bookings,
-						rooms,
-						types,
-						folios,
-						guests,
-						organizations,
-						terminals,
-						payments,
-					] = await Promise.all([
-						data.bookings.list(),
-						data.rooms.list(),
-						data.rooms.types(),
-						data.folios.list(),
-						data.guests.list(),
-						data.organizations.forBooking(),
-						data.payments.terminals(h.id),
-						data.payments.list(),
-					]);
-					const named = bookings.map((b) => ({
-						...b,
-						organizationName:
-							b.organizationName ??
-							organizations.find((o) => o.id === b.organizationId)?.name,
-						hotelId: h.id,
-						hotelName: h.name,
-					}));
-					return {
-						bookings: named,
-						context: {
+		const names = new Map(hotels.map((h) => [h.id, h.name]));
+		const [page, contexts] = await Promise.all([
+			businessWide(() => data.bookings.page(q)),
+			Promise.all(
+				hotels.map((h) =>
+					atHotel(h.id, async () => {
+						const [
+							rooms,
+							types,
+							folios,
+							organizations,
+							terminals,
+							pendingOnPos,
+						] = await Promise.all([
+							data.rooms.list(),
+							data.rooms.types(),
+							data.folios.list(),
+							data.organizations.forBooking(),
+							data.payments.terminals(h.id),
+							data.payments.pendingOnPos(),
+						]);
+						return {
 							hotelId: h.id,
 							hotelName: h.name,
 							rooms,
 							types,
 							folios,
-							guests,
+							guests: [],
 							organizations,
 							terminals,
-							pendingOnPos: pendingByBooking(payments),
-						} satisfies OwnerHotelContext,
-					};
-				}),
-			),
-		);
-		return {
-			bookings: contexts
-				.flatMap((c) => c.bookings)
-				.sort(
-					(a, b) =>
-						b.checkInDate.localeCompare(a.checkInDate) ||
-						(b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+							pendingOnPos,
+						} satisfies OwnerHotelContext;
+					}),
 				),
-			contexts: contexts.map((c) => c.context),
+			),
+		]);
+		const orgs = contexts.flatMap((c) => c.organizations);
+		return {
+			bookings: {
+				...page,
+				data: {
+					...page.data,
+					content: page.data.content.map((b) => {
+						const hotelId = b.hotelId ?? "";
+						return {
+							...b,
+							organizationName:
+								b.organizationName ??
+								orgs.find((o) => o.id === b.organizationId)?.name,
+							hotelId,
+							hotelName: names.get(hotelId) ?? "Hotel",
+						};
+					}),
+				},
+			} as PageResult<BookingRow & AtHotel>,
+			contexts,
 		};
 	},
 
@@ -423,12 +431,28 @@ export const ownerData = {
 		};
 	},
 
-	/** Every hotel's payments, newest first. */
-	payments: async (): Promise<(PaymentRow & AtHotel)[]> => {
+	/**
+	 * One page of every hotel's payments (one business-wide call; `hotelId` narrows), newest first, each tagged with its
+	 * hotel. `totals` (this month's approved money, cash, ...) cover the whole range, so "All hotels" is the sum of the hotels.
+	 */
+	payments: async (
+		q: PaymentQuery = {},
+	): Promise<PageResult<PaymentRow & AtHotel>> => {
 		const data = await seam();
-		return (await perHotel(() => data.payments.list())).sort((a, b) =>
-			b.createdAt.localeCompare(a.createdAt),
-		);
+		const hotels = await hotelsOf();
+		const names = new Map(hotels.map((h) => [h.id, h.name]));
+		const page = await businessWide(() => data.payments.page(q));
+		return {
+			...page,
+			data: {
+				...page.data,
+				content: page.data.content.map((p) => ({
+					...p,
+					hotelId: p.hotelId ?? "",
+					hotelName: names.get(p.hotelId ?? "") ?? "Hotel",
+				})),
+			},
+		} as PageResult<PaymentRow & AtHotel>;
 	},
 
 	/** The business's settlements (card and transfer money the providers collected) between two days. */

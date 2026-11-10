@@ -8,8 +8,12 @@ import {
 	CreditCardIcon,
 	PlusIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { exportBookings } from "@hospio/api/actions/reservation-lists";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { HotelScope } from "@hospio/api/actions/hotel-scope";
 import type {
 	AtHotel,
@@ -37,107 +41,64 @@ import {
 	bookingStatus,
 	paymentStatus,
 	planLabels,
-	today,
 } from "../manager/bookings/booking-helpers";
 import {
 	type BookingAction,
 	BookingModals,
 } from "../manager/bookings/booking-modals";
+import {
+	BOOKING_TABS,
+	nameOrganizations,
+	TAB_LABEL,
+} from "../manager/bookings/bookings-screen";
 import { NewBookingPanel } from "../manager/bookings/new-booking";
 import { DownloadModal, HotelFilter } from "./common";
 
 export type OwnerBooking = BookingRow & AtHotel;
 
-const TABS = [
-	"arrivals",
-	"departures",
-	"in-house",
-	"upcoming",
-	"past",
-	"all",
-] as const;
+/** The same tabs as the manager's Bookings: reservation-service's views. */
+const TABS = BOOKING_TABS;
 type Tab = (typeof TABS)[number];
-const TAB_LABEL: Record<Tab, string> = {
-	arrivals: "Arrivals",
-	departures: "Departures",
-	"in-house": "In-house",
-	upcoming: "Upcoming",
-	past: "Past",
-	all: "All",
-};
-
-/** The same tabs as the manager's Bookings. */
-function inTab(b: BookingRow, tab: Tab) {
-	const t = today();
-	switch (tab) {
-		case "arrivals":
-			return (
-				b.checkInDate === t &&
-				b.status !== "CANCELLED" &&
-				b.status !== "CHECKED_OUT"
-			);
-		case "departures":
-			return b.checkOutDate === t && b.status === "CHECKED_IN";
-		case "in-house":
-			return b.status === "CHECKED_IN";
-		case "upcoming":
-			return b.status === "BOOKED" && b.checkInDate > t;
-		case "past":
-			return (
-				b.status === "CHECKED_OUT" ||
-				b.status === "CANCELLED" ||
-				(b.status === "NO_SHOW" && b.checkInDate < t)
-			);
-		default:
-			return true;
-	}
-}
-
-/** Newest first: the latest stay, and on the same day the booking made last. */
-const newestFirst = (a: BookingRow, b: BookingRow) =>
-	b.checkInDate.localeCompare(a.checkInDate) ||
-	(b.createdAt ?? "").localeCompare(a.createdAt ?? "");
 
 /**
- * Hotel Owner · Bookings: every hotel's bookings with the hotel filter. Opening a booking shows the manager's booking
- * panel and actions (check in and out, take a payment, change dates, cancel, message the guest), acting at that
- * booking's hotel through HotelScope.
+ * Hotel Owner · Bookings: every hotel's bookings, one page at a time from reservation-service across the business, with
+ * the hotel filter (`?hotel=`; the tab counts and the cards cover the whole range, so "All hotels" is the sum of the
+ * hotels). Opening a booking shows the manager's booking panel and actions (check in and out, take a payment, change
+ * dates, cancel, message the guest), acting at that booking's hotel through HotelScope.
  */
 export function OwnerBookings({
-	bookings: initial,
+	bookings: result,
 	contexts,
 }: {
-	bookings: OwnerBooking[];
+	bookings: PageResult<OwnerBooking>;
 	contexts: OwnerHotelContext[];
 }) {
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab", "hotel"] });
 	const hotels = contexts.map((c) => ({
 		hotelId: c.hotelId,
 		name: c.hotelName,
 	}));
-	const [hotel, setHotel] = useQueryState("hotel", parseAsString);
-	const [tabParam] = useQueryState(
-		"tab",
-		parseAsString.withDefault("arrivals"),
-	);
+	const hotel = list.params.hotel;
+	const tabParam = list.params.tab ?? "arrivals";
 	const [openId, setOpenId] = useQueryState("open", parseAsString);
 	const [action, setAction] = useQueryState("action", parseAsString);
 	const [newAt, setNewAt] = useQueryState("new", parseAsString);
 	const [choosing, setChoosing] = useState(false);
 	const [pick, setPick] = useState("");
-	const [search, setSearch] = useState("");
 	const [exportOpen, setExportOpen] = useState(false);
-	const [bookings, setBookings] = useState(initial);
+	const [bookings, setBookings] = useState(result.data.content);
+	useEffect(() => setBookings(result.data.content), [result]);
 	const [onPos, setOnPos] = useState<Record<string, number>>(() =>
 		Object.assign({}, ...contexts.map((c) => c.pendingOnPos)),
 	);
 	const tab = (TABS.includes(tabParam as Tab) ? tabParam : "arrivals") as Tab;
 
-	const scoped = useMemo(
-		() =>
-			bookings.filter((b) => !hotel || b.hotelId === hotel).sort(newestFirst),
-		[bookings, hotel],
+	const rows = bookings.filter((b) =>
+		result.data.content.some((x) => x.id === b.id),
 	);
-	const rows = scoped.filter((b) => inTab(b, tab));
+	const counts = result.data.counts ?? {};
+	const totals = result.data.totals ?? {};
 	const selected = bookings.find((b) => b.id === openId) ?? null;
 	const ctx = (hotelId?: string | null) =>
 		contexts.find((c) => c.hotelId === hotelId) ?? null;
@@ -176,20 +137,10 @@ export function OwnerBookings({
 		setChoosing(true);
 	};
 
-	const arrivals = scoped.filter((b) => inTab(b, "arrivals"));
-	const departures = scoped.filter((b) => inTab(b, "departures"));
-	const inHouse = scoped.filter((b) => inTab(b, "in-house"));
-	const upcoming = scoped.filter((b) => inTab(b, "upcoming"));
-	const live = scoped.filter(
-		(b) => b.status !== "CANCELLED" && b.status !== "NO_SHOW",
-	);
-	const booked = live.reduce(
-		(s, b) => s + (b.priceKind === "COMPLIMENTARY" ? 0 : b.totalAmount),
-		0,
-	);
-	const owing = live.filter(
-		(b) => b.paymentPlan !== "ORGANIZATION" && balance(b) > 0,
-	);
+	// Counts and money for the hotel chosen (or every hotel), over the whole range (reservation-service).
+	const booked = totals.booked ?? 0;
+	const liveCount = totals.bookedCount ?? 0;
+	const unpaid = totals.unpaid ?? 0;
 	const hotelLabel = hotel
 		? (hotels.find((h) => h.hotelId === hotel)?.name ?? "this hotel")
 		: plural(hotels.length, "hotel");
@@ -335,7 +286,7 @@ export function OwnerBookings({
 		<>
 			<PageHeader
 				title="Bookings"
-				subtitle={`${plural(scoped.length, "booking")} across ${hotelLabel} · ${arrivals.length} arrivals and ${departures.length} departures today`}
+				subtitle={`${plural(counts.all ?? 0, "booking")} across ${hotelLabel} · ${counts.arrivals ?? 0} arrivals and ${counts.departures ?? 0} departures today`}
 			>
 				<ExportButton onClick={() => setExportOpen(true)} />
 				<Button
@@ -350,32 +301,30 @@ export function OwnerBookings({
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard
 					label="Arrivals today"
-					value={arrivals.length}
+					value={counts.arrivals ?? 0}
 					icon={ArrowRightToLineIcon}
-					hint={`${arrivals.filter((b) => b.status === "CHECKED_IN").length} checked in · ${arrivals.filter((b) => b.status === "BOOKED").length} to arrive`}
+					hint={`${totals.arrivalsCheckedIn ?? 0} checked in · ${totals.arrivalsToCome ?? 0} to arrive`}
 				/>
 				<KpiCard
 					label="Departures today"
-					value={departures.length}
+					value={counts.departures ?? 0}
 					icon={ArrowLeftToLineIcon}
 					hint="still to check out"
 				/>
 				<KpiCard
 					label="In house"
-					value={inHouse.length}
+					value={counts["in-house"] ?? 0}
 					icon={CalendarCheckIcon}
-					hint={`${upcoming.length} upcoming`}
+					hint={`${counts.upcoming ?? 0} upcoming`}
 				/>
 				<KpiCard
 					label="Booked value"
 					value={nairaShort(booked)}
 					icon={CreditCardIcon}
-					hint={`${plural(live.length, "booking")} not cancelled`}
+					hint={`${plural(liveCount, "booking")} not cancelled`}
 					pill={
-						owing.length > 0 ? (
-							<StatusPill tone="warning">
-								{naira(owing.reduce((s, b) => s + balance(b), 0))} unpaid
-							</StatusPill>
+						unpaid > 0 ? (
+							<StatusPill tone="warning">{naira(unpaid)} unpaid</StatusPill>
 						) : undefined
 					}
 				/>
@@ -384,12 +333,12 @@ export function OwnerBookings({
 			<Toolbar
 				left={
 					<PillTabs
-						param="tab"
-						defaultValue="arrivals"
+						value={tab}
+						onChange={(k) => list.set({ tab: k === "arrivals" ? null : k })}
 						tabs={TABS.map((t) => ({
 							key: t,
 							label: TAB_LABEL[t],
-							count: scoped.filter((b) => inTab(b, t)).length,
+							count: counts[t] ?? 0,
 						}))}
 					/>
 				}
@@ -398,12 +347,12 @@ export function OwnerBookings({
 						<HotelFilter
 							hotels={hotels}
 							value={hotel ?? ""}
-							onChange={(v) => void setHotel(v || null)}
+							onChange={(v) => list.set({ hotel: v })}
 						/>
 						<SearchBox
-							value={search}
-							onChange={setSearch}
-							placeholder="Guest, ref, room…"
+							value={list.search}
+							onChange={list.setSearch}
+							placeholder="Guest, ref, room, phone…"
 						/>
 					</>
 				}
@@ -411,7 +360,26 @@ export function OwnerBookings({
 			<DataTable
 				columns={columns}
 				data={rows}
-				search={search}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: {
+						guestName: "guestName",
+						roomNumber: "roomNumber",
+						checkInDate: "checkInDate",
+						totalAmount: "totalAmount",
+						status: "status",
+					},
+				}}
+				filtered={!!list.params.q}
+				onClearFilters={() => {
+					list.setSearch("");
+					list.set({ q: null });
+				}}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(b) => void setOpenId(b.id)}
 				emptyTitle={
 					tab === "arrivals" ? "No arrivals today" : "No bookings here"
@@ -451,19 +419,19 @@ export function OwnerBookings({
 				<HotelScope hotelId={newCtx.hotelId} hotelName={newCtx.hotelName}>
 					<NewBookingPanel
 						open
-						guests={newCtx.guests}
 						types={newCtx.types}
 						rooms={newCtx.rooms}
 						organizations={newCtx.organizations}
 						folios={newCtx.folios}
 						terminals={newCtx.terminals}
 						onClose={() => void setNewAt(null)}
-						onSaved={(b) =>
+						onSaved={(b) => {
 							setBookings((bs) => [
 								{ ...b, hotelId: newCtx.hotelId, hotelName: newCtx.hotelName },
 								...bs,
-							])
-						}
+							]);
+							router.refresh();
+						}}
 						onPaid={paymentTaken}
 						onCheckedIn={patch}
 						onFinish={(id) => {
@@ -517,50 +485,59 @@ export function OwnerBookings({
 				onOpenChange={setExportOpen}
 				title="Export bookings"
 				what={`Bookings · ${TAB_LABEL[tab]} · ${hotel ? (hotels.find((h) => h.hotelId === hotel)?.name ?? "Hotel") : "All hotels"}`}
-				rows={() => [
-					[
-						"Reference",
-						"Guest",
-						"Phone",
-						"Hotel",
-						"Room type",
-						"Room",
-						"Check-in",
-						"Check-out",
-						"Nights",
-						"Status",
-						"Payment",
-						"Total (NGN)",
-						"Paid (NGN)",
-						"Balance (NGN)",
-						"Booked at",
-					],
-					...rows
-						.filter(
-							(b) =>
-								!search ||
-								`${b.guestName} ${b.reference} ${b.roomNumber ?? ""}`
-									.toLowerCase()
-									.includes(search.toLowerCase()),
-						)
-						.map((b) => [
-							b.reference,
-							b.guestName,
-							b.guestPhone,
-							b.hotelName,
-							b.roomTypeName,
-							b.roomNumber ?? "",
-							b.checkInDate,
-							b.checkOutDate,
-							b.nights,
-							bookingStatus(b).label,
-							paymentStatus(b).label,
-							b.totalAmount,
-							b.paid,
-							balance(b),
-							b.createdAt ?? "",
-						]),
-				]}
+				total={result.data.total}
+				load={async () => {
+					const r = await exportBookings(
+						{
+							view: tab,
+							q: list.params.q ?? undefined,
+							hotelId: hotel ?? undefined,
+						},
+						true,
+					);
+					if (!r.ok) return r;
+					const names = new Map(hotels.map((h) => [h.hotelId, h.name]));
+					const orgs = contexts.flatMap((c) => c.organizations);
+					return {
+						ok: true as const,
+						rows: [
+							[
+								"Reference",
+								"Guest",
+								"Phone",
+								"Hotel",
+								"Room type",
+								"Room",
+								"Check-in",
+								"Check-out",
+								"Nights",
+								"Status",
+								"Payment",
+								"Total (NGN)",
+								"Paid (NGN)",
+								"Balance (NGN)",
+								"Booked at",
+							],
+							...nameOrganizations(r.data.rows, orgs).map((b) => [
+								b.reference,
+								b.guestName,
+								b.guestPhone,
+								names.get(b.hotelId ?? "") ?? "",
+								b.roomTypeName,
+								b.roomNumber ?? "",
+								b.checkInDate,
+								b.checkOutDate,
+								b.nights,
+								bookingStatus(b).label,
+								paymentStatus(b).label,
+								b.totalAmount,
+								b.paid,
+								balance(b),
+								b.createdAt ?? "",
+							]),
+						],
+					};
+				}}
 			/>
 		</>
 	);

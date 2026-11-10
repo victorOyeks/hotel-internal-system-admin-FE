@@ -2,8 +2,11 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { MessageCircleIcon, PlusIcon, UserIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName, DetailList, Note } from "@hospio/ui/shared/detail-list";
 import { TextareaField, TextField } from "@hospio/ui/shared/field";
@@ -19,21 +22,27 @@ import { saveGuest } from "@hospio/api/actions/reservation";
 import { useAction } from "@hospio/api/actions/use-action";
 import { statusPill } from "./bookings";
 
-/** Front office 5.1 · Guests directory + guest panel. */
-export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]; bookings: BookingRow[] }) {
-	const [guests, setGuests] = useState(initial);
-	const [openId, setOpenId] = useQueryState("open");
-	const [tab, setTab] = useQueryState("tab");
-	const [search, setSearch] = useState("");
+/**
+ * Front office 5.1 · Guests directory + guest panel. The directory is one page from reservation-service (business-wide,
+ * newest first; `?tab=`, `?q=`, `?page=` in the URL) with the tab counts over every guest; the open guest's stays come
+ * with the page.
+ */
+export function GuestsScreen({ guests: result, opened, stays: openStays }: { guests: PageResult<GuestRow>; opened?: GuestRow | null; stays: BookingRow[] }) {
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab"] });
+	const [guests, setGuests] = useState(result.data.content);
+	useEffect(() => setGuests(result.data.content), [result]);
+	const [openId, setOpenId] = useQueryState("open", { shallow: false });
+	const tab = list.params.tab;
 	const [adding, setAdding] = useState(false);
 	const [note, setNote] = useState("");
 	const [form, setForm] = useState({ name: "", phone: "", email: "" });
 	const { run, pending } = useAction();
 	const active = tab ?? "all";
-	const inHouseIds = new Set(bookings.filter((b) => b.status === "CHECKED_IN").map((b) => b.guestId));
-	const shown = guests.filter((g) => (active === "all" ? true : active === "in-house" ? inHouseIds.has(g.id) : active === "repeat" ? g.stays > 1 : g.blacklisted));
-	const guest = guests.find((g) => g.id === openId) ?? null;
-	const stays = guest ? bookings.filter((b) => b.guestId === guest.id) : [];
+	const counts = result.data.counts ?? {};
+	const inHouseIds = new Set(guests.filter((g) => g.inHouse).map((g) => g.id));
+	const guest = guests.find((g) => g.id === openId) ?? (opened && opened.id === openId ? opened : null);
+	const stays = guest ? openStays.filter((b) => b.guestId === guest.id) : [];
 
 	const columns = useMemo<ColumnDef<GuestRow, unknown>[]>(
 		() => [
@@ -48,11 +57,11 @@ export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]
 
 	return (
 		<>
-			<PageHeader title="Guests" subtitle={`${guests.length} guests on record · ${inHouseIds.size} in house now`}>
+			<PageHeader title="Guests" subtitle={`${counts.all ?? result.data.total} guests on record · ${counts["in-house"] ?? 0} in house now`}>
 				<button type="button" className={btn.primary} onClick={() => setAdding(true)}><PlusIcon className="mr-1 inline size-4" /> Add guest</button>
 			</PageHeader>
-			<Toolbar left={<PillTabs value={active} onChange={(k) => void setTab(k === "all" ? null : k)} tabs={[{ key: "all", label: "All", count: guests.length }, { key: "in-house", label: "In house", count: inHouseIds.size }, { key: "repeat", label: "Repeat", count: guests.filter((g) => g.stays > 1).length }, { key: "blacklisted", label: "Blacklisted", count: guests.filter((g) => g.blacklisted).length }]} />} right={<SearchBox value={search} onChange={setSearch} placeholder="Name, phone, company…" />} />
-			<DataTable columns={columns} data={shown} search={search} onRowClick={(g) => void setOpenId(g.id)} />
+			<Toolbar left={<PillTabs value={active} onChange={(k) => list.set({ tab: k === "all" ? null : k })} tabs={[{ key: "all", label: "All", count: counts.all ?? 0 }, { key: "in-house", label: "In house", count: counts["in-house"] ?? 0 }, { key: "repeat", label: "Repeat", count: counts.repeat ?? 0 }, { key: "blacklisted", label: "Blacklisted", count: counts.blacklisted ?? 0 }]} />} right={<SearchBox value={list.search} onChange={list.setSearch} placeholder="Name, phone or email…" />} />
+			<DataTable columns={columns} data={guests} server={{ page: result.data, onPage: list.goTo, sort: list.sort, onSort: list.setSort, sortKeys: { fullName: "fullName", stays: "stays" } }} filtered={!!list.params.q} onClearFilters={() => { list.setSearch(""); list.set({ q: null }); }} error={result.ok ? null : result.error} onRetry={() => router.refresh()} emptyTitle="No guests here yet" onRowClick={(g) => void setOpenId(g.id)} />
 
 			<SidePanel open={!!guest} onOpenChange={(o) => !o && void setOpenId(null)} title={guest?.fullName ?? ""} subtitle={guest ? `${guest.phone}${guest.email ? ` · ${guest.email}` : ""}` : undefined} icon={UserIcon} width="lg" footer={guest && <><a href={`/dashboard/messages?open=${guest.id}`} className={btn.secondary}><MessageCircleIcon className="mr-1 inline size-4" /> Message</a><a href="/dashboard/bookings?new=1" className={btn.primary}>New booking</a></>} footerInfo={guest?.blacklisted ? <StatusPill tone="danger">Blacklisted</StatusPill> : guest && guest.stays > 3 ? <StatusPill tone="brand">Regular guest</StatusPill> : undefined}>
 				{guest && (
@@ -82,7 +91,7 @@ export function GuestsScreen({ guests: initial, bookings }: { guests: GuestRow[]
 				)}
 			</SidePanel>
 
-			<SidePanel open={adding} onOpenChange={setAdding} title="Add a guest" subtitle="Without a booking · for walk-ins and companies" icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => setAdding(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!form.name || !form.phone || pending} onClick={() => void run(() => saveGuest({ fullName: form.name, phone: form.phone, email: form.email || undefined }, undefined, { id: `g-${Date.now()}`, fullName: form.name, phone: form.phone, email: form.email || undefined, stays: 0, blacklisted: false }), "Guest added", (saved) => { setGuests((xs) => [saved, ...xs]); setForm({ name: "", phone: "", email: "" }); setAdding(false); })}>Save guest</button></>}>
+			<SidePanel open={adding} onOpenChange={setAdding} title="Add a guest" subtitle="Without a booking · for walk-ins and companies" icon={PlusIcon} footer={<><button type="button" className={btn.secondary} onClick={() => setAdding(false)}>Cancel</button><button type="button" className={btn.primary} disabled={!form.name || !form.phone || pending} onClick={() => void run(() => saveGuest({ fullName: form.name, phone: form.phone, email: form.email || undefined }, undefined, { id: `g-${Date.now()}`, fullName: form.name, phone: form.phone, email: form.email || undefined, stays: 0, blacklisted: false }), "Guest added", (saved) => { setGuests((xs) => [saved, ...xs]); setForm({ name: "", phone: "", email: "" }); setAdding(false); router.refresh(); })}>Save guest</button></>}>
 				<div className="flex flex-col gap-4">
 					<TextField label="Full name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} required />
 					<TextField label="Phone" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} required placeholder="+234 …" />

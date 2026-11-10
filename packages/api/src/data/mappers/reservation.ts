@@ -30,11 +30,12 @@ export function toBookingRow(b: z.infer<typeof Booking>, guests: Map<string, Gue
 	const folio = folios.get(b.id);
 	return {
 		id: b.id,
+		hotelId: b.hotelId ?? undefined,
 		reference: b.reference,
 		guestId: b.guestId,
 		guestName: b.guestName,
-		guestPhone: guest?.phone ?? folio?.guestPhone ?? "",
-		guestEmail: guest?.email ?? folio?.guestEmail ?? undefined,
+		guestPhone: b.guestPhone ?? guest?.phone ?? folio?.guestPhone ?? "",
+		guestEmail: b.guestEmail ?? guest?.email ?? folio?.guestEmail ?? undefined,
 		roomTypeId: b.roomTypeId,
 		roomTypeName: b.roomTypeName ?? "",
 		roomId: b.roomId ?? undefined,

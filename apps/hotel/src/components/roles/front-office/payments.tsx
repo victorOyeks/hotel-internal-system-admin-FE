@@ -2,8 +2,10 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { CreditCardIcon, RotateCcwIcon, SendIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
 import { MoneyField, SelectField, TextareaField } from "@hospio/ui/shared/field";
@@ -20,6 +22,10 @@ import { btn } from "@hospio/ui/shared/ui";
 import type { FolioRow, PaymentRow, PaymentStatus, TerminalRow } from "@hospio/api/data/types";
 import { requestRefund } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
+import { exportPayments } from "@hospio/api/actions/reservation-lists";
+import type { PageResult } from "@hospio/api/data/paging";
+import { csvName, downloadCsv } from "@hospio/ui/shared/csv";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { TakePaymentPanel } from "./take-payment";
 
 export const payTone: Record<PaymentStatus, { label: string; tone: "success" | "warning" | "danger" | "info" | "grey" }> = {
@@ -32,26 +38,53 @@ export const payTone: Record<PaymentStatus, { label: string; tone: "success" | "
 	REFUNDED: { label: "Refunded", tone: "grey" },
 };
 
-/** Front office 8.x · My payments: everything taken by the signed-in person, with the take-payment panel on top. */
-export function MyPaymentsScreen({ payments: initial, folios, terminals, me, roleFilter }: { payments: PaymentRow[]; folios: FolioRow[]; terminals: TerminalRow[]; me: string; roleFilter?: string }) {
-	const [payments, setPayments] = useState(initial);
+/** The tabs as the service's filters: today's, what I took, still to verify, everything (the last 90 days). */
+export const PAYMENT_TABS = {
+	today: { today: true },
+	mine: { mine: true },
+	verify: { status: "PENDING,PROCESSING,NO_RESPONSE" },
+	all: {},
+} as const;
+export type PaymentTab = keyof typeof PAYMENT_TABS;
+
+/**
+ * Front office 8.x · My payments: everything taken by the signed-in person, with the take-payment panel on top. The list is
+ * one page from payment-service (`?tab=`, `?q=`, `?page=` in the URL); the cards and tab counts are the service's.
+ */
+export function MyPaymentsScreen({ payments: result, opened, folios, terminals, me, roleFilter }: { payments: PageResult<PaymentRow>; opened?: PaymentRow | null; folios: FolioRow[]; terminals: TerminalRow[]; me: string; roleFilter?: string }) {
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab"] });
+	const [payments, setPayments] = useState(result.data.content);
+	useEffect(() => setPayments(result.data.content), [result]);
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
-	const [tab, setTab] = useQueryState("tab");
-	const [search, setSearch] = useState("");
 	const [refundFor, setRefundFor] = useState<PaymentRow | null>(null);
-	const active = tab ?? "today";
-	const todayStr = new Date().toISOString().slice(0, 10);
-	const mine = payments.filter((p) => !roleFilter || p.role === roleFilter);
-	const lists: Record<string, PaymentRow[]> = {
-		today: mine.filter((p) => p.createdAt.slice(0, 10) === todayStr),
-		mine: mine.filter((p) => p.takenBy === me),
-		verify: mine.filter((p) => p.status === "PROCESSING" || p.status === "PENDING" || p.status === "NO_RESPONSE"),
-		all: mine,
+	const [exporting, setExporting] = useState(false);
+	const active = (list.params.tab && list.params.tab in PAYMENT_TABS ? list.params.tab : "today") as PaymentTab;
+	const counts = result.data.counts ?? {};
+	const totals = result.data.totals ?? {};
+	const pay = payments.find((p) => p.id === openId) ?? (opened && opened.id === openId ? opened : null);
+	const todayTotal = totals.approvedToday ?? 0;
+	const todayCount = counts.today ?? 0;
+	const toVerify = counts.toVerify ?? 0;
+	const byMethod = (m: PaymentRow["method"]) => totals[`today${m === "CARD" ? "Card" : m === "TRANSFER" ? "Transfer" : "Cash"}`] ?? 0;
+	const doExport = async () => {
+		setExporting(true);
+		try {
+			const r = await exportPayments({ ...PAYMENT_TABS[active], role: roleFilter, q: list.params.q ?? undefined });
+			if (!r.ok) {
+				toast.error(r.error);
+				return;
+			}
+			downloadCsv(csvName("Payments"), [
+				["When", "Reference", "Guest", "For", "Taken by", "Method", "Amount (NGN)", "Status", "Provider ref"],
+				...r.data.rows.map((p) => [p.createdAt, p.reference, p.guestName, p.description, p.takenBy, p.method, p.amount, payTone[p.status].label, p.providerRef ?? ""]),
+			]);
+			toast.success(`${plural(r.data.rows.length, "payment")} exported`);
+		} finally {
+			setExporting(false);
+		}
 	};
-	const pay = payments.find((p) => p.id === openId) ?? null;
-	const todayTotal = lists.today.filter((p) => p.status === "APPROVED").reduce((s, p) => s + p.amount, 0);
-	const byMethod = (m: PaymentRow["method"]) => lists.today.filter((p) => p.status === "APPROVED" && p.method === m).reduce((s, p) => s + p.amount, 0);
 
 	const columns = useMemo<ColumnDef<PaymentRow, unknown>[]>(
 		() => [
@@ -67,18 +100,18 @@ export function MyPaymentsScreen({ payments: initial, folios, terminals, me, rol
 
 	return (
 		<>
-			<PageHeader title="Payments" subtitle={`${plural(lists.today.length, "payment")} today · ${naira(todayTotal)} approved`}>
-				<ExportButton />
+			<PageHeader title="Payments" subtitle={`${plural(todayCount, "payment")} today · ${naira(todayTotal)} approved`}>
+				<ExportButton onClick={exporting ? undefined : () => void doExport()} label={exporting ? "Exporting…" : "Export"} />
 				<button type="button" className={btn.primary} onClick={() => void setIsNew("1")}><CreditCardIcon className="mr-1 inline size-4" /> Take payment</button>
 			</PageHeader>
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-				<KpiCard label="Taken today" value={naira(todayTotal)} icon={CreditCardIcon} hint={plural(lists.today.length, "payment")} />
+				<KpiCard label="Taken today" value={naira(todayTotal)} icon={CreditCardIcon} hint={plural(todayCount, "payment")} />
 				<KpiCard label="Card · POS" value={naira(byMethod("CARD"))} icon={CreditCardIcon} hint="Matched by the provider" />
-				<KpiCard label="Transfers" value={naira(byMethod("TRANSFER"))} icon={CreditCardIcon} hint={`${lists.verify.length} waiting to be matched`} pill={lists.verify.length > 0 ? <StatusPill tone="warning">{lists.verify.length}</StatusPill> : undefined} />
+				<KpiCard label="Transfers" value={naira(byMethod("TRANSFER"))} icon={CreditCardIcon} hint={`${toVerify} waiting to be matched`} pill={toVerify > 0 ? <StatusPill tone="warning">{toVerify}</StatusPill> : undefined} />
 				<KpiCard label="Cash" value={naira(byMethod("CASH"))} icon={CreditCardIcon} hint="In your till" />
 			</div>
-			<Toolbar left={<PillTabs value={active} onChange={(k) => void setTab(k === "today" ? null : k)} tabs={[{ key: "today", label: "Today", count: lists.today.length }, { key: "mine", label: "Taken by me", count: lists.mine.length }, { key: "verify", label: "To verify", count: lists.verify.length }, { key: "all", label: "All", count: lists.all.length }]} />} right={<SearchBox value={search} onChange={setSearch} placeholder="Guest, reference…" />} />
-			<DataTable columns={columns} data={lists[active] ?? lists.today} search={search} onRowClick={(p) => void setOpenId(p.id)} />
+			<Toolbar left={<PillTabs value={active} onChange={(k) => list.set({ tab: k === "today" ? null : k })} tabs={[{ key: "today", label: "Today", count: todayCount }, { key: "mine", label: "Taken by me", count: counts.mine ?? 0 }, { key: "verify", label: "To verify", count: toVerify }, { key: "all", label: "All", count: counts.all ?? 0 }]} />} right={<SearchBox value={list.search} onChange={list.setSearch} placeholder="Guest, reference…" />} />
+			<DataTable columns={columns} data={payments} server={{ page: result.data, onPage: list.goTo, sort: list.sort, onSort: list.setSort, sortKeys: { createdAt: "createdAt", guestName: "guestName", method: "method", amount: "amount" } }} filtered={!!list.params.q} onClearFilters={() => { list.setSearch(""); list.set({ q: null }); }} error={result.ok ? null : result.error} onRetry={() => router.refresh()} emptyTitle={active === "today" ? "Nothing taken today yet" : "No payments here"} onRowClick={(p) => void setOpenId(p.id)} />
 
 			<SidePanel open={!!pay} onOpenChange={(o) => !o && void setOpenId(null)} title={pay ? `${naira(pay.amount)} · ${pay.guestName}` : ""} subtitle={pay ? `${pay.reference} · ${fmtWhen(pay.createdAt)} · taken by ${pay.takenBy}` : undefined} icon={CreditCardIcon} footer={pay && (
 				<>

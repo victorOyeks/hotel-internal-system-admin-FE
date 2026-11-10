@@ -166,7 +166,8 @@ export async function buildReport(input: {
 			};
 		}
 		case "PAYMENTS": {
-			const payments = await each(() => data.payments.list());
+			// The period only (every page of it), not every payment ever.
+			const payments = await each(() => data.payments.list({ from, to }));
 			const rows = payments
 				.flatMap(({ hotel, v }) =>
 					v
@@ -241,7 +242,8 @@ export async function buildReport(input: {
 			};
 		}
 		case "GUESTS": {
-			const bookings = await each(() => data.bookings.list());
+			// Stays touching the period only (every page of them).
+			const bookings = await each(() => data.bookings.list({ from, to }));
 			const rows = bookings
 				.flatMap(({ hotel, v }) =>
 					v

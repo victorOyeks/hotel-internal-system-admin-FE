@@ -5,8 +5,11 @@ import {
 	CreditCardIcon,
 	SearchCheckIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
 import { fmtWhen, naira, nairaShort, plural } from "@hospio/ui/shared/format";
@@ -48,34 +51,34 @@ const label: Record<PaymentRow["status"], string> = {
 
 /**
  * "My payments" for a staff tablet (Kitchen 3364:12826, Bar 3364:12093, Laundry 3356:14438):
- * everything this person took today, and a verify panel for transfers and card payments the
- * terminal never answered.
+ * the desk's payments one page at a time (payment-service; the last 90 days), today's money in the
+ * cards, and a verify panel for transfers and card payments the terminal never answered.
  */
 export function MyPaymentsScreen({
-	payments,
+	payments: result,
 	roleTitle,
 }: {
-	payments: PaymentRow[];
+	payments: PageResult<PaymentRow>;
 	roleTitle: string;
 }) {
-	const [rows, setRows] = useState(payments);
-	useEffect(() => setRows(payments), [payments]);
+	const router = useRouter();
+	const params = useListParams({ extra: ["tab"] });
+	const [rows, setRows] = useState(result.data.content);
+	useEffect(() => setRows(result.data.content), [result]);
 	const [open, setOpen] = useQueryState("open", parseAsString);
-	const [tab, setTab] = useState<"all" | "pending">("all");
+	const tab = params.params.tab === "pending" ? "pending" : "all";
 	const { run, pending } = useAction();
 
 	const current = rows.find((p) => p.id === open) ?? null;
-	const pendingRows = rows.filter(
-		(p) =>
-			p.status === "PROCESSING" ||
-			p.status === "NO_RESPONSE" ||
-			p.status === "PENDING",
-	);
-	const list = tab === "pending" ? pendingRows : rows;
-	const approved = rows.filter((p) => p.status === "APPROVED");
-	const total = approved.reduce((s, p) => s + p.amount, 0);
+	const counts = result.data.counts ?? {};
+	const totals = result.data.totals ?? {};
+	const toVerify = counts.toVerify ?? 0;
+	const total = totals.approvedToday ?? 0;
+	const approvedToday = totals.approvedTodayCount ?? 0;
 	const byMethod = (m: PaymentRow["method"]) =>
-		approved.filter((p) => p.method === m).reduce((s, p) => s + p.amount, 0);
+		totals[
+			`today${m === "CARD" ? "Card" : m === "TRANSFER" ? "Transfer" : "Cash"}`
+		] ?? 0;
 
 	const close = () => void setOpen(null);
 	const setStatus = (id: string, status: PaymentRow["status"]) =>
@@ -96,7 +99,7 @@ export function MyPaymentsScreen({
 		<>
 			<PageHeader
 				title="My payments"
-				subtitle={`${roleTitle} · today · ${plural(rows.length, "payment")}`}
+				subtitle={`${roleTitle} · today · ${plural(counts.today ?? 0, "payment")}`}
 			>
 				<ShiftPill />
 			</PageHeader>
@@ -105,7 +108,7 @@ export function MyPaymentsScreen({
 					label="Taken today"
 					value={nairaShort(total)}
 					icon={CreditCardIcon}
-					hint={`${approved.length} approved`}
+					hint={`${approvedToday} approved`}
 				/>
 				<KpiCard
 					label="Card"
@@ -124,23 +127,26 @@ export function MyPaymentsScreen({
 					hint="In your till"
 				/>
 			</div>
-			{pendingRows.length > 0 && (
+			{toVerify > 0 && (
 				<Note tone="warning">
-					{plural(pendingRows.length, "payment")} still to verify. A transfer
-					shows here until Finance matches it; a card payment the terminal never
-					answered must be checked on the terminal before you try again.
+					{plural(toVerify, "payment")} still to verify. A transfer shows here
+					until Finance matches it; a card payment the terminal never answered
+					must be checked on the terminal before you try again.
 				</Note>
 			)}
 			<PillTabs
 				tabs={[
-					{ key: "all", label: "All", count: rows.length },
-					{ key: "pending", label: "To verify", count: pendingRows.length },
+					{ key: "all", label: "All", count: counts.all ?? 0 },
+					{ key: "pending", label: "To verify", count: toVerify },
 				]}
 				value={tab}
-				onChange={setTab}
+				onChange={(k) => params.set({ tab: k === "all" ? null : k })}
 			/>
 			<DataTable
-				data={list}
+				data={rows}
+				server={{ page: result.data, onPage: params.goTo }}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(p) => void setOpen(p.id)}
 				emptyTitle="No payments yet"
 				columns={[

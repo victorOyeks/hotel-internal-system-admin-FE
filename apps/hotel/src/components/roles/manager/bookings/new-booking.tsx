@@ -7,7 +7,7 @@ import {
 	UserPlusIcon,
 } from "lucide-react";
 import { differenceInCalendarDays, format } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import {
@@ -40,6 +40,7 @@ import type {
 import { cn } from "@hospio/ui/utils";
 import { useSaveFlow } from "../../front-office/save-flow";
 import type { TakenPayment } from "../../front-office/take-payment";
+import { useGuestSearch } from "../../shared-staff/guest-search";
 import { planLabels } from "./booking-helpers";
 
 // Local (Lagos) calendar dates, not UTC: just after midnight UTC would still be yesterday.
@@ -49,7 +50,8 @@ const nightsBetween = (a: string, b: string) =>
 
 type NewBookingProps = {
 	open: boolean;
-	guests: GuestRow[];
+	/** Unused: returning guests are searched on the server as you type (kept so callers needn't change at once). */
+	guests?: GuestRow[];
 	types: RoomTypeRow[];
 	rooms: RoomRow[];
 	organizations: OrganizationRow[];
@@ -66,7 +68,6 @@ type NewBookingProps = {
 
 export function NewBookingPanel({
 	open,
-	guests,
 	types,
 	rooms,
 	organizations,
@@ -131,16 +132,8 @@ export function NewBookingPanel({
 		}
 	}, [open, resetFlow]);
 
-	const matches = useMemo(() => {
-		const q = guestQuery.toLowerCase().trim();
-		return q
-			? guests
-					.filter(
-						(g) => g.fullName.toLowerCase().includes(q) || g.phone.includes(q),
-					)
-					.slice(0, 5)
-			: [];
-	}, [guestQuery, guests]);
+	// Returning guests come from reservation-service as you type, not from a list of every guest.
+	const { rows: matches } = useGuestSearch(guestQuery);
 	const type = types.find((t) => t.id === typeId);
 	const nights = nightsBetween(checkIn, checkOut);
 	const available = rooms.filter(

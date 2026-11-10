@@ -534,6 +534,9 @@ export const Booking = z.object({
 	createdAt: z.string().nullable(),
 	/** What the guest was sent about a change of dates (echoed on staging). */
 	deliveries: Deliveries,
+	/** The guest's phone and email, on list rows (docs/pagination.md). */
+	guestPhone: z.string().nullable().optional(),
+	guestEmail: z.string().nullable().optional(),
 });
 
 export const Guest = z.object({
@@ -953,6 +956,7 @@ export const PaymentResponse = z.object({
 	createdAt: z.string(),
 	resolvedAt: z.string().nullable(),
 	verifiedAt: z.string().nullable(),
+	hotelId: z.string().nullable().optional(),
 });
 
 export const Notification = z.object({
@@ -1213,12 +1217,10 @@ export const schema = createSchema({
 
 	// reservation
 	"@get/reservation/bookings/today": { output: envelope(Today) },
+	/** Paged (docs/pagination.md): the seam always sends page and size. */
 	"@get/reservation/bookings": {
-		query: z
-			.object({ from: z.string(), to: z.string(), status: z.string() })
-			.partial()
-			.optional(),
-		output: envelope(z.array(Booking)),
+		query: pageParams,
+		output: envelope(pagedOf(Booking)),
 	},
 	"@get/reservation/bookings/availability": {
 		query: z.object({
@@ -1291,9 +1293,17 @@ export const schema = createSchema({
 		input: z.object({ reason: z.string(), refundable: z.boolean().optional() }),
 		output: envelope(Booking),
 	},
+	/** Paged (docs/pagination.md): the seam always sends page and size. Rows add inHouse and lastStay. */
 	"@get/reservation/guests": {
-		query: z.object({ q: z.string() }).partial().optional(),
-		output: envelope(z.array(Guest)),
+		query: pageParams,
+		output: envelope(
+			pagedOf(
+				Guest.extend({
+					inHouse: z.boolean().optional(),
+					lastStay: z.string().nullable().optional(),
+				}),
+			),
+		),
 	},
 	"@get/reservation/guests/:id": { output: envelope(Guest) },
 	"@get/reservation/guests/:id/stays": { output: envelope(z.array(Booking)) },
@@ -1476,7 +1486,11 @@ export const schema = createSchema({
 		input: z.object({ reason: z.string() }),
 		output: envelope(Folio),
 	},
-	"@get/payment/payments": { output: envelope(z.array(PaymentResponse)) },
+	/** Paged (docs/pagination.md): the seam always sends page and size. */
+	"@get/payment/payments": {
+		query: pageParams,
+		output: envelope(pagedOf(PaymentResponse)),
+	},
 	"@get/payment/payments/:id": { output: envelope(PaymentResponse) },
 	"@post/payment/payments": {
 		input: z.object({
@@ -1516,6 +1530,7 @@ export const schema = createSchema({
 	},
 
 	// messaging
+	/** With page or size: a page (90 days back by default) with counts all and unread (docs/pagination.md). */
 	"@get/messaging/notifications": {
 		query: pageParams.optional(),
 		output: envelope(pagedOf(Notification)),

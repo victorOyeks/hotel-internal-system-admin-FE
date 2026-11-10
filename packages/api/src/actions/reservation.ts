@@ -158,10 +158,16 @@ export async function cancelBooking(b: BookingRow, reason: string, refundable: b
 	return { ok: true, data: { status: row.status, cancelReason: row.cancelReason ?? reason, roomId: undefined, roomNumber: undefined } };
 }
 
+/** Up to 8 guests of the business matching a name, phone or email (newest first), for the guest pickers. */
 export async function searchGuests(q: string): Promise<GuestRow[]> {
-	if (!live("reservation")) return [];
-	const { data } = await api("@get/reservation/guests", { ...(await withSession()), query: { q } });
-	return (data?.data ?? []).map(toGuestRow);
+	if (!q.trim()) return [];
+	if (!live("reservation")) {
+		const { demoGuests } = await import("@hospio/api/demo/fixtures/stay");
+		const n = q.toLowerCase().trim();
+		return demoGuests.filter((g) => g.fullName.toLowerCase().includes(n) || g.phone.includes(n)).slice(0, 8);
+	}
+	const { data } = await api("@get/reservation/guests", { ...(await withSession()), query: { q: q.trim(), page: 0, size: 8 } });
+	return (data?.data.content ?? []).map(toGuestRow);
 }
 
 export type GuestInput = { fullName: string; phone: string; email?: string; idType?: string; idNumber?: string; nationality?: string; preferences?: string; notes?: string };

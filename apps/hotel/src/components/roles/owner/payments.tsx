@@ -7,8 +7,12 @@ import {
 	LandmarkIcon,
 	PercentIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { exportPayments } from "@hospio/api/actions/reservation-lists";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import type {
 	AtHotel,
 	PaymentRow,
@@ -88,48 +92,45 @@ const settleLabel = {
 	FAILED: "Payout failed",
 } as const;
 
-const lagosDay = (iso: string) =>
-	new Date(iso).toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" });
-
 /**
- * Hotel Owner · 17 Payments & payouts: every hotel's payments (payment-service, per hotel) and the business's settlements
- * (card and transfer money the providers collected, less their fee and H.M.S's share, and whether it was paid out).
+ * Hotel Owner · 17 Payments & payouts: every hotel's payments (payment-service across the business, one page at a time;
+ * the cards are this month's over the whole range, so "All hotels" is the sum of the hotels) and the business's
+ * settlements (card and transfer money the providers collected, less their fee and H.M.S's share, and whether it was
+ * paid out).
  */
 export function OwnerPayments({
-	payments,
+	payments: result,
 	settlements,
 	hotels,
 	month,
 }: {
-	payments: Payment[];
+	payments: PageResult<Payment>;
 	settlements: SettlementView[];
 	hotels: { hotelId: string; name: string }[];
 	/** yyyy-mm of "this month" (Lagos). */
 	month: string;
 }) {
+	const router = useRouter();
 	const [tab] = useTabParam<Tab>("payments");
-	const [hotel, setHotel] = useQueryState("hotel", parseAsString);
-	const [method, setMethod] = useState("");
-	const [status, setStatus] = useState("");
-	const [search, setSearch] = useState("");
+	const list = useListParams({ extra: ["method", "hotel"] });
+	const hotel = list.params.hotel;
+	const method = list.params.method ?? "";
+	const status = list.params.status ?? "";
+	const [payments, setPayments] = useState(result.data.content);
+	useEffect(() => setPayments(result.data.content), [result]);
 	const [open, setOpen] = useQueryState("open", parseAsString);
 	const [exportOpen, setExportOpen] = useState(false);
 	const hotelName = hotel
 		? (hotels.find((h) => h.hotelId === hotel)?.name ?? "this hotel")
 		: null;
 
-	const scoped = payments.filter((p) => !hotel || p.hotelId === hotel);
-	const rows = scoped.filter(
-		(p) => (!method || p.method === method) && (!status || p.status === status),
-	);
+	const rows = payments;
 	const selected = payments.find((p) => p.id === open) ?? null;
-	const monthly = scoped.filter(
-		(p) => p.status === "APPROVED" && lagosDay(p.createdAt).startsWith(month),
-	);
-	const taken = monthly.reduce((s, p) => s + p.amount, 0);
-	const cash = monthly
-		.filter((p) => p.method === "CASH")
-		.reduce((s, p) => s + p.amount, 0);
+	// This month's approved money for the hotel chosen (or every hotel), from payment-service over the whole month.
+	const totals = result.data.totals ?? {};
+	const taken = totals.approvedMonth ?? 0;
+	const monthlyCount = totals.approvedMonthCount ?? 0;
+	const cash = totals.monthCash ?? 0;
 	const settled = settlements.filter(
 		(s) => !hotelName || !s.hotelName || s.hotelName === hotelName,
 	);
@@ -258,7 +259,7 @@ export function OwnerPayments({
 					label="Taken this month"
 					value={nairaShort(taken)}
 					icon={CreditCardIcon}
-					hint={`${plural(monthly.length, "approved payment")}`}
+					hint={`${plural(monthlyCount, "approved payment")} · ${month}`}
 				/>
 				<KpiCard
 					label="Cash this month"
@@ -289,7 +290,11 @@ export function OwnerPayments({
 						param="tab"
 						defaultValue="payments"
 						tabs={[
-							{ key: "payments", label: "Payments", count: rows.length },
+							{
+								key: "payments",
+								label: "Payments",
+								count: result.data.total,
+							},
 							{
 								key: "settlements",
 								label: "Settlements this month",
@@ -303,13 +308,13 @@ export function OwnerPayments({
 						<HotelFilter
 							hotels={hotels}
 							value={hotel ?? ""}
-							onChange={(v) => void setHotel(v || null)}
+							onChange={(v) => list.set({ hotel: v })}
 						/>
 						{tab === "payments" && (
 							<>
 								<FilterSelect
 									value={method}
-									onChange={setMethod}
+									onChange={(v) => list.set({ method: v })}
 									all="All methods"
 									options={[
 										{ value: "CARD", label: "Card" },
@@ -319,15 +324,15 @@ export function OwnerPayments({
 								/>
 								<FilterSelect
 									value={status}
-									onChange={setStatus}
+									onChange={(v) => list.set({ status: v })}
 									all="All statuses"
 									options={(
 										Object.keys(statusLabel) as PaymentRow["status"][]
 									).map((s) => ({ value: s, label: statusLabel[s] }))}
 								/>
 								<SearchBox
-									value={search}
-									onChange={setSearch}
+									value={list.search}
+									onChange={list.setSearch}
 									placeholder="Guest, staff, what for"
 								/>
 							</>
@@ -355,7 +360,26 @@ export function OwnerPayments({
 				<DataTable
 					columns={cols}
 					data={rows}
-					search={search}
+					server={{
+						page: result.data,
+						onPage: list.goTo,
+						sort: list.sort,
+						onSort: list.setSort,
+						sortKeys: {
+							createdAt: "createdAt",
+							guestName: "guestName",
+							method: "method",
+							amount: "amount",
+							status: "status",
+						},
+					}}
+					filtered={!!(list.params.q || method || status)}
+					onClearFilters={() => {
+						list.setSearch("");
+						list.set({ q: null, method: null, status: null });
+					}}
+					error={result.ok ? null : result.error}
+					onRetry={() => router.refresh()}
 					onRowClick={(p) => void setOpen(p.id)}
 					emptyTitle="No payments here"
 					emptyHint="Try another hotel, method or status."
@@ -418,9 +442,10 @@ export function OwnerPayments({
 				onOpenChange={setExportOpen}
 				title={tab === "settlements" ? "Export settlements" : "Export payments"}
 				what={`${tab === "settlements" ? "Settlements" : "Payments"} · ${hotelName ?? "All hotels"}`}
-				rows={() =>
+				total={tab === "settlements" ? undefined : result.data.total}
+				rows={
 					tab === "settlements"
-						? [
+						? () => [
 								[
 									"Day",
 									"Provider",
@@ -444,38 +469,53 @@ export function OwnerPayments({
 									s.settledAt ?? "",
 								]),
 							]
-						: [
-								[
-									"When",
-									"Hotel",
-									"Guest",
-									"For",
-									"Method",
-									"Taken by",
-									"Amount (NGN)",
-									"Status",
-									"Reference",
-								],
-								...rows
-									.filter(
-										(p) =>
-											!search ||
-											`${p.guestName} ${p.takenBy} ${p.description}`
-												.toLowerCase()
-												.includes(search.toLowerCase()),
-									)
-									.map((p) => [
-										p.createdAt,
-										p.hotelName,
-										p.guestName,
-										p.description,
-										methodLabel[p.method] ?? p.method,
-										p.takenBy,
-										p.amount,
-										statusLabel[p.status],
-										p.reference,
-									]),
-							]
+						: undefined
+				}
+				load={
+					tab === "settlements"
+						? undefined
+						: async () => {
+								const r = await exportPayments(
+									{
+										q: list.params.q ?? undefined,
+										method: method || undefined,
+										status: status || undefined,
+										from: list.params.from ?? undefined,
+										to: list.params.to ?? undefined,
+										hotelId: hotel ?? undefined,
+									},
+									true,
+								);
+								if (!r.ok) return r;
+								const names = new Map(hotels.map((h) => [h.hotelId, h.name]));
+								return {
+									ok: true as const,
+									rows: [
+										[
+											"When",
+											"Hotel",
+											"Guest",
+											"For",
+											"Method",
+											"Taken by",
+											"Amount (NGN)",
+											"Status",
+											"Reference",
+										],
+										...r.data.rows.map((p) => [
+											p.createdAt,
+											names.get(p.hotelId ?? "") ?? "",
+											p.guestName,
+											p.description,
+											methodLabel[p.method] ?? p.method,
+											p.takenBy,
+											p.amount,
+											statusLabel[p.status],
+											p.reference,
+										]),
+									],
+								};
+							}
 				}
 			/>
 		</>
