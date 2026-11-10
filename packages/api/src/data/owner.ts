@@ -117,6 +117,27 @@ function departmentOfTopic(
 	return TOPIC_DEPARTMENT.find(([p]) => t.startsWith(p))?.[1] ?? "Other";
 }
 
+/** Words the summaries keep in capitals. */
+const KEEP = new Set([
+	"POS",
+	"VAT",
+	"ID",
+	"SMS",
+	"PDF",
+	"CSV",
+	"NGN",
+	"OK",
+	"ADR",
+	"QA",
+]);
+
+/** Codes inside an event summary (REPAIRS, FRONT_OFFICE) read as words (Repairs, Front office). */
+function readable(summary: string): string {
+	return summary.replace(/\b[A-Z]{2,}(?:_[A-Z]+)*\b/g, (code) =>
+		KEEP.has(code) ? code : humanize(code),
+	);
+}
+
 /** "BookingCreatedEvent" or "booking-created" → "Booking created". */
 function actionOf(eventType: string): string {
 	const words = eventType
@@ -211,7 +232,7 @@ export const ownerData = {
 							? rota.data.data.filter((x) => x.status !== "CANCELLED").length
 							: h.scheduled,
 						openIssues: repairs?.data ? repairs.data.data.open : h.openIssues,
-						lastAction: last ? last.summary : h.lastAction,
+						lastAction: last ? readable(last.summary) : h.lastAction,
 						lastAt: last ? last.occurredAt : h.lastAt,
 					};
 				}),
@@ -448,7 +469,7 @@ export const ownerData = {
 				actorRole: "",
 				department: departmentOfTopic(e.topic, e.actorName),
 				action: actionOf(e.eventType),
-				summary: e.summary,
+				summary: readable(e.summary),
 				eventType: e.eventType,
 				byPlatform: !!e.actorName?.startsWith("H.M.S"),
 				hotelId: e.hotelId ?? undefined,
@@ -496,7 +517,7 @@ export const ownerData = {
 					).length,
 					scheduled: shifts.filter((x) => d.roles.includes(x.role)).length,
 					actionsLastHour: actions,
-					lastAction: b?.lastAction ?? "",
+					lastAction: b?.lastAction ? readable(b.lastAction) : "",
 					lastAt: b?.lastAt ?? "",
 					open: actions,
 					openLabel: actions === 1 ? "action last hour" : "actions last hour",
