@@ -247,12 +247,12 @@ export function LockButton({ deviceName }: { deviceName: string }) {
 					window.location.assign("/lock");
 				})
 			}
-			className="flex h-[42px] items-center gap-2 rounded-xl border border-line bg-card px-3 text-[13px] font-semibold text-ink hover:bg-subtle disabled:opacity-60"
+			className="flex h-[42px] shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-line bg-card px-3 text-[13px] font-semibold text-ink hover:bg-subtle disabled:opacity-60"
 			title={`Lock ${deviceName} so the next person can switch in`}
 		>
 			<LockIcon className="size-4" />
-			<span className="hidden sm:inline">Lock · Switch person</span>
-			<span className="sm:hidden">Lock</span>
+			<span className="hidden xl:inline">Lock · Switch person</span>
+			<span className="xl:hidden">Lock</span>
 		</button>
 	);
 }
