@@ -1,4 +1,9 @@
-import { getSession } from "@hospio/api/dal";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { getSession, getUser } from "@hospio/api/dal";
+import { live } from "@hospio/api/data/live";
+import { DEMO_AUTH } from "@hospio/api/demo/mode";
+import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-refresh";
 import { AutoSelectRole } from "./auto-select-role";
 import { logout, selectRole } from "@hospio/api/actions";
 import { isAppRole } from "@hospio/api/app";
@@ -8,6 +13,11 @@ import { Button } from "@hospio/ui/primitives/button";
 /** Staff · Shared 1.5 · Choose a role, for people who hold more than one. */
 export async function SelectRoleScreen() {
 	const session = await getSession();
+	if (!DEMO_AUTH && live("identity") && !(await cookies()).get(REFRESHED_COOKIE)?.value) {
+		// Roles given or taken away since sign-in: offer the current ones, not the token's.
+		const user = await getUser();
+		if (!user || tokenIsStale(session, user)) redirect(refreshUrl("/select-role"));
+	}
 	const roles = session.roleSet.filter((r) => isAppRole(r));
 	if (roles.length === 1) {
 		// Cookies cannot be set while rendering; a client component picks the only role and moves on.
