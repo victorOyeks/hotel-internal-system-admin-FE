@@ -17,6 +17,8 @@ export type GrantRow = {
 	hotelName?: string;
 	paused: boolean;
 	expiresAt?: string;
+	/** Last day of a temporary role (yyyy-mm-dd, Lagos). */
+	until?: string;
 };
 
 /**
@@ -1486,4 +1488,19 @@ export type LaundryMoney = {
 	cancelled: number;
 	condemnedValue: number;
 	lostValue: number;
+};
+
+/** Roles & permissions · Staff access: one person with their roles at the active hotel (plus business-wide ones). */
+export type RolesAccessRow = {
+	id: Id;
+	fullName: string;
+	email: string;
+	department: string;
+	/** ACTIVE, PAUSED (every role paused or the account paused), INVITED (invite not accepted yet), SUSPENDED. */
+	status: "ACTIVE" | "PAUSED" | "INVITED" | "SUSPENDED";
+	grants: GrantRow[];
+	/** Roles the person holds at the business's other hotels (not changeable from this hotel). */
+	otherHotelRoles: number;
+	/** The signed-in person: their own roles are not theirs to change. */
+	self: boolean;
 };

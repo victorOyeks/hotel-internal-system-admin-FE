@@ -457,6 +457,7 @@ export function OwnerUsers({
 							for (const g of remove.grants) {
 								const r = await changeAccess(remove.userId, g.id, {
 									change: "REMOVE",
+									allowLastRole: true,
 								});
 								if (!r.ok) return r;
 							}
@@ -712,14 +713,7 @@ function ChangeRolePanel({
 					if (g.role === role && g.hotelId && sel.includes(g.hotelId))
 						keep.add(g.id);
 				}
-				for (const g of user.grants) {
-					if (keep.has(g.id) || g.role === "OWNER") continue;
-					const r = await changeAccess(user.userId, g.id, {
-						change: "REMOVE",
-						reason: "Role or hotels changed by the owner",
-					});
-					if (!r.ok) return r;
-				}
+				// New roles first, then the old ones go, so the person is never left without a role in between.
 				const have = new Set(
 					user.grants.filter((g) => keep.has(g.id)).map((g) => g.hotelId),
 				);
@@ -729,6 +723,15 @@ function ChangeRolePanel({
 						role,
 						level: "FULL",
 						hotelId,
+					});
+					if (!r.ok) return r;
+				}
+				for (const g of user.grants) {
+					if (keep.has(g.id) || g.role === "OWNER") continue;
+					const r = await changeAccess(user.userId, g.id, {
+						change: "REMOVE",
+						reason: "Role or hotels changed by the owner",
+						allowLastRole: true,
 					});
 					if (!r.ok) return r;
 				}

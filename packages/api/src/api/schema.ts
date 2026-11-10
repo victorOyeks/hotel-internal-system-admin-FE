@@ -104,6 +104,9 @@ export const Grant = z.object({
 	hotelId: z.string().nullable(),
 	paused: z.boolean(),
 	expiresAt: z.string().nullable().optional(),
+	/** Last day a temporary role works (Lagos, yyyy-mm-dd); it ends at midnight after it. */
+	until: z.string().nullable().optional(),
+	grantedBy: z.string().nullable().optional(),
 });
 
 export const UserSummary = z.object({
@@ -158,12 +161,18 @@ export const GrantRoleRequest = z.object({
 	level: z.string().nullable().optional(),
 	hotelId: z.string().nullable().optional(),
 	expiresAt: z.string().nullable().optional(),
+	/** Last day the role works (yyyy-mm-dd, Lagos); leave out for a role with no end. */
+	until: z.string().nullable().optional(),
 });
 
 export const AccessChangeRequest = z.object({
-	change: z.enum(["CHANGE_LEVEL", "PAUSE", "RESUME", "REMOVE"]),
+	change: z.enum(["CHANGE_LEVEL", "PAUSE", "RESUME", "SET_UNTIL", "REMOVE"]),
 	level: z.string().nullable().optional(),
 	reason: z.string().nullable().optional(),
+	/** SET_UNTIL: the new last day, or null to make the role permanent. */
+	until: z.string().nullable().optional(),
+	/** REMOVE: take away the person's only active role (they are leaving); refused otherwise. */
+	allowLastRole: z.boolean().nullable().optional(),
 });
 
 // ---- tenant --------------------------------------------------------------------------------------
