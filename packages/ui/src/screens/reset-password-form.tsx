@@ -51,8 +51,9 @@ export function ResetPasswordForm() {
 				form.setError("currentPassword", { message: result.error });
 				return;
 			}
-			toast.success("Password changed. Sign in with your new password");
-			router.replace("/auth");
+			// This device stays signed in with the new password; any other session ended (docs/profile.md).
+			toast.success("Password changed");
+			router.replace("/dashboard");
 		});
 	}
 
