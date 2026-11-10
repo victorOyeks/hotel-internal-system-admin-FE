@@ -16,6 +16,8 @@ export type PageInfo = {
 export function showing(p: PageInfo): string {
 	if (p.total === 0) return "No rows";
 	const from = p.page * p.size + 1;
+	// A page past the end (an old link, or rows gone since): say so rather than "Showing 26–9 of 9".
+	if (from > p.total) return `Nothing on page ${p.page + 1} · ${p.total} in all`;
 	const to = Math.min(p.total, (p.page + 1) * p.size);
 	return `Showing ${from}–${to} of ${p.total}`;
 }
