@@ -92,9 +92,12 @@ export function SalePanel({
 	desk,
 	terminals,
 	inHouse,
+	onChanged,
 }: {
 	saleId: string | null;
 	onClose: () => void;
+	/** The sale was paid, charged or cancelled here: a screen holding its own copy of the order reads it again. */
+	onChanged?: (id: string) => void;
 	/** The desk a payment is taken as; null when the caller takes no payments (finance). */
 	desk: PayDesk | null;
 	terminals: TerminalRow[];
@@ -155,6 +158,7 @@ export function SalePanel({
 			await new Promise((r) => setTimeout(r, 1000));
 		}
 		setWaiting(false);
+		onChanged?.(saleId);
 		router.refresh();
 	};
 
@@ -177,7 +181,10 @@ export function SalePanel({
 			`${naira(sale.balance)} charged to room ${guest.roomNumber ?? ""}`,
 			async () => {
 				setSub(null);
-				if (saleId) await load(saleId);
+				if (saleId) {
+					await load(saleId);
+					onChanged?.(saleId);
+				}
 			},
 		);
 	};
@@ -189,7 +196,10 @@ export function SalePanel({
 			`${s.number} cancelled`,
 			async () => {
 				setSub(null);
-				if (saleId) await load(saleId);
+				if (saleId) {
+					await load(saleId);
+					onChanged?.(saleId);
+				}
 			},
 		);
 	};

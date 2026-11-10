@@ -575,6 +575,11 @@ export function KitchenOrdersScreen({
 				desk="KITCHEN"
 				terminals={terminals}
 				inHouse={inHouse}
+				onChanged={(id) =>
+					void readOrder(id, outletName).then((r) => {
+						if (r.ok && r.data) put(r.data);
+					})
+				}
 			/>
 
 			{/* Ticket */}
