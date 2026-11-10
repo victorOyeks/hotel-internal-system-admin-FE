@@ -96,6 +96,13 @@ const paidFrom = (raw: string | null | undefined): ExpenseRow["paidFrom"] => {
 	return "TRANSFER";
 };
 
+/** Codes sent by staff screens (REPAIRS, FOOD_AND_DRINK) read as words; typed categories stay as typed. */
+export function categoryLabel(c: string): string {
+	if (!/^[A-Z0-9_]+$/.test(c)) return c;
+	const w = c.replace(/_/g, " ").toLowerCase();
+	return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
 export function toExpenseRow(e: ExpenseItem): ExpenseRow {
 	const status =
 		e.status === "PENDING_APPROVAL" ||
@@ -108,8 +115,9 @@ export function toExpenseRow(e: ExpenseItem): ExpenseRow {
 	return {
 		id: e.id,
 		date: e.expenseDate ?? (e.createdAt ?? "").slice(0, 10),
-		category: e.category,
+		category: categoryLabel(e.category),
 		description: e.description ?? "",
+		createdAt: e.createdAt ?? undefined,
 		amount: e.amount,
 		paidFrom: paidFrom(e.paidFrom),
 		paidFromRaw: e.paidFrom ?? undefined,

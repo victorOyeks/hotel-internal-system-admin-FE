@@ -371,6 +371,8 @@ export type ShiftRequestRow = {
 export type ExpenseRow = {
 	id: Id;
 	date: string;
+	/** When it was recorded, so same-day expenses list newest first. */
+	createdAt?: string;
 	category: string;
 	description: string;
 	amount: number;
