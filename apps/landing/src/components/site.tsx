@@ -5,15 +5,22 @@ import type { ReactNode } from "react";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 
-export const HOTEL_APP_URL =
-	process.env.NEXT_PUBLIC_HOTEL_APP_URL ?? "https://web-staging.hospio360.com";
-export const ADMIN_APP_URL =
-	process.env.NEXT_PUBLIC_ADMIN_APP_URL ??
-	"https://admin-staging.hospio360.com";
-export const CONTACT_EMAIL = "hello@hospio360.com";
-/** Placeholder until the business number is confirmed. */
-export const WHATSAPP_URL =
-	"https://wa.me/2348010000000?text=Hello%20Hospio360%2C%20I%20run%20a%20hotel%20and%20would%20like%20a%20demo";
+/** The hotel app (sign-in and sign-up) for this environment; the staging host is the fallback. */
+export const HOTEL_APP_URL = (
+	process.env.NEXT_PUBLIC_HOTEL_APP_URL ?? "https://web-staging.hospio360.com"
+).replace(/\/+$/, "");
+export const SIGN_UP_URL = `${HOTEL_APP_URL}/sign-up`;
+export const SIGN_IN_URL = `${HOTEL_APP_URL}/auth`;
+/** Where demo requests, sales and support questions go. Set NEXT_PUBLIC_CONTACT_EMAIL to the real inbox. */
+export const CONTACT_EMAIL =
+	process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello@hospio360.com";
+export const DEMO_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("H.M.S demo request")}&body=${encodeURIComponent("Hotel name:\nCity:\nNumber of rooms:\nBest phone number:\n")}`;
+/** The public site's own address (canonical links, Open Graph, robots). */
+export const SITE_URL = (
+	process.env.NEXT_PUBLIC_SITE_URL ?? "https://hospio360.com"
+).replace(/\/+$/, "");
+/** Search engines index the site only when NEXT_PUBLIC_SITE_INDEXABLE=true (production); staging stays noindex. */
+export const SITE_INDEXABLE = process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true";
 
 /** The design's 1200px content column (1440 frame with 120px margins), with 16px gutters on small screens. */
 export const container = "mx-auto w-full max-w-[1200px] px-4";
@@ -84,13 +91,13 @@ export function SiteHeader() {
 				</nav>
 				<div className="flex items-center gap-3">
 					<a
-						href={HOTEL_APP_URL}
+						href={SIGN_IN_URL}
 						className={cn(btn.secondary, "hidden sm:inline-flex")}
 					>
 						Sign in
 					</a>
-					<a href="/#contact" className={btn.primary}>
-						Book a demo
+					<a href={SIGN_UP_URL} className={btn.primary}>
+						Get started
 					</a>
 					<MobileMenu />
 				</div>
@@ -123,7 +130,7 @@ function MobileMenu() {
 					</Link>
 				))}
 				<a
-					href={HOTEL_APP_URL}
+					href={SIGN_IN_URL}
 					className="rounded-control px-3 py-2 text-[15px] font-medium text-ink-2 hover:bg-subtle hover:text-ink sm:hidden"
 				>
 					Sign in
@@ -144,23 +151,26 @@ const footerColumns: {
 			{ href: "/#product", label: "Manager portal" },
 			{ href: "/#product", label: "Staff tablet app" },
 			{ href: "/#payments", label: "Payments" },
+			{ href: "/#pricing", label: "Pricing" },
+		],
+	},
+	{
+		title: "Get started",
+		links: [
+			{ href: SIGN_UP_URL, label: "Create an account" },
+			{ href: SIGN_IN_URL, label: "Sign in" },
+			{ href: DEMO_MAILTO, label: "Book a demo" },
 		],
 	},
 	{
 		title: "Company",
 		links: [
-			{ href: "/#contact", label: "About" },
 			{ href: "/#partners", label: "Partner program" },
-			{ href: `mailto:${CONTACT_EMAIL}`, label: "Support" },
-			{ href: "/#contact", label: "Contact" },
-		],
-	},
-	{
-		title: "Legal",
-		links: [
-			{ href: "/privacy", label: "Privacy" },
-			{ href: "/terms", label: "Terms" },
-			{ href: "/privacy", label: "Data protection" },
+			{ href: `mailto:${CONTACT_EMAIL}`, label: "Contact" },
+			{
+				href: `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Support")}`,
+				label: "Support",
+			},
 		],
 	},
 ];
@@ -182,7 +192,7 @@ export function SiteFooter() {
 							<p className="font-bold text-ink">{c.title}</p>
 							{c.links.map((l) => (
 								<a
-									key={l.label}
+									key={l.label + l.href}
 									href={l.href}
 									className="text-ink-2 hover:text-ink"
 								>
@@ -194,7 +204,9 @@ export function SiteFooter() {
 				</div>
 				<div className="flex flex-col gap-2 text-[13px] text-ink-2 sm:flex-row sm:items-center sm:justify-between">
 					<p>© {new Date().getFullYear()} H.M.S · Hotel Management System</p>
-					<p>[Company address · Lagos, Nigeria]</p>
+					<a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink">
+						{CONTACT_EMAIL}
+					</a>
 				</div>
 			</div>
 		</footer>
@@ -312,7 +324,7 @@ export function LegalPage({
 	children,
 }: {
 	title: string;
-	updated: string;
+	updated?: string;
 	children: ReactNode;
 }) {
 	return (
@@ -323,7 +335,11 @@ export function LegalPage({
 					<h1 className="text-[34px] font-bold leading-[1.1] tracking-[-0.02em] text-ink md:text-[48px]">
 						{title}
 					</h1>
-					<p className="mt-3 text-[13px] text-ink-3">Last updated {updated}</p>
+					{updated && (
+						<p className="mt-3 text-[13px] text-ink-3">
+							Last updated {updated}
+						</p>
+					)}
 					<div className="mt-8 flex flex-col gap-5 text-[15px] leading-[1.6] text-ink-2 [&_h2]:mt-4 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-ink">
 						{children}
 					</div>

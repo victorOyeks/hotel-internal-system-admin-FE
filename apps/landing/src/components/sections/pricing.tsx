@@ -12,22 +12,26 @@ import { btnLg, CONTACT_EMAIL, Section } from "@/components/site";
 import { IconTile } from "./shared";
 
 const models = [
-	{ name: "Share of guest payments", rate: "[YOUR RATE] %" },
-	{ name: "Per room-night", rate: "₦[YOUR RATE]" },
-	{ name: "Share of bookings", rate: "[YOUR RATE] %" },
+	{ name: "Share of guest payments", basis: "A percentage of what guests pay" },
+	{ name: "Per room-night", basis: "A flat amount per room-night sold" },
+	{ name: "Share of bookings", basis: "A percentage of booking value" },
 ];
 
 const collection: { icon: LucideIcon; title: string; text: string }[] = [
 	{
-		icon: CreditCardIcon,
-		title: "Card and transfer",
-		text: "Split automatically by the POS provider when the guest pays.",
-	},
-	{ icon: BanknoteIcon, title: "Cash", text: "Invoiced once a month." },
-	{
 		icon: FileTextIcon,
-		title: "Everything in view",
-		text: "Your fees appear in Payments & payouts next to every branch.",
+		title: "One statement a month",
+		text: "Your fee is worked out from your agreed model and sent as a monthly statement.",
+	},
+	{
+		icon: CreditCardIcon,
+		title: "Broken down by hotel",
+		text: "Each statement shows what every hotel contributed.",
+	},
+	{
+		icon: BanknoteIcon,
+		title: "No licence up front",
+		text: "You pay as your hotels earn, not before.",
 	},
 ];
 
@@ -44,13 +48,17 @@ export function Pricing() {
 					<h3 className="text-[22px] font-bold text-ink">
 						Choose the model that fits
 					</h3>
+					<p className="-mt-1 text-[15px] leading-[1.5] text-ink-2">
+						The rate is agreed with each business. Ask us for a quote for your
+						hotels.
+					</p>
 					{models.map((m) => (
 						<div
 							key={m.name}
 							className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[14px] border border-line bg-page p-[18px]"
 						>
 							<p className="text-base font-semibold text-ink">{m.name}</p>
-							<p className="text-[18px] font-bold text-brand">{m.rate}</p>
+							<p className="text-sm text-ink-2">{m.basis}</p>
 						</div>
 					))}
 				</div>
@@ -70,7 +78,7 @@ export function Pricing() {
 						</div>
 					))}
 					<a
-						href="/#contact"
+						href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("H.M.S pricing")}`}
 						className={cn(
 							btn.secondary,
 							btnLg,

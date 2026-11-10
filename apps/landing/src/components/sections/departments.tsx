@@ -35,13 +35,13 @@ const departments: { icon: LucideIcon; name: string; text: string }[] = [
 	},
 	{
 		icon: StoreIcon,
-		name: "Kitchen",
-		text: "Orders and kitchen tickets per outlet — charged to a room or paid on the spot.",
+		name: "Restaurant and kitchen",
+		text: "Orders and kitchen tickets per outlet, charged to a room or paid on the spot, with sales history.",
 	},
 	{
 		icon: WineIcon,
 		name: "Bar",
-		text: "Tabs, menus and happy hours, with payments sent to the bar’s own POS.",
+		text: "Tabs, menus and happy hours, with sales history and payments taken at the bar.",
 	},
 	{
 		icon: PackageIcon,
@@ -51,7 +51,7 @@ const departments: { icon: LucideIcon; name: string; text: string }[] = [
 	{
 		icon: CoinsIcon,
 		name: "Finance",
-		text: "Tills, cash, expenses, budgets, night audit and profit & loss.",
+		text: "Tills, cash, expenses, reports and night audit, with the owner’s view across every hotel.",
 	},
 ];
 

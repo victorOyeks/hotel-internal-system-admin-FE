@@ -36,6 +36,10 @@ jobs:
           DOMAIN_URL: ${{ secrets.STAGING_DOMAIN_URL }}
           NEXT_PUBLIC_HOTEL_APP_URL: ${{ vars.NEXT_PUBLIC_HOTEL_APP_URL || 'https://web-staging.hospio360.com' }}
           NEXT_PUBLIC_ADMIN_APP_URL: ${{ vars.NEXT_PUBLIC_ADMIN_APP_URL || 'https://admin-staging.hospio360.com' }}
+          # The landing site's own address, its contact inbox, and whether search engines may index it (staging: no).
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://hospio360.com' }}
+          NEXT_PUBLIC_CONTACT_EMAIL: ${{ vars.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@hospio360.com' }}
+          NEXT_PUBLIC_SITE_INDEXABLE: ${{ vars.LANDING_SITE_INDEXABLE || 'false' }}
 
       # The standalone bundle is rooted at the workspace: apps/landing/server.js plus the hoisted node_modules.
       - name: Prepare standalone bundle
