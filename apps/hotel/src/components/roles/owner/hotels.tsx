@@ -1254,8 +1254,8 @@ export function ContactManagerPanel({
 					placeholder="e.g. Please send me the diesel usage for last week"
 				/>
 				<ToggleField
-					label="Also send on WhatsApp"
-					hint="To the manager's phone"
+					label="WhatsApp copy (coming soon)"
+					hint="WhatsApp isn't connected yet: the text is shown on screen to copy to their phone"
 					checked={whatsapp}
 					onChange={setWhatsapp}
 				/>

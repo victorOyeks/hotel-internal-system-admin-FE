@@ -1877,7 +1877,7 @@ export function roleScreens(role: string | null | undefined): string[] {
 const SCREEN_ALIASES: Record<string, Record<string, string>> = {
 	OWNER: { approvals: "", "night-audit": "financials", inbox: "messaging" },
 	FINANCE: { financials: "", "night-audit": "night-audit" },
-	MANAGER: { repairs: "tasks", inventory: "inventory" },
+	MANAGER: { repairs: "tasks", inventory: "inventory", messages: "messaging" },
 	FRONT_OFFICE: { orders: "", menu: "" },
 	HOUSEKEEPING: { rooms: "", inventory: "store", laundry: "linen" },
 	MAINTENANCE: { repairs: "", inventory: "store" },

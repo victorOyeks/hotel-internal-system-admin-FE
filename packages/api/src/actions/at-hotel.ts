@@ -3,6 +3,7 @@
 import { atHotel } from "@hospio/api/api/server";
 import { getHotels } from "@hospio/api/dal";
 import { folioForBooking, postCharge } from "./folio";
+import { fillTemplate, messageTemplates } from "./guest-messages";
 import { messageGuest } from "./owner";
 import { recordPayment } from "./payment";
 import {
@@ -28,6 +29,8 @@ const SCOPED = {
 	postCharge,
 	recordPayment,
 	messageGuest,
+	messageTemplates,
+	fillTemplate,
 };
 
 export type ScopedActions = typeof SCOPED;

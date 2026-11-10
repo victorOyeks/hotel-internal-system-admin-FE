@@ -66,13 +66,76 @@ export const ThreadMessage = z.object({
 
 const ThreadSent = z.object({ thread: ThreadRow, deliveries: Deliveries });
 
-const GuestConversation = z.object({
+/** A guest conversation (messaging-service GuestInbox.ConversationView). */
+export const GuestConversation = z.object({
 	id: z.string(),
+	guestId: str,
 	guestName: str,
-	guestContact: str,
-	channel: z.string(),
+	guestEmail: str,
+	guestPhone: str,
+	contact: str,
+	channel: str,
+	subject: str,
+	bookingId: str,
+	bookingRef: str,
+	roomNumber: str,
+	roomType: str,
+	checkIn: str,
+	checkOut: str,
+	assignedToId: str,
+	assignedToName: str,
+	status: z.string(),
+	waiting: z.boolean(),
+	lastMessageAt: str,
+	preview: str,
+	doneAt: str,
+	doneByName: str,
+});
+
+export const GuestMessage = z.object({
+	id: z.string(),
+	direction: z.string(),
+	body: z.string(),
+	by: str,
+	at: str,
+	channel: str,
+	status: str,
+	error: str,
+});
+
+const GuestSent = z.object({
+	conversation: GuestConversation,
+	message: GuestMessage,
 	deliveries: Deliveries,
 });
+
+const GuestDetail = z.object({
+	conversation: GuestConversation,
+	messages: z.array(GuestMessage),
+});
+
+export const MessageTemplate = z.object({
+	id: z.string(),
+	name: z.string(),
+	subject: str,
+	body: z.string(),
+	channel: str,
+	purpose: str,
+	key: str,
+	active: z.boolean().nullable().optional(),
+	updatedAt: str,
+});
+
+const OnShift = z.object({
+	userId: z.string(),
+	name: z.string(),
+	role: str,
+	startsAt: str,
+	endsAt: str,
+	clockedIn: z.boolean().nullable().optional(),
+});
+
+const channelInput = z.enum(["EMAIL", "WHATSAPP", "SMS"]);
 
 export const SettlementItem = z.object({
 	id: z.string(),
@@ -218,14 +281,102 @@ export const ownerRoutes = {
 	},
 	"@post/messaging/conversations/guest": {
 		input: z.object({
+			bookingId: z.string().nullable().optional(),
 			guestId: z.string().nullable().optional(),
 			guestName: z.string().nullable().optional(),
-			guestContact: z.string(),
+			guestEmail: z.string().nullable().optional(),
+			guestPhone: z.string().nullable().optional(),
+			guestContact: z.string().nullable().optional(),
 			channel: z.string(),
 			subject: z.string().nullable().optional(),
 			body: z.string(),
 		}),
+		output: envelope(GuestSent),
+	},
+	// messaging · guest conversations, templates, everyone on shift (docs/email.md, docs/guest-messaging.md)
+	"@get/messaging/conversations": {
+		query: pageParams.optional(),
+		output: envelope(pagedOf(GuestConversation)),
+	},
+	"@get/messaging/conversations/:id": {
+		params: id,
+		output: envelope(GuestDetail),
+	},
+	"@post/messaging/conversations/:id/reply": {
+		params: id,
+		input: z.object({
+			body: z.string(),
+			channel: channelInput.nullable().optional(),
+			subject: z.string().nullable().optional(),
+		}),
+		output: envelope(GuestSent),
+	},
+	"@post/messaging/conversations/:id/guest-reply": {
+		params: id,
+		input: z.object({ body: z.string() }),
+		output: envelope(GuestDetail),
+	},
+	"@put/messaging/conversations/:id/assign": {
+		params: id,
+		input: z.object({ userId: z.string() }),
 		output: envelope(GuestConversation),
+	},
+	"@post/messaging/conversations/:id/close": {
+		params: id,
+		output: envelope(GuestConversation),
+	},
+	"@post/messaging/conversations/:id/reopen": {
+		params: id,
+		output: envelope(GuestConversation),
+	},
+	"@get/messaging/templates/messages": {
+		output: envelope(z.array(MessageTemplate)),
+	},
+	"@post/messaging/templates/messages": {
+		input: z.object({
+			name: z.string(),
+			subject: z.string().nullable().optional(),
+			body: z.string(),
+			channel: channelInput.nullable().optional(),
+		}),
+		output: envelope(MessageTemplate),
+	},
+	"@put/messaging/templates/messages/:id": {
+		params: id,
+		input: z.object({
+			name: z.string(),
+			subject: z.string().nullable().optional(),
+			body: z.string(),
+			channel: channelInput.nullable().optional(),
+		}),
+		output: envelope(MessageTemplate),
+	},
+	"@delete/messaging/templates/messages/:id": {
+		params: id,
+		output: envelope(z.null().optional()),
+	},
+	"@post/messaging/templates/:id/fill": {
+		params: id,
+		input: z.object({
+			conversationId: z.string().nullable().optional(),
+			bookingId: z.string().nullable().optional(),
+		}),
+		output: envelope(
+			z.object({
+				subject: str,
+				body: z.string(),
+				missing: z.array(z.string()),
+			}),
+		),
+	},
+	"@get/messaging/shift-notice/recipients": {
+		output: envelope(z.array(OnShift)),
+	},
+	"@post/messaging/shift-notice": {
+		input: z.object({ body: z.string() }),
+		output: envelope(
+			z.object({ count: z.number(), names: z.array(z.string()) }),
+		),
 	},
 
 	// payment · settlements

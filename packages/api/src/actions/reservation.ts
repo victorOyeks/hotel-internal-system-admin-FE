@@ -35,7 +35,7 @@ export type CreateBookingInput = {
 };
 
 /** New booking (reservation-service). The guest is created in the same call when not an existing one. */
-export async function createBooking(input: CreateBookingInput, fallback: BookingRow): Promise<ActionResult<BookingRow>> {
+export async function createBooking(input: CreateBookingInput, fallback: BookingRow): Promise<ActionResult<BookingRow & { deliveries?: Delivery[] | null }>> {
 	if (!live("reservation")) {
 		await demoDelay(500);
 		return { ok: true, data: fallback };
@@ -61,7 +61,7 @@ export async function createBooking(input: CreateBookingInput, fallback: Booking
 	if (error || !data) return { ok: false, error: errorMessage(error, "The booking could not be saved") };
 	revalidateBookings();
 	const row = toBookingRow(data.data, new Map(), new Map());
-	return { ok: true, data: { ...row, guestPhone: row.guestPhone || input.guest?.phone || fallback.guestPhone, guestEmail: row.guestEmail ?? input.guest?.email ?? fallback.guestEmail, organizationName: fallback.organizationName, eta: fallback.eta } };
+	return { ok: true, data: { ...row, guestPhone: row.guestPhone || input.guest?.phone || fallback.guestPhone, guestEmail: row.guestEmail ?? input.guest?.email ?? fallback.guestEmail, organizationName: fallback.organizationName, eta: fallback.eta, deliveries: data.data.deliveries } };
 }
 
 export type CheckInInput = {
@@ -133,7 +133,7 @@ export async function checkOut(b: BookingRow, input: CheckOutInput, fallback: Pa
 	return { ok: true, data: { status: row.status, checkedOutAt: row.checkedOutAt, paid } };
 }
 
-/** PUT /reservation/bookings/{id}: new dates; the guest is told on WhatsApp (what they got comes back as `deliveries` on staging). */
+/** PUT /reservation/bookings/{id}: new dates; the guest is emailed (WhatsApp coming soon); what went out comes back as `deliveries` on staging. */
 export async function changeBookingDates(b: BookingRow, checkInDate: string, checkOutDate: string, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow> & { deliveries?: Delivery[] | null }>> {
 	if (!live("reservation")) {
 		await demoDelay(400);
@@ -146,7 +146,7 @@ export async function changeBookingDates(b: BookingRow, checkInDate: string, che
 	return { ok: true, data: { checkInDate: row.checkInDate, checkOutDate: row.checkOutDate, nights: row.nights, totalAmount: row.totalAmount, nightlyRate: row.nightlyRate, roomId: row.roomId, roomNumber: row.roomNumber, deliveries: data.data.deliveries } };
 }
 
-export async function cancelBooking(b: BookingRow, reason: string, refundable: boolean, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow>>> {
+export async function cancelBooking(b: BookingRow, reason: string, refundable: boolean, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow> & { deliveries?: Delivery[] | null }>> {
 	if (!live("reservation")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback };
@@ -155,7 +155,7 @@ export async function cancelBooking(b: BookingRow, reason: string, refundable: b
 	if (error || !data) return { ok: false, error: errorMessage(error, "The booking could not be cancelled") };
 	revalidateBookings();
 	const row = toBookingRow(data.data, guestMap(), new Map());
-	return { ok: true, data: { status: row.status, cancelReason: row.cancelReason ?? reason, roomId: undefined, roomNumber: undefined } };
+	return { ok: true, data: { status: row.status, cancelReason: row.cancelReason ?? reason, roomId: undefined, roomNumber: undefined, deliveries: data.data.deliveries } };
 }
 
 /** Up to 8 guests of the business matching a name, phone or email (newest first), for the guest pickers. */

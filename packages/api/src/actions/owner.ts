@@ -287,6 +287,8 @@ export async function replyThread(
 // ---- guest messages (messaging) ------------------------------------------------------------------
 
 export type GuestMessageInput = {
+	/** The booking the message is about: the guest, contact and stay come from it (templates fill from it too). */
+	bookingId?: string;
 	guestId?: string;
 	guestName: string;
 	contact: string;
@@ -295,15 +297,24 @@ export type GuestMessageInput = {
 	body: string;
 };
 
-/** A message to a guest from the hotel's inbox (at the hotel in scope); the guest's copy comes back on staging. */
+/**
+ * A message to a guest from the hotel's inbox (at the hotel in scope). Email is sent for real; WhatsApp and SMS are saved
+ * and shown on screen (coming soon). `note` is the service's line ("Email sent to …", "Saved · WhatsApp is coming soon …").
+ */
 export async function messageGuest(
 	input: GuestMessageInput,
-): Promise<ActionResult<{ deliveries?: Delivery[] | null }>> {
+): Promise<
+	ActionResult<{
+		deliveries?: Delivery[] | null;
+		note?: string;
+		conversationId?: string;
+	}>
+> {
 	if (!live("messaging")) {
 		await demoDelay(300);
 		return { ok: true, data: {} };
 	}
-	if (!input.contact.trim()) {
+	if (!input.bookingId && !input.contact.trim()) {
 		return {
 			ok: false,
 			error:
@@ -312,12 +323,16 @@ export async function messageGuest(
 					: "There is no phone number for this guest",
 		};
 	}
+	const email = input.channel === "EMAIL" ? input.contact.trim() || null : null;
+	const phone = input.channel !== "EMAIL" ? input.contact.trim() || null : null;
 	const { data, error } = await api("@post/messaging/conversations/guest", {
 		...(await withSession()),
 		body: {
+			bookingId: input.bookingId ?? null,
 			guestId: input.guestId ?? null,
 			guestName: input.guestName,
-			guestContact: input.contact.trim(),
+			guestEmail: email,
+			guestPhone: phone,
 			channel: input.channel,
 			subject: input.subject ?? null,
 			body: input.body.trim(),
@@ -328,7 +343,14 @@ export async function messageGuest(
 			ok: false,
 			error: errorMessage(error, "The message could not be sent"),
 		};
-	return { ok: true, data: { deliveries: data.data.deliveries } };
+	return {
+		ok: true,
+		data: {
+			deliveries: data.data.deliveries,
+			note: data.message ?? undefined,
+			conversationId: data.data.conversation.id,
+		},
+	};
 }
 
 // ---- approvals across hotels ---------------------------------------------------------------------

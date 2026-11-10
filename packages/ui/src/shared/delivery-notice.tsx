@@ -24,9 +24,9 @@ import { StatusPill } from "./status-pill";
 import { btn } from "./ui";
 
 /**
- * Top-centre notice: one card per batch of messages the platform would have sent. Email and SMS are not
- * connected on staging, so the text that would have gone out is shown here instead, with a Copy button
- * per message. Stays until closed. Mount once per layout: `<DeliveryNotice />`.
+ * Top-centre notice: one card per batch of messages the platform sent (email, for real) or saved (SMS and
+ * WhatsApp, coming soon), each with what it said and a Copy button, so the text can also be passed on by hand.
+ * Stays until closed. Mount once per layout: `<DeliveryNotice />`.
  */
 export function DeliveryNotice() {
 	const batches = useAtomValue(deliveriesAtom, { store: deliveriesStore });
@@ -56,7 +56,8 @@ function DeliveryCard({ batch }: { batch: DeliveryBatch }) {
 				<div className="min-w-0 flex-1">
 					<p className="text-[13px] font-bold text-ink">{batch.title}</p>
 					<p className="text-xs text-ink-2">
-						What we would have sent · email and SMS are not connected on staging
+						Email goes out for real · SMS and WhatsApp are coming soon, so copy
+						those to the person
 					</p>
 				</div>
 				<button
@@ -76,10 +77,27 @@ function DeliveryCard({ batch }: { batch: DeliveryBatch }) {
 	);
 }
 
+/** What happened to one message, in words (never claims an SMS or WhatsApp went out). */
+export function deliveryOutcome(d: DeliveryLike): {
+	label: string;
+	tone: "success" | "grey" | "warning";
+} {
+	if (d.channel === "EMAIL") {
+		return d.status === "NOT_CONNECTED"
+			? { label: "Not sent · email is off here", tone: "grey" }
+			: { label: `Email sent to ${d.to ?? "—"}`, tone: "success" };
+	}
+	return {
+		label: `Not sent · ${d.channel === "SMS" ? "SMS" : "WhatsApp"} coming soon`,
+		tone: "warning",
+	};
+}
+
 function DeliveryRow({ delivery: d }: { delivery: DeliveryLike }) {
 	const [done, setDone] = useState(false);
 	const meta = channelMeta[d.channel] ?? { label: d.channel, icon: MailIcon };
 	const Icon = meta.icon;
+	const outcome = deliveryOutcome(d);
 	return (
 		<li className="flex flex-col gap-2 px-5 py-3">
 			<div className="flex flex-wrap items-center gap-2 text-xs text-ink-2">
@@ -116,6 +134,9 @@ function DeliveryRow({ delivery: d }: { delivery: DeliveryLike }) {
 					{done ? "Copied" : "Copy"}
 				</button>
 			</div>
+			<StatusPill tone={outcome.tone} className="w-fit">
+				{outcome.label}
+			</StatusPill>
 			{d.subject && (
 				<p className="text-[13px] font-semibold text-ink">{d.subject}</p>
 			)}

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { runAtHotel, type ScopedActions, type ScopedName } from "./at-hotel";
 import { folioForBooking, postCharge } from "./folio";
+import { fillTemplate, messageTemplates } from "./guest-messages";
 import { messageGuest } from "./owner";
 import { recordPayment } from "./payment";
 import {
@@ -51,6 +52,8 @@ const DIRECT: ScopedActions = {
 	postCharge,
 	recordPayment,
 	messageGuest,
+	messageTemplates,
+	fillTemplate,
 };
 
 /** The booking and payment actions for the hotel in scope (the sidebar's branch when there is none). */
