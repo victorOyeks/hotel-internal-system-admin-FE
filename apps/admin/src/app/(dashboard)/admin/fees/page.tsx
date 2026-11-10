@@ -28,9 +28,7 @@ export default async function FeesPage({
 			size: 25,
 		}),
 		adminData.fees.open(),
-		adminData.fees
-			.statements({ month: thisMonth(), size: 200 })
-			.then((p) => p.content),
+		adminData.fees.month(thisMonth()),
 		data.platform.businesses(),
 	]);
 	return (

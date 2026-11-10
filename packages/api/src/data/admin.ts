@@ -721,17 +721,29 @@ export const adminData = {
 			}
 			return toPage(res.data, toStatementItem);
 		},
-		/** Every statement that is not paid, for the KPIs (first 200). */
+		/** Every statement that is not paid, for the KPIs (read 100 at a time; fee-service pages at most 100). */
 		open: async (): Promise<FeeStatementItem[]> => {
 			if (!live("platform"))
 				return give(demoStatements.filter((f) => f.status !== "PAID"));
-			const [due, part, overdue] = await Promise.all(
-				["DUE", "PART_PAID", "OVERDUE"].map((status) =>
-					adminData.fees.statements({ status, size: 200 }),
+			const lists = await Promise.all(
+				["DUE", "PART_PAID", "OVERDUE"].map(
+					async (status) =>
+						(
+							await allPages((page, size) =>
+								adminData.fees.statements({ status, page, size }),
+							)
+						).rows,
 				),
 			);
-			return [...due.content, ...part.content, ...overdue.content];
+			return lists.flat();
 		},
+		/** Every statement of a month, for the month's figures (read 100 at a time). */
+		month: async (month: string): Promise<FeeStatementItem[]> =>
+			(
+				await allPages((page, size) =>
+					adminData.fees.statements({ month, page, size }),
+				)
+			).rows,
 		statement: async (id: string): Promise<FeeStatementItem | null> => {
 			if (!live("platform"))
 				return give(demoStatements.find((f) => f.id === id) ?? null);
