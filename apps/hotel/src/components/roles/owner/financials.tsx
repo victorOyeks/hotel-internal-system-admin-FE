@@ -1086,7 +1086,7 @@ function PayrollTab({
 				<WhatHappens
 					items={[
 						"Net pay goes out by bank transfer",
-						"Every staff member gets a payslip on WhatsApp",
+						"Payslips by WhatsApp are coming soon",
 						"Staff on hold are skipped",
 					]}
 				/>

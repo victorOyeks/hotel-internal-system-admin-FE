@@ -3,8 +3,8 @@
 import { atom, createStore } from "jotai";
 
 /**
- * The queue behind <DeliveryNotice />: every message the platform would have sent (email, SMS,
- * WhatsApp) while no provider is connected on staging. Pushed from server-action results that carry
+ * The queue behind <DeliveryNotice />: every message the platform sent or saved (email, SMS, WhatsApp), echoed
+ * on staging so testers see the content. Email goes out for real; SMS and WhatsApp are not connected yet. Pushed from server-action results that carry
  * `deliveries: Delivery[]`, shown top-centre until the person closes it.
  *
  * The store is its own: `pushDeliveries` is a plain function, so it must not depend on whichever
@@ -18,6 +18,8 @@ export type DeliveryLike = {
 	text: string;
 	kind?: string | null;
 	ref?: string | null;
+	/** EMAIL_SENT (on its way to the address) or NOT_CONNECTED (SMS, WhatsApp, or email switched off). */
+	status?: string | null;
 };
 
 export type DeliveryBatch = {
@@ -36,7 +38,7 @@ export const SHOW_DELIVERIES =
 
 export function pushDeliveries(
 	deliveries: DeliveryLike[] | null | undefined,
-	title = "What we would have sent",
+	title = "Messages",
 ) {
 	if (!SHOW_DELIVERIES || !deliveries || deliveries.length === 0) return;
 	const batch: DeliveryBatch = {

@@ -238,8 +238,8 @@ function NewMessagePanel({
 					rows={6}
 				/>
 				<ToggleField
-					label="Also send on WhatsApp"
-					hint="To the phone on their account"
+					label="WhatsApp copy (coming soon)"
+					hint="WhatsApp isn't connected yet: the text is shown on screen to copy to their phone"
 					checked={whatsapp}
 					onChange={setWhatsapp}
 				/>
@@ -320,7 +320,8 @@ function MessageAllModal({
 					placeholder="e.g. December rate proposals by Friday please"
 				/>
 				<ToggleField
-					label="Also send on WhatsApp"
+					label="WhatsApp copy (coming soon)"
+					hint="WhatsApp isn't connected yet: the text is shown on screen to copy to their phone"
 					checked={whatsapp}
 					onChange={setWhatsapp}
 				/>

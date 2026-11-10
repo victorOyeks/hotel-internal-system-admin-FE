@@ -1,9 +1,30 @@
 import { MessagesScreen } from "@/components/roles/front-office/messages";
-import { data } from "@hospio/api/data";
+import { getActiveHotel } from "@hospio/api/dal";
+import { guestMessagesData } from "@hospio/api/data/guest-messages";
+import {
+	listQueryFrom,
+	type SearchParamsRecord,
+} from "@hospio/api/data/paging";
 
 export const dynamic = "force-dynamic";
 
-export default async function FrontDeskMessagesPage() {
-	const [conversations, templates] = await Promise.all([data.messaging.conversations(), data.messaging.templates()]);
-	return <MessagesScreen conversations={conversations} templates={templates} />;
+/** Front office · Messages: guest conversations at the hotel, a page at a time (messaging-service, docs/email.md). */
+export default async function FrontDeskMessagesPage({
+	searchParams,
+}: {
+	searchParams: Promise<SearchParamsRecord>;
+}) {
+	const sp = await searchParams;
+	const [hotel, result, templates] = await Promise.all([
+		getActiveHotel(),
+		guestMessagesData.conversations(listQueryFrom(sp, ["tab", "channel"])),
+		guestMessagesData.templates(),
+	]);
+	return (
+		<MessagesScreen
+			result={result}
+			templates={templates}
+			hotelName={hotel?.name ?? "This hotel"}
+		/>
+	);
 }

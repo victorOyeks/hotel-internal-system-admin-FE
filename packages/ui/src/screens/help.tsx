@@ -73,7 +73,7 @@ export function HelpScreen({ topics, faq, tickets = true }: { topics: Topic[]; f
 				</SectionCard>
 			</div>
 
-			<SidePanel open={contact} onOpenChange={setContact} title="Contact H.M.S support" subtitle="You get a ticket number by WhatsApp within a minute" icon={HeadsetIcon}
+			<SidePanel open={contact} onOpenChange={setContact} title="Contact H.M.S support" subtitle="You get a ticket number on screen straight away" icon={HeadsetIcon}
 				footerInfo="Support can see your screens only with your permission, and every change they make is logged"
 				footer={<><Button variant="outline" className={btn.secondary} onClick={() => setContact(false)}>Cancel</Button><Button className={btn.primary} disabled={!tickets || ticket.pending || !subject.trim() || !body.trim()} title={tickets ? undefined : "Not connected yet for this app"} onClick={() => ticket.run(() => openSupportTicket({ subject, body, priority }), "Ticket sent to H.M.S support", (r) => { toast.info(`Ticket ${r.reference} opened · H.M.S replies in Notifications`); setContact(false); setSubject(""); setBody(""); })}><SendIcon className="size-4" /> Send ticket</Button></>}>
 				<div className="flex flex-col gap-5">

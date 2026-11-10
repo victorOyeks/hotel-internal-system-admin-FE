@@ -1,5 +1,6 @@
 "use client";
 
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import {
 	CalendarPlusIcon,
 	CreditCardIcon,
@@ -214,30 +215,36 @@ export function NewBookingPanel({
 		};
 		run(
 			() =>
-				createBooking(
-					{
-						guestId: guest?.id,
-						guest: guest
-							? undefined
-							: { fullName: name, phone, email: email || undefined },
-						roomTypeId: type.id,
-						checkInDate: checkIn,
-						checkOutDate: checkOut,
-						adults: Number(adults) || 1,
-						children: Number(children) || 0,
-						priceKind,
-						specialRate:
-							priceKind === "SPECIAL" && specialRate !== ""
-								? specialRate
-								: undefined,
-						paymentPlan: plan,
-						organizationId: org?.id,
-						source: "Front desk",
-						notes: notes || undefined,
-					},
-					fallback,
+				withDeliveries(
+					createBooking(
+						{
+							guestId: guest?.id,
+							guest: guest
+								? undefined
+								: { fullName: name, phone, email: email || undefined },
+							roomTypeId: type.id,
+							checkInDate: checkIn,
+							checkOutDate: checkOut,
+							adults: Number(adults) || 1,
+							children: Number(children) || 0,
+							priceKind,
+							specialRate:
+								priceKind === "SPECIAL" && specialRate !== ""
+									? specialRate
+									: undefined,
+							paymentPlan: plan,
+							organizationId: org?.id,
+							source: "Front desk",
+							notes: notes || undefined,
+						},
+						fallback,
+					),
+					`Booking for ${guestName}`,
 				),
-			`Booking saved for ${guestName}`,
+			(b) =>
+				b.deliveries?.some((d) => d.channel === "EMAIL")
+					? `Booking saved for ${guestName} · confirmation emailed`
+					: `Booking saved for ${guestName}`,
 			(saved) =>
 				void flow.start(saved, {
 					take: later ? 0 : takeNow,
@@ -658,8 +665,8 @@ export function NewBookingPanel({
 							]}
 						/>
 						<p className="text-xs text-ink-3">
-							{fmtDay(checkIn)} → {fmtDay(checkOut)} · {type?.name} ·
-							confirmation goes to the guest on WhatsApp.
+							{fmtDay(checkIn)} → {fmtDay(checkOut)} · {type?.name} · the
+							confirmation is emailed to the guest when they have an email.
 						</p>
 					</PanelSection>
 

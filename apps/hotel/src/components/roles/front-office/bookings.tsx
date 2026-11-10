@@ -1,4 +1,7 @@
 "use client";
+
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
+import { GuestMessageModal } from "../shared-staff/guest-message";
 import { dueOnBooking } from "@hospio/api/data/types";
 
 import type { ColumnDef } from "@tanstack/react-table";
@@ -67,7 +70,6 @@ import {
 } from "@hospio/api/actions/reservation";
 import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { actionAllowed } from "../manager/bookings/booking-helpers";
 import { useGuestSearch } from "../shared-staff/guest-search";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
@@ -538,10 +540,20 @@ export function BookingsScreen({
 					void setAction(null);
 				}}
 			/>
-			<MessageGuestModal
-				booking={selected}
-				open={!!selected && act === "message"}
-				onOpenChange={(o) => !o && closeAll()}
+			<GuestMessageModal
+				guest={
+					selected && act === "message"
+						? {
+								bookingId: selected.id,
+								guestId: selected.guestId,
+								guestName: selected.guestName,
+								guestEmail: selected.guestEmail,
+								guestPhone: selected.guestPhone,
+								reference: selected.reference,
+							}
+						: null
+				}
+				onClose={closeAll}
 			/>
 			<ConfirmModal
 				open={!!selected && act === "cancel"}
@@ -562,14 +574,20 @@ export function BookingsScreen({
 					const b = selected;
 					void run(
 						() =>
-							cancelBooking(b, "Cancelled at the desk", b.paid > 0, {
-								status: "CANCELLED",
-								cancelReason: "Cancelled at the desk",
-								roomId: undefined,
-								roomNumber: undefined,
-							}),
-						"Booking cancelled · guest told by WhatsApp",
-						(changes) => {
+							withDeliveries(
+								cancelBooking(b, "Cancelled at the desk", b.paid > 0, {
+									status: "CANCELLED",
+									cancelReason: "Cancelled at the desk",
+									roomId: undefined,
+									roomNumber: undefined,
+								}),
+								`Cancellation for ${b.guestName}`,
+							),
+						(r) =>
+							r.deliveries?.some((d) => d.channel === "EMAIL")
+								? "Booking cancelled · the guest was emailed"
+								: "Booking cancelled",
+						({ deliveries: _sent, ...changes }) => {
 							update(b.id, changes);
 							void setAction(null);
 						},
@@ -1426,93 +1444,6 @@ function ChangeDatesModal({
 	);
 }
 
-/** 2.9 Message guest. */
-function MessageGuestModal({
-	booking,
-	open,
-	onOpenChange,
-}: {
-	booking: BookingRow | null;
-	open: boolean;
-	onOpenChange: (o: boolean) => void;
-}) {
-	const [template, setTemplate] = useState("");
-	const [body, setBody] = useState("");
-	const { run, pending } = useNotConnectedAction();
-	if (!booking) return null;
-	const templates = [
-		{
-			value: "arrival",
-			label: "Arrival day",
-			text: `Hello ${booking.guestName.split(" ")[0]}, we're expecting you today at Simpas Ikeja. Your room will be ready from 2pm. Reply if you'll be late.`,
-		},
-		{
-			value: "balance",
-			label: "Balance reminder",
-			text: `Hello ${booking.guestName.split(" ")[0]}, a reminder that ${naira(booking.totalAmount - booking.paid)} is due on your booking ${booking.reference}.`,
-		},
-		{
-			value: "thanks",
-			label: "Thank you",
-			text: `Thanks for staying with us, ${booking.guestName.split(" ")[0]}. We hope to see you again at Simpas Ikeja.`,
-		},
-	];
-	return (
-		<Modal
-			open={open}
-			onOpenChange={onOpenChange}
-			title={`Message ${booking.guestName}`}
-			subtitle={`WhatsApp · ${booking.guestPhone}`}
-			icon={MessageCircleIcon}
-			footer={
-				<>
-					<button
-						type="button"
-						className={btn.secondary}
-						onClick={() => onOpenChange(false)}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						className={btn.primary}
-						disabled={!body || pending}
-						onClick={() =>
-							void run("Message sent by WhatsApp", () => {
-								setBody("");
-								onOpenChange(false);
-							})
-						}
-					>
-						Send
-					</button>
-				</>
-			}
-		>
-			<div className="flex flex-col gap-4">
-				<SelectField
-					label="Start from a template"
-					value={template}
-					onChange={(v) => {
-						setTemplate(v);
-						setBody(templates.find((t) => t.value === v)?.text ?? "");
-					}}
-					options={templates}
-					placeholder="Blank message"
-					setupLink="templates"
-				/>
-				<TextareaField
-					label="Message"
-					value={body}
-					onChange={setBody}
-					rows={5}
-					placeholder="Type the message…"
-				/>
-			</div>
-		</Modal>
-	);
-}
-
 /** 2.5 New booking · normal / special / complimentary × pay in full / deposit / at check-out / organization. */
 export function NewBookingPanel({
 	open,
@@ -1654,27 +1585,33 @@ export function NewBookingPanel({
 		};
 		void run(
 			() =>
-				createBooking(
-					{
-						guestId: guestId || undefined,
-						guest: guestId
-							? undefined
-							: { fullName: name, phone, email: email || undefined },
-						roomTypeId: typeId,
-						checkInDate: ci,
-						checkOutDate: co,
-						adults: Number(adults) || 1,
-						children: 0,
-						priceKind,
-						specialRate: priceKind === "SPECIAL" ? rate : undefined,
-						paymentPlan: plan,
-						organizationId: orgId || undefined,
-						source: "Front desk",
-						notes: notes || undefined,
-					},
-					row,
+				withDeliveries(
+					createBooking(
+						{
+							guestId: guestId || undefined,
+							guest: guestId
+								? undefined
+								: { fullName: name, phone, email: email || undefined },
+							roomTypeId: typeId,
+							checkInDate: ci,
+							checkOutDate: co,
+							adults: Number(adults) || 1,
+							children: 0,
+							priceKind,
+							specialRate: priceKind === "SPECIAL" ? rate : undefined,
+							paymentPlan: plan,
+							organizationId: orgId || undefined,
+							source: "Front desk",
+							notes: notes || undefined,
+						},
+						row,
+					),
+					`Booking for ${name}`,
 				),
-			"Booking saved · confirmation sent",
+			(b) =>
+				b.deliveries?.some((d) => d.channel === "EMAIL")
+					? "Booking saved · confirmation emailed"
+					: "Booking saved",
 			(saved) =>
 				void flow.start(saved, {
 					take: later ? 0 : takeNow,

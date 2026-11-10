@@ -1,4 +1,6 @@
 "use client";
+
+import { GuestMessageModal } from "../../shared-staff/guest-message";
 import { dueOnBooking } from "@hospio/api/data/types";
 
 import {
@@ -6,7 +8,6 @@ import {
 	ArrowRightToLineIcon,
 	CalendarIcon,
 	CreditCardIcon,
-	MessageSquareIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -18,7 +19,6 @@ import {
 	MoneyField,
 	SelectField,
 	TextField,
-	TextareaField,
 	ToggleField,
 } from "@hospio/ui/shared/field";
 import { fmtDay, naira, plural } from "@hospio/ui/shared/format";
@@ -26,10 +26,7 @@ import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
 import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { btn } from "@hospio/ui/shared/ui";
-import {
-	useHotelActions,
-	useHotelScope,
-} from "@hospio/api/actions/hotel-scope";
+import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import { useAction } from "@hospio/api/actions/use-action";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
@@ -126,7 +123,19 @@ export function BookingModals({
 		case "cancel":
 			return <CancelModal b={b} onClose={onClose} onPatch={onPatch} />;
 		case "message":
-			return <MessageGuestModal b={b} onClose={onClose} />;
+			return (
+				<GuestMessageModal
+					guest={{
+						bookingId: b.id,
+						guestId: b.guestId,
+						guestName: b.guestName,
+						guestEmail: b.guestEmail,
+						guestPhone: b.guestPhone,
+						reference: b.reference,
+					}}
+					onClose={onClose}
+				/>
+			);
 	}
 }
 
@@ -228,7 +237,7 @@ function CheckInPanel({
 				) : due > 0 ? (
 					`${naira(due)} still to collect before the key`
 				) : (
-					"Welcome message goes to the guest on WhatsApp"
+					"The room is theirs once you check them in"
 				)
 			}
 			footer={
@@ -542,7 +551,7 @@ function CheckOutPanel({
 						<ManagerMark /> check-out with a balance is logged
 					</span>
 				) : (
-					"Receipt goes to the guest on WhatsApp"
+					"The folio closes at check-out"
 				)
 			}
 			footer={
@@ -790,7 +799,7 @@ function ChangeDatesModal({
 										}),
 										`New dates for ${b.guestName}`,
 									),
-								`Dates changed · ${fmtDay(checkIn)} → ${fmtDay(checkOut)}${b.guestPhone ? " · guest told on WhatsApp" : " · no phone on file, so the guest was not told"}`,
+								`Dates changed · ${fmtDay(checkIn)} → ${fmtDay(checkOut)}${b.guestEmail ? ` · email sent to ${b.guestEmail}` : b.guestPhone ? " · WhatsApp is coming soon, so the message is shown to copy" : " · no email or phone on file, so the guest was not told"}`,
 								({ deliveries: _sent, ...changes }) => {
 									onPatch(b.id, changes);
 									onClose();
@@ -839,9 +848,11 @@ function ChangeDatesModal({
 					{b.roomNumber
 						? `Room ${b.roomNumber} stays booked for the new dates. If it is taken for any of the new nights, the change is refused and nothing moves.`
 						: `Any free ${b.roomTypeName} room is held for the new dates. If none is free, the change is refused and nothing moves.`}{" "}
-					{b.guestPhone
-						? `${b.guestName.split(" ")[0]} gets the new dates on WhatsApp.`
-						: "There is no phone on file, so the guest is not told."}
+					{b.guestEmail
+						? `${b.guestName.split(" ")[0]} gets the new dates by email.`
+						: b.guestPhone
+							? "WhatsApp is coming soon: the message to the guest is shown on screen to copy."
+							: "There is no email or phone on file, so the guest is not told."}
 				</Note>
 			</div>
 		</Modal>
@@ -873,14 +884,17 @@ function CancelModal({
 			onConfirm={() =>
 				run(
 					() =>
-						cancelBooking(b, reason, refund, {
-							status: "CANCELLED",
-							cancelReason: reason,
-							roomId: undefined,
-							roomNumber: undefined,
-						}),
+						withDeliveries(
+							cancelBooking(b, reason, refund, {
+								status: "CANCELLED",
+								cancelReason: reason,
+								roomId: undefined,
+								roomNumber: undefined,
+							}),
+							`Cancellation for ${b.guestName}`,
+						),
 					`Booking ${b.reference} cancelled`,
-					(changes) => {
+					({ deliveries: _sent, ...changes }) => {
 						onPatch(b.id, changes);
 						onClose();
 					},
@@ -928,118 +942,5 @@ function CancelModal({
 				/>
 			</div>
 		</ConfirmModal>
-	);
-}
-
-function MessageGuestModal({
-	b,
-	onClose,
-}: {
-	b: BookingRow;
-	onClose: () => void;
-}) {
-	const { run, pending } = useAction();
-	const { messageGuest } = useHotelActions();
-	const { hotelName } = useHotelScope();
-	const hotel = hotelName ?? "the hotel";
-	const [channel, setChannel] = useState<"WHATSAPP" | "SMS" | "EMAIL">(
-		b.guestPhone ? "WHATSAPP" : "EMAIL",
-	);
-	const [template, setTemplate] = useState("");
-	const [body, setBody] = useState("");
-	const first = b.guestName.split(" ")[0];
-	const templates: Record<string, string> = {
-		arrival: `Hello ${first}, we're expecting you on ${fmtDay(b.checkInDate)} at ${hotel}. Reply if you'll be late.`,
-		balance: `Hello ${first}, a reminder that ${naira(balance(b))} is outstanding on your stay at ${hotel} (${b.reference}).`,
-		thanks: `Thanks for staying with us, ${first}. We hope to see you again at ${hotel}.`,
-	};
-	const contact =
-		channel === "EMAIL" ? (b.guestEmail ?? "") : (b.guestPhone ?? "");
-	const label =
-		channel === "WHATSAPP" ? "WhatsApp" : channel === "SMS" ? "SMS" : "email";
-	return (
-		<Modal
-			open
-			onOpenChange={(o) => !o && onClose()}
-			title={`Message ${b.guestName}`}
-			subtitle={
-				contact ||
-				(channel === "EMAIL" ? "No email on file" : "No phone on file")
-			}
-			icon={MessageSquareIcon}
-			size="form"
-			footer={
-				<>
-					<Button variant="outline" className={btn.secondary} onClick={onClose}>
-						Cancel
-					</Button>
-					<Button
-						className={btn.primary}
-						disabled={pending || !body.trim() || !contact}
-						onClick={() =>
-							run(
-								() =>
-									withDeliveries(
-										messageGuest({
-											guestId: b.guestId,
-											guestName: b.guestName,
-											contact,
-											channel,
-											subject:
-												channel === "EMAIL"
-													? `Your stay at ${hotel}`
-													: undefined,
-											body,
-										}),
-										`Message to ${b.guestName}`,
-									),
-								`Message sent on ${label}`,
-								() => {
-									setBody("");
-									onClose();
-								},
-							)
-						}
-					>
-						Send
-					</Button>
-				</>
-			}
-		>
-			<div className="flex flex-col gap-4">
-				<ChoiceCards
-					value={channel}
-					onChange={setChannel}
-					columns={3}
-					options={[
-						{ value: "WHATSAPP", label: "WhatsApp", disabled: !b.guestPhone },
-						{ value: "SMS", label: "SMS", disabled: !b.guestPhone },
-						{ value: "EMAIL", label: "Email", disabled: !b.guestEmail },
-					]}
-				/>
-				<SelectField
-					label="Start from a template"
-					value={template}
-					onChange={(t) => {
-						setTemplate(t);
-						setBody(templates[t] ?? "");
-					}}
-					placeholder="Blank message"
-					options={[
-						{ value: "arrival", label: "Arrival day" },
-						{ value: "balance", label: "Balance reminder" },
-						{ value: "thanks", label: "Thank you" },
-					]}
-					setupLink="templates"
-				/>
-				<TextareaField
-					label="Message"
-					value={body}
-					onChange={setBody}
-					rows={5}
-					placeholder="Type the message…"
-				/>
-			</div>
-		</Modal>
 	);
 }

@@ -44,6 +44,8 @@ export const Delivery = z.object({
 	text: z.string(),
 	kind: str,
 	ref: str,
+	/** EMAIL_SENT (email on its way) or NOT_CONNECTED (SMS, WhatsApp, or email switched off); docs/email.md. */
+	status: str,
 });
 export const Deliveries = z.array(Delivery).nullable().optional();
 

@@ -121,7 +121,7 @@ export function MyPaymentsScreen({ payments: result, opened, folios, terminals, 
 						{pay.status === "PROCESSING" && <Note tone="info">Transfer not matched to a bank line yet. Finance matches it; you can confirm if you saw the alert.</Note>}
 						{pay.status === "NO_RESPONSE" && <Note tone="danger">The terminal didn't answer. Nothing was charged — check with the guest's bank before trying again.</Note>}
 						<PanelSection title="Payment">
-							<DetailList columns={2} items={[{ label: "Method", value: pay.method === "CARD" ? `Card · ${pay.terminal}` : pay.method === "TRANSFER" ? "Bank transfer" : "Cash" }, { label: "Provider ref", value: pay.providerRef ?? "—" }, { label: "For", value: pay.description }, { label: "Folio", value: pay.folioId ? <a href={`/dashboard/folios?open=${pay.folioId}`} className="text-brand">Open folio →</a> : "—" }, { label: "Receipt", value: pay.receiptSent === "NONE" ? "Not sent" : `Sent by ${pay.receiptSent === "WHATSAPP" ? "WhatsApp" : "email"}` }, { label: "Resolved", value: fmtWhen(pay.resolvedAt) }]} />
+							<DetailList columns={2} items={[{ label: "Method", value: pay.method === "CARD" ? `Card · ${pay.terminal}` : pay.method === "TRANSFER" ? "Bank transfer" : "Cash" }, { label: "Provider ref", value: pay.providerRef ?? "—" }, { label: "For", value: pay.description }, { label: "Folio", value: pay.folioId ? <a href={`/dashboard/folios?open=${pay.folioId}`} className="text-brand">Open folio →</a> : "—" }, { label: "Receipt", value: pay.receiptSent === "NONE" ? "Not sent" : pay.receiptSent === "WHATSAPP" ? "Saved for WhatsApp (coming soon)" : "Emailed" }, { label: "Resolved", value: fmtWhen(pay.resolvedAt) }]} />
 						</PanelSection>
 					</div>
 				)}

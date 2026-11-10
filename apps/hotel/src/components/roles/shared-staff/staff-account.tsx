@@ -416,8 +416,12 @@ export function MessageStaffModal({
 					placeholder="Please come 30 minutes early tomorrow…"
 				/>
 				<ToggleField
-					label="Also send on WhatsApp"
-					hint={staff.phone ? staff.phone : "No phone on file: in the app only"}
+					label="WhatsApp copy (coming soon)"
+					hint={
+						staff.phone
+							? `${staff.phone} · not connected yet: the text is shown on screen to copy`
+							: "No phone on file: in the app only"
+					}
 					checked={whatsapp && !!staff.phone}
 					onChange={(v) => setWhatsapp(v && !!staff.phone)}
 				/>
