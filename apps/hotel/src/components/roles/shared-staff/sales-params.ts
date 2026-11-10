@@ -28,7 +28,8 @@ export async function salesFilters(
 		outletId: one(p.outlet),
 		q: one(p.q),
 		mine: mine === "true" ? true : mine === "false" ? false : undefined,
-		page: Number.isInteger(page) && page > 0 ? page : undefined,
+		// The URL counts pages from 1; the service from 0.
+		page: Number.isInteger(page) && page > 1 ? page - 1 : undefined,
 		desk,
 	};
 }

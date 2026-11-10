@@ -3,8 +3,6 @@
 import {
 	BanknoteIcon,
 	BedDoubleIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
 	ClockIcon,
 	ReceiptIcon,
 	RotateCwIcon,
@@ -20,6 +18,7 @@ import {
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "@hospio/ui/shared/empty-state";
+import { DataTablePagination } from "@hospio/ui/shared/pagination";
 import {
 	fmtDate,
 	fmtDay,
@@ -158,6 +157,10 @@ export function SalesScreen({
 	/** Any change of filter starts again on the first page, unless it is the page that changes. */
 	const set = (patch: Parameters<typeof setParams>[0]) =>
 		void setParams({ page: null, ...patch });
+
+	/** The page in the URL counts from 1 (none on the first page); the service counts from 0. */
+	const goTo = (index: number) =>
+		void setParams({ page: index <= 0 ? null : index + 1 });
 
 	const range = (f: string, t: string) => {
 		// fnb-service reads up to 93 days at a time: a longer range keeps its end and starts 93 days before.
@@ -646,33 +649,22 @@ export function SalesScreen({
 									</table>
 								</div>
 							)}
-							{data.matching > data.size && (
-								<div className="flex items-center justify-between border-t border-line px-5 py-3 text-[13px] text-ink-2">
-									<span>
-										{data.page * data.size + 1}–
+							{data.rows.length > 0 && (
+								<div className="flex items-center gap-3 border-t border-line px-5 py-[10px] text-xs text-ink-3">
+									<span className="flex-1">
+										Showing {data.page * data.size + 1}–
 										{Math.min(data.matching, (data.page + 1) * data.size)} of{" "}
 										{data.matching}
 									</span>
-									<div className="flex gap-2">
-										<button
-											type="button"
-											className={btn.icon}
-											aria-label="Newer sales"
-											disabled={data.page === 0}
-											onClick={() => set({ page: data.page - 1 || null })}
-										>
-											<ChevronLeftIcon className="size-4" />
-										</button>
-										<button
-											type="button"
-											className={btn.icon}
-											aria-label="Older sales"
-											disabled={(data.page + 1) * data.size >= data.matching}
-											onClick={() => set({ page: data.page + 1 })}
-										>
-											<ChevronRightIcon className="size-4" />
-										</button>
-									</div>
+									<DataTablePagination
+										pageIndex={data.page}
+										pageCount={Math.ceil(data.matching / data.size)}
+										canPreviousPage={data.page > 0}
+										canNextPage={(data.page + 1) * data.size < data.matching}
+										previousPage={() => goTo(data.page - 1)}
+										nextPage={() => goTo(data.page + 1)}
+										setPageIndex={goTo}
+									/>
 								</div>
 							)}
 						</SectionCard>
