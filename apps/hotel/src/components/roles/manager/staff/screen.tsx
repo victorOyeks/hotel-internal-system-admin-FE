@@ -16,8 +16,11 @@ import {
 	PercentIcon,
 	WalletIcon,
 } from "lucide-react";
-import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
+import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
@@ -50,6 +53,7 @@ import {
 	ChangeShiftModal,
 	RemoveModal,
 	ResetPasswordModal,
+	ROLE_OPTIONS,
 	StaffFormPanel,
 	StaffProfilePanel,
 	staffStatusPill,
@@ -65,6 +69,9 @@ type Tab = "all" | "rota" | "leave" | "requests";
 
 /** Manager · Staff. The list, add, reset password, suspend/resume and remove are live on identity-service; the rota, leave and requests are live on finance-service. */
 export function StaffScreen({
+	result,
+	overall,
+	opened,
 	staff,
 	shifts,
 	leave,
@@ -76,6 +83,13 @@ export function StaffScreen({
 	clockedIn = [],
 }: {
 	clockedIn?: string[];
+	/** The list on screen, a page at a time from identity (`?q=&role=&status=&sort=&page=`). */
+	result: PageResult<StaffRow>;
+	/** The hotel's people without search or filters, for the header and the cards (counts only). */
+	overall: PageResult<StaffRow>;
+	/** The person in `?open=` when they are not on this page (a link from elsewhere). */
+	opened?: StaffRow | null;
+	/** Everyone at the hotel: read only for the rota tab (the grid, find cover, swap and auto-fill). */
 	staff: StaffRow[];
 	shifts: ShiftRow[];
 	leave: LeaveRow[];
@@ -85,11 +99,16 @@ export function StaffScreen({
 	businessName?: string;
 	inviterName?: string;
 }) {
-	const [tab, setTab] = useQueryState("tab");
+	const router = useRouter();
+	const list = useListParams({ extra: ["role"] });
+	// The tab reloads the page: the rota reads everyone, the list reads one page.
+	const [tab, setTab] = useQueryState(
+		"tab",
+		parseAsString.withOptions({ shallow: false }),
+	);
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [search, setSearch] = useState("");
-	const [dept, setDept] = useState("");
 	const [editing, setEditing] = useState<StaffRow | null>(null);
 	const [modal, setModal] = useState<{
 		kind: "shift" | "message" | "reset" | "suspend" | "resume" | "remove";
@@ -132,8 +151,21 @@ export function StaffScreen({
 		leave.filter(
 			(l) => l.status === "PENDING" || l.status === "CHANGE_REQUESTED",
 		).length + requests.filter((r) => r.status === "PENDING").length;
-	const selected = staff.find((s) => s.id === openId) ?? null;
-	const filtered = staff.filter((s) => !dept || s.department === dept);
+	const rows = result.data.content;
+	const cards = overall.data.counts ?? result.data.counts ?? {};
+	const counts = result.data.counts ?? {};
+	const people = cards.all ?? 0;
+	const onLeave = new Set(
+		leave
+			.filter(
+				(l) => l.status === "APPROVED" && l.from <= today && l.to >= today,
+			)
+			.map((l) => l.staffId),
+	).size;
+	const selected =
+		rows.find((s) => s.id === openId) ??
+		staff.find((s) => s.id === openId) ??
+		(opened && opened.id === openId ? opened : null);
 
 	const onAction = (
 		action:
@@ -168,6 +200,7 @@ export function StaffScreen({
 		{
 			header: "Role",
 			accessorKey: "jobTitle",
+			enableSorting: false,
 			cell: ({ row }) => (
 				<TwoLine
 					primary={row.original.jobTitle}
@@ -178,6 +211,7 @@ export function StaffScreen({
 		{
 			header: "Today",
 			accessorKey: "shift",
+			enableSorting: false,
 			cell: ({ row }) => {
 				const s = shifts.find(
 					(x) => x.staffId === row.original.id && x.date === today,
@@ -212,6 +246,7 @@ export function StaffScreen({
 		{
 			header: "Hours this week",
 			id: "hours",
+			enableSorting: false,
 			accessorFn: (r) =>
 				shifts.filter((s) => s.staffId === r.id && s.status !== "ABSENT")
 					.length * 8,
@@ -227,6 +262,7 @@ export function StaffScreen({
 		{
 			header: "Status",
 			accessorKey: "status",
+			enableSorting: false,
 			cell: ({ row }) => staffStatusPill(row.original),
 		},
 		{
@@ -319,7 +355,7 @@ export function StaffScreen({
 		<>
 			<PageHeader
 				title="Staff"
-				subtitle={`${hotelName} · ${plural(staff.length, "person", "people")} · ${onShift} on shift right now`}
+				subtitle={`${hotelName} · ${plural(people, "person", "people")} · ${onShift} on shift right now`}
 			>
 				<Button
 					variant="outline"
@@ -336,9 +372,9 @@ export function StaffScreen({
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard
 					label="Total staff"
-					value={staff.length}
+					value={people}
 					icon={UsersIcon}
-					hint={`${staff.filter((s) => s.status === "ACTIVE").length} active · ${staff.filter((s) => s.status === "ON_LEAVE").length} on leave · ${staff.filter((s) => s.status === "PAUSED" || s.status === "SUSPENDED").length} paused`}
+					hint={`${cards.ACTIVE ?? 0} active · ${onLeave} on leave · ${(cards.PAUSED ?? 0) + (cards.SUSPENDED ?? 0)} paused`}
 				/>
 				<KpiCard
 					label="On shift now"
@@ -371,9 +407,10 @@ export function StaffScreen({
 			<Toolbar
 				left={
 					<PillTabs<Tab>
-						param="tab"
+						value={active}
+						onChange={(k) => void setTab(k === "all" ? null : k)}
 						tabs={[
-							{ key: "all", label: "All staff", count: staff.length },
+							{ key: "all", label: "All staff", count: people },
 							{ key: "rota", label: "Rota" },
 							{
 								key: "leave",
@@ -394,16 +431,43 @@ export function StaffScreen({
 				right={
 					<>
 						{active === "all" && (
-							<FilterSelect
-								value={dept}
-								onChange={setDept}
-								all="All departments"
-								options={[...new Set(staff.map((s) => s.department))].map(
-									(d) => ({ value: d, label: d }),
-								)}
-							/>
+							<>
+								<FilterSelect
+									value={list.params.role ?? ""}
+									onChange={(v) => list.set({ role: v })}
+									all="All roles"
+									options={ROLE_OPTIONS.map((r) => ({
+										value: r.value,
+										label: r.label,
+									}))}
+								/>
+								<FilterSelect
+									value={list.params.status ?? ""}
+									onChange={(v) => list.set({ status: v })}
+									all={`Any status (${counts.all ?? 0})`}
+									options={[
+										{
+											value: "ACTIVE",
+											label: `Active (${counts.ACTIVE ?? 0})`,
+										},
+										{
+											value: "PAUSED",
+											label: `Paused (${counts.PAUSED ?? 0})`,
+										},
+										{
+											value: "SUSPENDED",
+											label: `Suspended (${counts.SUSPENDED ?? 0})`,
+										},
+									]}
+								/>
+								<SearchBox
+									value={list.search}
+									onChange={list.setSearch}
+									placeholder="Name, email or phone"
+								/>
+							</>
 						)}
-						{active !== "rota" && (
+						{(active === "leave" || active === "requests") && (
 							<SearchBox
 								value={search}
 								onChange={setSearch}
@@ -418,8 +482,18 @@ export function StaffScreen({
 			{active === "all" && (
 				<DataTable
 					columns={columns}
-					data={filtered}
-					search={search}
+					data={rows}
+					server={{
+						page: result.data,
+						onPage: list.goTo,
+						sort: list.sort,
+						onSort: list.setSort,
+						sortKeys: { fullName: "fullName", lastSignIn: "lastSignInAt" },
+					}}
+					filtered={list.filtered}
+					onClearFilters={list.clear}
+					error={result.ok ? null : result.error}
+					onRetry={() => router.refresh()}
 					onRowClick={(s) => setOpenId(s.id)}
 					emptyTitle="No staff match"
 				/>

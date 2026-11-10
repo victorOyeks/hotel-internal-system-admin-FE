@@ -56,11 +56,16 @@ export function NavMain({
 									<span className="truncate">{item.title}</span>
 									{count > 0 && (
 										<span
-											className="ml-auto rounded-pill bg-warning px-[7px] py-px text-[11px] font-bold leading-[18px] text-white group-data-[collapsible=icon]:hidden"
-											title={`${count} unpaid`}
+											className={cn(
+												"ml-auto rounded-pill px-[7px] py-px text-[11px] font-bold leading-[18px] text-white group-data-[collapsible=icon]:hidden",
+												item.badge === "inbox" ? "bg-danger" : "bg-warning",
+											)}
+											title={`${count} ${item.badge === "inbox" ? "unread" : "unpaid"}`}
 										>
 											{count > 99 ? "99+" : count}
-											<span className="sr-only"> unpaid</span>
+											<span className="sr-only">
+												{item.badge === "inbox" ? " unread" : " unpaid"}
+											</span>
 										</span>
 									)}
 								</Link>

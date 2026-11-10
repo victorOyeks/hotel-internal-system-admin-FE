@@ -319,6 +319,34 @@ async function listUsers(
 	return Array.isArray(res.data) ? res.data : res.data.content;
 }
 
+/**
+ * One page of identity's people (GET /identity/users?page=, docs/pagination.md): filters, search, sort and counts run in the
+ * service. `staffOnly` leaves the owner out; `roleCounts` adds ROLE_<ROLE> counts (people holding it, not paused).
+ */
+export async function usersPage(
+	query: ListQuery & {
+		hotelId?: string;
+		role?: string;
+		staffOnly?: boolean;
+		roleCounts?: boolean;
+	},
+): Promise<
+	| { ok: true; page: Parameters<typeof toPaged<UserSummary, UserSummary>>[0] }
+	| { ok: false; error: string }
+> {
+	const { data: res, error } = await api("@get/identity/users", {
+		...(await withSession()),
+		query: pageQuery(query) as { page: number; size: number },
+	});
+	if (error || !res) {
+		console.error("identity-service users page:", error);
+		return { ok: false, error: errorMessage(error, "People didn't load") };
+	}
+	if (Array.isArray(res.data))
+		return { ok: false, error: "identity-service answered a list, not a page" };
+	return { ok: true, page: res.data };
+}
+
 /** The active hotel's people for a staff member (names and this hotel's roles only). */
 async function listColleagues(): Promise<UserSummary[]> {
 	const { data: res, error } = await api(
@@ -445,12 +473,17 @@ const everyOrganization = cache(
 const allOrganizations = async (): Promise<OrganizationRow[]> =>
 	everyOrganization((await withSession()).headers?.["X-Hotel-Id"] ?? "");
 
+/** A route or row id that isn't there ("undefined" from a missing value): such calls are never sent. */
+const noId = (id?: string | null) => !id || id === "undefined" || id === "null";
+
 /** One page of invoices: the hotel's, or one account's (`organizationId`), latest due first, with counts and money. */
 async function invoicesPage(
 	q: ListQuery & { organizationId?: string },
 ): Promise<PageResult<InvoiceRow>> {
 	const { organizationId, ...rest } = q;
 	const s = await withSession();
+	if (organizationId === "undefined" || organizationId === "null")
+		return failedPage("Organization not found");
 	const { data: res, error } = organizationId
 		? await api("@get/folio/organizations/:id/invoices", {
 				...s,
@@ -1232,6 +1265,7 @@ export const data = {
 		get: async (id: string): Promise<OrganizationRow | null> => {
 			if (!live("folio"))
 				return give(demoOrganizationRows().find((o) => o.id === id) ?? null);
+			if (noId(id)) return null; // never call the API without an id
 			const { data: res, error } = await api(
 				"@get/folio/organizations/:id/summary",
 				{ ...(await withSession()), params: { id } },
@@ -1246,6 +1280,7 @@ export const data = {
 		/** The people who can book on the account (a company's staff list: short, not paged). */
 		members: async (id: string): Promise<OrgMemberRow[]> => {
 			if (!live("folio")) return give(stay.demoOrgMembers[id] ?? []);
+			if (noId(id)) return [];
 			const { data: res, error } = await api(
 				"@get/folio/organizations/:id/members",
 				{ ...(await withSession()), params: { id } },
@@ -1288,6 +1323,7 @@ export const data = {
 					}),
 				});
 			}
+			if (noId(id)) return failedPage("Organization not found");
 			const { data: res, error } = await api(
 				"@get/folio/organizations/:id/stays",
 				{ ...(await withSession()), params: { id }, query: pageQuery(q) },
@@ -1393,9 +1429,85 @@ export const data = {
 		},
 		get: async (id: string): Promise<StaffRow | null> =>
 			(await data.staff.list()).find((s) => s.id === id) ?? null,
+		/**
+		 * Manager · Staff list: one page of the active hotel's people, searched (`q` name, email or phone), filtered (`role`, `status`)
+		 * and sorted in identity-service. Counts per status over the hotel.
+		 */
+		page: async (query: ListQuery = {}): Promise<PageResult<StaffRow>> => {
+			if (!live("identity")) {
+				const all = hotel.demoStaff;
+				const rows = all.filter(
+					(s) =>
+						(!query.role || s.role === query.role) &&
+						(!query.status || s.status === query.status) &&
+						matches(query.q, s.fullName, s.email, s.phone),
+				);
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: {
+							all: all.length,
+							ACTIVE: all.filter((s) => s.status === "ACTIVE").length,
+							PAUSED: all.filter((s) => s.status === "PAUSED").length,
+							SUSPENDED: all.filter((s) => s.status === "SUSPENDED").length,
+						},
+					}),
+				});
+			}
+			const [active, hotels] = await Promise.all([getActiveHotel(), getHotels()]);
+			if (!active) return failedPage("Choose a hotel first");
+			const r = await usersPage({ ...query, hotelId: active.id });
+			if (!r.ok) return failedPage(r.error);
+			const names = hotelNameMap(hotels);
+			return { ok: true, data: toPaged(r.page, (u) => toStaffRow(u, active.id, names)) };
+		},
+		/** One person at the active hotel (GET /identity/users/:id), for a profile opened from a link; null when not found. */
+		one: async (id: string): Promise<StaffRow | null> => {
+			if (!live("identity")) return give(hotel.demoStaff.find((s) => s.id === id) ?? null);
+			if (noId(id)) return null;
+			const [active, hotels] = await Promise.all([getActiveHotel(), getHotels()]);
+			if (!active) return null;
+			const { data: res, error } = await api("@get/identity/users/:id", {
+				...(await withSession()),
+				params: { id },
+			});
+			if (error || !res) return null;
+			return toStaffRow(res.data, active.id, hotelNameMap(hotels));
+		},
 		...opsData.staff,
 	},
 	roles: {
+		/**
+		 * Roles & permissions · Staff access, a page at a time: the active hotel's people with their roles here, searched and
+		 * filtered (`holds` a role, `status`) in identity-service. Counts carry ROLE_<ROLE> (holders, not paused) for the role cards.
+		 */
+		accessPage: async (query: ListQuery = {}): Promise<PageResult<RolesAccessRow>> => {
+			const [active, session] = await Promise.all([getActiveHotel(), getSession()]);
+			// `holds` is the role filter (the URL's `role` opens a role's panel on the same screen).
+			const { holds, ...rest } = query;
+			if (!live("identity")) {
+				const all = await data.roles.access();
+				const rows = all.filter(
+					(a) =>
+						(!holds || a.grants.some((g) => g.role === holds)) &&
+						matches(query.q, a.fullName, a.email),
+				);
+				const counts: Record<string, number> = { all: all.length };
+				for (const a of all)
+					for (const g of a.grants)
+						if (!g.paused) counts[`ROLE_${g.role}`] = (counts[`ROLE_${g.role}`] ?? 0) + 1;
+				return { ok: true, data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, { counts }) };
+			}
+			if (!active) return failedPage("Choose a hotel first");
+			const r = await usersPage({
+				...rest,
+				role: typeof holds === "string" && holds ? holds : undefined,
+				hotelId: active.id,
+				roleCounts: true,
+			});
+			if (!r.ok) return failedPage(r.error);
+			return { ok: true, data: toPaged(r.page, (u) => toRolesAccessRow(u, active.id, session?.sub)) };
+		},
 		/**
 		 * Roles & permissions · Staff access: everyone with a role at the active hotel (GET /identity/users?hotelId=),
 		 * with their roles here and the business-wide ones. Managers and the owner only; empty for anyone else.

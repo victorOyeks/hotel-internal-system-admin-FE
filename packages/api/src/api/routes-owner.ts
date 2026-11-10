@@ -240,6 +240,8 @@ export const ownerRoutes = {
 
 	// messaging · staff threads and guest messages
 	/** With page or size: a page, newest message first, searched by `q` (docs/pagination.md). */
+	/** Unread messages over the caller's staff threads (the Inbox badge). */
+	"@get/messaging/threads/unread-count": { output: envelope(z.number()) },
 	"@get/messaging/threads": {
 		query: pageParams.optional(),
 		output: envelope(pagedOf(ThreadRow)),

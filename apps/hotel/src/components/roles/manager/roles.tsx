@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { CalendarIcon, CheckIcon, PauseIcon, PlusIcon, ShieldCheckIcon, Trash2Icon, UserCogIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable } from "@hospio/ui/shared/data-table";
 import { AvatarName, Note } from "@hospio/ui/shared/detail-list";
@@ -15,10 +15,13 @@ import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { ManagerMark, RowActions } from "@hospio/ui/shared/row-actions";
 import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
-import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
+import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { btn } from "@hospio/ui/shared/ui";
 import { changeAccess, grantRole } from "@hospio/api/actions/identity";
+import { searchStaffAccess } from "@hospio/api/actions/staff-lists";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { GrantRow, RolesAccessRow } from "@hospio/api/data/types";
 import { type HotelRole, MANAGER_ONLY_ACTIONS, ROLE_PERMISSIONS, roleDescriptions, roleIcons, roleLabels } from "@hospio/api/roles";
 
@@ -56,15 +59,32 @@ type Target = { row: RolesAccessRow; grantId: string };
  * services' guards, packages/api/src/roles.ts) and who holds which role. Every change goes to identity-service;
  * the person is told in the app and their next page picks up the new roles.
  */
-export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAccessRow[]; hotelName: string; hotelId?: string }) {
+export function RolesScreen({
+	result,
+	overall,
+	hotelName,
+	hotelId,
+}: {
+	/** Staff access, a page at a time from identity (`?q=&holds=&sort=&page=`). */
+	result: PageResult<RolesAccessRow>;
+	/** The hotel without search or filters: who holds each role (ROLE_<ROLE> counts) and how many people. */
+	overall: PageResult<RolesAccessRow>;
+	hotelName: string;
+	hotelId?: string;
+}) {
 	const router = useRouter();
+	const list = useListParams({ extra: ["holds"] });
 	const [tab, setTab] = useQueryState("tab");
 	const active = (tab ?? "roles") as "roles" | "access";
 	const [openRole, setOpenRole] = useQueryState("role");
-	const [search, setSearch] = useState("");
+	const access = result.data.content;
+	const roleCounts = overall.data.counts ?? {};
 	const [personId, setPersonId] = useState<string | null>(null);
 	const [giveOpen, setGiveOpen] = useState(false);
 	const [giveTo, setGiveTo] = useState("");
+	const [givePerson, setGivePerson] = useState<RolesAccessRow | null>(null);
+	const [find, setFind] = useState("");
+	const [found, setFound] = useState<RolesAccessRow[]>([]);
 	const [newRole, setNewRole] = useState("");
 	const [newLevel, setNewLevel] = useState<Level>("EDIT");
 	const [newUntil, setNewUntil] = useState("");
@@ -77,12 +97,20 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 
 	const person = personId ? (access.find((a) => a.id === personId) ?? null) : null;
 	const currentRole = openRole && openRole in roleLabels ? (openRole as HotelRole) : null;
-	const holders = (role: string) => access.filter((a) => a.grants.some((g) => g.role === role && !g.paused));
+	const holders = (role: string) => roleCounts[`ROLE_${role}`] ?? 0;
 	const grantOf = (t: Target | null): GrantRow | undefined => t?.row.grants.find((g) => g.id === t.grantId);
 	const changeable = (r: RolesAccessRow) => r.grants.filter((g) => g.role !== "OWNER");
 	const manageable = (r: RolesAccessRow) => !r.self && changeable(r).length > 0;
 	const givable = (r?: RolesAccessRow) => GIVABLE.filter((role) => !r?.grants.some((g) => g.role === role));
-	const giveRow = access.find((a) => a.id === giveTo);
+	const giveRow = givePerson && givePerson.id === giveTo ? givePerson : (found.find((a) => a.id === giveTo) ?? null);
+	// Give a role: people found by a server search (name, email or phone), 10 at a time, never the whole hotel.
+	useEffect(() => {
+		if (!giveOpen) return;
+		const t = setTimeout(() => {
+			void searchStaffAccess(find).then((r) => r.ok && setFound(r.data.filter((a) => !a.self)));
+		}, 300);
+		return () => clearTimeout(t);
+	}, [find, giveOpen]);
 
 	const done = (close: () => void) => () => {
 		close();
@@ -90,6 +118,8 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 	};
 	function openGive(r?: RolesAccessRow) {
 		setGiveTo(r?.id ?? "");
+		setGivePerson(r ?? null);
+		setFind("");
 		setNewRole("");
 		setNewLevel("EDIT");
 		setNewUntil("");
@@ -163,14 +193,21 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 		<>
 			<PageHeader title="Roles & permissions" subtitle={`${hotelName} · what each role allows and who holds it · three levels: Full, Can edit, View only`}>
 				<ManagerMark />
-				<Button className={btn.primary} onClick={() => openGive()} disabled={!access.some((a) => !a.self)}>
+				<Button className={btn.primary} onClick={() => openGive()} disabled={(roleCounts.all ?? 0) < 2 && !access.some((a) => !a.self)}>
 					<PlusIcon className="size-4" /> Give a role
 				</Button>
 			</PageHeader>
 
 			<Toolbar
-				left={<PillTabs tabs={[{ key: "roles", label: "Roles", count: GIVABLE.length }, { key: "access", label: "Staff access", count: access.length }]} value={active} onChange={(k) => void setTab(k === "roles" ? null : k)} />}
-				right={active === "access" ? <SearchBox value={search} onChange={setSearch} placeholder="Search people or roles…" /> : undefined}
+				left={<PillTabs tabs={[{ key: "roles", label: "Roles", count: GIVABLE.length }, { key: "access", label: "Staff access", count: roleCounts.all ?? 0 }]} value={active} onChange={(k) => void setTab(k === "roles" ? null : k)} />}
+				right={
+					active === "access" ? (
+						<>
+							<FilterSelect value={list.params.holds ?? ""} onChange={(v) => list.set({ holds: v })} all="Any role" options={GIVABLE.map((r) => ({ value: r, label: `${roleLabels[r]} (${holders(r)})` }))} />
+							<SearchBox value={list.search} onChange={list.setSearch} placeholder="Name, email or phone" />
+						</>
+					) : undefined
+				}
 			/>
 
 			{active === "roles" ? (
@@ -178,7 +215,7 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 					{GIVABLE.map((role) => {
 						const Icon = roleIcons[role];
 						const mods = ROLE_PERMISSIONS[role] ?? [];
-						const n = holders(role).length;
+						const n = holders(role);
 						return (
 							<button key={role} type="button" onClick={() => void setOpenRole(role)} className="flex flex-col gap-3 rounded-card border border-line bg-card p-[18px] text-left transition-colors hover:bg-brand-soft/20">
 								<div className="flex items-center gap-[10px]">
@@ -201,13 +238,24 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 					</div>
 				</div>
 			) : (
-				<DataTable columns={columns} data={access} search={search} onRowClick={(r) => setPersonId(r.id)} emptyTitle="No staff yet" emptyHint="Add people from Staff, then give them roles here" />
+				<DataTable
+					columns={columns}
+					data={access}
+					server={{ page: result.data, onPage: list.goTo, sort: list.sort, onSort: list.setSort, sortKeys: { fullName: "fullName" } }}
+					filtered={list.filtered}
+					onClearFilters={list.clear}
+					error={result.ok ? null : result.error}
+					onRetry={() => router.refresh()}
+					onRowClick={(r) => setPersonId(r.id)}
+					emptyTitle="No staff yet"
+					emptyHint="Add people from Staff, then give them roles here"
+				/>
 			)}
 
 			{/* What a role allows */}
 			<SidePanel open={!!currentRole} onOpenChange={(o) => !o && void setOpenRole(null)} title={currentRole ? roleLabels[currentRole] : ""} subtitle={currentRole ? roleDescriptions[currentRole] : undefined} icon={currentRole ? roleIcons[currentRole] : undefined} width="lg"
 				footerInfo="Levels are fixed by H.M.S · each level includes the one before it"
-				footer={currentRole && <Button className={btn.primary} onClick={() => { void setOpenRole(null); void setTab("access"); }}>Who holds it ({holders(currentRole).length})</Button>}>
+				footer={currentRole && <Button className={btn.primary} onClick={() => { void setOpenRole(null); void setTab("access"); list.set({ holds: currentRole }); }}>Who holds it ({holders(currentRole)})</Button>}>
 				{currentRole && (
 					<div className="flex flex-col gap-5">
 						{currentRole === "MANAGER" ? (
@@ -295,8 +343,9 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 					</>
 				}>
 				<div className="flex flex-col gap-5">
-					<SelectField label="Person" value={giveTo} onChange={(v) => { setGiveTo(v); setNewRole(""); }} placeholder="Choose a person" options={access.filter((a) => !a.self).map((a) => ({ value: a.id, label: a.fullName, hint: a.grants.map((g) => label(g.role)).join(", ") }))} />
-					<SelectField label="Role" value={newRole} onChange={setNewRole} disabled={!giveRow} placeholder={giveRow ? "Choose a role" : "Choose a person first"} options={givable(giveRow).map((r) => ({ value: r, label: roleLabels[r], hint: roleDescriptions[r] }))} />
+					{!givePerson && <TextField label="Find a person" value={find} onChange={setFind} placeholder="Name, email or phone" />}
+					<SelectField label="Person" value={giveTo} onChange={(v) => { setGiveTo(v); setGivePerson(found.find((a) => a.id === v) ?? null); setNewRole(""); }} placeholder={found.length || givePerson ? "Choose a person" : "No one matches"} options={[...(givePerson && !found.some((a) => a.id === givePerson.id) ? [givePerson] : []), ...found].map((a) => ({ value: a.id, label: a.fullName, hint: a.grants.map((g) => label(g.role)).join(", ") }))} />
+					<SelectField label="Role" value={newRole} onChange={setNewRole} disabled={!giveRow} placeholder={giveRow ? "Choose a role" : "Choose a person first"} options={givable(giveRow ?? undefined).map((r) => ({ value: r, label: roleLabels[r], hint: roleDescriptions[r] }))} />
 					<ChoiceCards label="Level" value={newLevel} onChange={setNewLevel} options={LEVEL_OPTIONS} />
 					<TextField label="Last day (optional)" type="date" value={newUntil} onChange={setNewUntil} hint="Leave empty for a role with no end. It ends at midnight after this day, Lagos time" />
 					{newRole && newRole !== "MANAGER" && (

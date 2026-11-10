@@ -139,6 +139,37 @@ export async function reinstateStaff(
 	return { ok: true, data: null };
 }
 
+/**
+ * Shared devices (docs/shared-devices.md): the owner clears a person's PIN, or reminds someone with none to set one. Sent
+ * business-wide like the other account changes; identity checks the person works for the owner. Never sets a PIN.
+ */
+export async function resetPinAsOwner(userId: string): Promise<ActionResult<null>> {
+	if (!live("identity")) return NOT_LIVE;
+	if (!userId || userId === "undefined") return { ok: false, error: "That person was not found" };
+	const { error } = await business(async () =>
+		api("@post/identity/users/:id/reset-pin", {
+			...(await withSession()),
+			params: { id: userId },
+		}),
+	);
+	if (error) return { ok: false, error: errorMessage(error, "The PIN could not be reset") };
+	refresh();
+	return { ok: true, data: null };
+}
+
+export async function remindPinAsOwner(userId: string): Promise<ActionResult<null>> {
+	if (!live("identity")) return NOT_LIVE;
+	if (!userId || userId === "undefined") return { ok: false, error: "That person was not found" };
+	const { error } = await business(async () =>
+		api("@post/identity/users/:id/remind-pin", {
+			...(await withSession()),
+			params: { id: userId },
+		}),
+	);
+	if (error) return { ok: false, error: errorMessage(error, "The reminder could not be sent") };
+	return { ok: true, data: null };
+}
+
 /** Remove from one hotel: every role they hold there goes (the person's other hotels are untouched). */
 export async function removeFromHotel(
 	userId: string,

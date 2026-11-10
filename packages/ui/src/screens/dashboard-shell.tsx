@@ -82,13 +82,21 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		(await pinPromptAsked()) &&
 		(!!device || user.roles.some((r) => SHARED_DESK_ROLES.includes(r)));
 
-	const [unread, unpaidSales] = await Promise.all([
+	const [unread, unpaidSales, inbox] = await Promise.all([
 		data.notifications.unreadCount().catch(() => 0),
 		// The bar and kitchen see how many sales still owe money next to Sales.
 		role === "BAR" || role === "KITCHEN"
 			? data.outlets.unpaidSales(role).catch(() => null)
 			: Promise.resolve(null),
+		// Every hotel role: unread staff messages next to Inbox (the owner's Messaging).
+		APP === "hotel" && !support
+			? data.owner.inboxUnread().catch(() => null)
+			: Promise.resolve(null),
 	]);
+	const badges = {
+		...(unpaidSales ? { unpaidSales } : {}),
+		...(inbox ? { inbox } : {}),
+	};
 
 	return (
 		<NuqsAdapter>
@@ -105,7 +113,7 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						role={role}
 						hotels={hotels}
 						activeHotel={activeHotel}
-						badges={unpaidSales ? { unpaidSales } : undefined}
+						badges={badges}
 					/>
 					{/* min-w-0: wide tables scroll inside their card instead of pushing the page sideways. */}
 					<SidebarInset className="min-w-0 bg-page">

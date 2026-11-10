@@ -20,6 +20,7 @@ import {
 	resetPassword,
 } from "@hospio/api/actions/identity";
 import { remindStaffPin, resetStaffPin } from "@hospio/api/actions/devices";
+import { remindPinAsOwner, resetPinAsOwner } from "@hospio/api/actions/owner";
 import { useAction } from "@hospio/api/actions/use-action";
 import { addShift } from "@hospio/api/actions/workforce";
 import type { UserCreated } from "@hospio/api/api/schema";
@@ -107,9 +108,18 @@ export function staffStatusPill(s: StaffRow) {
  * The person's PIN for shared devices: Remind (an in-app notice) when they have none, Reset (clears it) when they do. A manager
  * never sets someone else's PIN.
  */
-function StaffPinActions({ staff }: { staff: StaffRow }) {
+export function StaffPinActions({
+	staff,
+	asOwner = false,
+}: {
+	staff: StaffRow;
+	/** The owner's Staff screen: the same actions, sent business-wide like the owner's other account changes. */
+	asOwner?: boolean;
+}) {
 	const { run, pending } = useAction();
 	const [hasPin, setHasPin] = useState(staff.hasPin);
+	const remind = asOwner ? remindPinAsOwner : remindStaffPin;
+	const reset = asOwner ? resetPinAsOwner : resetStaffPin;
 	const [confirm, setConfirm] = useState(false);
 	if (hasPin === undefined || staff.role === "OWNER") return null;
 	const id = staff.userId ?? staff.id;
@@ -124,7 +134,7 @@ function StaffPinActions({ staff }: { staff: StaffRow }) {
 						<KeyRoundIcon className="size-4" /> Reset PIN
 					</Button>
 				) : (
-					<Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(() => remindStaffPin(id), `Reminder sent to ${staff.fullName}`)}>
+					<Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(() => remind(id), `Reminder sent to ${staff.fullName}`)}>
 						Remind
 					</Button>
 				)}
@@ -137,7 +147,7 @@ function StaffPinActions({ staff }: { staff: StaffRow }) {
 				confirmLabel="Reset PIN"
 				tone="danger"
 				pending={pending}
-				onConfirm={() => run(() => resetStaffPin(id), "PIN reset", () => { setHasPin(false); setConfirm(false); })}
+				onConfirm={() => run(() => reset(id), "PIN reset", () => { setHasPin(false); setConfirm(false); })}
 			>
 				<p className="text-[13px] text-ink-2">They sign in with email and set a new PIN. You never see or choose it.</p>
 			</ConfirmModal>
