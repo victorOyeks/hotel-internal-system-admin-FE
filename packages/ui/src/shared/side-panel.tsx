@@ -95,11 +95,15 @@ export function SidePanel({
 				</header>
 				<div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
 				{(footer || footerInfo) && (
-					<footer className="flex items-center gap-3 border-t border-line px-6 py-4">
-						<div className="min-w-0 flex-1 text-xs text-ink-3">
-							{footerInfo}
+					<footer className="flex flex-wrap items-center gap-3 border-t border-line px-6 py-4">
+						{footerInfo && (
+							<div className="min-w-0 flex-1 text-xs text-ink-3">
+								{footerInfo}
+							</div>
+						)}
+						<div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+							{footer}
 						</div>
-						<div className="flex items-center gap-2">{footer}</div>
 					</footer>
 				)}
 			</SheetContent>

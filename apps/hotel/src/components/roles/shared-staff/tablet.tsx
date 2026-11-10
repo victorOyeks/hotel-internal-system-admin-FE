@@ -41,7 +41,7 @@ export function BigButton({
 	return (
 		<button
 			type="button"
-			className={cn(big[tone], className)}
+			className={cn("shrink-0 whitespace-nowrap", big[tone], className)}
 			disabled={pending || props.disabled}
 			{...props}
 		>
