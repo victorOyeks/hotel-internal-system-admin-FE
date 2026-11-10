@@ -293,7 +293,7 @@ export const ownerRoutes = {
 		}),
 		output: envelope(GuestSent),
 	},
-	// messaging · guest conversations, templates, everyone on shift (docs/email.md, docs/guest-messaging.md)
+	// messaging · guest conversations, templates, everyone on shift (docs/email.md)
 	"@get/messaging/conversations": {
 		query: pageParams.optional(),
 		output: envelope(pagedOf(GuestConversation)),
