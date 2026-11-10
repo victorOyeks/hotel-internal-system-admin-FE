@@ -7,6 +7,7 @@ import { lmRoutes } from "./routes-lm";
 import { opsRoutes } from "./routes-ops";
 import { ownerRoutes } from "./routes-owner";
 import { paymentRoutes } from "./routes-payments";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -533,6 +534,9 @@ export const Booking = z.object({
 	createdAt: z.string().nullable(),
 	/** What the guest was sent about a change of dates (echoed on staging). */
 	deliveries: Deliveries,
+	/** The guest's phone and email, on list rows (docs/pagination.md). */
+	guestPhone: z.string().nullable().optional(),
+	guestEmail: z.string().nullable().optional(),
 });
 
 export const Guest = z.object({
@@ -805,6 +809,37 @@ export const Organization = z.object({
 	creditSentToOwner: z.boolean().nullable().optional(),
 });
 
+/** An account with its figures, as GET /folio/organizations?page= and /:id/summary answer (docs/pagination.md). */
+export const OrganizationSummary = Organization.extend({
+	outstanding: z.number(),
+	staffCount: z.number(),
+	staysThisMonth: z.number(),
+	stays: z.number(),
+	openStays: z.number(),
+	runningBalance: z.number(),
+	invoices: z.number(),
+	openInvoices: z.number(),
+	invoicesLeft: z.number(),
+	overdueInvoices: z.number(),
+	overdueAmount: z.number(),
+	overdueNumber: z.string().nullable().optional(),
+	overdueDueDate: z.string().nullable().optional(),
+});
+
+/** The hotel's accounts at a glance (GET /folio/organizations/overview). */
+export const OrganizationsOverview = z.object({
+	accounts: z.number(),
+	staffCanBook: z.number(),
+	staysThisMonth: z.number(),
+	outstanding: z.number(),
+	openInvoices: z.number(),
+	overdueInvoices: z.number(),
+	overdueAmount: z.number(),
+	overdueOrganizations: z.array(z.string()),
+	onHold: z.number(),
+	onHoldOrganizations: z.array(z.string()),
+});
+
 /** POST /folio/organizations and PUT /folio/organizations/:id (manager). PUT replaces every field. */
 export const OrganizationRequest = z.object({
 	name: z.string(),
@@ -849,6 +884,12 @@ export const Invoice = z.object({
 	status: z.string(),
 	sentAt: z.string().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
+});
+
+/** An invoice with its account's name; `overdue` when unpaid past due (worked out by folio-service). */
+export const InvoiceView = Invoice.extend({
+	organizationName: z.string().nullable().optional(),
+	overdue: z.boolean().nullable().optional(),
 });
 
 export const OrganizationPayment = z.object({
@@ -915,6 +956,7 @@ export const PaymentResponse = z.object({
 	createdAt: z.string(),
 	resolvedAt: z.string().nullable(),
 	verifiedAt: z.string().nullable(),
+	hotelId: z.string().nullable().optional(),
 });
 
 export const Notification = z.object({
@@ -985,6 +1027,7 @@ export const schema = createSchema({
 	"@get/identity/users/me": { output: envelope(Me) },
 	/** The people at the active hotel (names and roles only) for any staff member: swap and cover pickers. */
 	"@get/identity/users/colleagues": { output: envelope(z.array(UserSummary)) },
+	/** The whole list without page or size (pickers, rotas, Roles & permissions); a page with counts when either is sent. */
 	"@get/identity/users": {
 		query: z
 			.object({
@@ -992,10 +1035,14 @@ export const schema = createSchema({
 				hotelId: z.string(),
 				role: z.string(),
 				q: z.string(),
+				status: z.string(),
+				page: z.number(),
+				size: z.number(),
+				sort: z.string(),
 			})
 			.partial()
 			.optional(),
-		output: envelope(z.array(UserSummary)),
+		output: envelope(z.union([z.array(UserSummary), pagedOf(UserSummary)])),
 	},
 	"@post/identity/users": {
 		input: CreateUserRequest,
@@ -1065,10 +1112,11 @@ export const schema = createSchema({
 				q: z.string(),
 				page: z.number(),
 				size: z.number(),
+				sort: z.string(),
 			})
 			.partial()
 			.optional(),
-		output: envelope(paged(BusinessSummary)),
+		output: envelope(pagedOf(BusinessSummary)),
 	},
 	"@post/tenant/businesses": {
 		input: BusinessRequest,
@@ -1101,8 +1149,11 @@ export const schema = createSchema({
 		output: envelope(z.array(Hotel)),
 	},
 	"@get/tenant/onboarding": {
-		query: z.object({ status: z.string() }).partial().optional(),
-		output: envelope(z.array(Onboarding)),
+		query: z
+			.object({ status: z.string(), page: z.number(), size: z.number() })
+			.partial()
+			.optional(),
+		output: envelope(pagedOf(Onboarding)),
 	},
 	"@get/tenant/onboarding/mine": { output: envelope(Onboarding) },
 	"@put/tenant/onboarding/mine/step": {
@@ -1171,12 +1222,10 @@ export const schema = createSchema({
 
 	// reservation
 	"@get/reservation/bookings/today": { output: envelope(Today) },
+	/** Paged (docs/pagination.md): the seam always sends page and size. */
 	"@get/reservation/bookings": {
-		query: z
-			.object({ from: z.string(), to: z.string(), status: z.string() })
-			.partial()
-			.optional(),
-		output: envelope(z.array(Booking)),
+		query: pageParams,
+		output: envelope(pagedOf(Booking)),
 	},
 	"@get/reservation/bookings/availability": {
 		query: z.object({
@@ -1249,9 +1298,17 @@ export const schema = createSchema({
 		input: z.object({ reason: z.string(), refundable: z.boolean().optional() }),
 		output: envelope(Booking),
 	},
+	/** Paged (docs/pagination.md): the seam always sends page and size. Rows add inHouse and lastStay. */
 	"@get/reservation/guests": {
-		query: z.object({ q: z.string() }).partial().optional(),
-		output: envelope(z.array(Guest)),
+		query: pageParams,
+		output: envelope(
+			pagedOf(
+				Guest.extend({
+					inHouse: z.boolean().optional(),
+					lastStay: z.string().nullable().optional(),
+				}),
+			),
+		),
 	},
 	"@get/reservation/guests/:id": { output: envelope(Guest) },
 	"@get/reservation/guests/:id/stays": { output: envelope(z.array(Booking)) },
@@ -1328,7 +1385,20 @@ export const schema = createSchema({
 
 	// maintenance, inventory, folio
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
-	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
+	"@get/folio/organizations": {
+		query: pageParams,
+		output: envelope(pagedOf(OrganizationSummary)),
+	},
+	"@get/folio/organizations/overview": {
+		output: envelope(OrganizationsOverview),
+	},
+	"@get/folio/organizations/invoices": {
+		query: pageParams,
+		output: envelope(pagedOf(InvoiceView)),
+	},
+	"@get/folio/organizations/:id/summary": {
+		output: envelope(OrganizationSummary),
+	},
 	"@post/folio/organizations": {
 		input: OrganizationRequest,
 		output: envelope(Organization),
@@ -1368,11 +1438,13 @@ export const schema = createSchema({
 		),
 	},
 	"@get/folio/organizations/:id/stays": {
-		output: envelope(z.array(OrganizationStay)),
+		query: pageParams,
+		output: envelope(pagedOf(OrganizationStay)),
 	},
 	"@get/folio/organizations/:id/outstanding": { output: envelope(z.number()) },
 	"@get/folio/organizations/:id/invoices": {
-		output: envelope(z.array(Invoice)),
+		query: pageParams,
+		output: envelope(pagedOf(InvoiceView)),
 	},
 	"@post/folio/organizations/:id/invoices": {
 		input: z.object({
@@ -1419,7 +1491,11 @@ export const schema = createSchema({
 		input: z.object({ reason: z.string() }),
 		output: envelope(Folio),
 	},
-	"@get/payment/payments": { output: envelope(z.array(PaymentResponse)) },
+	/** Paged (docs/pagination.md): the seam always sends page and size. */
+	"@get/payment/payments": {
+		query: pageParams,
+		output: envelope(pagedOf(PaymentResponse)),
+	},
 	"@get/payment/payments/:id": { output: envelope(PaymentResponse) },
 	"@post/payment/payments": {
 		input: z.object({
@@ -1459,9 +1535,13 @@ export const schema = createSchema({
 	},
 
 	// messaging
+	/** With page or size: a page (90 days back by default) with counts all and unread (docs/pagination.md). */
 	"@get/messaging/notifications": {
-		query: z.object({ unreadOnly: z.boolean() }).partial().optional(),
-		output: envelope(z.array(Notification)),
+		query: pageParams.optional(),
+		output: envelope(pagedOf(Notification)),
+	},
+	"@get/messaging/notifications/unread-count": {
+		output: envelope(z.object({ count: z.number() })),
 	},
 	"@post/messaging/notifications/:id/read": {
 		params: z.object({ id: z.string() }),
@@ -1517,4 +1597,6 @@ export type Folio = z.infer<typeof Folio>;
 export type Organization = z.infer<typeof Organization>;
 export type OrganizationMember = z.infer<typeof OrganizationMember>;
 export type Invoice = z.infer<typeof Invoice>;
+export type InvoiceView = z.infer<typeof InvoiceView>;
+export type OrganizationSummary = z.infer<typeof OrganizationSummary>;
 export type Notification = z.infer<typeof Notification>;

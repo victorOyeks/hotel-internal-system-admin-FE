@@ -162,6 +162,8 @@ export type PaymentPlan =
 export type PriceKind = "NORMAL" | "SPECIAL" | "COMPLIMENTARY";
 export type BookingRow = {
 	id: Id;
+	/** The hotel of the stay (lists across hotels read it). */
+	hotelId?: Id;
 	reference: string;
 	guestId: Id;
 	guestName: string;
@@ -207,6 +209,8 @@ export type GuestRow = {
 	lastStay?: string;
 	blacklisted: boolean;
 	organizationName?: string;
+	/** Has a stay checked in at this hotel now (paged guests list). */
+	inHouse?: boolean;
 };
 
 export type FolioLineKind = "CHARGE" | "PAYMENT" | "DISCOUNT" | "REFUND";
@@ -272,6 +276,8 @@ export type PaymentRow = {
 	resolvedAt?: string;
 	receiptSent?: "EMAIL" | "WHATSAPP" | "NONE";
 	description: string;
+	/** The hotel it was taken at (owner lists across hotels). */
+	hotelId?: string;
 };
 export type TerminalRow = {
 	id: Id;
@@ -293,6 +299,8 @@ export type RefundRow = {
 	status: "PENDING_APPROVAL" | "APPROVED" | "DECLINED";
 	requestedBy: string;
 	createdAt: string;
+	/** "PAY-1A2B3C" of the payment refunded. */
+	paymentReference?: string;
 };
 export type DisputeRow = {
 	id: Id;
@@ -303,7 +311,38 @@ export type DisputeRow = {
 	status: "OPEN" | "RESOLVED";
 	openedAt: string;
 	resolution?: string;
+	paymentReference?: string;
 };
+
+// ---- paged lists (hospio-backend/docs/pagination.md) --------------------------------------------------
+
+/** Payments: `status` may list several (comma separated); `mine` narrows a manager to what they took; `hotelId` the owner's hotel. */
+export type PaymentQuery = import("./paging").ListQuery & {
+	method?: string;
+	role?: string;
+	mine?: boolean;
+	/** Only today's (a tab: the counts stay over the whole range). */
+	today?: boolean;
+	hotelId?: string;
+};
+/** The tabs every bookings screen shows, read by reservation-service over the hotel's day. */
+export type BookingView =
+	| "arrivals"
+	| "departures"
+	| "in-house"
+	| "upcoming"
+	| "past"
+	| "all";
+/** Bookings: `from`/`to` are stays touching those days, `arrivingFrom`/`arrivingTo` check-in days. */
+export type BookingQuery = import("./paging").ListQuery & {
+	view?: BookingView;
+	arrivingFrom?: string;
+	arrivingTo?: string;
+	hotelId?: string;
+	guestId?: string;
+};
+export type GuestView = "all" | "in-house" | "repeat" | "blacklisted";
+export type GuestQuery = import("./paging").ListQuery & { view?: GuestView };
 
 export type StaffRow = {
 	id: Id;
@@ -541,6 +580,33 @@ export type OrganizationRow = {
 	requestedCreditLimit?: number;
 	creditRequestedBy?: string;
 	creditApprovalId?: string;
+	/** From folio-service's figures (GET /folio/organizations?page=, /:id/summary): one call for the list, not three per account. */
+	stays?: number;
+	openStays?: number;
+	/** Still owed on the stays that are open. */
+	runningBalance?: number;
+	invoices?: number;
+	openInvoices?: number;
+	invoicesLeft?: number;
+	overdueInvoices?: number;
+	overdueAmount?: number;
+	/** The latest overdue invoice's number and due date. */
+	overdueNumber?: string;
+	overdueDueDate?: string;
+};
+
+/** The hotel's organizations at a glance (the KPI cards), whatever page the list is on. */
+export type OrganizationsOverviewRow = {
+	accounts: number;
+	staffCanBook: number;
+	staysThisMonth: number;
+	outstanding: number;
+	openInvoices: number;
+	overdueInvoices: number;
+	overdueAmount: number;
+	overdueOrganizations: string[];
+	onHold: number;
+	onHoldOrganizations: string[];
 };
 export type OrgMemberRow = {
 	id: Id;
@@ -612,6 +678,13 @@ export type StockRequestRow = {
 	/** Why it was declined or closed short. */
 	reason?: string;
 };
+/** A team's store screen: its latest requests (with the counts of all of them) and today's. */
+export type TeamRequests = {
+	latest: import("./paging").Paged<StockRequestRow>;
+	today: StockRequestRow[];
+	error?: string;
+};
+
 export type PurchaseOrderRow = {
 	id: Id;
 	number: string;

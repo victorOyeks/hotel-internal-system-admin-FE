@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Deliveries } from "./routes-admin";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * Owner portal (docs/owner-portal.md in hospio-backend): staff accounts on identity-service, staff threads on
@@ -175,7 +176,11 @@ export const ownerRoutes = {
 	},
 
 	// messaging · staff threads and guest messages
-	"@get/messaging/threads": { output: envelope(z.array(ThreadRow)) },
+	/** With page or size: a page, newest message first, searched by `q` (docs/pagination.md). */
+	"@get/messaging/threads": {
+		query: pageParams.optional(),
+		output: envelope(pagedOf(ThreadRow)),
+	},
 	"@post/messaging/threads": {
 		input: z.object({
 			toUserId: z.string().nullable().optional(),

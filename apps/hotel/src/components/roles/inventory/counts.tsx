@@ -1,17 +1,23 @@
 "use client";
 
+import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2Icon, ClipboardCheckIcon, PlayIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
+import { DataTable } from "@hospio/ui/shared/data-table";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import { SelectField, TextareaField } from "@hospio/ui/shared/field";
 import { fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { ManagerMark } from "@hospio/ui/shared/row-actions";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
+import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn, input } from "@hospio/ui/shared/ui";
 import {
 	approveCount,
@@ -20,6 +26,7 @@ import {
 	submitCount,
 } from "@hospio/api/actions/inventory";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type {
 	StockCountRow,
 	StockItemRow,
@@ -39,13 +46,75 @@ const tone: Record<
 };
 const q = (n: number) => Number(n.toFixed(2)).toLocaleString("en-NG");
 
-/** Inventory 5.x · Stock counts: start, count sheet, submit, the manager approves the difference, cancel; past counts. */
+/** The difference of a count, coloured: matched, missing (red) or extra. */
+function Difference({ c }: { c: StockCountRow }) {
+	return (
+		<span
+			className={cn(
+				"font-semibold",
+				c.varianceValue === undefined
+					? "text-ink-3"
+					: c.varianceValue === 0
+						? "text-success"
+						: c.varianceValue < 0
+							? "text-danger"
+							: "text-warning",
+			)}
+		>
+			{c.varianceValue === undefined
+				? "—"
+				: c.varianceValue === 0
+					? "matched"
+					: naira(c.varianceValue)}
+		</span>
+	);
+}
+
+const columns: ColumnDef<StockCountRow, unknown>[] = [
+	{
+		id: "store",
+		header: "Store",
+		cell: ({ row }) => (
+			<span className="font-semibold text-ink">{row.original.storeName}</span>
+		),
+	},
+	{
+		id: "started",
+		header: "Started",
+		cell: ({ row }) => (
+			<span className="text-ink-2">{fmtWhen(row.original.startedAt)}</span>
+		),
+	},
+	{ id: "by", header: "By", cell: ({ row }) => row.original.startedBy },
+	{
+		id: "difference",
+		header: "Difference",
+		cell: ({ row }) => <Difference c={row.original} />,
+	},
+	{
+		id: "status",
+		header: "Status",
+		cell: ({ row }) => (
+			<StatusPill tone={tone[row.original.status].tone}>
+				{tone[row.original.status].label}
+			</StatusPill>
+		),
+	},
+];
+
+/**
+ * Inventory 5.x · Stock counts: start, count sheet, submit, the manager approves the difference, cancel. The counts in
+ * progress (one per store at most) are cards; every count is a list paged by inventory-service (status, search, page in the URL).
+ */
 export function CountsScreen({
-	counts,
+	counts: result,
+	openCounts,
 	stores,
 	items,
 }: {
-	counts: StockCountRow[];
+	counts: PageResult<StockCountRow>;
+	/** Counts still open or waiting for approval. */
+	openCounts: StockCountRow[];
 	stores: StoreRow[];
 	items: StockItemRow[];
 }) {
@@ -58,7 +127,13 @@ export function CountsScreen({
 	const [cancelling, setCancelling] = useState(false);
 	const [reason, setReason] = useState("");
 	const { run, pending } = useAction();
-	const count = counts.find((c) => c.id === openId) ?? null;
+	const router = useRouter();
+	const list$ = useListParams();
+	const page = result.data;
+	const count =
+		openCounts.find((c) => c.id === openId) ??
+		page.content.find((c) => c.id === openId) ??
+		null;
 	const sheetItems = count
 		? items.filter((i) => i.storeId === count.storeId)
 		: [];
@@ -88,9 +163,6 @@ export function CountsScreen({
 				? 0
 				: (Number(sheet[i.id]) - i.quantity) * i.unitCost),
 		0,
-	);
-	const openCounts = counts.filter(
-		(c) => c.status === "OPEN" || c.status === "COUNTED",
 	);
 	const busyStores = new Set(openCounts.map((c) => c.storeId));
 	const editable =
@@ -157,62 +229,52 @@ export function CountsScreen({
 				</div>
 			)}
 			<SectionCard title="All counts" flush>
-				<table className="w-full text-left text-[13px]">
-					<thead>
-						<tr className="border-y border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">
-							<th className="px-5 py-2">Store</th>
-							<th className="py-2">Started</th>
-							<th className="py-2">By</th>
-							<th className="py-2 text-right">Difference</th>
-							<th className="px-5 py-2 text-right">Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						{counts.length === 0 && (
-							<tr>
-								<td colSpan={5} className="px-5 py-6 text-center text-ink-3">
-									No counts yet
-								</td>
-							</tr>
-						)}
-						{counts.map((c) => (
-							<tr
-								key={c.id}
-								className="cursor-pointer border-b border-line last:border-b-0 hover:bg-subtle/50"
-								onClick={() => void setOpenId(c.id)}
-							>
-								<td className="px-5 py-3 font-semibold text-ink">
-									{c.storeName}
-								</td>
-								<td className="py-3 text-ink-2">{fmtWhen(c.startedAt)}</td>
-								<td className="py-3">{c.startedBy}</td>
-								<td
-									className={cn(
-										"py-3 text-right font-semibold",
-										c.varianceValue === undefined
-											? "text-ink-3"
-											: c.varianceValue === 0
-												? "text-success"
-												: c.varianceValue < 0
-													? "text-danger"
-													: "text-warning",
-									)}
-								>
-									{c.varianceValue === undefined
-										? "—"
-										: c.varianceValue === 0
-											? "matched"
-											: naira(c.varianceValue)}
-								</td>
-								<td className="px-5 py-3 text-right">
-									<StatusPill tone={tone[c.status].tone}>
-										{tone[c.status].label}
-									</StatusPill>
-								</td>
-							</tr>
-						))}
-					</tbody>
-				</table>
+				<Toolbar
+					className="px-5 pt-1 pb-3"
+					left={
+						<PillTabs
+							value={list$.params.status ?? "all"}
+							onChange={(k) => list$.set({ status: k === "all" ? null : k })}
+							tabs={[
+								{ key: "all", label: "All", count: page.counts?.all ?? 0 },
+								{
+									key: "COUNTED",
+									label: "Needs approval",
+									count: page.counts?.COUNTED ?? 0,
+								},
+								{
+									key: "APPROVED",
+									label: "Approved",
+									count: page.counts?.APPROVED ?? 0,
+								},
+								{
+									key: "CANCELLED",
+									label: "Cancelled",
+									count: page.counts?.CANCELLED ?? 0,
+								},
+							]}
+						/>
+					}
+					right={
+						<SearchBox
+							value={list$.search}
+							onChange={list$.setSearch}
+							placeholder="Store, person, note…"
+						/>
+					}
+				/>
+				<DataTable
+					className="rounded-none border-x-0 border-b-0"
+					columns={columns}
+					data={page.content}
+					server={{ page, onPage: list$.goTo }}
+					filtered={list$.filtered}
+					onClearFilters={list$.clear}
+					error={result.ok ? null : result.error}
+					onRetry={() => router.refresh()}
+					onRowClick={(c) => void setOpenId(c.id)}
+					emptyTitle="No counts yet"
+				/>
 			</SectionCard>
 
 			<Modal

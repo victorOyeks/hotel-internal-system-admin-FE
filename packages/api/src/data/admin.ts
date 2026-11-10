@@ -7,7 +7,7 @@ import "server-only";
  */
 
 import { z } from "zod";
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import type {
 	AdminPayment,
 	Alert,
@@ -76,6 +76,14 @@ import {
 	type UsageData,
 	emptyPage,
 } from "./admin-types";
+import {
+	allPages,
+	failedPage,
+	PAGE_SIZE,
+	type PageResult,
+	slicePage,
+	toPaged,
+} from "./paging";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -91,31 +99,8 @@ const clean = (q: Record<string, string | number | boolean | undefined>) =>
 		),
 	) as Record<string, string | number | boolean>;
 
-const toPage = <A, B>(
-	p: {
-		content: A[];
-		number: number;
-		size: number;
-		totalElements: number;
-		totalPages: number;
-	},
-	map: (a: A) => B,
-): Paged<B> => ({
-	content: p.content.map(map),
-	page: p.number,
-	size: p.size,
-	total: p.totalElements,
-	totalPages: p.totalPages,
-});
-
-/** A client-side page over a demo array, so paged screens behave the same in demo mode. */
-const slicePage = <T>(rows: T[], page = 0, size = 25): Paged<T> => ({
-	content: rows.slice(page * size, page * size + size),
-	page,
-	size,
-	total: rows.length,
-	totalPages: Math.max(1, Math.ceil(rows.length / size)),
-});
+/** A service page as the screens read it, with its tab counts and money when the service sends them (./paging). */
+const toPage = toPaged;
 
 function fail(where: string, error: unknown) {
 	console.error(`${where}:`, error);
@@ -736,17 +721,29 @@ export const adminData = {
 			}
 			return toPage(res.data, toStatementItem);
 		},
-		/** Every statement that is not paid, for the KPIs (first 200). */
+		/** Every statement that is not paid, for the KPIs (read 100 at a time; fee-service pages at most 100). */
 		open: async (): Promise<FeeStatementItem[]> => {
 			if (!live("platform"))
 				return give(demoStatements.filter((f) => f.status !== "PAID"));
-			const [due, part, overdue] = await Promise.all(
-				["DUE", "PART_PAID", "OVERDUE"].map((status) =>
-					adminData.fees.statements({ status, size: 200 }),
+			const lists = await Promise.all(
+				["DUE", "PART_PAID", "OVERDUE"].map(
+					async (status) =>
+						(
+							await allPages((page, size) =>
+								adminData.fees.statements({ status, page, size }),
+							)
+						).rows,
 				),
 			);
-			return [...due.content, ...part.content, ...overdue.content];
+			return lists.flat();
 		},
+		/** Every statement of a month, for the month's figures (read 100 at a time). */
+		month: async (month: string): Promise<FeeStatementItem[]> =>
+			(
+				await allPages((page, size) =>
+					adminData.fees.statements({ month, page, size }),
+				)
+			).rows,
 		statement: async (id: string): Promise<FeeStatementItem | null> => {
 			if (!live("platform"))
 				return give(demoStatements.find((f) => f.id === id) ?? null);
@@ -1259,34 +1256,125 @@ export const adminData = {
 				lastMonth: s(b.lastMonth),
 			}));
 		},
-		referrals: async (): Promise<ReferralItem[]> => {
-			if (!live("platform"))
-				return give(demoReferrals.filter((r) => r.profileId === demoMe.id));
+		/** One page of my referrals, newest first, with counts per stage. */
+		referralsPage: async (
+			query: { stage?: string; page?: number; size?: number } = {},
+		): Promise<PageResult<ReferralItem>> => {
+			if (!live("platform")) {
+				const mine = demoReferrals.filter((r) => r.profileId === demoMe.id);
+				const counts: Record<string, number> = { all: mine.length };
+				for (const r of mine) counts[r.stage] = (counts[r.stage] ?? 0) + 1;
+				return give({
+					ok: true,
+					data: slicePage(
+						mine.filter((r) => !query.stage || r.stage === query.stage),
+						query.page ?? 0,
+						query.size ?? PAGE_SIZE,
+						{ counts },
+					),
+				});
+			}
 			const { data: res, error } = await api(
 				"@get/platform/marketer/referrals",
-				await withSession(),
+				{
+					...(await withSession()),
+					query: clean({
+						stage: query.stage,
+						page: query.page ?? 0,
+						size: query.size ?? PAGE_SIZE,
+					}),
+				},
 			);
-			if (error || !res) return [];
-			return res.data
-				.map(toReferralItem)
-				.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+			if (error || !res) {
+				fail("platform-service my referrals", error);
+				return failedPage(errorMessage(error, "Referrals didn't load"));
+			}
+			return { ok: true, data: toPage(res.data, toReferralItem) };
 		},
-		commissions: async (month?: string): Promise<CommissionLine[]> => {
-			if (!live("platform"))
-				return give(
-					demoCommissions.filter(
-						(c) => c.profileId === demoMe.id && (!month || c.month === month),
-					),
+		/** Every referral of mine (the dashboard's counts), 100 at a time. */
+		referrals: async (): Promise<ReferralItem[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await adminData.marketer.referralsPage({ page, size });
+					return r.ok ? r.data : null;
+				})
+			).rows,
+		/** One page of my commission lines (latest month first), by month and status, with counts and gross, wht, net, due and paid. */
+		commissionsPage: async (
+			query: {
+				month?: string;
+				status?: string;
+				page?: number;
+				size?: number;
+			} = {},
+		): Promise<PageResult<CommissionLine>> => {
+			if (!live("platform")) {
+				const mine = demoCommissions
+					.filter(
+						(c) =>
+							c.profileId === demoMe.id &&
+							(!query.month || c.month === query.month),
+					)
+					.sort((a, b) => b.month.localeCompare(a.month));
+				const rows = mine.filter(
+					(c) => !query.status || c.status === query.status,
 				);
+				const sum = (xs: CommissionLine[], k: "gross" | "wht" | "net") =>
+					xs.reduce((s, c) => s + c[k], 0);
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: {
+							all: mine.length,
+							DUE: mine.filter((c) => c.status === "DUE").length,
+							PAID: mine.filter((c) => c.status === "PAID").length,
+						},
+						totals: {
+							gross: sum(rows, "gross"),
+							wht: sum(rows, "wht"),
+							net: sum(rows, "net"),
+							due: sum(
+								rows.filter((c) => c.status === "DUE"),
+								"net",
+							),
+							paid: sum(
+								rows.filter((c) => c.status === "PAID"),
+								"net",
+							),
+						},
+					}),
+				});
+			}
 			const { data: res, error } = await api(
 				"@get/platform/marketer/commissions",
-				{ ...(await withSession()), query: clean({ month }) },
+				{
+					...(await withSession()),
+					query: clean({
+						month: query.month,
+						status: query.status,
+						page: query.page ?? 0,
+						size: query.size ?? PAGE_SIZE,
+					}),
+				},
 			);
-			if (error || !res) return [];
-			return res.data
-				.map(fromCommissionRow)
-				.sort((a, b) => b.month.localeCompare(a.month));
+			if (error || !res) {
+				fail("platform-service my commissions", error);
+				return failedPage(errorMessage(error, "Commissions didn't load"));
+			}
+			return { ok: true, data: toPage(res.data, fromCommissionRow) };
 		},
+		/** Every commission line of mine (optionally one month), 100 at a time: the dashboard chart and My businesses. */
+		commissions: async (month?: string): Promise<CommissionLine[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await adminData.marketer.commissionsPage({
+						month,
+						page,
+						size,
+					});
+					return r.ok ? r.data : null;
+				})
+			).rows,
 	},
 
 	changes: {

@@ -2,10 +2,16 @@
 
 import { MegaphoneIcon, MessageSquareIcon, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { parseAsString, useQueryState } from "nuqs";
+import {
+	parseAsInteger,
+	parseAsString,
+	useQueryState,
+	useQueryStates,
+} from "nuqs";
 import { useState } from "react";
 import { messageAllManagers, startThread } from "@hospio/api/actions/owner";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { OwnerThreadRow } from "@hospio/api/data/types";
 import { Button } from "@hospio/ui/primitives/button";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
@@ -42,15 +48,20 @@ export function OwnerMessaging({
 	hotels,
 	managers,
 }: {
-	threads: OwnerThreadRow[];
+	threads: PageResult<OwnerThreadRow>;
 	hotels: Hotel[];
 	managers: ManagerContact[];
 }) {
 	const [open, setOpen] = useQueryState("open", parseAsString);
-	const [hotel, setHotel] = useQueryState("hotel", parseAsString);
+	// The hotel filter goes to the server (that hotel's threads), so a change reads the list again from page 1.
+	const [{ hotel }, setFilter] = useQueryStates(
+		{ hotel: parseAsString, page: parseAsInteger },
+		{ shallow: false, history: "push" },
+	);
+	const setHotel = (v: string | null) =>
+		void setFilter({ hotel: v, page: null });
 	const [compose, setCompose] = useState(false);
 	const [all, setAll] = useState(false);
-	const scoped = threads.filter((t) => !hotel || t.hotelId === hotel);
 	const people = [...new Map(managers.map((m) => [m.userId, m])).values()];
 
 	return (
@@ -76,7 +87,9 @@ export function OwnerMessaging({
 				</Button>
 			</PageHeader>
 			<ThreadsView
-				threads={scoped}
+				result={threads}
+				filtered={!!hotel}
+				onClearFilters={() => setHotel(null)}
 				openId={open}
 				onOpen={(id) => void setOpen(id)}
 				emptyTitle={hotel ? "No messages at this hotel" : "No messages yet"}
@@ -85,7 +98,7 @@ export function OwnerMessaging({
 					<HotelFilter
 						hotels={hotels}
 						value={hotel ?? ""}
-						onChange={(v) => void setHotel(v || null)}
+						onChange={(v) => setHotel(v || null)}
 					/>
 				}
 			/>

@@ -16,7 +16,8 @@ export default async function FrontDeskTillPage() {
 	const isDemo = !live("finance");
 	const [till, payments, staff, settings] = await Promise.all([
 		data.finance.myTill(),
-		data.payments.list(),
+		// Today's cash at this desk is all the till reads (bounded by the day).
+		data.payments.list({ today: true, method: "CASH" }),
 		data.staff.list(),
 		data.hotels.limits(),
 	]);

@@ -436,3 +436,32 @@ export async function closeDay(input: {
 		},
 	};
 }
+
+/**
+ * Every expense matching the screen's filters (tab, status, category, search, dates), read 100 at a time, for the
+ * CSV export: the whole filtered range, not the page on screen. `total` is the service's count for the same filters.
+ */
+export async function exportExpenses(query: {
+	tab?: string;
+	status?: string;
+	category?: string;
+	q?: string;
+	from?: string;
+	to?: string;
+}): Promise<
+	ActionResult<{ rows: ExpenseRow[]; total: number; truncated: boolean }>
+> {
+	const { opsData } = await import("@hospio/api/data/ops");
+	const { allPages } = await import("@hospio/api/data/paging");
+	let error = "";
+	const all = await allPages(async (page, size) => {
+		const r = await opsData.finance.expensesPage({ ...query, page, size });
+		if (!r.ok) error = r.error;
+		return r.ok ? r.data : null;
+	});
+	if (!all.ok) return { ok: false, error: error || "Expenses didn't load" };
+	return {
+		ok: true,
+		data: { rows: all.rows, total: all.total, truncated: all.truncated },
+	};
+}

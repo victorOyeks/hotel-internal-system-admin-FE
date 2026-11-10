@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagedOf, pageParams } from "./paged";
 import { Deliveries } from "./routes-admin";
 
 /**
@@ -346,18 +347,10 @@ export const inventoryRoutes = {
 		}),
 		output: envelope(InvItem),
 	},
+	/** Paged: itemId, storeId, kind, q, from (90 days back by default), to. */
 	"@get/inventory/movements": {
-		query: z
-			.object({
-				itemId: z.string(),
-				storeId: z.string(),
-				kind: z.string(),
-				from: z.string(),
-				to: z.string(),
-			})
-			.partial()
-			.optional(),
-		output: envelope(z.array(InvMovement)),
+		query: pageParams,
+		output: envelope(pagedOf(InvMovement)),
 	},
 	"@post/inventory/levels/adjust": {
 		input: z.object({
@@ -421,9 +414,10 @@ export const inventoryRoutes = {
 		}),
 		output: envelope(InvSupplier),
 	},
+	/** Paged: status (comma list; OPEN = sent or part received, DONE), supplierId, q (number, supplier, item), from, to; counts per status. */
 	"@get/inventory/purchase-orders": {
-		query: z.object({ status: z.string() }).partial().optional(),
-		output: envelope(z.array(InvOrder)),
+		query: pageParams,
+		output: envelope(pagedOf(InvOrder)),
 	},
 	"@get/inventory/purchase-orders/:id": { output: envelope(InvOrder) },
 	"@post/inventory/purchase-orders": {
@@ -443,7 +437,11 @@ export const inventoryRoutes = {
 		input: reason,
 		output: envelope(InvOrder),
 	},
-	"@get/inventory/deliveries": { output: envelope(z.array(InvDelivery)) },
+	/** Paged: purchaseOrderId, storeId, q (supplier, invoice, order number, item), from, to; totals.value. */
+	"@get/inventory/deliveries": {
+		query: pageParams,
+		output: envelope(pagedOf(InvDelivery)),
+	},
 	"@post/inventory/deliveries": {
 		input: z.object({
 			purchaseOrderId: z.string().nullable().optional(),
@@ -455,7 +453,11 @@ export const inventoryRoutes = {
 		}),
 		output: envelope(InvDelivery),
 	},
-	"@get/inventory/counts": { output: envelope(z.array(InvCount)) },
+	/** Paged: storeId, status (comma list; ACTIVE = open or counted), q, from, to; counts per status. */
+	"@get/inventory/counts": {
+		query: pageParams,
+		output: envelope(pagedOf(InvCount)),
+	},
 	"@post/inventory/counts/:id/approve": { output: envelope(InvCount) },
 	"@post/inventory/counts/:id/cancel": {
 		input: reason,

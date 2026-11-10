@@ -7,7 +7,7 @@ import "server-only";
  */
 
 import type { z } from "zod";
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import type {
 	InvCount,
 	InvDelivery,
@@ -23,6 +23,15 @@ import { withSession } from "@hospio/api/api/server";
 import * as ops from "@hospio/api/demo/fixtures/ops";
 import { demoDelay } from "@hospio/api/demo/mode";
 import { live } from "./live";
+import {
+	allPages,
+	failedPage,
+	type ListQuery,
+	type PageResult,
+	pageQuery,
+	slicePage,
+	toPaged,
+} from "./paging";
 import type {
 	DeliveryRow,
 	PurchaseOrderRow,
@@ -274,35 +283,164 @@ function toUsage(u: z.infer<typeof InvUsage>): StockUsage {
 	};
 }
 
+/** A page of a list from inventory-service, or why it didn't load. */
+async function pageOf<A, B>(
+	what: string,
+	call: Promise<{
+		data: { data: Parameters<typeof toPaged<A, B>>[0] } | null;
+		error: unknown;
+	}>,
+	map: (a: A) => B,
+	size?: number,
+): Promise<PageResult<B>> {
+	const { data, error } = await call;
+	if (error || !data) {
+		console.error(`inventory-service ${what}:`, error);
+		return failedPage(errorMessage(error, `Couldn't load ${what}`), size);
+	}
+	return { ok: true, data: toPaged(data.data, map) };
+}
+
+/** Demo rows as a page, filtered the way the service would (status list and text). */
+function demoPage<T extends { status?: string }>(
+	rows: T[],
+	q: ListQuery,
+	text: (r: T) => string,
+): PageResult<T> {
+	const statuses = q.status ? q.status.split(",") : null;
+	const needle = q.q?.toLowerCase();
+	const base = rows.filter(
+		(r) => !needle || text(r).toLowerCase().includes(needle),
+	);
+	const counts: Record<string, number> = { all: base.length };
+	for (const r of base)
+		if (r.status) counts[r.status] = (counts[r.status] ?? 0) + 1;
+	return {
+		ok: true,
+		data: slicePage(
+			base.filter((r) => !statuses || statuses.includes(r.status ?? "")),
+			q.page ?? 0,
+			q.size ?? 25,
+			{ counts },
+		),
+	};
+}
+
 export const inventoryData = {
-	purchaseOrders: async (): Promise<PurchaseOrderRow[]> => {
-		if (!live("inventory")) return give(ops.demoPurchaseOrders);
-		const { data, error } = await api("@get/inventory/purchase-orders", {
+	/** Purchase orders, newest first, one page; `counts` per status over the whole filtered range. */
+	purchaseOrdersPage: async (
+		q: ListQuery & { supplierId?: string } = {},
+	): Promise<PageResult<PurchaseOrderRow>> => {
+		if (!live("inventory"))
+			return give(
+				demoPage(
+					ops.demoPurchaseOrders,
+					q,
+					(o) => `${o.number} ${o.supplierName}`,
+				),
+			);
+		return pageOf(
+			"purchase orders",
+			api("@get/inventory/purchase-orders", {
+				...(await withSession()),
+				query: pageQuery(q),
+			}),
+			toPurchaseOrderRow,
+			q.size,
+		);
+	},
+	/**
+	 * Every purchase order in some statuses (a comma list: the open ones the stock and deliveries screens
+	 * need are few), read page by page so none is dropped.
+	 */
+	purchaseOrders: async (
+		status = "DRAFT,PENDING_APPROVAL,SENT,PARTIAL",
+		extra: { supplierId?: string } = {},
+	): Promise<PurchaseOrderRow[]> => {
+		if (!live("inventory"))
+			return give(
+				ops.demoPurchaseOrders.filter((o) =>
+					status.split(",").includes(o.status),
+				),
+			);
+		const s = await withSession();
+		const all = await allPages(async (page, size) => {
+			const { data, error } = await api("@get/inventory/purchase-orders", {
+				...s,
+				query: pageQuery({ status, ...extra, page, size }),
+			});
+			return error || !data ? null : toPaged(data.data, toPurchaseOrderRow);
+		});
+		if (!all.ok) console.error("inventory-service purchase orders: failed");
+		return all.rows;
+	},
+	/** One purchase order with the deliveries received against it. */
+	purchaseOrder: async (id: string): Promise<PurchaseOrderRow | null> => {
+		if (!live("inventory"))
+			return give(ops.demoPurchaseOrders.find((o) => o.id === id) ?? null);
+		const { data, error } = await api("@get/inventory/purchase-orders/:id", {
 			...(await withSession()),
-			query: {},
+			params: { id },
 		});
 		if (error || !data)
-			return failed("inventory-service purchase orders", error, []);
-		return data.data.map(toPurchaseOrderRow);
+			return failed("inventory-service purchase order", error, null);
+		return toPurchaseOrderRow(data.data);
 	},
-	deliveries: async (): Promise<DeliveryRow[]> => {
-		if (!live("inventory")) return give(ops.demoDeliveries);
-		const { data, error } = await api(
-			"@get/inventory/deliveries",
-			await withSession(),
+	/** Deliveries, newest first, one page; `totals.value` over the whole filtered range. */
+	deliveriesPage: async (
+		q: ListQuery & { purchaseOrderId?: string } = {},
+	): Promise<PageResult<DeliveryRow>> => {
+		if (!live("inventory"))
+			return give(
+				demoPage(
+					ops.demoDeliveries as (DeliveryRow & { status?: string })[],
+					q,
+					(d) => `${d.supplierName} ${d.poNumber ?? ""}`,
+				),
+			);
+		return pageOf(
+			"deliveries",
+			api("@get/inventory/deliveries", {
+				...(await withSession()),
+				query: pageQuery(q),
+			}),
+			toDeliveryRow,
+			q.size,
 		);
-		if (error || !data)
-			return failed("inventory-service deliveries", error, []);
-		return data.data.map(toDeliveryRow);
 	},
-	counts: async (): Promise<StockCountRow[]> => {
-		if (!live("inventory")) return give(ops.demoStockCounts);
-		const { data, error } = await api(
-			"@get/inventory/counts",
-			await withSession(),
+	/** Stock counts, newest first, one page; `counts` per status. */
+	countsPage: async (
+		q: ListQuery & { storeId?: string } = {},
+	): Promise<PageResult<StockCountRow>> => {
+		if (!live("inventory"))
+			return give(demoPage(ops.demoStockCounts, q, (c) => c.storeName));
+		return pageOf(
+			"stock counts",
+			api("@get/inventory/counts", {
+				...(await withSession()),
+				query: pageQuery(q),
+			}),
+			toStockCountRow,
+			q.size,
 		);
-		if (error || !data) return failed("inventory-service counts", error, []);
-		return data.data.map(toStockCountRow);
+	},
+	/** The counts still in progress (open or counted, waiting for approval): at most one per store. */
+	openCounts: async (): Promise<StockCountRow[]> => {
+		if (!live("inventory"))
+			return give(
+				ops.demoStockCounts.filter(
+					(c) => c.status === "OPEN" || c.status === "COUNTED",
+				),
+			);
+		const s = await withSession();
+		const all = await allPages(async (page, size) => {
+			const { data, error } = await api("@get/inventory/counts", {
+				...s,
+				query: pageQuery({ status: "ACTIVE", page, size }),
+			});
+			return error || !data ? null : toPaged(data.data, toStockCountRow);
+		});
+		return all.rows;
 	},
 	suppliers: async (): Promise<SupplierRow[]> => {
 		if (!live("inventory")) return give(ops.demoSuppliers);

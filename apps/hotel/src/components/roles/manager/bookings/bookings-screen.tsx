@@ -9,8 +9,14 @@ import {
 	TrendingUpIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { exportBookings } from "@hospio/api/actions/reservation-lists";
+import type { PageResult } from "@hospio/api/data/paging";
+import { csvName, downloadCsv } from "@hospio/ui/shared/csv";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { HotelScope } from "@hospio/api/actions/hotel-scope";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -26,7 +32,6 @@ import { btn } from "@hospio/ui/shared/ui";
 import type {
 	BookingRow,
 	FolioRow,
-	GuestRow,
 	OrganizationRow,
 	RoomRow,
 	RoomTypeRow,
@@ -45,7 +50,7 @@ import {
 import { type BookingAction, BookingModals } from "./booking-modals";
 import { NewBookingPanel } from "./new-booking";
 
-const TABS = [
+export const BOOKING_TABS = [
 	"arrivals",
 	"departures",
 	"in-house",
@@ -53,82 +58,88 @@ const TABS = [
 	"past",
 	"all",
 ] as const;
-type Tab = (typeof TABS)[number];
+type Tab = (typeof BOOKING_TABS)[number];
+export const TAB_LABEL: Record<Tab, string> = {
+	arrivals: "Arrivals",
+	departures: "Departures",
+	"in-house": "In-house",
+	upcoming: "Upcoming",
+	past: "Past",
+	all: "All",
+};
 
-function bucket(b: BookingRow, tab: Tab) {
-	const t = today();
-	switch (tab) {
-		case "arrivals":
-			return (
-				b.checkInDate === t &&
-				b.status !== "CANCELLED" &&
-				b.status !== "CHECKED_OUT"
-			);
-		case "departures":
-			return b.checkOutDate === t && b.status === "CHECKED_IN";
-		case "in-house":
-			return b.status === "CHECKED_IN";
-		case "upcoming":
-			return b.status === "BOOKED" && b.checkInDate > t;
-		case "past":
-			return (
-				b.status === "CHECKED_OUT" ||
-				b.status === "CANCELLED" ||
-				(b.status === "NO_SHOW" && b.checkInDate < t)
-			);
-		default:
-			return true;
-	}
+/** Company stays carry only the organization id from reservation-service; name them from the accounts list. */
+export function nameOrganizations<T extends BookingRow>(
+	rows: T[],
+	organizations: Pick<OrganizationRow, "id" | "name">[],
+): T[] {
+	return rows.map((b) =>
+		b.organizationId && !b.organizationName
+			? {
+					...b,
+					organizationName: organizations.find((o) => o.id === b.organizationId)
+						?.name,
+				}
+			: b,
+	);
 }
 
+/**
+ * Manager · Bookings: the tab (a reservation-service view) is one page with every tab's count and the cards' money
+ * over the hotel (docs/pagination.md); tab, search and page live in the URL.
+ */
 export function BookingsScreen({
 	hotelName,
-	bookings: initial,
+	bookings: result,
+	opened,
 	rooms,
 	types,
-	guests,
 	folios,
 	organizations,
 	terminals,
 	pendingOnPos = {},
 }: {
 	hotelName: string;
-	bookings: BookingRow[];
+	bookings: PageResult<BookingRow>;
+	/** The booking in `?open=` when it is not on this page. */
+	opened?: BookingRow | null;
 	rooms: RoomRow[];
 	types: RoomTypeRow[];
-	guests: GuestRow[];
 	folios: FolioRow[];
 	organizations: OrganizationRow[];
 	terminals: TerminalRow[];
 	/** Card payments still with the POS, per booking, as loaded. */
 	pendingOnPos?: Record<string, number>;
 }) {
-	const [tab, setTab] = useQueryState(
-		"tab",
-		parseAsString.withDefault("arrivals"),
-	);
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab"] });
 	const [openId, setOpenId] = useQueryState("open");
 	const [action, setAction] = useQueryState("action");
 	const [isNew, setIsNew] = useQueryState("new");
-	// Company stays carry only the organization id from reservation-service; name it from the accounts list.
-	const [bookings, setBookings] = useState(() =>
-		initial.map((b) =>
-			b.organizationId && !b.organizationName
-				? {
-						...b,
-						organizationName: organizations.find(
-							(o) => o.id === b.organizationId,
-						)?.name,
-					}
-				: b,
-		),
-	);
-	const [search, setSearch] = useState("");
+	const withOpened = () =>
+		nameOrganizations(
+			[
+				...result.data.content,
+				...(opened && !result.data.content.some((b) => b.id === opened.id)
+					? [opened]
+					: []),
+			],
+			organizations,
+		);
+	const [bookings, setBookings] = useState(withOpened);
+	useEffect(() => setBookings(withOpened()), [result, opened]);
 	// Card payments the POS has not confirmed yet, per booking.
 	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
+	const [exporting, setExporting] = useState(false);
 
-	const active = (TABS.includes(tab as Tab) ? tab : "arrivals") as Tab;
-	const rows = bookings.filter((b) => bucket(b, active));
+	const active = (
+		BOOKING_TABS.includes(list.params.tab as Tab) ? list.params.tab : "arrivals"
+	) as Tab;
+	const rows = bookings.filter((b) =>
+		result.data.content.some((x) => x.id === b.id),
+	);
+	const counts = result.data.counts ?? {};
+	const totals = result.data.totals ?? {};
 	const selected = bookings.find((b) => b.id === openId) ?? null;
 	// A stale ?action= (check in on a stay already in house…) falls back to the summary.
 	const act =
@@ -153,21 +164,62 @@ export function BookingsScreen({
 		setOnPos((m) => ({ ...m, [bookingId]: (m[bookingId] ?? 0) + p.amount }));
 	};
 
-	const arrivals = bookings.filter((b) => bucket(b, "arrivals"));
-	const departures = bookings.filter((b) => bucket(b, "departures"));
-	const inHouse = bookings.filter((b) => bucket(b, "in-house"));
 	const occupancy = rooms.length
 		? Math.round(
 				(rooms.filter((r) => r.state === "occupied").length / rooms.length) *
 					100,
 			)
 		: 0;
-	const monthRevenue = bookings
-		.filter((b) => b.status !== "CANCELLED")
-		.reduce((s, b) => s + b.paid, 0);
-	const unpaid = inHouse.filter(
-		(b) => balance(b) > 0 && b.paymentPlan !== "ORGANIZATION",
-	);
+	const doExport = async () => {
+		setExporting(true);
+		try {
+			const r = await exportBookings({
+				view: active,
+				q: list.params.q ?? undefined,
+			});
+			if (!r.ok) {
+				toast.error(r.error);
+				return;
+			}
+			downloadCsv(csvName(`Bookings · ${TAB_LABEL[active]} · ${hotelName}`), [
+				[
+					"Reference",
+					"Guest",
+					"Phone",
+					"Room type",
+					"Room",
+					"Check-in",
+					"Check-out",
+					"Nights",
+					"Status",
+					"Payment",
+					"Total (NGN)",
+					"Paid (NGN)",
+					"Balance (NGN)",
+					"Booked at",
+				],
+				...nameOrganizations(r.data.rows, organizations).map((b) => [
+					b.reference,
+					b.guestName,
+					b.guestPhone,
+					b.roomTypeName,
+					b.roomNumber ?? "",
+					b.checkInDate,
+					b.checkOutDate,
+					b.nights,
+					bookingStatus(b).label,
+					paymentStatus(b).label,
+					b.totalAmount,
+					b.paid,
+					balance(b),
+					b.createdAt ?? "",
+				]),
+			]);
+			toast.success(`${plural(r.data.rows.length, "booking")} exported`);
+		} finally {
+			setExporting(false);
+		}
+	};
 
 	const openAction = (id: string, a: BookingAction) => {
 		setOpenId(id);
@@ -323,9 +375,12 @@ export function BookingsScreen({
 		<HotelScope hotelName={hotelName}>
 			<PageHeader
 				title="Bookings"
-				subtitle={`${hotelName} · ${arrivals.length} arrivals and ${departures.length} departures today · ${fmtDay(today())}`}
+				subtitle={`${hotelName} · ${counts.arrivals ?? 0} arrivals and ${counts.departures ?? 0} departures today · ${fmtDay(today())}`}
 			>
-				<ExportButton />
+				<ExportButton
+					onClick={exporting ? undefined : () => void doExport()}
+					label={exporting ? "Exporting…" : "Export"}
+				/>
 				<Button className={btn.primary} onClick={() => setIsNew("1")}>
 					<PlusIcon className="size-[15px]" /> New booking
 				</Button>
@@ -334,62 +389,80 @@ export function BookingsScreen({
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard
 					label="Arrivals today"
-					value={arrivals.length}
+					value={counts.arrivals ?? 0}
 					icon={ArrowRightToLineIcon}
-					hint={`${arrivals.filter((b) => b.status === "CHECKED_IN").length} checked in · ${arrivals.filter((b) => b.status === "BOOKED").length} still to arrive`}
+					hint={`${totals.arrivalsCheckedIn ?? 0} checked in · ${totals.arrivalsToCome ?? 0} still to arrive`}
 				/>
 				<KpiCard
 					label="Departures today"
-					value={departures.length}
+					value={counts.departures ?? 0}
 					icon={ArrowLeftToLineIcon}
-					hint={`${departures.length} to go`}
+					hint={`${counts.departures ?? 0} to go`}
 				/>
 				<KpiCard
 					label="Occupancy tonight"
 					value={`${occupancy}%`}
 					icon={BedDoubleIcon}
-					hint={`${inHouse.length} bookings in house`}
+					hint={`${counts["in-house"] ?? 0} bookings in house`}
 				/>
 				<KpiCard
 					label="Booking revenue · month"
-					value={nairaShort(monthRevenue)}
+					value={nairaShort(totals.paidThisMonth ?? 0)}
 					icon={TrendingUpIcon}
 					pill={
-						unpaid.length > 0 ? (
+						(totals.inHouseUnpaidCount ?? 0) > 0 ? (
 							<StatusPill tone="warning">
-								{naira(unpaid.reduce((s, b) => s + balance(b), 0))} unpaid
+								{naira(totals.inHouseUnpaid ?? 0)} unpaid
 							</StatusPill>
 						) : undefined
 					}
-					hint={`${plural(unpaid.length, "guest")} with a balance`}
+					hint={`${plural(totals.inHouseUnpaidCount ?? 0, "guest")} with a balance`}
 				/>
 			</div>
 
 			<Toolbar
 				left={
 					<PillTabs
-						param="tab"
-						defaultValue="arrivals"
-						tabs={TABS.map((t) => ({
+						value={active}
+						onChange={(k) => list.set({ tab: k === "arrivals" ? null : k })}
+						tabs={BOOKING_TABS.map((t) => ({
 							key: t,
-							label:
-								t === "in-house" ? "In-house" : t[0].toUpperCase() + t.slice(1),
-							count: bookings.filter((b) => bucket(b, t)).length,
+							label: TAB_LABEL[t],
+							count: counts[t] ?? 0,
 						}))}
 					/>
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Guest, ref, room…"
+						value={list.search}
+						onChange={list.setSearch}
+						placeholder="Guest, ref, room, phone…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
 				data={rows}
-				search={search}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: {
+						guestName: "guestName",
+						roomNumber: "roomNumber",
+						checkInDate: "checkInDate",
+						totalAmount: "totalAmount",
+						status: "status",
+					},
+				}}
+				filtered={!!list.params.q}
+				onClearFilters={() => {
+					list.setSearch("");
+					list.set({ q: null });
+				}}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(b) => setOpenId(b.id)}
 				emptyTitle={
 					active === "arrivals" ? "No arrivals today" : "No bookings here"
@@ -431,7 +504,6 @@ export function BookingsScreen({
 			/>
 			<NewBookingPanel
 				open={!!isNew}
-				guests={guests}
 				types={types}
 				rooms={rooms}
 				organizations={organizations}
@@ -440,7 +512,7 @@ export function BookingsScreen({
 				terminals={terminals}
 				onSaved={(b) => {
 					setBookings((bs) => [b, ...bs]);
-					setTab(b.checkInDate === today() ? "arrivals" : "upcoming");
+					list.set({ tab: b.checkInDate === today() ? null : "upcoming" });
 				}}
 				onPaid={paymentTaken}
 				onCheckedIn={patch}

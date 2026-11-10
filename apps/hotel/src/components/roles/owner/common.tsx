@@ -2,6 +2,7 @@
 
 import { DownloadIcon, FileTextIcon } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
+import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { nairaShort } from "@hospio/ui/shared/format";
 import { Modal } from "@hospio/ui/shared/modal";
@@ -120,15 +121,53 @@ export function DownloadModal({
 	title = "Download",
 	what,
 	rows,
+	load,
+	total,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	title?: string;
 	what: string;
 	/** Header first, then one array per row. Called when the person downloads. */
-	rows: () => CsvCell[][];
+	rows?: () => CsvCell[][];
+	/**
+	 * A server-paged list: every row over the whole filtered range (all pages), read when the person downloads.
+	 * `total` is the list's count, shown before downloading. Header first.
+	 */
+	load?: () => Promise<
+		{ ok: true; rows: CsvCell[][] } | { ok: false; error: string }
+	>;
+	total?: number;
 }) {
-	const count = open ? Math.max(0, rows().length - 1) : 0;
+	const [busy, setBusy] = useState(false);
+	const count = load
+		? (total ?? 0)
+		: open && rows
+			? Math.max(0, rows().length - 1)
+			: 0;
+	const download = async () => {
+		if (!load) {
+			if (rows) downloadCsv(csvName(what), rows());
+			toast.success(`${what} downloaded`);
+			onOpenChange(false);
+			return;
+		}
+		setBusy(true);
+		try {
+			const r = await load();
+			if (!r.ok) {
+				toast.error(r.error);
+				return;
+			}
+			downloadCsv(csvName(what), r.rows);
+			toast.success(
+				`${what} downloaded · ${Math.max(0, r.rows.length - 1).toLocaleString("en-NG")} rows`,
+			);
+			onOpenChange(false);
+		} finally {
+			setBusy(false);
+		}
+	};
 	return (
 		<Modal
 			open={open}
@@ -149,14 +188,11 @@ export function DownloadModal({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={count === 0}
-						onClick={() => {
-							downloadCsv(csvName(what), rows());
-							toast.success(`${what} downloaded`);
-							onOpenChange(false);
-						}}
+						disabled={count === 0 || busy}
+						onClick={() => void download()}
 					>
-						<DownloadIcon className="size-4" /> Download CSV
+						<DownloadIcon className="size-4" />{" "}
+						{busy ? "Preparing…" : "Download CSV"}
 					</Button>
 				</>
 			}
@@ -164,7 +200,9 @@ export function DownloadModal({
 			<p className="text-[13px] text-ink-2">
 				{count === 0
 					? "There is nothing to download with these filters."
-					: `${count === 1 ? "1 row" : `${count.toLocaleString("en-NG")} rows`}, as you see them on screen (tab, hotel and search).`}
+					: load
+						? `${count === 1 ? "1 row" : `${count.toLocaleString("en-NG")} rows`}: every page of the list with these filters (tab, hotel and search).`
+						: `${count === 1 ? "1 row" : `${count.toLocaleString("en-NG")} rows`}, as you see them on screen (tab, hotel and search).`}
 			</p>
 		</Modal>
 	);

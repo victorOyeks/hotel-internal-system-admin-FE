@@ -1,8 +1,9 @@
 "use client";
 
 import { HandIcon, PackageSearchIcon, PlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList } from "@hospio/ui/shared/detail-list";
 import { SelectField, TextField, TextareaField } from "@hospio/ui/shared/field";
@@ -12,31 +13,50 @@ import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { LostFoundRow } from "@hospio/api/data/types";
 import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { BigButton, ShiftPill } from "../shared-staff/tablet";
 
-/** Housekeeping · Lost & found (3240:14342), log found item (3240:14594), hand back (3240:14799). */
-export function LostFoundScreen({ items, me, places }: { items: LostFoundRow[]; me: string; places: string[] }) {
-	const [rows, setRows] = useState(items);
-	const [tab, setTab] = useQueryState("tab", parseAsString.withDefault("held"));
+/**
+ * Housekeeping · Lost & found (3240:14342), log found item (3240:14594), hand back (3240:14799). Paged by
+ * housekeeping-service: the tab is the status, the search and page are in the URL, the counts are the service's.
+ */
+export function LostFoundScreen({ items, me, places }: { items: PageResult<LostFoundRow>; me: string; places: string[] }) {
+	const router = useRouter();
+	const list$ = useListParams({ extra: ["tab"] });
+	const page = items.data;
+	const [rows, setRows] = useState(page.content);
+	useEffect(() => setRows(page.content), [page]);
+	const tab = list$.params.tab ?? "held";
+	const setTab = (k: string | null) => list$.set({ tab: k });
+	const count = (k: string) => page.counts?.[k] ?? 0;
 	const [adding, setAdding] = useQueryState("new", parseAsString);
 	const [handing, setHanding] = useState<LostFoundRow | null>(null);
 	const [draft, setDraft] = useState({ what: "", where: "", note: "" });
 	const [to, setTo] = useState({ name: "", id: "", how: "In person" });
 	const { run, pending } = useNotConnectedAction();
 
-	const list = rows.filter((r) => (tab === "held" ? r.status === "FOUND" : tab === "returned" ? r.status === "RETURNED" : true));
 
 	return (
 		<>
-			<PageHeader title="Lost & found" subtitle={`${plural(rows.filter((r) => r.status === "FOUND").length, "item")} held at the housekeeping office`}>
+			<PageHeader title="Lost & found" subtitle={`${plural(count("FOUND"), "item")} held at the housekeeping office`}>
 				<ShiftPill />
 				<BigButton onClick={() => { setDraft({ what: "", where: "", note: "" }); void setAdding("1"); }}><PlusIcon className="size-5" /> Log a found item</BigButton>
 			</PageHeader>
-			<PillTabs tabs={[{ key: "held", label: "Held", count: rows.filter((r) => r.status === "FOUND").length }, { key: "returned", label: "Returned", count: rows.filter((r) => r.status === "RETURNED").length }, { key: "all", label: "All", count: rows.length }]} value={tab} onChange={(k) => void setTab(k === "held" ? null : k)} />
+			<Toolbar
+				left={<PillTabs tabs={[{ key: "held", label: "Held", count: count("FOUND") }, { key: "returned", label: "Returned", count: count("RETURNED") }, { key: "all", label: "All", count: count("all") }]} value={tab} onChange={(k) => setTab(k === "held" ? null : k)} />}
+				right={<SearchBox value={list$.search} onChange={list$.setSearch} placeholder="Item or where it was found" />}
+			/>
 			<DataTable
-				data={list}
+				data={rows}
+				server={{ page, onPage: list$.goTo }}
+				filtered={!!list$.params.q}
+				onClearFilters={list$.clear}
+				error={items.ok ? null : items.error}
+				onRetry={() => router.refresh()}
 				emptyTitle="Nothing here"
 				onRowClick={(r) => r.status === "FOUND" && setHanding(r)}
 				columns={[

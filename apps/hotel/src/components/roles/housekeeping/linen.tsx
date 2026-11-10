@@ -1,6 +1,7 @@
 "use client";
 
 import { ShirtIcon, TrashIcon, TruckIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { DataTable } from "@hospio/ui/shared/data-table";
@@ -10,12 +11,14 @@ import { naira, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { ProgressBar } from "@hospio/ui/shared/progress-bar";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
 import { sendLinen } from "@hospio/api/actions/laundry";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { LinenBatchRow, StockItemRow } from "@hospio/api/data/types";
 import { BATCH_STATUS, BatchDetail, batchColumns } from "../laundry/linen";
 import { BigButton, Stepper } from "../shared-staff/tablet";
@@ -37,13 +40,17 @@ export function LinenScreen({
 	clean,
 	atLaundry,
 	batches: b0,
+	all,
 	hasStore,
 }: {
 	/** Linen items in the Housekeeping store. */
 	clean: StockItemRow[];
 	/** Linen items in the Laundry store. */
 	atLaundry: StockItemRow[];
+	/** The open batches (sent, received, part returned): bounded. */
 	batches: LinenBatchRow[];
+	/** "All batches": one page from housekeeping-service, with what was written off over every batch. */
+	all: PageResult<LinenBatchRow>;
 	hasStore: boolean;
 }) {
 	const [batches, setBatches] = useState(b0);
@@ -51,6 +58,9 @@ export function LinenScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [tab, setTab] = useQueryState("tab");
 	const [sending, setSending] = useState(false);
+	const router = useRouter();
+	const list$ = useListParams();
+	const allPage = all.data;
 	const byId = new Map<string, Linen>();
 	for (const i of clean)
 		byId.set(i.id, {
@@ -74,7 +84,10 @@ export function LinenScreen({
 		byId.set(i.id, l);
 	}
 	const linen = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-	const current = batches.find((b) => b.id === openId) ?? null;
+	const current =
+		batches.find((b) => b.id === openId) ??
+		allPage.content.find((b) => b.id === openId) ??
+		null;
 	const open = batches.filter(
 		(b) =>
 			b.status === "SENT" ||
@@ -82,10 +95,8 @@ export function LinenScreen({
 			b.status === "PART_RETURNED",
 	);
 	const short = linen.filter((l) => l.par > 0 && l.clean < l.par * 0.5);
-	const lostValue = batches.reduce(
-		(s, b) => s + b.condemnedValue + b.lostValue,
-		0,
-	);
+	// Over every batch, from the service (not only the open ones here).
+	const lostValue = allPage.totals?.writtenOff ?? 0;
 
 	return (
 		<>
@@ -184,14 +195,31 @@ export function LinenScreen({
 			<PillTabs
 				tabs={[
 					{ key: "open", label: "Open batches", count: open.length },
-					{ key: "all", label: "All batches", count: batches.length },
+					{
+						key: "all",
+						label: "All batches",
+						count: allPage.counts?.all ?? allPage.total,
+					},
 				]}
 				value={tab === "all" ? "all" : "open"}
 				onChange={(k) => void setTab(k === "open" ? null : k)}
 			/>
 			<DataTable
 				columns={batchColumns()}
-				data={tab === "all" ? batches : open}
+				data={
+					tab === "all"
+						? allPage.content.map(
+								(b) => batches.find((x) => x.id === b.id) ?? b,
+							)
+						: open
+				}
+				{...(tab === "all"
+					? {
+							server: { page: allPage, onPage: list$.goTo },
+							error: all.ok ? null : all.error,
+							onRetry: () => router.refresh(),
+						}
+					: {})}
 				onRowClick={(b) => void setOpenId(b.id)}
 				emptyTitle="Nothing at the laundry"
 			/>

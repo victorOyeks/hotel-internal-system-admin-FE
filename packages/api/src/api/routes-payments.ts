@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * payment-service refunds and disputes (gateway prefix /payment). Spread into `createSchema` in ./schema.ts.
@@ -29,6 +30,11 @@ export const RefundItem = z.object({
 	approvalId: str,
 	decidedAt: str,
 	createdAt: z.string(),
+	/** On list rows: the payment's guest, amount and reference. */
+	guestName: str,
+	paymentAmount: z.number().nullable().optional(),
+	paymentMethod: str,
+	paymentReference: str,
 });
 
 export const DisputeItem = z.object({
@@ -41,6 +47,11 @@ export const DisputeItem = z.object({
 	resolvedBy: str,
 	resolvedAt: str,
 	createdAt: z.string(),
+	/** On list rows: the payment's guest, amount and reference. */
+	guestName: str,
+	amount: z.number().nullable().optional(),
+	paymentMethod: str,
+	paymentReference: str,
 });
 
 const TerminalItem = z.object({
@@ -91,14 +102,20 @@ export const paymentRoutes = {
 		}),
 		output: envelope(Ticket),
 	},
-	"@get/payment/payments/refunds": { output: envelope(z.array(RefundItem)) },
+	"@get/payment/payments/refunds": {
+		query: pageParams,
+		output: envelope(pagedOf(RefundItem)),
+	},
 	"@post/payment/payments/refunds/:refundId/approve": {
 		output: envelope(RefundItem),
 	},
 	"@post/payment/payments/refunds/:refundId/decline": {
 		output: envelope(RefundItem),
 	},
-	"@get/payment/payments/disputes": { output: envelope(z.array(DisputeItem)) },
+	"@get/payment/payments/disputes": {
+		query: pageParams,
+		output: envelope(pagedOf(DisputeItem)),
+	},
 	"@post/payment/payments/:id/disputes": {
 		input: z.object({ reason: z.string() }),
 		output: envelope(DisputeItem),

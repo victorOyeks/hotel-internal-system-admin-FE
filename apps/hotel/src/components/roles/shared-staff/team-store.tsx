@@ -18,7 +18,7 @@ export async function TeamStorePage({
 	const [stores, items, requests] = await Promise.all([
 		data.inventory.stores(),
 		data.inventory.items(),
-		data.inventory.requests(),
+		data.inventory.teamRequests(team),
 	]);
 	const store = stores.find((s) => s.kind === team);
 	const main = stores.filter((s) => s.kind === "MAIN").map((s) => s.id);

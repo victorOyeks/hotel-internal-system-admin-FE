@@ -9,11 +9,15 @@ import {
 	SendIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note, TotalsList } from "@hospio/ui/shared/detail-list";
+import { EmptyState } from "@hospio/ui/shared/empty-state";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import { ChoiceCards, MoneyField, TextField } from "@hospio/ui/shared/field";
 import { fmtDay, fmtLongDate, naira, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
@@ -33,11 +37,14 @@ import {
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { useAction } from "@hospio/api/actions/use-action";
 import { billingCycleLabel } from "@hospio/api/data/mappers/organizations";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useOrgStays } from "../manager/organizations/use-org-stays";
 import type {
 	FolioRow,
 	InvoiceRow,
 	OrgMemberRow,
 	OrganizationRow,
+	OrganizationsOverviewRow,
 } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 
@@ -55,20 +62,40 @@ const pctUsed = (o: OrganizationRow) =>
 	o.creditLimit > 0 ? Math.round((o.outstanding / o.creditLimit) * 100) : 0;
 const day = (iso: string | undefined) => (iso ? fmtDay(iso.slice(0, 10)) : "—");
 
+/** A list that didn't load, with Try again. */
+function LoadError({ error, onRetry }: { error: string; onRetry: () => void }) {
+	return (
+		<EmptyState title="This list didn't load" hint={error} className="m-5">
+			<button
+				type="button"
+				onClick={onRetry}
+				className={cn(btn.secondary, btn.small, "mt-2")}
+			>
+				Try again
+			</button>
+		</EmptyState>
+	);
+}
+
 /** Not wired yet (no invoice email or PDF): the button is shown disabled with this tooltip. */
 const NOT_CONNECTED = "Not connected yet";
 
-/** Finance 6.1 · Organizations list. */
+/** Finance 6.1 · Organizations list: a page at a time from folio-service (`?q=&page=`); the cards read the hotel's overview. */
 export function OrganizationsList({
-	organizations,
-	invoices,
+	result,
+	overview,
 }: {
-	organizations: OrganizationRow[];
-	invoices: InvoiceRow[];
+	result: PageResult<OrganizationRow>;
+	overview: OrganizationsOverviewRow | null;
 }) {
-	const [search, setSearch] = useState("");
-	const outstanding = organizations.reduce((s, o) => s + o.outstanding, 0);
-	const overdue = invoices.filter((i) => i.status === "OVERDUE");
+	const router = useRouter();
+	const list = useListParams();
+	const organizations = result.data.content;
+	const total =
+		overview?.accounts ?? result.data.counts?.all ?? result.data.total;
+	const outstanding =
+		overview?.outstanding ?? result.data.totals?.outstanding ?? 0;
+	const overdueCount = overview?.overdueInvoices ?? 0;
 	const columns = useMemo<ColumnDef<OrganizationRow, unknown>[]>(
 		() => [
 			{
@@ -156,7 +183,7 @@ export function OrganizationsList({
 		<>
 			<PageHeader
 				title="Organizations"
-				subtitle={`${organizations.length} company accounts · ${naira(outstanding)} outstanding · ${plural(overdue.length, "overdue invoice")}`}
+				subtitle={`${total} company accounts · ${naira(outstanding)} outstanding · ${plural(overdueCount, "overdue invoice")}`}
 			/>
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 				<KpiCard
@@ -167,31 +194,31 @@ export function OrganizationsList({
 				/>
 				<KpiCard
 					label="Overdue"
-					value={naira(overdue.reduce((s, i) => s + i.amount - i.paid, 0))}
+					value={naira(overview?.overdueAmount ?? 0)}
 					icon={FileTextIcon}
 					pill={
-						overdue.length ? (
-							<StatusPill tone="danger">{overdue.length}</StatusPill>
+						overdueCount ? (
+							<StatusPill tone="danger">{overdueCount}</StatusPill>
 						) : undefined
 					}
 				/>
 				<KpiCard
 					label="On hold"
-					value={organizations.filter((o) => o.status === "ON_HOLD").length}
+					value={overview?.onHold ?? result.data.counts?.ON_HOLD ?? 0}
 					icon={HandshakeIcon}
 					hint="Can't book until paid"
 				/>
 				<KpiCard
 					label="Stays this month"
-					value={organizations.reduce((s, o) => s + o.staysThisMonth, 0)}
+					value={overview?.staysThisMonth ?? 0}
 					icon={HandshakeIcon}
 				/>
 			</div>
 			<Toolbar
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
+						value={list.search}
+						onChange={list.setSearch}
 						placeholder="Company, contact…"
 					/>
 				}
@@ -199,7 +226,17 @@ export function OrganizationsList({
 			<DataTable
 				columns={columns}
 				data={organizations}
-				search={search}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: { name: "name", creditLimit: "creditLimit" },
+				}}
+				filtered={list.filtered}
+				onClearFilters={list.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				emptyTitle="No organizations yet"
 				emptyHint="The manager adds company accounts in Organizations."
 			/>
@@ -211,15 +248,26 @@ export function OrganizationsList({
 export function OrganizationAccount({
 	org,
 	members,
-	invoices: initial,
-	stays,
+	invoices: invoicePage,
+	stays: stayPage,
+	openInvoices,
 }: {
 	org: OrganizationRow;
 	members: OrgMemberRow[];
-	invoices: InvoiceRow[];
-	stays: FolioRow[];
+	/** A page of the account's invoices (`?invPage=`), latest due first. */
+	invoices: PageResult<InvoiceRow>;
+	/** A page of its stays (`?staysPage=`), latest opened first. */
+	stays: PageResult<FolioRow>;
+	/** Every invoice still to be paid, for Record payment. */
+	openInvoices: InvoiceRow[];
 }) {
-	const [invoices, setInvoices] = useState(initial);
+	const router = useRouter();
+	const invList = useListParams({ prefix: "inv" });
+	const stayList = useListParams({ prefix: "stays" });
+	const stays = stayPage.data.content;
+	const [invoices, setInvoices] = useState(invoicePage.data.content);
+	// A new page from the server replaces what is on screen.
+	useEffect(() => setInvoices(invoicePage.data.content), [invoicePage]);
 	const [tab, setTab] = useQueryState("tab");
 	const [openInv, setOpenInv] = useQueryState("invoice");
 	const [paying, setPaying] = useState<InvoiceRow | null>(null);
@@ -232,14 +280,14 @@ export function OrganizationAccount({
 	const statement = useAction();
 	const active = tab ?? "invoices";
 	const inv = invoices.find((i) => i.id === openInv) ?? null;
-	const invoiced = invoices.reduce((s, i) => s + (i.amount - i.paid), 0);
-	const invStays = inv
-		? stays.filter(
-				(f) =>
-					f.openedAt.slice(0, 10) >= inv.periodFrom &&
-					f.openedAt.slice(0, 10) <= inv.periodTo,
-			)
-		: [];
+	const invoiced =
+		org.invoicesLeft ?? invoices.reduce((s, i) => s + (i.amount - i.paid), 0);
+	const { rows: invStays } = useOrgStays(
+		org.id,
+		inv?.periodFrom,
+		inv?.periodTo,
+		!!inv,
+	);
 	const startPaying = (i: InvoiceRow | undefined) => {
 		if (!i) {
 			toast.info(
@@ -276,6 +324,7 @@ export function OrganizationAccount({
 					),
 				);
 				setPaying(null);
+				router.refresh();
 			},
 		);
 	};
@@ -311,7 +360,9 @@ export function OrganizationAccount({
 					className={btn.primary}
 					onClick={() =>
 						startPaying(
-							invoices.find((i) => i.status !== "PAID" && i.status !== "DRAFT"),
+							openInvoices.find(
+								(i) => i.status !== "PAID" && i.status !== "DRAFT",
+							),
 						)
 					}
 				>
@@ -340,7 +391,7 @@ export function OrganizationAccount({
 					label="Stays this month"
 					value={org.staysThisMonth}
 					icon={HandshakeIcon}
-					hint={`${stays.length} on record`}
+					hint={`${org.stays ?? stayPage.data.total} on record`}
 				/>
 				<KpiCard
 					label="People on the list"
@@ -353,15 +404,28 @@ export function OrganizationAccount({
 				value={active}
 				onChange={(k) => void setTab(k === "invoices" ? null : k)}
 				tabs={[
-					{ key: "invoices", label: "Invoices", count: invoices.length },
-					{ key: "stays", label: "Stays & bills", count: stays.length },
+					{
+						key: "invoices",
+						label: "Invoices",
+						count: invoicePage.data.total,
+					},
+					{
+						key: "stays",
+						label: "Stays & bills",
+						count: stayPage.data.total,
+					},
 					{ key: "people", label: "People", count: members.length },
 					{ key: "agreement", label: "Agreement" },
 				]}
 			/>
 			{active === "invoices" && (
 				<SectionCard title="Invoices" flush>
-					{invoices.length === 0 ? (
+					{!invoicePage.ok ? (
+						<LoadError
+							error={invoicePage.error}
+							onRetry={() => router.refresh()}
+						/>
+					) : invoices.length === 0 ? (
 						<p className="px-5 py-4 text-[13px] text-ink-3">
 							No invoices yet · the manager creates them from the account.
 						</p>
@@ -421,11 +485,19 @@ export function OrganizationAccount({
 							</tbody>
 						</table>
 					)}
+					{invoicePage.data.total > 0 && (
+						<ServerPager page={invoicePage.data} onPage={invList.goTo} />
+					)}
 				</SectionCard>
 			)}
 			{active === "stays" && (
 				<SectionCard title="Stays billed to the account" flush>
-					{stays.length === 0 ? (
+					{!stayPage.ok ? (
+						<LoadError
+							error={stayPage.error}
+							onRetry={() => router.refresh()}
+						/>
+					) : stays.length === 0 ? (
 						<p className="px-5 py-4 text-[13px] text-ink-3">
 							No stays on this account yet.
 						</p>
@@ -469,6 +541,9 @@ export function OrganizationAccount({
 								))}
 							</tbody>
 						</table>
+					)}
+					{stayPage.data.total > 0 && (
+						<ServerPager page={stayPage.data} onPage={stayList.goTo} />
 					)}
 				</SectionCard>
 			)}

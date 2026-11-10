@@ -7,7 +7,7 @@ export default async function KitchenStorePage() {
 	const outlet = await data.outlets.forRole("KITCHEN");
 	const [items, requests] = await Promise.all([
 		data.inventory.items(),
-		data.inventory.requests(),
+		data.inventory.teamRequests("KITCHEN"),
 	]);
 	return (
 		<StoreScreen

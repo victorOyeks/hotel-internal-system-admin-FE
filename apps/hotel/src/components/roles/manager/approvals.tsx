@@ -36,7 +36,9 @@ import {
 import { answerExpense } from "@hospio/api/actions/finance";
 import { useAction } from "@hospio/api/actions/use-action";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { ApprovalRow } from "@hospio/api/data/types";
+import { useListParams } from "@hospio/ui/shared/list-params";
 
 const statusTone = (
 	s: ApprovalRow["status"],
@@ -89,12 +91,16 @@ const whatHappens = (a: ApprovalRow): string[] => {
 
 /** Manager · Approvals: everything waiting on the manager, with review, decline, ask and send-to-owner. */
 export function ApprovalsScreen({
-	rows,
+	result,
+	opened,
 	limit,
 	ownerName,
 	meId,
 }: {
-	rows: ApprovalRow[];
+	/** One page of the tab, with every tab's count and the money waiting (platform-service). */
+	result: PageResult<ApprovalRow>;
+	/** The approval named by `?open=` when it is not on this page (a link from the dashboard or a notice). */
+	opened?: ApprovalRow | null;
 	limit: number;
 	ownerName: string;
 	/** The signed-in user: a question on their own expense gets an answer box. */
@@ -103,34 +109,25 @@ export function ApprovalsScreen({
 	const router = useRouter();
 	const [answering, setAnswering] = useState(false);
 	const [answer, setAnswer] = useState("");
-	const [tab, setTab] = useState<"waiting" | "decided" | "owner">("waiting");
-	const [search, setSearch] = useState("");
+	const list = useListParams({ extra: ["tab", "kind"] });
+	const tab = (
+		["waiting", "owner", "decided"].includes(list.params.tab ?? "")
+			? list.params.tab
+			: "waiting"
+	) as "waiting" | "decided" | "owner";
+	const setTab = (t: "waiting" | "decided" | "owner") =>
+		list.set({ tab: t === "waiting" ? null : t });
 	const [open, setOpen] = useQueryState("open");
+	const rows = result.data.content;
+	const counts = result.data.counts ?? {};
 	const [decline, setDecline] = useState(false);
 	const [ask, setAsk] = useState(false);
 	const [reason, setReason] = useState("");
 	const { run, pending } = useAction();
 
-	// Waiting on the manager: requests to decide, and questions asked about their own requests.
-	const waiting = rows.filter(
-		(r) =>
-			(r.status === "PENDING" && r.approverLevel === "MANAGER") ||
-			(r.status === "QUESTION" && !!meId && r.requesterId === meId),
-	);
-	const ownerQueue = rows.filter(
-		(r) =>
-			r.approverLevel === "OWNER" &&
-			(r.status === "PENDING" || r.status === "QUESTION"),
-	);
-	const decided = rows.filter(
-		(r) =>
-			r.status === "APPROVED" ||
-			r.status === "DECLINED" ||
-			(r.status === "QUESTION" && r.approverLevel === "MANAGER"),
-	);
-	const list =
-		tab === "waiting" ? waiting : tab === "owner" ? ownerQueue : decided;
-	const current = rows.find((r) => r.id === open) ?? null;
+	// Tabs, counts and money come from the service over every approval, not this page.
+	const current =
+		rows.find((r) => r.id === open) ?? (opened?.id === open ? opened : null);
 	const close = () => {
 		void setOpen(null);
 		setDecline(false);
@@ -167,7 +164,7 @@ export function ApprovalsScreen({
 			message,
 			close,
 		);
-	const totalWaiting = waiting.reduce((s, r) => s + (r.amount ?? 0), 0);
+	const totalWaiting = result.data.totals?.waiting ?? 0;
 
 	const columns: ColumnDef<ApprovalRow, unknown>[] = [
 		{
@@ -261,24 +258,24 @@ export function ApprovalsScreen({
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard
 					label="Waiting on you"
-					value={waiting.length}
+					value={counts.waiting ?? 0}
 					icon={ClipboardCheckIcon}
 					hint={`${naira(totalWaiting)} in total`}
 				/>
 				<KpiCard
 					label="With the owner"
-					value={ownerQueue.length}
+					value={counts.owner ?? 0}
 					icon={SendIcon}
 					hint={`Over ${naira(limit)} or owner-only`}
 				/>
 				<KpiCard
-					label="Decided this week"
-					value={decided.length}
+					label="Decided · 90 days"
+					value={counts.decided ?? 0}
 					icon={CheckIcon}
 				/>
 				<KpiCard
 					label="Questions open"
-					value={rows.filter((r) => r.status === "QUESTION").length}
+					value={counts.questions ?? 0}
 					icon={MessageCircleQuestionIcon}
 				/>
 			</div>
@@ -287,13 +284,13 @@ export function ApprovalsScreen({
 				left={
 					<PillTabs
 						tabs={[
-							{ key: "waiting", label: "Waiting", count: waiting.length },
+							{ key: "waiting", label: "Waiting", count: counts.waiting ?? 0 },
 							{
 								key: "owner",
 								label: "With the owner",
-								count: ownerQueue.length,
+								count: counts.owner ?? 0,
 							},
-							{ key: "decided", label: "Decided", count: decided.length },
+							{ key: "decided", label: "Decided", count: counts.decided ?? 0 },
 						]}
 						value={tab}
 						onChange={setTab}
@@ -301,8 +298,8 @@ export function ApprovalsScreen({
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
+						value={list.search}
+						onChange={list.setSearch}
 						placeholder="Search requests…"
 					/>
 				}
@@ -310,8 +307,26 @@ export function ApprovalsScreen({
 
 			<DataTable
 				columns={columns}
-				data={list}
-				search={search}
+				data={rows}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: {
+						kind: "kind",
+						amount: "amount",
+						requesterName: "requesterName",
+						createdAt: "createdAt",
+					},
+				}}
+				filtered={!!list.params.q || !!list.params.kind}
+				onClearFilters={() => {
+					list.setSearch("");
+					list.set({ q: null, kind: null, tab: list.params.tab });
+				}}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(r) => void setOpen(r.id)}
 				emptyTitle={
 					tab === "waiting" ? "Nothing waiting on you" : "Nothing here"

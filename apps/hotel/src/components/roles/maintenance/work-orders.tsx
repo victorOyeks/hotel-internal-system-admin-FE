@@ -16,6 +16,7 @@ import {
 	UserRoundIcon,
 	WrenchIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -31,7 +32,9 @@ import { fmtAgo, fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import {
 	PanelSection,
 	SidePanel,
@@ -51,6 +54,7 @@ import {
 	workOrderWithReason,
 } from "@hospio/api/actions/maintenance";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { StockItemRow, WorkOrderRow } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 import { BigButton, BoardCard, Stepper } from "../shared-staff/tablet";
@@ -127,6 +131,7 @@ type Sub =
  */
 export function WorkOrdersScreen({
 	rows: initial,
+	done: doneResult,
 	me,
 	mode,
 	supervisor,
@@ -136,7 +141,10 @@ export function WorkOrdersScreen({
 	title,
 	subtitle,
 }: {
+	/** Every open work order (the board; bounded by nature). */
 	rows: WorkOrderRow[];
+	/** Done and cancelled work orders, one page from maintenance-service (`?donePage=&doneQ=` in the URL). */
+	done: PageResult<WorkOrderRow>;
 	me: Person;
 	mode: Mode;
 	/** Maintenance Full or a manager: may assign others, cancel at any stage. */
@@ -153,10 +161,16 @@ export function WorkOrdersScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [tab, setTab] = useQueryState("tab");
 	const [search, setSearch] = useState("");
+	const router = useRouter();
+	const doneList = useListParams({ prefix: "done" });
+	const donePage = doneResult.data;
 	const [sub, setSub] = useState<Sub>(null);
 	const { run, pending } = useAction();
 
-	const current = rows.find((r) => r.id === openId) ?? null;
+	const current =
+		rows.find((r) => r.id === openId) ??
+		donePage.content.find((r) => r.id === openId) ??
+		null;
 	// List rows carry no updates: load the full work order when its panel opens, and again after the list refreshes.
 	useEffect(() => {
 		if (!openId) return;
@@ -178,7 +192,9 @@ export function WorkOrdersScreen({
 	const overdue = open.filter((r) => r.overdue);
 	const held = open.filter((r) => r.status === "ON_HOLD");
 	const unassigned = open.filter((r) => !r.assignedTo);
-	const done = rows.filter((r) => !isOpen(r));
+	// Finished ones come from the server page; an open one finished here leaves the open list straight away.
+	const done = donePage.content;
+	const doneCount = donePage.counts?.done ?? donePage.total;
 	const tabs =
 		mode === "maintenance"
 			? [
@@ -186,7 +202,7 @@ export function WorkOrdersScreen({
 					{ key: "open", label: "All open", count: open.length },
 					{ key: "overdue", label: "Overdue", count: overdue.length },
 					{ key: "held", label: "On hold", count: held.length },
-					{ key: "done", label: "Done", count: done.length },
+					{ key: "done", label: "Done", count: doneCount },
 				]
 			: mode === "manager"
 				? [
@@ -198,7 +214,7 @@ export function WorkOrdersScreen({
 							count: unassigned.length,
 						},
 						{ key: "held", label: "On hold", count: held.length },
-						{ key: "done", label: "Done", count: done.length },
+						{ key: "done", label: "Done", count: doneCount },
 					]
 				: [
 						{ key: "open", label: "Open", count: open.length },
@@ -207,7 +223,7 @@ export function WorkOrdersScreen({
 							label: "Raised by me",
 							count: open.filter((r) => r.reportedBy === me.id).length,
 						},
-						{ key: "done", label: "Done", count: done.length },
+						{ key: "done", label: "Done", count: doneCount },
 					];
 	const active = tabs.some((t) => t.key === tab)
 		? (tab as string)
@@ -227,7 +243,7 @@ export function WorkOrdersScreen({
 							: active === "done"
 								? done
 								: open;
-		const q = search.trim().toLowerCase();
+		const q = active === "done" ? "" : search.trim().toLowerCase();
 		return q
 			? base.filter((r) =>
 					[
@@ -392,11 +408,36 @@ export function WorkOrdersScreen({
 				value={active}
 				onChange={(k) => void setTab(k === tabs[0].key ? null : k)}
 			/>
+			{mode === "maintenance" && active === "done" && (
+				<Toolbar
+					left={
+						<SearchBox
+							value={doneList.search}
+							onChange={doneList.setSearch}
+							placeholder="Search number, title, room, person"
+						/>
+					}
+				/>
+			)}
 			{mode === "maintenance" ? (
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-					{list.length === 0 && (
+					{active === "done" && !doneResult.ok && (
+						<Note tone="danger" className="col-span-full">
+							{doneResult.error} ·{" "}
+							<button
+								type="button"
+								className="font-semibold underline"
+								onClick={() => router.refresh()}
+							>
+								Try again
+							</button>
+						</Note>
+					)}
+					{list.length === 0 && (active !== "done" || doneResult.ok) && (
 						<Note tone="success" className="col-span-full">
-							Nothing here.
+							{active === "done" && doneList.filtered
+								? "Nothing finished matches that search."
+								: "Nothing here."}
 						</Note>
 					)}
 					{list.map((r) => (
@@ -435,21 +476,45 @@ export function WorkOrdersScreen({
 							</div>
 						</BoardCard>
 					))}
+					{active === "done" && donePage.total > 0 && (
+						<ServerPager
+							page={donePage}
+							onPage={doneList.goTo}
+							className="col-span-full rounded-card border border-line bg-card"
+						/>
+					)}
 				</div>
 			) : (
 				<>
 					<Toolbar
 						left={
-							<SearchBox
-								value={search}
-								onChange={setSearch}
-								placeholder="Search number, title, room, person"
-							/>
+							active === "done" ? (
+								<SearchBox
+									value={doneList.search}
+									onChange={doneList.setSearch}
+									placeholder="Search number, title, room, person"
+								/>
+							) : (
+								<SearchBox
+									value={search}
+									onChange={setSearch}
+									placeholder="Search number, title, room, person"
+								/>
+							)
 						}
 					/>
 					<DataTable
 						columns={columns}
 						data={list}
+						{...(active === "done"
+							? {
+									server: { page: donePage, onPage: doneList.goTo },
+									filtered: doneList.filtered,
+									onClearFilters: doneList.clear,
+									error: doneResult.ok ? null : doneResult.error,
+									onRetry: () => router.refresh(),
+								}
+							: {})}
 						onRowClick={(r) => void setOpenId(r.id)}
 						emptyTitle={
 							active === "done" ? "Nothing finished yet" : "No work orders here"

@@ -9,6 +9,7 @@ import {
 	UserPlusIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useOrgStays } from "./use-org-stays";
 import { toast } from "sonner";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -44,7 +45,6 @@ import {
 	billingCycleCode,
 } from "@hospio/api/data/mappers/organizations";
 import type {
-	FolioRow,
 	InvoiceRow,
 	OrgMemberRow,
 	OrganizationRow,
@@ -404,13 +404,11 @@ export function OrgPaymentModal({
 export function InvoiceModal({
 	open,
 	org,
-	stays,
 	onClose,
 	onInvoice,
 }: {
 	open: boolean;
 	org: OrganizationRow;
-	stays: FolioRow[];
 	onClose: () => void;
 	onInvoice: (inv: InvoiceRow) => void;
 }) {
@@ -419,8 +417,12 @@ export function InvoiceModal({
 		iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
 	);
 	const [to, setTo] = useState(iso(new Date()));
-	const inRange = stays.filter(
-		(f) => f.openedAt.slice(0, 10) >= from && f.openedAt.slice(0, 10) <= to,
+	// The period's stays, read from folio-service while the modal is open (not the account's whole history).
+	const { rows: inRange, loading: reading } = useOrgStays(
+		org.id,
+		from,
+		to,
+		open,
 	);
 	const total = inRange.reduce((s, f) => s + f.balance, 0);
 	const due = iso(new Date(Date.now() + org.termsDays * 86400000));
@@ -463,7 +465,11 @@ export function InvoiceModal({
 			subtitle={`${org.name} · bills what is still owed on the stays opened in the period`}
 			icon={FileTextIcon}
 			size="form"
-			footerInfo={`${plural(inRange.length, "stay")} · ${naira(total)} owed`}
+			footerInfo={
+				reading
+					? "Reading the period's stays…"
+					: `${plural(inRange.length, "stay")} · ${naira(total)} owed`
+			}
 			footer={
 				<>
 					<Button variant="outline" className={btn.secondary} onClick={onClose}>

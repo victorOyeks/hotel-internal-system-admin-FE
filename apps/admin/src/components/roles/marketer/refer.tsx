@@ -1,14 +1,18 @@
 "use client";
 
 import { MegaphoneIcon, Share2Icon } from "lucide-react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { createReferral } from "@hospio/api/actions/marketer";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	MarketerMeData,
 	ReferralItem,
 } from "@hospio/api/data/admin-types";
+import type { PageResult } from "@hospio/api/data/paging";
 import { EmptyState } from "@hospio/ui/shared/empty-state";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import { FieldRow, TextareaField, TextField } from "@hospio/ui/shared/field";
 import { fmtLongDate } from "@hospio/ui/shared/format";
 import { PageHeader } from "@hospio/ui/shared/page-header";
@@ -25,16 +29,20 @@ import {
 
 const steps = ["LEAD", "CONTACTED", "ONBOARDING", "LIVE"] as const;
 
-/** Marketer — F3 · Refer a business: POST /platform/marketer/referrals and the list of GET /platform/marketer/referrals. */
+/** Marketer — F3 · Refer a business: POST /platform/marketer/referrals and GET /platform/marketer/referrals a page at a time (`?page=`). */
 export function MarketerRefer({
 	me,
-	referrals: initial,
+	result,
 }: {
 	me: MarketerMeData;
-	referrals: ReferralItem[];
+	result: PageResult<ReferralItem>;
 }) {
+	const router = useRouter();
+	const list = useListParams();
 	const { run, pending } = useAction();
-	const [referrals, setReferrals] = useState(initial);
+	const [referrals, setReferrals] = useState(result.data.content);
+	// A new page from the server replaces what is on screen.
+	useEffect(() => setReferrals(result.data.content), [result]);
 	const [hotel, setHotel] = useState("");
 	const [owner, setOwner] = useState("");
 	const [phone, setPhone] = useState("");
@@ -115,7 +123,8 @@ export function MarketerRefer({
 										}),
 									"Referral sent · we'll call them within 2 working days",
 									(r) => {
-										setReferrals((all) => [r, ...all]);
+										if (list.page === 0) setReferrals((all) => [r, ...all]);
+										router.refresh();
 										setHotel("");
 										setOwner("");
 										setPhone("");
@@ -156,10 +165,24 @@ export function MarketerRefer({
 			<SectionCard
 				title="Your referrals"
 				subtitle="Where each one is"
-				count={referrals.length}
+				count={result.data.total}
 				flush
 			>
-				{referrals.length === 0 ? (
+				{!result.ok ? (
+					<EmptyState
+						title="Your referrals didn't load"
+						hint={result.error}
+						className="mx-5 mb-5"
+					>
+						<button
+							type="button"
+							onClick={() => router.refresh()}
+							className={cn(btn.secondary, btn.small, "mt-2")}
+						>
+							Try again
+						</button>
+					</EmptyState>
+				) : referrals.length === 0 ? (
 					<EmptyState title="No referrals yet" className="mx-5 mb-5" />
 				) : (
 					<ul className="divide-y divide-line">
@@ -200,6 +223,9 @@ export function MarketerRefer({
 							);
 						})}
 					</ul>
+				)}
+				{result.data.total > 0 && (
+					<ServerPager page={result.data} onPage={list.goTo} />
 				)}
 			</SectionCard>
 		</>

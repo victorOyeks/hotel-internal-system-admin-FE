@@ -8,7 +8,7 @@ import "server-only";
  * result when the service fails, like the readers in ./index.
  */
 
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
 import { demoDelay } from "@hospio/api/demo/mode";
 import * as hotel from "@hospio/api/demo/fixtures/hotel";
@@ -17,6 +17,18 @@ import * as owner from "@hospio/api/demo/fixtures/owner";
 import { demoSales } from "@hospio/api/demo/fixtures/fnb";
 import * as managerOps from "@hospio/api/demo/fixtures/manager-ops";
 import { live } from "./live";
+import {
+	allPages,
+	emptyPage,
+	failedPage,
+	type ListQuery,
+	PAGE_SIZE,
+	type Paged,
+	type PageResult,
+	pageQuery,
+	slicePage,
+	toPaged,
+} from "./paging";
 import { toApprovalRow } from "./mappers/approvals";
 import {
 	lagosDate,
@@ -85,6 +97,75 @@ const demoToday: MoneyTodayRow = {
 		.length,
 	outletSales: demoSales,
 };
+
+// ---- demo paging: the same tabs and filters the services apply ------------------------------------------
+
+const approvalTab = (a: ApprovalRow, tab?: string) =>
+	!tab ||
+	(tab === "waiting" &&
+		a.status === "PENDING" &&
+		a.approverLevel === "MANAGER") ||
+	(tab === "owner" &&
+		a.approverLevel === "OWNER" &&
+		(a.status === "PENDING" || a.status === "QUESTION")) ||
+	(tab === "decided" &&
+		(a.status === "APPROVED" ||
+			a.status === "DECLINED" ||
+			(a.status === "QUESTION" && a.approverLevel === "MANAGER"))) ||
+	(tab === "open" && (a.status === "PENDING" || a.status === "QUESTION"));
+
+function demoApprovalsFor(q: ListQuery): ApprovalRow[] {
+	const needle = String(q.q ?? "").toLowerCase();
+	return ops.demoApprovals.filter(
+		(a) =>
+			approvalTab(a, q.tab as string | undefined) &&
+			(!q.kind || a.kind === q.kind) &&
+			(!needle ||
+				`${a.description} ${a.requesterName} ${a.kind}`
+					.toLowerCase()
+					.includes(needle)),
+	);
+}
+
+function demoApprovalCounts(): Record<string, number> {
+	const out: Record<string, number> = { all: ops.demoApprovals.length };
+	for (const t of ["waiting", "owner", "decided", "open"])
+		out[t] = ops.demoApprovals.filter((a) => approvalTab(a, t)).length;
+	out.questions = ops.demoApprovals.filter(
+		(a) => a.status === "QUESTION",
+	).length;
+	return out;
+}
+
+const expenseTab = (e: ExpenseRow, tab?: string) =>
+	!tab ||
+	tab === "all" ||
+	(tab === "approval" && e.status === "PENDING_APPROVAL") ||
+	(tab === "questions" && e.status === "QUESTION") ||
+	(tab === "paid" && (e.status === "PAID" || e.status === "APPROVED")) ||
+	(tab === "requests" &&
+		(e.status === "PENDING_APPROVAL" || e.status === "QUESTION"));
+
+function demoExpensesFor(q: ListQuery): ExpenseRow[] {
+	const needle = String(q.q ?? "").toLowerCase();
+	return ops.demoExpenses.filter(
+		(e) =>
+			expenseTab(e, q.tab as string | undefined) &&
+			(!q.status || e.status === q.status) &&
+			(!q.category || e.category === q.category) &&
+			(!needle ||
+				`${e.description} ${e.category} ${e.requestedBy}`
+					.toLowerCase()
+					.includes(needle)),
+	);
+}
+
+function demoExpenseCounts(): Record<string, number> {
+	const out: Record<string, number> = {};
+	for (const t of ["all", "approval", "questions", "paid", "requests"])
+		out[t] = ops.demoExpenses.filter((e) => expenseTab(e, t)).length;
+	return out;
+}
 
 export const opsData = {
 	staff: {
@@ -188,8 +269,53 @@ export const opsData = {
 		},
 	},
 	finance: {
+		/**
+		 * One page of the hotel's expenses, newest first by date then by when recorded (finance-service filters, counts and
+		 * sums in SQL): `tab` approval, questions, paid or requests; `status`, `category`, `q`, `from`/`to` (90 days back on
+		 * the server; waiting ones are listed however old), `sort`. Tab counts and totals cover the whole filtered range.
+		 */
+		expensesPage: async (
+			query: ListQuery = {},
+		): Promise<PageResult<ExpenseRow>> => {
+			if (!live("finance")) {
+				const rows = demoExpensesFor(query);
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: demoExpenseCounts(),
+						totals: {
+							all: ops.demoExpenses.reduce((a, e) => a + e.amount, 0),
+							recorded: ops.demoExpenses
+								.filter((e) => e.status !== "DECLINED")
+								.reduce((a, e) => a + e.amount, 0),
+							matching: rows.reduce((a, e) => a + e.amount, 0),
+						},
+					}),
+				});
+			}
+			const { data: res, error } = await api("@get/finance/expenses", {
+				...(await withSession()),
+				query: pageQuery(query),
+			});
+			if (error || !res) {
+				console.error("finance-service expenses:", error);
+				return failedPage(errorMessage(error, "Expenses didn't load"));
+			}
+			return { ok: true, data: toPaged(res.data, toExpenseRow) };
+		},
+		/**
+		 * Every expense matching the filters (from 90 days back unless `from` is given), read page by page: summaries,
+		 * reports and exports that need the whole range. Newest first.
+		 */
 		expenses: async (
-			query: { status?: string; from?: string; to?: string } = {},
+			query: {
+				status?: string;
+				from?: string;
+				to?: string;
+				tab?: string;
+				category?: string;
+				q?: string;
+			} = {},
 		): Promise<ExpenseRow[]> => {
 			if (!live("finance"))
 				return give(
@@ -197,21 +323,12 @@ export const opsData = {
 						? ops.demoExpenses.filter((e) => e.status === query.status)
 						: ops.demoExpenses,
 				);
-			const q = Object.fromEntries(
-				Object.entries({ from: lagosDay(-90), ...query }).filter(([, v]) => v),
-			) as Record<string, string>;
-			const { data: res, error } = await api("@get/finance/expenses", {
-				...(await withSession()),
-				query: q,
+			const all = await allPages(async (page, size) => {
+				const r = await opsData.finance.expensesPage({ ...query, page, size });
+				return r.ok ? r.data : null;
 			});
-			if (error || !res) return failed("finance-service expenses", error, []);
-			return res.data
-				.map(toExpenseRow)
-				.sort(
-					(a, b) =>
-						b.date.localeCompare(a.date) ||
-						(b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
-				);
+			if (!all.ok) console.error("finance-service expenses: a page failed");
+			return all.rows;
 		},
 		tills: async (): Promise<TillRow[]> => {
 			if (!live("finance")) return give(ops.demoTills);
@@ -271,26 +388,59 @@ export const opsData = {
 				return failed("finance-service transactions", error, []);
 			return res.data.map(toTransactionRow);
 		},
-		/** Tonight's audit (computed checklist) first, then closed audits, newest first. */
-		nightAudits: async (day?: string): Promise<NightAuditRow[]> => {
-			if (!live("finance")) return give(ops.demoNightAudits);
+		/**
+		 * Tonight's audit (computed checklist) first, then one page of closed audits, newest first (finance-service pages
+		 * them; `page` is 0-based). `total` and `totalPages` are the closed audits'.
+		 */
+		nightAudits: async (
+			day?: string,
+			query: ListQuery = {},
+		): Promise<{
+			rows: NightAuditRow[];
+			past: Paged<NightAuditRow>;
+			ok: boolean;
+			error?: string;
+		}> => {
+			if (!live("finance")) {
+				const past = ops.demoNightAudits.filter((a) => a.status === "CLOSED");
+				return give({
+					rows: ops.demoNightAudits,
+					past: slicePage(past, query.page ?? 0, query.size ?? PAGE_SIZE),
+					ok: true,
+				});
+			}
 			const s = await withSession();
 			const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : lagosDate();
 			const [now, past] = await Promise.all([
 				api("@get/finance/night-audit", { ...s, query: { date } }),
-				api("@get/finance/night-audit/past", s),
+				api("@get/finance/night-audit/past", {
+					...s,
+					query: pageQuery({ ...query, status: "CLOSED" }),
+				}),
 			]);
-			const rows = (past.data?.data ?? []).map((a) => toNightAuditRow(a, date));
+			const page = past.data
+				? toPaged(past.data.data, (a) => toNightAuditRow(a, date))
+				: emptyPage<NightAuditRow>();
 			if (past.error) console.error("finance-service past audits:", past.error);
-			if (now.error || !now.data)
-				return failed("finance-service night audit", now.error, rows);
+			const closed = page.content.filter((r) => r.date !== date);
+			if (now.error || !now.data) {
+				console.error("finance-service night audit:", now.error);
+				return {
+					rows: closed,
+					past: page,
+					ok: false,
+					error: errorMessage(now.error, "Tonight's audit didn't load"),
+				};
+			}
 			const tonight = toNightAuditRow(now.data.data, date);
-			return [
-				tonight,
-				...rows
-					.filter((r) => r.date !== tonight.date && r.status === "CLOSED")
-					.sort((a, b) => b.date.localeCompare(a.date)),
-			];
+			return {
+				rows: [tonight, ...closed],
+				past: page,
+				ok: !past.error,
+				error: past.error
+					? errorMessage(past.error, "Past audits didn't load")
+					: undefined,
+			};
 		},
 		today: async (date?: string): Promise<MoneyTodayRow> => {
 			if (!live("finance")) return give(demoToday);
@@ -394,24 +544,76 @@ export const opsData = {
 		},
 	},
 	approvals: {
-		/** Every approval of the hotel (pending first), for the manager and owner screens. */
+		/**
+		 * One page of the hotel's approvals (platform-service filters, counts and sums them): `tab` waiting, owner, decided or
+		 * open; `kind`, `q`, `from`/`to`, `sort`. Counts per tab and the money waiting over the whole filtered range.
+		 */
+		page: async (query: ListQuery = {}): Promise<PageResult<ApprovalRow>> => {
+			if (!live("platform")) {
+				const rows = demoApprovalsFor(query);
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: demoApprovalCounts(),
+					}),
+				});
+			}
+			const { data: res, error } = await api("@get/platform/approvals/all", {
+				...(await withSession()),
+				query: pageQuery(query),
+			});
+			if (error || !res) {
+				console.error("platform-service approvals:", error);
+				return failedPage(errorMessage(error, "Approvals didn't load"));
+			}
+			return { ok: true, data: toPaged(res.data, toApprovalRow) };
+		},
+		/** Every open approval (waiting or questioned, any level): the dashboards' "needs a decision". */
+		open: async (): Promise<ApprovalRow[]> => {
+			if (!live("platform"))
+				return give(
+					ops.demoApprovals.filter(
+						(a) => a.status === "PENDING" || a.status === "QUESTION",
+					),
+				);
+			const all = await allPages(async (page, size) => {
+				const r = await opsData.approvals.page({ tab: "open", page, size });
+				return r.ok ? r.data : null;
+			});
+			return all.rows;
+		},
+		/**
+		 * Every approval in the window (open ones however old, decided ones from the last 90 days), newest first, read
+		 * page by page: the owner's dashboard and financials, which sort and filter them themselves.
+		 */
 		list: async (): Promise<ApprovalRow[]> => {
 			if (!live("platform")) return give(ops.demoApprovals);
-			const { data: res, error } = await api(
-				"@get/platform/approvals/all",
-				await withSession(),
-			);
-			if (error || !res) return failed("platform-service approvals", error, []);
+			const all = await allPages(async (page, size) => {
+				const r = await opsData.approvals.page({ page, size });
+				return r.ok ? r.data : null;
+			});
+			if (!all.ok) console.error("platform-service approvals: a page failed");
 			const rank = (a: ApprovalRow) =>
 				a.status === "PENDING" ? 0 : a.status === "QUESTION" ? 1 : 2;
-			return res.data
-				.map(toApprovalRow)
-				.sort(
-					(a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt),
-				);
+			return all.rows.sort(
+				(a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt),
+			);
 		},
-		get: async (id: string): Promise<ApprovalRow | null> =>
-			(await opsData.approvals.list()).find((a) => a.id === id) ?? null,
+		/** One approval, opened from a link even when it is not on the page shown. */
+		get: async (id: string): Promise<ApprovalRow | null> => {
+			if (!live("platform"))
+				return give(ops.demoApprovals.find((a) => a.id === id) ?? null);
+			const { data: res, error } = await api("@get/platform/approvals/:id", {
+				...(await withSession()),
+				params: { id },
+			});
+			if (error || !res) {
+				if (error?.status !== 404)
+					console.error("platform-service approval:", error);
+				return null;
+			}
+			return toApprovalRow(res.data);
+		},
 	},
 	housekeeping: {
 		/** Today's cleaning tasks. */
@@ -436,15 +638,40 @@ export const opsData = {
 				return failed("housekeeping-service to inspect", error, []);
 			return res.data.map(toCleaningTaskRow);
 		},
-		lostFound: async (): Promise<LostFoundRow[]> => {
-			if (!live("housekeeping")) return give(ops.demoLostFound);
-			const { data: res, error } = await api(
-				"@get/housekeeping/lost-found",
-				await withSession(),
-			);
-			if (error || !res)
-				return failed("housekeeping-service lost and found", error, []);
-			return res.data.map(toLostFoundRow);
+		/** Lost & found, newest found first, one page: `status` FOUND, RETURNED or DISPOSED, `q`, `from`/`to`; `counts` per status. */
+		lostFound: async (q: ListQuery = {}): Promise<PageResult<LostFoundRow>> => {
+			if (!live("housekeeping")) {
+				const rows = ops.demoLostFound.filter(
+					(r) =>
+						!q.q ||
+						`${r.description} ${r.foundWhere}`
+							.toLowerCase()
+							.includes(q.q.toLowerCase()),
+				);
+				const counts: Record<string, number> = { all: rows.length };
+				for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+				return give({
+					ok: true,
+					data: slicePage(
+						rows.filter((r) => !q.status || r.status === q.status),
+						q.page ?? 0,
+						q.size ?? PAGE_SIZE,
+						{ counts },
+					),
+				});
+			}
+			const { data: res, error } = await api("@get/housekeeping/lost-found", {
+				...(await withSession()),
+				query: pageQuery(q),
+			});
+			if (error || !res) {
+				console.error("housekeeping-service lost and found:", error);
+				return failedPage(
+					errorMessage(error, "Couldn't load lost & found"),
+					q.size,
+				);
+			}
+			return { ok: true, data: toPaged(res.data, toLostFoundRow) };
 		},
 	},
 };

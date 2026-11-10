@@ -1,9 +1,19 @@
-import { MyPaymentsScreen } from "@/components/roles/shared-staff/my-payments";
-import { data } from "@hospio/api/data";
+import { MyPaymentsPage } from "@/components/roles/shared-staff/my-payments-page";
+import type { SearchParamsRecord } from "@hospio/api/data/paging";
 
 export const dynamic = "force-dynamic";
 
-export default async function LaundryPaymentsPage() {
-	const payments = await data.payments.list();
-	return <MyPaymentsScreen payments={payments.filter((p) => p.role === "LAUNDRY")} roleTitle="Laundry" />;
+/** Laundry · My payments: the desk's payments, paged by payment-service. */
+export default function LaundryPaymentsPage({
+	searchParams,
+}: {
+	searchParams: Promise<SearchParamsRecord>;
+}) {
+	return (
+		<MyPaymentsPage
+			searchParams={searchParams}
+			desk="LAUNDRY"
+			roleTitle="Laundry"
+		/>
+	);
 }

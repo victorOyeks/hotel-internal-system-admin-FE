@@ -13,7 +13,10 @@ import {
 	PlusIcon,
 	XIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
+import type { PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -44,7 +47,6 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import type { bookingBuckets } from "@hospio/api/data";
 import type {
 	BookingRow,
 	FolioRow,
@@ -67,6 +69,7 @@ import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
 import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import { actionAllowed } from "../manager/bookings/booking-helpers";
+import { useGuestSearch } from "../shared-staff/guest-search";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
 import {
 	type PaymentTarget,
@@ -76,6 +79,14 @@ import {
 } from "./take-payment";
 
 type Tab = "arrivals" | "departures" | "in-house" | "upcoming" | "all";
+/** The front desk's tabs: reservation-service's views of the same names. */
+export const FO_TABS: Tab[] = [
+	"arrivals",
+	"departures",
+	"in-house",
+	"upcoming",
+	"all",
+];
 
 export function statusPill(b: BookingRow) {
 	switch (b.status) {
@@ -104,11 +115,10 @@ const planLabel: Record<PaymentPlan, string> = {
 };
 
 export function BookingsScreen({
-	buckets,
-	all,
+	bookings: result,
+	opened,
 	rooms,
 	roomTypes,
-	guests,
 	folios,
 	organizations,
 	terminals,
@@ -116,11 +126,12 @@ export function BookingsScreen({
 	canCancel = true,
 	pendingOnPos = {},
 }: {
-	buckets: ReturnType<typeof bookingBuckets>;
-	all: BookingRow[];
+	/** The tab's page from reservation-service (`?tab=` is the view), with every tab's count. */
+	bookings: PageResult<BookingRow>;
+	/** The booking in `?open=` when it is not on this page. */
+	opened?: BookingRow | null;
 	rooms: RoomRow[];
 	roomTypes: RoomTypeRow[];
-	guests: GuestRow[];
 	folios: FolioRow[];
 	organizations: OrganizationRow[];
 	terminals: TerminalRow[];
@@ -129,14 +140,14 @@ export function BookingsScreen({
 	/** Card payments still with the POS, per booking, as loaded. */
 	pendingOnPos?: Record<string, number>;
 }) {
-	const [tab, setTab] = useQueryState("tab");
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab"] });
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [action, setAction] = useQueryState("action");
-	const [search, setSearch] = useState("");
 	// Company stays carry only the organization id from reservation-service; name it from the accounts list.
-	const [bookings, setBookings] = useState(() =>
-		all.map((b) =>
+	const named = (rows: BookingRow[]) =>
+		rows.map((b) =>
 			b.organizationId && !b.organizationName
 				? {
 						...b,
@@ -145,28 +156,39 @@ export function BookingsScreen({
 						)?.name,
 					}
 				: b,
-		),
+		);
+	const [bookings, setBookings] = useState(() =>
+		named([
+			...result.data.content,
+			...(opened && !result.data.content.some((b) => b.id === opened.id)
+				? [opened]
+				: []),
+		]),
 	);
+	useEffect(() => {
+		setBookings(
+			named([
+				...result.data.content,
+				...(opened && !result.data.content.some((b) => b.id === opened.id)
+					? [opened]
+					: []),
+			]),
+		);
+	}, [result, opened]);
+	const rows = bookings.filter((b) =>
+		result.data.content.some((x) => x.id === b.id),
+	);
+	const counts = result.data.counts ?? {};
+	const todayStr = format(new Date(), "yyyy-MM-dd");
 	const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null);
 	const [payOpen, setPayOpen] = useState(false);
 	// Card payments the POS has not confirmed yet, per booking: the summary shows them instead of a paid amount.
 	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
 	const { run, pending } = useAction();
 
-	const activeTab = (tab ?? "arrivals") as Tab;
-	const lists: Record<Tab, BookingRow[]> = {
-		arrivals: bookings.filter((b) =>
-			buckets.arrivals.some((x) => x.id === b.id),
-		),
-		departures: bookings.filter((b) =>
-			buckets.departures.some((x) => x.id === b.id),
-		),
-		"in-house": bookings.filter((b) => b.status === "CHECKED_IN"),
-		upcoming: bookings.filter((b) =>
-			buckets.upcoming.some((x) => x.id === b.id),
-		),
-		all: bookings,
-	};
+	const activeTab = (
+		FO_TABS.includes(list.params.tab as Tab) ? list.params.tab : "arrivals"
+	) as Tab;
 	const selected = bookings.find((b) => b.id === openId) ?? null;
 	// A stale ?action= (check in on a stay already in house, cancel by the front office…) falls back to the summary.
 	const act =
@@ -275,20 +297,19 @@ export function BookingsScreen({
 					const b = row.original;
 					return (
 						<div className="flex items-center justify-end gap-2">
-							{b.status === "BOOKED" &&
-								buckets.arrivals.some((x) => x.id === b.id) && (
-									<button
-										type="button"
-										className={`${btn.primary} ${btn.small}`}
-										onClick={(e) => {
-											e.stopPropagation();
-											void setOpenId(b.id);
-											void setAction("check-in");
-										}}
-									>
-										Check in
-									</button>
-								)}
+							{b.status === "BOOKED" && b.checkInDate === todayStr && (
+								<button
+									type="button"
+									className={`${btn.primary} ${btn.small}`}
+									onClick={(e) => {
+										e.stopPropagation();
+										void setOpenId(b.id);
+										void setAction("check-in");
+									}}
+								>
+									Check in
+								</button>
+							)}
 							{b.status === "CHECKED_IN" && (
 								<button
 									type="button"
@@ -368,14 +389,14 @@ export function BookingsScreen({
 				},
 			},
 		],
-		[buckets, folios, setOpenId, setAction, canCancel, owed],
+		[todayStr, folios, setOpenId, setAction, canCancel, owed],
 	);
 
 	return (
 		<>
 			<PageHeader
 				title="Bookings"
-				subtitle={`${hotelName} · ${lists.arrivals.length} arriving · ${lists.departures.length} leaving · ${lists["in-house"].length} in house`}
+				subtitle={`${hotelName} · ${counts.arrivals ?? 0} arriving · ${counts.departures ?? 0} leaving · ${counts["in-house"] ?? 0} in house`}
 			>
 				<button
 					type="button"
@@ -392,41 +413,59 @@ export function BookingsScreen({
 							{
 								key: "arrivals",
 								label: "Arrivals",
-								count: lists.arrivals.length,
+								count: counts.arrivals ?? 0,
 							},
 							{
 								key: "departures",
 								label: "Departures",
-								count: lists.departures.length,
+								count: counts.departures ?? 0,
 							},
 							{
 								key: "in-house",
 								label: "In-house",
-								count: lists["in-house"].length,
+								count: counts["in-house"] ?? 0,
 							},
 							{
 								key: "upcoming",
 								label: "Upcoming",
-								count: lists.upcoming.length,
+								count: counts.upcoming ?? 0,
 							},
-							{ key: "all", label: "All", count: lists.all.length },
+							{ key: "all", label: "All", count: counts.all ?? 0 },
 						]}
 						value={activeTab}
-						onChange={(k) => void setTab(k === "arrivals" ? null : k)}
+						onChange={(k) => list.set({ tab: k === "arrivals" ? null : k })}
 					/>
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Guest, reference, room…"
+						value={list.search}
+						onChange={list.setSearch}
+						placeholder="Guest, reference, room, phone…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
-				data={lists[activeTab]}
-				search={search}
+				data={rows}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: {
+						guestName: "guestName",
+						roomNumber: "roomNumber",
+						checkInDate: "checkInDate",
+						totalAmount: "totalAmount",
+					},
+				}}
+				filtered={!!list.params.q}
+				onClearFilters={() => {
+					list.setSearch("");
+					list.set({ q: null });
+				}}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(b) => void setOpenId(b.id)}
 				emptyTitle={`No ${activeTab === "in-house" ? "guests in house" : activeTab} right now`}
 			/>
@@ -562,11 +601,13 @@ export function BookingsScreen({
 				onOpenChange={(o) => !o && void setIsNew(null)}
 				roomTypes={roomTypes}
 				rooms={rooms}
-				guests={guests}
 				organizations={organizations}
 				folios={folios}
 				terminals={terminals}
-				onCreated={(b) => setBookings((xs) => [b, ...xs])}
+				onCreated={(b) => {
+					setBookings((xs) => [b, ...xs]);
+					router.refresh();
+				}}
 				onPaid={paymentTaken}
 				onCheckedIn={update}
 				onFinish={openSummary}
@@ -1484,7 +1525,6 @@ export function NewBookingPanel({
 	onOpenChange,
 	roomTypes,
 	rooms,
-	guests,
 	organizations,
 	folios,
 	terminals,
@@ -1497,7 +1537,8 @@ export function NewBookingPanel({
 	onOpenChange: (o: boolean) => void;
 	roomTypes: RoomTypeRow[];
 	rooms: RoomRow[];
-	guests: GuestRow[];
+	/** Unused: returning guests are searched on the server as you type. */
+	guests?: GuestRow[];
 	organizations: OrganizationRow[];
 	folios: FolioRow[];
 	terminals: TerminalRow[];
@@ -1510,6 +1551,9 @@ export function NewBookingPanel({
 }) {
 	const today = format(new Date(), "yyyy-MM-dd");
 	const [guestId, setGuestId] = useState("");
+	const [picked, setPicked] = useState<GuestRow | null>(null);
+	const [guestQuery, setGuestQuery] = useState("");
+	const { rows: matches } = useGuestSearch(guestQuery);
 	const [name, setName] = useState("");
 	const [phone, setPhone] = useState("");
 	const [email, setEmail] = useState("");
@@ -1576,14 +1620,13 @@ export function NewBookingPanel({
 	const needsManager = priceKind !== "NORMAL";
 	const pastStart = ci < today;
 
-	function pickGuest(id: string) {
-		setGuestId(id);
-		const g = guests.find((x) => x.id === id);
-		if (g) {
-			setName(g.fullName);
-			setPhone(g.phone);
-			setEmail(g.email ?? "");
-		}
+	function pickGuest(g: GuestRow) {
+		setGuestId(g.id);
+		setPicked(g);
+		setGuestQuery("");
+		setName(g.fullName);
+		setPhone(g.phone);
+		setEmail(g.email ?? "");
 	}
 
 	function create(later = false) {
@@ -1729,21 +1772,44 @@ export function NewBookingPanel({
 			) : (
 				<div className="flex flex-col gap-6">
 					<PanelSection title="Guest">
-						<SelectField
+						<TextField
 							label="Returning guest"
-							value={guestId}
-							onChange={pickGuest}
-							placeholder="Search past guests…"
-							options={guests.map((g) => ({
-								value: g.id,
-								label: g.fullName,
-								hint: `${g.phone} · ${plural(g.stays, "stay")}${g.blacklisted ? " · BLACKLISTED" : ""}`,
-							}))}
+							value={guestQuery}
+							onChange={setGuestQuery}
+							placeholder={
+								picked
+									? `${picked.fullName} · type to choose someone else`
+									: "Search past guests by name or phone…"
+							}
 						/>
-						{guests.find((g) => g.id === guestId)?.blacklisted && (
+						{matches.length > 0 && (
+							<ul className="divide-y divide-line rounded-xl border border-line">
+								{matches.map((g) => (
+									<li key={g.id}>
+										<button
+											type="button"
+											onClick={() => pickGuest(g)}
+											className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-subtle"
+										>
+											<span className="min-w-0 flex-1">
+												<span className="block text-[13px] font-semibold text-ink">
+													{g.fullName}
+												</span>
+												<span className="block text-xs text-ink-3">
+													{g.phone} · {plural(g.stays, "stay")}
+												</span>
+											</span>
+											{g.blacklisted && (
+												<StatusPill tone="danger">Blacklisted</StatusPill>
+											)}
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+						{picked?.id === guestId && picked.blacklisted && (
 							<Note tone="danger">
-								This guest is blacklisted:{" "}
-								{guests.find((g) => g.id === guestId)?.notes}. The manager must
+								This guest is blacklisted: {picked.notes}. The manager must
 								approve.
 							</Note>
 						)}

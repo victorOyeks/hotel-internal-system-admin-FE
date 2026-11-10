@@ -4,6 +4,7 @@ import { LaundryMaintenanceMoney } from "@/components/roles/shared-staff/lm-mone
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import { live } from "@hospio/api/data/live";
+import { lagosDate } from "@hospio/api/data/mappers/finance";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +23,20 @@ export default async function FinanceTodayPage() {
 	] = await Promise.all([
 		getActiveHotel(),
 		data.finance.today(),
-		data.payments.list(),
+		// Today's payments and the transfers still to match (each bounded), not every payment.
+		Promise.all([
+			data.payments.list({ today: true }),
+			data.payments.list({
+				method: "TRANSFER",
+				status: "PROCESSING,NO_RESPONSE",
+			}),
+		]).then(([today, unmatched]) => [
+			...today,
+			...unmatched.filter((u) => !today.some((t) => t.id === u.id)),
+		]),
 		data.finance.tills(),
-		data.finance.expenses(),
+		// Today's paid-out list reads today's expenses only.
+		data.finance.expenses({ from: lagosDate(), to: lagosDate() }),
 		data.finance.transactions(),
 		data.inventory.value(),
 		data.inventory.usage(),

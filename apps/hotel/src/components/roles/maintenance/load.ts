@@ -2,6 +2,10 @@ import "server-only";
 
 import { getActiveRole, getUser } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import {
+	listQueryFrom,
+	type SearchParamsRecord,
+} from "@hospio/api/data/paging";
 import type { StockItemRow } from "@hospio/api/data/types";
 import type { Person } from "./work-orders";
 
@@ -47,4 +51,19 @@ export async function workOrderContext(opts: { parts?: boolean } = {}) {
 		parts: store ? items.filter((i) => i.storeId === store.id) : [],
 		storeId: store?.id,
 	};
+}
+
+/**
+ * The rows of a work-order screen: every open work order (the board) and one page of the finished ones, read with the
+ * URL's `donePage` and `doneQ` (docs/pagination.md).
+ */
+export async function loadWorkOrders(
+	searchParams: Promise<SearchParamsRecord> | SearchParamsRecord,
+) {
+	const q = listQueryFrom(await searchParams, [], "done");
+	const [rows, done] = await Promise.all([
+		data.maintenance.workOrders("open"),
+		data.maintenance.workOrdersPage({ scope: "done", q: q.q, page: q.page }),
+	]);
+	return { rows, done };
 }

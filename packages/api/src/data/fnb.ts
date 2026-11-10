@@ -9,12 +9,21 @@ import "server-only";
  */
 
 import { cache } from "react";
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
 import * as fnb from "@hospio/api/demo/fixtures/fnb";
 import * as ops from "@hospio/api/demo/fixtures/ops";
 import { demoDelay } from "@hospio/api/demo/mode";
 import { live } from "./live";
+import {
+	allPages,
+	failedPage,
+	type ListQuery,
+	type PageResult,
+	pageQuery,
+	slicePage,
+	toPaged,
+} from "./paging";
 import { lagosDate } from "./mappers/finance";
 import {
 	toCategoryRow,
@@ -42,6 +51,7 @@ import type {
 	SalesHistoryView,
 	StockItemRow,
 	StockRequestRow,
+	TeamRequests,
 	StoreRow,
 } from "./types";
 
@@ -427,15 +437,80 @@ export const fnbData = {
 			if (!live("inventory")) return give(ops.demoStockItems);
 			return (await loadStock())?.rows ?? [];
 		},
-		requests: async (): Promise<StockRequestRow[]> => {
-			if (!live("inventory")) return give(ops.demoStockRequests);
+		/** Team requests to the store, newest first, one page; `counts` per status (OPEN = waiting or part issued). */
+		requestsPage: async (
+			q: ListQuery & { team?: string } = {},
+		): Promise<PageResult<StockRequestRow>> => {
+			if (!live("inventory")) {
+				const rows = ops.demoStockRequests.filter(
+					(r) => !q.team || r.fromTeam === q.team,
+				);
+				const counts: Record<string, number> = { all: rows.length };
+				for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+				counts.OPEN = (counts.REQUESTED ?? 0) + (counts.PART_ISSUED ?? 0);
+				const wanted = q.status
+					?.split(",")
+					.flatMap((x) => (x === "OPEN" ? ["REQUESTED", "PART_ISSUED"] : [x]));
+				return give({
+					ok: true,
+					data: slicePage(
+						rows.filter((r) => !wanted || wanted.includes(r.status)),
+						q.page ?? 0,
+						q.size ?? 25,
+						{ counts },
+					),
+				});
+			}
 			const [res, stock] = await Promise.all([
-				api("@get/inventory/requests", { ...(await withSession()), query: {} }),
+				api("@get/inventory/requests", {
+					...(await withSession()),
+					query: pageQuery(q),
+				}),
 				loadStock(),
 			]);
-			if (res.error || !res.data)
-				return failed("inventory-service requests", res.error, []);
-			return res.data.data.map((r) => toStockRequestRow(r, stock?.items ?? []));
+			if (res.error || !res.data) {
+				console.error("inventory-service requests:", res.error);
+				return failedPage(
+					errorMessage(res.error, "Couldn't load the requests"),
+					q.size,
+				);
+			}
+			return {
+				ok: true,
+				data: toPaged(res.data.data, (r) =>
+					toStockRequestRow(r, stock?.items ?? []),
+				),
+			};
+		},
+		/** Every request still waiting on the store (requested or part issued), read page by page. */
+		openRequests: async (): Promise<StockRequestRow[]> => {
+			const all = await allPages(async (page, size) => {
+				const r = await fnbData.inventory.requestsPage({
+					status: "OPEN",
+					page,
+					size,
+				});
+				return r.ok ? r.data : null;
+			});
+			return all.rows;
+		},
+		/** A team's latest requests (10, with the counts of all of them) and today's, for its store screen. */
+		teamRequests: async (team: string): Promise<TeamRequests> => {
+			const today = lagosDate();
+			const [latest, todays] = await Promise.all([
+				fnbData.inventory.requestsPage({ team, size: 10 }),
+				fnbData.inventory.requestsPage({
+					team,
+					from: today,
+					to: today,
+					size: 100,
+				}),
+			]);
+			return {
+				latest: latest.data,
+				today: todays.data.content,
+				error: latest.ok ? undefined : latest.error,
+			};
 		},
 	},
 };

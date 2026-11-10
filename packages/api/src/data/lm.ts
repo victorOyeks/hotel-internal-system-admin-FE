@@ -7,7 +7,7 @@ import "server-only";
  * answers empty (or the demo work orders) when its domain is not live, and logs and answers empty when the service fails.
  */
 
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import type {
 	LaundryOrder,
 	LaundryPrice,
@@ -20,6 +20,16 @@ import { withSession } from "@hospio/api/api/server";
 import * as ops from "@hospio/api/demo/fixtures/ops";
 import type { z } from "zod";
 import { live } from "./live";
+import {
+	allPages,
+	failedPage,
+	type ListQuery,
+	type Paged,
+	type PageResult,
+	pageQuery,
+	slicePage,
+	toPaged,
+} from "./paging";
 import type {
 	GuestLaundryRow,
 	LaundryMoney,
@@ -37,6 +47,31 @@ const n = (v: number | null | undefined) => (typeof v === "number" ? v : 0);
 const s = (v: string | null | undefined) => v ?? undefined;
 const where = (roomNumber?: string | null, area?: string | null) =>
 	roomNumber ? `Room ${roomNumber}` : (area ?? "Hotel");
+
+/** An unpaged answer, or the rows of a page (the routes answer either). */
+const rowsOf = <T>(d: T[] | { content: T[] }): T[] =>
+	Array.isArray(d) ? d : d.content;
+
+type Wire<T> = Parameters<typeof toPaged<T, unknown>>[0];
+/** A paged answer as a Paged; an unpaged one (a service that is behind) as one page of everything. */
+const asPaged = <A, B>(d: A[] | Wire<A>, map: (a: A) => B): Paged<B> =>
+	Array.isArray(d)
+		? slicePage(d.map(map), 0, Math.max(1, d.length))
+		: toPaged(d, map);
+
+async function pageOf<A, B>(
+	what: string,
+	call: Promise<{ data: { data: A[] | Wire<A> } | null; error: unknown }>,
+	map: (a: A) => B,
+	size?: number,
+): Promise<PageResult<B>> {
+	const { data, error } = await call;
+	if (error || !data) {
+		console.error(`${what}:`, error);
+		return failedPage(errorMessage(error, `Couldn't load ${what}`), size);
+	}
+	return { ok: true, data: asPaged(data.data, map) };
+}
 
 function failed<T>(what: string, error: unknown, fallback: T): T {
 	console.error(`${what}:`, error);
@@ -251,18 +286,54 @@ function demoWorkOrders(): WorkOrderRow[] {
 
 export const lmData = {
 	maintenance: {
-		/** Work orders: `open` (default), `mine`, `done` or `all` (latest 300). */
+		/**
+		 * The open work orders (the board: every one, overdue first; bounded by nature) or `mine` (open and on me).
+		 * Done and all are paged: {@link workOrdersPage}.
+		 */
 		workOrders: async (
-			scope: "open" | "mine" | "done" | "all" = "all",
+			scope: "open" | "mine" = "open",
 		): Promise<WorkOrderRow[]> => {
-			if (!live("maintenance")) return demoWorkOrders();
+			if (!live("maintenance"))
+				return demoWorkOrders().filter(
+					(w) => !["DONE", "CANCELLED"].includes(w.status),
+				);
 			const { data, error } = await api("@get/maintenance/repairs", {
 				...(await withSession()),
 				query: { scope },
 			});
 			if (error || !data)
 				return failed("maintenance-service work orders", error, []);
-			return data.data.map(toWorkOrderRow);
+			return rowsOf(data.data).map(toWorkOrderRow);
+		},
+		/**
+		 * One page of work orders: `scope` open, mine, raised, overdue, held, unassigned, done or all, with `q`, `roomId`,
+		 * `from`, `to`; `counts` has every tab over the same search.
+		 */
+		workOrdersPage: async (
+			q: ListQuery & { scope?: string; roomId?: string } = {},
+		): Promise<PageResult<WorkOrderRow>> => {
+			if (!live("maintenance")) {
+				const rows = demoWorkOrders();
+				const done = rows.filter((w) =>
+					["DONE", "CANCELLED"].includes(w.status),
+				);
+				const list = q.scope === "done" ? done : rows;
+				return {
+					ok: true,
+					data: slicePage(list, q.page ?? 0, q.size ?? 25, {
+						counts: { done: done.length, all: rows.length },
+					}),
+				};
+			}
+			return pageOf(
+				"maintenance-service work orders",
+				api("@get/maintenance/repairs", {
+					...(await withSession()),
+					query: pageQuery(q),
+				}),
+				toWorkOrderRow,
+				q.size,
+			);
 		},
 		workOrder: async (id: string): Promise<WorkOrderRow | null> => {
 			if (!live("maintenance"))
@@ -323,28 +394,92 @@ export const lmData = {
 			if (error || !data) return failed("laundry prices", error, []);
 			return data.data.map(toPriceRow);
 		},
-		/** Guest orders: the open ones (default) or the latest 300. */
-		orders: async (
-			status: "open" | "all" = "all",
-		): Promise<GuestLaundryRow[]> => {
+		/** The open guest orders (the jobs board: received, in progress, ready; bounded by nature). */
+		orders: async (): Promise<GuestLaundryRow[]> => {
 			if (!live("housekeeping")) return [];
 			const { data, error } = await api("@get/housekeeping/laundry/orders", {
 				...(await withSession()),
-				query: { status },
+				query: { status: "open" },
 			});
 			if (error || !data) return failed("laundry orders", error, []);
-			return data.data.map(toGuestLaundryRow);
+			return rowsOf(data.data).map(toGuestLaundryRow);
 		},
-		batches: async (
-			status: "open" | "all" = "all",
-		): Promise<LinenBatchRow[]> => {
+		/**
+		 * What the jobs board shows: every open order plus every order taken in the last 14 days (for "delivered today" and
+		 * what was charged or paid today), read page by page so none is dropped.
+		 */
+		boardOrders: async (): Promise<GuestLaundryRow[]> => {
 			if (!live("housekeeping")) return [];
-			const { data, error } = await api(
-				"@get/housekeeping/laundry/linen-batches",
-				{ ...(await withSession()), query: { status } },
+			const since = new Date(Date.now() + 3600_000 - 14 * 86400_000)
+				.toISOString()
+				.slice(0, 10);
+			const s = await withSession();
+			const [open, recent] = await Promise.all([
+				lmData.laundry.orders(),
+				allPages(async (page, size) => {
+					const { data, error } = await api(
+						"@get/housekeeping/laundry/orders",
+						{ ...s, query: pageQuery({ from: since, page, size }) },
+					);
+					if (error || !data) {
+						console.error("laundry orders:", error);
+						return null;
+					}
+					return asPaged(data.data, toGuestLaundryRow);
+				}),
+			]);
+			const byId = new Map(recent.rows.map((o) => [o.id, o]));
+			for (const o of open) byId.set(o.id, o);
+			return [...byId.values()].sort((a, b) =>
+				b.createdAt.localeCompare(a.createdAt),
 			);
-			if (error || !data) return failed("linen batches", error, []);
-			return data.data.map(toBatchRow);
+		},
+		/** One page of guest orders (any status unless `status`; OPEN for the board's ones), with `counts` and `totals.value`. */
+		ordersPage: async (
+			q: ListQuery & { roomId?: string; bookingId?: string } = {},
+		): Promise<PageResult<GuestLaundryRow>> => {
+			if (!live("housekeeping")) return { ok: true, data: slicePage([], 0) };
+			return pageOf(
+				"laundry orders",
+				api("@get/housekeeping/laundry/orders", {
+					...(await withSession()),
+					query: pageQuery(q),
+				}),
+				toGuestLaundryRow,
+				q.size,
+			);
+		},
+		/** The open linen batches (sent, received, part returned), read page by page so none is dropped. */
+		batches: async (): Promise<LinenBatchRow[]> => {
+			if (!live("housekeeping")) return [];
+			const s = await withSession();
+			const all = await allPages(async (page, size) => {
+				const { data, error } = await api(
+					"@get/housekeeping/laundry/linen-batches",
+					{ ...s, query: pageQuery({ status: "OPEN", page, size }) },
+				);
+				if (error || !data) {
+					console.error("linen batches:", error);
+					return null;
+				}
+				return asPaged(data.data, toBatchRow);
+			});
+			return all.rows;
+		},
+		/** One page of linen batches, with `counts` per status and `totals` written off (condemned, lost) over the range. */
+		batchesPage: async (
+			q: ListQuery = {},
+		): Promise<PageResult<LinenBatchRow>> => {
+			if (!live("housekeeping")) return { ok: true, data: slicePage([], 0) };
+			return pageOf(
+				"linen batches",
+				api("@get/housekeeping/laundry/linen-batches", {
+					...(await withSession()),
+					query: pageQuery(q),
+				}),
+				toBatchRow,
+				q.size,
+			);
 		},
 		money: async (from?: string, to?: string): Promise<LaundryMoney | null> => {
 			if (!live("housekeeping")) return null;

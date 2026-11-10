@@ -307,6 +307,29 @@ export async function saveOrder(input: {
 	return r.ok ? { ok: true, data: withSent(r.data) } : r;
 }
 
+/** One purchase order with the deliveries received against it (the order panel, and a link to an order not on this page). */
+export async function loadPurchaseOrder(
+	id: string,
+): Promise<ActionResult<PurchaseOrderRow & { deliveries: DeliveryRow[] }>> {
+	if (!live("inventory")) return NOT_LIVE;
+	const { data, error } = await api("@get/inventory/purchase-orders/:id", {
+		...(await withSession()),
+		params: { id },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The order could not be loaded"),
+		};
+	return {
+		ok: true,
+		data: {
+			...toPurchaseOrderRow(data.data),
+			deliveries: (data.data.deliveries ?? []).map(toDeliveryRow),
+		},
+	};
+}
+
 export async function submitOrder(
 	id: string,
 ): Promise<ActionResult<OrderResult>> {

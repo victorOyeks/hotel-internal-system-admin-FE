@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { ClipboardListIcon, PackageCheckIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -10,6 +11,7 @@ import { SelectField, TextareaField } from "@hospio/ui/shared/field";
 import { fmtWhen, plural } from "@hospio/ui/shared/format";
 import { ConfirmModal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
@@ -17,6 +19,7 @@ import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn, input } from "@hospio/ui/shared/ui";
 import { declineRequest, issueRequest } from "@hospio/api/actions/inventory";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type {
 	StockItemRow,
 	StockRequestRow,
@@ -42,34 +45,35 @@ const team = (t: string) =>
 	KIND_LABEL[t] ?? t.charAt(0) + t.slice(1).toLowerCase().replace("_", " ");
 const q = (n: number) => Number(n.toFixed(2)).toLocaleString("en-NG");
 
-/** Inventory 2.x · Team requests: issue from a store (all, or part of each line), or decline with a reason the team sees. */
+/**
+ * Inventory 2.x · Team requests: issue from a store (all, or part of each line), or decline with a reason the team sees.
+ * Paged by inventory-service: the tab is the status, the search and page are in the URL, the tab counts are the service's.
+ */
 export function RequestsScreen({
-	requests,
+	requests: result,
 	items,
 	stores,
 }: {
-	requests: StockRequestRow[];
+	requests: PageResult<StockRequestRow>;
 	items: StockItemRow[];
 	stores: StoreRow[];
 }) {
 	const perms = useInvPerms();
+	const router = useRouter();
 	const [openId, setOpenId] = useQueryState("open");
-	const [tab, setTab] = useQueryState("tab");
-	const [search, setSearch] = useState("");
+	const list$ = useListParams({ extra: ["tab"] });
+	const tab = list$.params.tab;
+	const setTab = (k: string | null) => list$.set({ tab: k });
+	const page = result.data;
+	const requests = page.content;
+	const count = (...keys: string[]) =>
+		keys.reduce((n, k) => n + (page.counts?.[k] ?? 0), 0);
 	const [qty, setQty] = useState<Record<string, string>>({});
 	const [from, setFrom] = useState("");
 	const [declining, setDeclining] = useState(false);
 	const [reason, setReason] = useState("");
 	const { run, pending } = useAction();
 	const active = tab ?? "waiting";
-	const lists: Record<string, StockRequestRow[]> = {
-		waiting: requests.filter(open),
-		issued: requests.filter((r) => r.status === "ISSUED"),
-		declined: requests.filter(
-			(r) => r.status === "DECLINED" || r.status === "CLOSED",
-		),
-		all: requests,
-	};
 	const req = requests.find((r) => r.id === openId) ?? null;
 	const main = stores.find((s) => s.kind === "MAIN") ?? stores[0];
 	const left = (l: StockRequestRow["lines"][number]) =>
@@ -199,37 +203,41 @@ export function RequestsScreen({
 		<>
 			<PageHeader
 				title="Requests"
-				subtitle={`${plural(lists.waiting.length, "request")} waiting · teams ask, the store issues${main ? ` from the ${main.name}` : ""}`}
+				subtitle={`${plural(count("OPEN"), "request")} waiting · teams ask, the store issues${main ? ` from the ${main.name}` : ""}`}
 			/>
 			<Toolbar
 				left={
 					<PillTabs
 						value={active}
-						onChange={(k) => void setTab(k === "waiting" ? null : k)}
+						onChange={(k) => setTab(k === "waiting" ? null : k)}
 						tabs={[
-							{ key: "waiting", label: "Waiting", count: lists.waiting.length },
-							{ key: "issued", label: "Issued", count: lists.issued.length },
+							{ key: "waiting", label: "Waiting", count: count("OPEN") },
+							{ key: "issued", label: "Issued", count: count("ISSUED") },
 							{
 								key: "declined",
 								label: "Declined",
-								count: lists.declined.length,
+								count: count("DECLINED", "CLOSED"),
 							},
-							{ key: "all", label: "All", count: requests.length },
+							{ key: "all", label: "All", count: count("all") },
 						]}
 					/>
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
+						value={list$.search}
+						onChange={list$.setSearch}
 						placeholder="Team, item, person…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
-				data={lists[active] ?? requests}
-				search={search}
+				data={requests}
+				server={{ page, onPage: list$.goTo }}
+				filtered={!!list$.params.q}
+				onClearFilters={list$.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(r) => void setOpenId(r.id)}
 				emptyTitle="No requests here"
 			/>

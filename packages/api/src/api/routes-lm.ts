@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * Laundry and maintenance (docs/laundry-maintenance.md in hospio-backend): work orders, assets and preventive
@@ -280,12 +281,13 @@ const itemLines = z.array(
 
 export const lmRoutes = {
 	// maintenance-service
+	/**
+	 * With page/size: a page (scope open, mine, raised, overdue, held, unassigned, done or all; q, roomId, from, to; counts per tab).
+	 * Without: every match (the open board, bounded by nature).
+	 */
 	"@get/maintenance/repairs": {
-		query: z
-			.object({ scope: z.string(), roomId: z.string() })
-			.partial()
-			.optional(),
-		output: envelope(z.array(WorkOrder)),
+		query: pageParams,
+		output: envelope(z.union([pagedOf(WorkOrder), z.array(WorkOrder)])),
 	},
 	"@get/maintenance/repairs/:id": { output: envelope(WorkOrder) },
 	"@get/maintenance/repairs/summary": {
@@ -381,9 +383,10 @@ export const lmRoutes = {
 		input: priceBody,
 		output: envelope(LaundryPrice),
 	},
+	/** With page/size: a page (status, OPEN alias; q, roomId, bookingId, from, to; counts, totals.value). Without: the open board. */
 	"@get/housekeeping/laundry/orders": {
-		query: z.object({ status: z.string() }).partial().optional(),
-		output: envelope(z.array(LaundryOrder)),
+		query: pageParams,
+		output: envelope(z.union([pagedOf(LaundryOrder), z.array(LaundryOrder)])),
 	},
 	"@post/housekeeping/laundry/orders": {
 		input: z.object({
@@ -415,9 +418,10 @@ export const lmRoutes = {
 		input: z.object({ note: z.string() }),
 		output: envelope(LaundryOrder),
 	},
+	/** With page/size: a page (status, OPEN and DONE aliases; q, from, to; counts). Without: every match. */
 	"@get/housekeeping/laundry/linen-batches": {
-		query: z.object({ status: z.string() }).partial().optional(),
-		output: envelope(z.array(LinenBatch)),
+		query: pageParams,
+		output: envelope(z.union([pagedOf(LinenBatch), z.array(LinenBatch)])),
 	},
 	"@post/housekeeping/laundry/linen-batches": {
 		input: z.object({
