@@ -274,7 +274,7 @@ export function PaymentsScreen({
 						actions={[
 							{ label: "Open payment", onClick: () => setOpenId(p.id) },
 							{
-								label: "Resend receipt",
+								label: "Email receipt again",
 								onClick: () =>
 									live.run(
 										() =>
@@ -282,7 +282,7 @@ export function PaymentsScreen({
 												resendReceipt(p.id),
 												`Receipt for ${p.guestName}`,
 											),
-										`Receipt resent to ${p.guestName}`,
+										(r) => `Receipt emailed to ${r.sentTo}`,
 									),
 								disabled: p.status !== "APPROVED",
 							},

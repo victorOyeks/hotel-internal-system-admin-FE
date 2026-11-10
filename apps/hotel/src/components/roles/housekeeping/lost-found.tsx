@@ -81,7 +81,10 @@ export function LostFoundScreen({
 	finders,
 	rooms,
 	areas,
+	supervisor = false,
 }: {
+	/** A housekeeping supervisor (Full) or a manager: only they may dispose of an item (the service's rule). */
+	supervisor?: boolean;
 	items: PageResult<LostFoundRow>;
 	opened?: LostFoundRow | null;
 	me: { id: string; name: string };
@@ -410,9 +413,14 @@ export function LostFoundScreen({
 							>
 								<BellRingIcon className="size-5" /> Tell front office
 							</BigButton>
-							<BigButton tone="dangerSoft" onClick={() => setModal("dispose")}>
-								<Trash2Icon className="size-5" /> Dispose
-							</BigButton>
+							{supervisor && (
+								<BigButton
+									tone="dangerSoft"
+									onClick={() => setModal("dispose")}
+								>
+									<Trash2Icon className="size-5" /> Dispose
+								</BigButton>
+							)}
 							<BigButton onClick={() => setModal("return")}>
 								<HandIcon className="size-5" /> Return
 							</BigButton>
@@ -498,7 +506,7 @@ export function LostFoundScreen({
 								{canDispose
 									? "it can be disposed of now if nobody claims it"
 									: `it can be disposed of from ${fmtDay(current.disposableFrom)}`}
-								.
+								{supervisor ? "." : " by a housekeeping supervisor or a manager."}
 							</Note>
 						)}
 					</div>

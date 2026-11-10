@@ -282,7 +282,7 @@ export function AdminDashboard({
 			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<SectionCard
 					title="Changes by H.M.S"
-					subtitle="Logged, undoable for 7 days"
+					subtitle="Logged; the owner can ask support to undo within 7 days"
 					action={{ label: "All changes", href: "/dashboard/changes" }}
 					bodyClassName="pt-1"
 				>

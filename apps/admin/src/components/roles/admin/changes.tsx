@@ -124,7 +124,7 @@ export function ChangesScreen({
 		<>
 			<PageHeader
 				title="Changes by H.M.S"
-				subtitle="Everything our team changed inside a hotel's account, with the reason given, undoable for 7 days"
+				subtitle="Everything our team changed inside a hotel's account, with the reason given; marked undone within 7 days once support puts it back"
 			/>
 			<Toolbar
 				left={
@@ -224,13 +224,13 @@ export function ChangesScreen({
 				subtitle={
 					undo ? `${undo.businessName} · ${undo.description}` : undefined
 				}
-				confirmLabel="Undo change"
+				confirmLabel="Mark undone"
 				pending={pending}
 				onConfirm={() =>
 					undo &&
 					run(
 						() => undoChange(undo.id, undo),
-						"Change undone",
+						"Marked undone",
 						(c) => {
 							setChanges((all) => all.map((x) => (x.id === c.id ? c : x)));
 							setUndo(null);
@@ -241,9 +241,9 @@ export function ChangesScreen({
 				<WhatHappens
 					tone="warning"
 					items={[
-						"The previous value is restored right now",
+						"Put the previous value back first (for example with Edit as H.M.S): Undo doesn't change the setting itself",
+						"The change is marked undone and the owner's undo request ticket is resolved",
 						"The owner and managers see 'undone by H.M.S' in their activity log",
-						"Anything the hotel changed since stays as it is",
 					]}
 				/>
 			</ConfirmModal>

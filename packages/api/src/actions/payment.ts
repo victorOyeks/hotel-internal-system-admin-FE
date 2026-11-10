@@ -72,7 +72,8 @@ export async function recordPayment(
 			guestPhone: input.guestPhone ?? null,
 			guestEmail: input.guestEmail ?? null,
 			description: input.description ?? "Room charges",
-			receiptPreference: input.receipt ?? "WHATSAPP",
+			// Email when the guest has one (sent for real); "NONE" sends nothing. WhatsApp is coming soon.
+			receiptPreference: input.receipt ?? "EMAIL",
 			orderId: input.orderId ?? null,
 			role: input.role ?? null,
 		},

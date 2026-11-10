@@ -25,6 +25,8 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { useHotelActions } from "@hospio/api/actions/hotel-scope";
+import { emailReceipt } from "@hospio/api/actions/ml";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
 	FolioRow,
 	PaymentMethod,
@@ -145,10 +147,11 @@ export function usePaymentSteps(
 	const [card, setCard] = useState<CardState>("waiting");
 	const [attempt, setAttempt] = useState(0);
 	const [tendered, setTendered] = useState<number | "">("");
-	const [receipt, setReceipt] = useState<"WHATSAPP" | "EMAIL" | "NONE">(
-		"WHATSAPP",
+	// Email is the receipt that is sent for real; without the guest's email the desk prints it (WhatsApp and SMS are coming soon).
+	const [receipt, setReceipt] = useState<"EMAIL" | "NONE">(
+		target?.guestEmail ? "EMAIL" : "NONE",
 	);
-	const [contact, setContact] = useState("");
+	const [contact, setContact] = useState(target?.guestEmail ?? "");
 	const [sending, setSending] = useState(false);
 	const [recorded, setRecorded] = useState<TakenPayment | null>(null);
 	const [cardError, setCardError] = useState<string | null>(null);
@@ -166,8 +169,8 @@ export function usePaymentSteps(
 		setCard("waiting");
 		setAttempt(0);
 		setTendered("");
-		setReceipt("WHATSAPP");
-		setContact("");
+		setReceipt(t?.guestEmail ? "EMAIL" : "NONE");
+		setContact(t?.guestEmail ?? "");
 		setRecorded(null);
 		setCardError(null);
 	}
@@ -190,7 +193,8 @@ export function usePaymentSteps(
 			guestPhone: tgt?.guestPhone,
 			guestEmail: tgt?.guestEmail,
 			description,
-			receipt: "WHATSAPP",
+			// The receipt is chosen after the terminal answers, so nothing is sent automatically here.
+			receipt: "NONE",
 			orderId: tgt?.orderId,
 			role: tgt?.role,
 		})
@@ -259,7 +263,7 @@ export function usePaymentSteps(
 		? `${guestName}${folio?.roomNumber ? ` · Room ${folio.roomNumber}` : tgt?.roomNumber ? ` · Room ${tgt.roomNumber}` : ""} · ${naira(amt)}`
 		: "Choose who is paying";
 
-	async function finish() {
+	async function finish(choice: "EMAIL" | "NONE" = receipt) {
 		setSending(true);
 		let payment = recorded;
 		if (!payment) {
@@ -271,9 +275,11 @@ export function usePaymentSteps(
 				bookingId: tgt?.bookingId,
 				guestName,
 				guestPhone: tgt?.guestPhone,
-				guestEmail: tgt?.guestEmail,
-				description: contact ? `${description} · ${contact}` : description,
-				receipt,
+				guestEmail:
+					choice === "EMAIL" && contact.trim() ? contact.trim() : tgt?.guestEmail,
+				description,
+				// Emailed below, once, with the on-screen echo.
+				receipt: "NONE",
 				orderId: tgt?.orderId,
 				role: tgt?.role,
 			}).catch(
@@ -299,6 +305,19 @@ export function usePaymentSteps(
 			};
 			setRecorded(payment);
 		}
+		let receiptNote =
+			choice === "NONE" ? "Print it from the next screen" : "";
+		if (choice === "EMAIL" && payment.status === "APPROVED") {
+			const sent = await withDeliveries(
+				emailReceipt({ paymentId: payment.id, to: contact, text: "" }),
+				`Receipt for ${guestName}`,
+			).catch(() => null);
+			receiptNote = sent?.ok
+				? `Receipt emailed to ${sent.data.to}`
+				: `The receipt wasn't emailed${sent && !sent.ok ? `: ${sent.error}` : ""} · print it or email it from the receipt page`;
+		} else if (choice === "EMAIL") {
+			receiptNote = "Email the receipt from My payments once it is approved";
+		}
 		setSending(false);
 		const label =
 			method === "CARD"
@@ -308,10 +327,7 @@ export function usePaymentSteps(
 					: "in cash";
 		if (payment.status === "APPROVED")
 			toast.success(`${naira(amt)} ${label} recorded`, {
-				description:
-					receipt === "NONE"
-						? "No receipt sent"
-						: `Receipt sent by ${receipt === "WHATSAPP" ? "WhatsApp" : "email"}`,
+				description: receiptNote,
 			});
 		else
 			toast.info(`${naira(amt)} ${label} is processing`, {
@@ -474,7 +490,7 @@ export function usePaymentSteps(
 							className={btn.secondary}
 							onClick={() => {
 								setReceipt("NONE");
-								void finish();
+								void finish("NONE");
 							}}
 							disabled={sending}
 						>
@@ -484,14 +500,17 @@ export function usePaymentSteps(
 							type="button"
 							className={btn.primary}
 							onClick={() => void finish()}
-							disabled={sending}
+							disabled={
+								sending ||
+								(receipt === "EMAIL" && !/^\S+@\S+\.\S+$/.test(contact.trim()))
+							}
 						>
 							{sending ? (
 								<Loader2Icon className="size-4 animate-spin" />
 							) : receipt === "NONE" ? (
 								"Record payment"
 							) : (
-								"Send receipt & record"
+								"Email receipt & record"
 							)}
 						</button>
 					</>
@@ -769,24 +788,29 @@ export function usePaymentSteps(
 							{ label: "Guest", value: guestName, strong: true },
 						]}
 					/>
-					<Field label="Send the receipt by">
-						<div className="grid grid-cols-3 gap-2">
+					<Field label="Receipt">
+						<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
 							{(
 								[
-									["WHATSAPP", "WhatsApp", MessageCircleIcon],
-									["EMAIL", "Email", MailIcon],
-									["NONE", "Don't send", BanknoteIcon],
+									["EMAIL", "Email", MailIcon, false],
+									["NONE", "Print", PrinterIcon, false],
+									["WHATSAPP", "WhatsApp · coming soon", MessageCircleIcon, true],
+									["SMS", "SMS · coming soon", BanknoteIcon, true],
 								] as const
-							).map(([key, label, Icon]) => (
+							).map(([key, label, Icon, soon]) => (
 								<button
 									key={key}
 									type="button"
-									onClick={() => setReceipt(key)}
+									disabled={soon}
+									title={soon ? `${label.split(" ·")[0]} receipts are coming soon` : undefined}
+									onClick={() => !soon && setReceipt(key as "EMAIL" | "NONE")}
 									className={cn(
-										"flex flex-col items-center gap-2 rounded-control border px-3 py-3 text-[13px] font-semibold",
-										receipt === key
-											? "border-brand bg-brand-soft/50 text-brand"
-											: "border-line text-ink-2 hover:bg-subtle",
+										"flex flex-col items-center gap-2 rounded-control border px-3 py-3 text-center text-[13px] font-semibold",
+										soon
+											? "cursor-not-allowed border-line text-ink-3 opacity-60"
+											: receipt === key
+												? "border-brand bg-brand-soft/50 text-brand"
+												: "border-line text-ink-2 hover:bg-subtle",
 									)}
 								>
 									<Icon className="size-5" /> {label}
@@ -794,14 +818,13 @@ export function usePaymentSteps(
 							))}
 						</div>
 					</Field>
-					{receipt !== "NONE" && (
+					{receipt === "EMAIL" && (
 						<TextField
-							label={receipt === "WHATSAPP" ? "WhatsApp number" : "Email"}
+							label="Guest's email"
+							type="email"
 							value={contact}
 							onChange={setContact}
-							placeholder={
-								receipt === "WHATSAPP" ? "+234 …" : "guest@email.com"
-							}
+							placeholder="guest@email.com"
 						/>
 					)}
 				</div>

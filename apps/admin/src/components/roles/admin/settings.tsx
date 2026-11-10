@@ -320,9 +320,9 @@ export function SettingsScreen({
 				<>
 					<div className="flex items-center justify-between">
 						<p className="text-sm text-ink-2">
-							Checked on the server when this page loads; email, SMS and
-							WhatsApp are not connected on staging, so the platform echoes what
-							it would have sent.
+							Checked on the server when this page loads. Email goes out for
+							real through Brevo; SMS and WhatsApp are coming soon, so those
+							messages are recorded and shown on screen, not sent.
 						</p>
 						<button
 							type="button"

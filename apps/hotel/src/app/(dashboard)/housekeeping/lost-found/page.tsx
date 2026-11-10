@@ -1,5 +1,6 @@
 import { LostFoundScreen } from "@/components/roles/housekeeping/lost-found";
-import { getUser } from "@hospio/api/dal";
+import { getSession, getUser } from "@hospio/api/dal";
+import { isHousekeepingSupervisor } from "@hospio/api/supervisor";
 import { data } from "@hospio/api/data";
 import {
 	listQueryFrom,
@@ -30,7 +31,7 @@ export default async function LostFoundPage({
 	const sp = await searchParams;
 	const query = listQueryFrom(sp, ["tab"]);
 	const open = typeof sp.open === "string" ? sp.open : undefined;
-	const [items, places, staff, user] = await Promise.all([
+	const [items, places, staff, user, session] = await Promise.all([
 		data.housekeeping.lostFound({
 			q: query.q,
 			page: query.page,
@@ -39,6 +40,7 @@ export default async function LostFoundPage({
 		data.housekeeping.places(),
 		data.staff.list(),
 		getUser(),
+		getSession(),
 	]);
 	const opened =
 		open && !items.data.content.some((r) => r.id === open)
@@ -65,6 +67,7 @@ export default async function LostFoundPage({
 			finders={unique}
 			rooms={places.rooms}
 			areas={places.areas}
+			supervisor={isHousekeepingSupervisor(session)}
 		/>
 	);
 }

@@ -768,7 +768,7 @@ export type RecordChangeInput = {
 
 /**
  * POST /platform/admin/changes: the web app records a change after each edit made as H.M.S (business,
- * hotel, setup, users) with the reason and before/after snapshots; the owner can undo it for 7 days.
+ * hotel, setup, users) with the reason and before/after snapshots; the owner can ask support to undo it within 7 days.
  * Exported for the business page's "Edit as H.M.S" flow.
  */
 export async function recordChange(

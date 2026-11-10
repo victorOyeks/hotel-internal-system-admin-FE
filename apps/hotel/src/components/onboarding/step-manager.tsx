@@ -213,7 +213,7 @@ export function ManagerStep({
 								onChange={(v) => set("phone", v)}
 								placeholder="+234 807 220 1145"
 								error={errors.phone}
-								hint="Optional · for sharing the invite on WhatsApp yourself"
+								hint="Optional · SMS and WhatsApp invites are coming soon"
 							/>
 						</FieldRow>
 						<TextField
@@ -278,7 +278,7 @@ export function ManagerStep({
 							label="Create login & continue"
 							pending={pending}
 							onContinue={submit}
-							info="They get a temporary password and an invite link you can send"
+							info="The invite is emailed to them; the link and temporary password are also shown here once"
 						/>
 					</form>
 				)}

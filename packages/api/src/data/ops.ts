@@ -42,7 +42,11 @@ import {
 	toTillRow,
 	toTransactionRow,
 } from "./mappers/finance";
-import { toCleaningTaskRow, toLostFoundRow } from "./mappers/housekeeping";
+import {
+	toCleaningTaskRow,
+	toLinenRequestRow,
+	toLostFoundRow,
+} from "./mappers/housekeeping";
 import {
 	toClockStatus,
 	toLeaveRow,
@@ -50,6 +54,8 @@ import {
 	toShiftRow,
 } from "./mappers/workforce";
 import type {
+	LinenRequestRow,
+	MinibarPrice,
 	ApprovalRow,
 	ClockStatus,
 	CleaningTaskRow,
@@ -637,6 +643,40 @@ export const opsData = {
 			if (error || !res)
 				return failed("housekeeping-service to inspect", error, []);
 			return res.data.map(toCleaningTaskRow);
+		},
+		/** Linen housekeeping asked for: the open requests (oldest first), or `SENT` for the last 30 sent. */
+		linenRequests: async (
+			status?: "SENT",
+		): Promise<{ ok: boolean; rows: LinenRequestRow[] }> => {
+			if (!live("housekeeping")) return give({ ok: true, rows: [] });
+			const { data: res, error } = await api(
+				"@get/housekeeping/linen-requests",
+				{ ...(await withSession()), query: status ? { status } : {} },
+			);
+			if (error || !res) {
+				console.error("housekeeping-service linen requests:", error);
+				return { ok: false, rows: [] };
+			}
+			return { ok: true, rows: res.data.map(toLinenRequestRow) };
+		},
+		/** The hotel's minibar prices from Hotel setup (price list MINIBAR); empty until a manager adds one. */
+		minibarPrices: async (): Promise<MinibarPrice[]> => {
+			if (!live("hotel-config")) return give([]);
+			const { data: res, error } = await api(
+				"@get/hotel-config/setup/price-lists/:kind",
+				{ ...(await withSession()), params: { kind: "MINIBAR" } },
+			);
+			if (error || !res) {
+				if (error?.status !== 404)
+					console.error("hotel-config minibar prices:", error);
+				return [];
+			}
+			return res.data.items.map((i) => ({
+				id: i.id,
+				name: i.name,
+				price: Number(i.price),
+				active: i.active,
+			}));
 		},
 		/** Lost & found, newest found first, one page: `status` FOUND, RETURNED or DISPOSED, `q`, `from`/`to`; `counts` per status. */
 		lostFound: async (q: ListQuery = {}): Promise<PageResult<LostFoundRow>> => {

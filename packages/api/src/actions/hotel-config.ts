@@ -7,6 +7,7 @@ import type { ListItem, ListItemRequest } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import { toApiSetup } from "@hospio/api/data/mappers/hotel-config";
+import type { MinibarPrice } from "@hospio/api/data/types";
 import { demoDelay } from "@hospio/api/demo/mode";
 
 /**
@@ -16,6 +17,7 @@ import { demoDelay } from "@hospio/api/demo/mode";
  */
 
 const SETUP_PATHS = [
+	"/housekeeping",
 	"/manager/hotel-setup",
 	"/hotel-owner/hotel-setup",
 	"/hotel-owner/settings",
@@ -218,4 +220,82 @@ export async function deleteListItem(
 		};
 	revalidateSetup();
 	return { ok: true, data: null };
+}
+
+/**
+ * Hotel setup → Housekeeping → Minibar prices: add or change one price on the hotel's MINIBAR price list (hotel-config). The
+ * attendants' Minibar panel lists the active ones; a removed price is switched off, never deleted.
+ */
+export async function saveMinibarPrice(
+	input: { name: string; price: number; active?: boolean },
+	id?: string,
+	hotelId?: string,
+): Promise<ActionResult<MinibarPrice[]>> {
+	const name = input.name.trim();
+	if (!name) return { ok: false, error: "Give the item a name" };
+	if (!Number.isFinite(input.price) || input.price < 0)
+		return { ok: false, error: "The price can't be below ₦0" };
+	if (!live("hotel-config")) {
+		await demoDelay(300);
+		return { ok: false, error: "Not connected in demo mode" };
+	}
+	const s = await withSession(hotelId ? { hotelId } : undefined);
+	const body = {
+		name,
+		price: input.price,
+		chargeCategory: "MINIBAR",
+		active: input.active ?? true,
+	};
+	const { data, error } = id
+		? await api("@put/hotel-config/setup/price-lists/:kind/items/:itemId", {
+				...s,
+				params: { kind: "MINIBAR", itemId: id },
+				body,
+			})
+		: await api("@post/hotel-config/setup/price-lists/:kind/items", {
+				...s,
+				params: { kind: "MINIBAR" },
+				body,
+			});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The price could not be saved"),
+		};
+	revalidateSetup();
+	return {
+		ok: true,
+		data: data.data.items.map((i) => ({
+			id: i.id,
+			name: i.name,
+			price: Number(i.price),
+			active: i.active,
+		})),
+	};
+}
+
+/** The MINIBAR price list for Hotel setup (empty until the first price is added). */
+export async function loadMinibarPrices(
+	hotelId?: string,
+): Promise<ActionResult<MinibarPrice[]>> {
+	if (!live("hotel-config")) return { ok: true, data: [] };
+	const { data, error } = await api("@get/hotel-config/setup/price-lists/:kind", {
+		...(await withSession(hotelId ? { hotelId } : undefined)),
+		params: { kind: "MINIBAR" },
+	});
+	if (error?.status === 404) return { ok: true, data: [] };
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "Minibar prices didn't load"),
+		};
+	return {
+		ok: true,
+		data: data.data.items.map((i) => ({
+			id: i.id,
+			name: i.name,
+			price: Number(i.price),
+			active: i.active,
+		})),
+	};
 }

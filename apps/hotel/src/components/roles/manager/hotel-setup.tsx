@@ -48,6 +48,7 @@ import type {
 	StoreRow,
 } from "@hospio/api/data/types";
 import { SharedDevicesSection } from "./hotel-setup-devices";
+import { MinibarPricesSection } from "./hotel-setup-minibar";
 import { RestaurantsSection } from "./hotel-setup-restaurants";
 import { cn } from "@hospio/ui/utils";
 
@@ -157,6 +158,17 @@ export function HotelSetupScreen({
 						stores={stores}
 						locked={locked}
 					/>
+				) : section.key === "housekeeping" ? (
+					<div className="flex min-w-0 flex-col gap-4">
+						<SectionForm
+							key={section.key}
+							section={section}
+							locked={locked}
+							why={why[section.key]}
+							hotelId={hotelId}
+						/>
+						<MinibarPricesSection hotelId={hotelId} locked={locked} />
+					</div>
 				) : (
 					<SectionForm
 						key={section.key}

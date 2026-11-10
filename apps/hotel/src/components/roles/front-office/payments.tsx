@@ -20,7 +20,7 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import type { FolioRow, PaymentRow, PaymentStatus, TerminalRow } from "@hospio/api/data/types";
-import { requestRefund } from "@hospio/api/actions/payment";
+import { requestRefund, verifyPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
 import { exportPayments } from "@hospio/api/actions/reservation-lists";
 import type { PageResult } from "@hospio/api/data/paging";
@@ -55,6 +55,7 @@ export function MyPaymentsScreen({ payments: result, opened, folios, terminals, 
 	const [isNew, setIsNew] = useQueryState("new");
 	const [refundFor, setRefundFor] = useState<PaymentRow | null>(null);
 	const [exporting, setExporting] = useState(false);
+	const { run: check, pending: checking } = useAction();
 	const active = (list.params.tab && list.params.tab in PAYMENT_TABS ? list.params.tab : "today") as PaymentTab;
 	const counts = result.data.counts ?? {};
 	const totals = result.data.totals ?? {};
@@ -111,24 +112,24 @@ export function MyPaymentsScreen({ payments: result, opened, folios, terminals, 
 			<SidePanel open={!!pay} onOpenChange={(o) => !o && void setOpenId(null)} title={pay ? `${naira(pay.amount)} · ${pay.guestName}` : ""} subtitle={pay ? `${pay.reference} · ${fmtWhen(pay.createdAt)} · taken by ${pay.takenBy}` : undefined} icon={CreditCardIcon} footer={pay && (
 				<>
 					{(pay.status === "DECLINED" || pay.status === "NO_RESPONSE") && <button type="button" className={btn.primary} onClick={() => { void setOpenId(null); void setIsNew("1"); }}><RotateCcwIcon className="mr-1 inline size-4" /> Try again</button>}
-					{pay.status === "PROCESSING" && <button type="button" className={btn.secondary} onClick={() => setPayments((xs) => xs.map((p) => (p.id === pay.id ? { ...p, status: "APPROVED", resolvedAt: new Date().toISOString() } : p)))}>I've confirmed it landed</button>}
+					{pay.status === "PROCESSING" && <button type="button" className={btn.secondary} disabled={checking} onClick={() => void check(() => verifyPayment(pay.id), (r) => (r.status === "APPROVED" ? "The POS approved it" : `The POS says ${payTone[r.status]?.label.toLowerCase() ?? r.status}`), (r) => setPayments((xs) => xs.map((p) => (p.id === pay.id ? { ...p, status: r.status, resolvedAt: r.status === "PROCESSING" ? p.resolvedAt : new Date().toISOString() } : p))))}>Check with the POS</button>}
 					{pay.status === "APPROVED" && <button type="button" className={btn.secondary} onClick={() => setRefundFor(pay)}>Request refund <ManagerMark className="ml-1" /></button>}
 					{pay.status === "APPROVED" && <a href={`/receipt?payment=${encodeURIComponent(pay.id)}`} target="_blank" rel="noopener" className={btn.primary}><PrinterIcon className="mr-1 inline size-4" /> Print receipt</a>}
 				</>
 			)} footerInfo={pay && <StatusPill tone={payTone[pay.status].tone}>{payTone[pay.status].label}</StatusPill>}>
 				{pay && (
 					<div className="flex flex-col gap-6">
-						{pay.status === "PROCESSING" && <Note tone="info">Transfer not matched to a bank line yet. Finance matches it; you can confirm if you saw the alert.</Note>}
+						{pay.status === "PROCESSING" && <Note tone="info">The POS hasn't confirmed this card payment yet. "Check with the POS" asks the provider where it stands; it is approved only when the POS says so.</Note>}
 						{pay.status === "NO_RESPONSE" && <Note tone="danger">The terminal didn't answer. Nothing was charged — check with the guest's bank before trying again.</Note>}
 						<PanelSection title="Payment">
-							<DetailList columns={2} items={[{ label: "Method", value: pay.method === "CARD" ? `Card · ${pay.terminal}` : pay.method === "TRANSFER" ? "Bank transfer" : "Cash" }, { label: "Provider ref", value: pay.providerRef ?? "—" }, { label: "For", value: pay.description }, { label: "Folio", value: pay.folioId ? <a href={`/dashboard/folios?open=${pay.folioId}`} className="text-brand">Open folio →</a> : "—" }, { label: "Receipt", value: pay.receiptSent === "NONE" ? "Not sent" : pay.receiptSent === "WHATSAPP" ? "Saved for WhatsApp (coming soon)" : "Emailed" }, { label: "Resolved", value: fmtWhen(pay.resolvedAt) }]} />
+							<DetailList columns={2} items={[{ label: "Method", value: pay.method === "CARD" ? `Card · ${pay.terminal}` : pay.method === "TRANSFER" ? "Bank transfer" : "Cash" }, { label: "Provider ref", value: pay.providerRef ?? "—" }, { label: "For", value: pay.description }, { label: "Folio", value: pay.folioId ? <a href={`/dashboard/folios?open=${pay.folioId}`} className="text-brand">Open folio →</a> : "—" }, { label: "Receipt", value: pay.receiptSent === "EMAIL" ? "Emailed" : pay.receiptSent === "WHATSAPP" ? "Not sent · WhatsApp is coming soon" : pay.receiptSent === "NONE" ? "Not sent" : "Print or email it from the receipt page" }, { label: "Resolved", value: fmtWhen(pay.resolvedAt) }]} />
 						</PanelSection>
 					</div>
 				)}
 			</SidePanel>
 
 			<RefundRequestModal payment={refundFor} onOpenChange={(o) => !o && setRefundFor(null)} />
-			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={folios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: p.id, reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`, folioId: p.folioId, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.status, terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.status === "APPROVED" ? new Date().toISOString() : undefined, receiptSent: "WHATSAPP", description: "Room charges" }, ...xs])} />
+			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={folios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: p.id, reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`, folioId: p.folioId, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.status, terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.status === "APPROVED" ? new Date().toISOString() : undefined, receiptSent: undefined, description: "Room charges" }, ...xs])} />
 		</>
 	);
 }

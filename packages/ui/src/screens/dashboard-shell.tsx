@@ -18,6 +18,7 @@ import {
 	getUser,
 } from "@hospio/api/dal";
 import { live } from "@hospio/api/data/live";
+import { isHousekeepingSupervisor } from "@hospio/api/supervisor";
 import { DEMO_AUTH } from "@hospio/api/demo/mode";
 import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-refresh";
 import { cn } from "@hospio/ui/utils";
@@ -82,7 +83,7 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		(await pinPromptAsked()) &&
 		(!!device || user.roles.some((r) => SHARED_DESK_ROLES.includes(r)));
 
-	const [unread, unpaidSales, inbox] = await Promise.all([
+	const [unread, unpaidSales, inbox, approvals] = await Promise.all([
 		data.notifications.unreadCount().catch(() => 0),
 		// The bar and kitchen see how many sales still owe money next to Sales.
 		role === "BAR" || role === "KITCHEN"
@@ -92,10 +93,18 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		APP === "hotel" && !support
 			? data.owner.inboxUnread().catch(() => null)
 			: Promise.resolve(null),
+		// The manager: approvals waiting for a decision next to Approvals.
+		role === "MANAGER"
+			? data.approvals
+					.page({ tab: "waiting", size: 1 })
+					.then((r) => (r.ok ? (r.data.counts?.waiting ?? r.data.total) : null))
+					.catch(() => null)
+			: Promise.resolve(null),
 	]);
 	const badges = {
 		...(unpaidSales ? { unpaidSales } : {}),
 		...(inbox ? { inbox } : {}),
+		...(approvals ? { approvals } : {}),
 	};
 
 	return (
@@ -114,6 +123,7 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						hotels={hotels}
 						activeHotel={activeHotel}
 						badges={badges}
+						supervisor={role !== "HOUSEKEEPING" || isHousekeepingSupervisor(session)}
 					/>
 					{/* min-w-0: wide tables scroll inside their card instead of pushing the page sideways. */}
 					<SidebarInset className="min-w-0 bg-page">

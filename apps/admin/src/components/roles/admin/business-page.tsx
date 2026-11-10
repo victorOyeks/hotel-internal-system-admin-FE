@@ -1002,7 +1002,7 @@ function EditBusinessForm({
 					data: { business: saved.data, change: change.data },
 				};
 			},
-			"Change saved and logged · the owner can undo it for 7 days",
+			"Change saved and logged · the owner can ask support to undo it within 7 days",
 			({ business: b, change }) =>
 				onSaved(refreshBusiness(business, b), change),
 		);
@@ -1395,7 +1395,7 @@ function ChangeManagerModal({
 /**
  * Phase 3 · Edit as H.M.S: the same business form with a required reason; the edit goes to tenant and
  * is then recorded (POST /platform/admin/changes, area BUSINESS, before/after of the fields that changed)
- * so it shows under "Changes by H.M.S" and in the owner's activity log, undoable for 7 days.
+ * so it shows under "Changes by H.M.S" and in the owner's activity log; the owner can ask support to undo it within 7 days.
  */
 export function EditAsHmsPanel({
 	open,
@@ -1413,7 +1413,7 @@ export function EditAsHmsPanel({
 			open={open}
 			onOpenChange={onOpenChange}
 			title="Edit as H.M.S"
-			subtitle={`${business.name} · logged in the hotel's activity log and undoable for 7 days`}
+			subtitle={`${business.name} · logged in the hotel's activity log; the owner can ask support to undo it within 7 days`}
 			icon={ShieldAlertIcon}
 			width="md"
 			tone="danger"

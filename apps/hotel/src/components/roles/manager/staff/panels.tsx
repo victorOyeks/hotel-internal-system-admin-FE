@@ -20,7 +20,11 @@ import {
 	resetPassword,
 } from "@hospio/api/actions/identity";
 import { remindStaffPin, resetStaffPin } from "@hospio/api/actions/devices";
-import { remindPinAsOwner, resetPinAsOwner } from "@hospio/api/actions/owner";
+import {
+	remindPinAsOwner,
+	resetPinAsOwner,
+	updateStaffDetails,
+} from "@hospio/api/actions/owner";
 import { useAction } from "@hospio/api/actions/use-action";
 import { addShift } from "@hospio/api/actions/workforce";
 import type { UserCreated } from "@hospio/api/api/schema";
@@ -33,7 +37,6 @@ import {
 	FieldRow,
 	SelectField,
 	TextField,
-	ToggleField,
 } from "@hospio/ui/shared/field";
 import {
 	fmtDay,
@@ -52,7 +55,6 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import type { ShiftRow, StaffRow } from "@hospio/api/data/types";
-import { toast } from "sonner";
 import { cn } from "@hospio/ui/utils";
 
 export const ROLE_OPTIONS = [
@@ -441,7 +443,8 @@ export function StaffProfilePanel({
 
 /**
  * Add staff → POST /identity/users (a role on this hotel; the temporary password and invite link are shown
- * once). Editing name, phone, title and shift has no identity endpoint yet, so it still runs on the demo action.
+ * once). Editing saves the name, phone, email and job title in identity (PUT /identity/users/{id}/details); role and
+ * access are changed with Change role, shift on the rota.
  */
 export function StaffFormPanel({
 	open,
@@ -521,8 +524,8 @@ export function StaffFormPanel({
 				created
 					? "Send them the link or read out the temporary password"
 					: editing
-						? "Changes apply from their next sign-in"
-						: "They get a temporary password and an invite link you pass on"
+						? "Name, phone, email and job title are saved; change role or shift from the row's menu"
+						: "The invite is emailed to them; the link and temporary password are also shown here once"
 			}
 			footerInfo={
 				!editing &&
@@ -554,12 +557,22 @@ export function StaffFormPanel({
 							}
 							onClick={
 								editing
-									? () => {
-											toast.info(
-												"Editing a person's details is not connected yet · nothing was changed",
-											);
-											onClose();
-										}
+									? () =>
+											staff &&
+											run(
+												() =>
+													updateStaffDetails(staff.userId ?? staff.id, {
+														fullName: form.fullName.trim(),
+														phone: form.phone.trim(),
+														email: form.email.trim() || undefined,
+														jobTitle: form.jobTitle.trim(),
+													}),
+												`${form.fullName.trim()}'s details saved`,
+												() => {
+													onClose();
+													router.refresh();
+												},
+											)
 									: add
 							}
 						>
@@ -598,7 +611,7 @@ export function StaffFormPanel({
 							value={form.phone}
 							onChange={(v) => set("phone", v)}
 							placeholder="+234 …"
-							hint="For the WhatsApp invite"
+							hint="Optional · SMS and WhatsApp invites are coming soon"
 						/>
 						<TextField
 							label="Email"
@@ -610,6 +623,21 @@ export function StaffFormPanel({
 							hint={editing ? undefined : "They sign in with this"}
 						/>
 					</FieldRow>
+					{editing ? (
+						<>
+							<TextField
+								label="Job title"
+								value={form.jobTitle}
+								onChange={(v) => set("jobTitle", v)}
+								placeholder="Room attendant"
+							/>
+							<Note tone="info">
+								Role and access are changed with Change role; the shift on the
+								rota.
+							</Note>
+						</>
+					) : (
+						<>
 					<FieldRow>
 						<SelectField
 							label="Role"
@@ -670,13 +698,7 @@ export function StaffFormPanel({
 						value={form.startedOn}
 						onChange={(v) => set("startedOn", v)}
 					/>
-					{!editing && (
-						<ToggleField
-							label="Show the WhatsApp button after"
-							hint="The invite link and temporary password are shown once; WhatsApp opens with the message ready"
-							checked={form.invite}
-							onChange={(v) => set("invite", v)}
-						/>
+						</>
 					)}
 					{!editing && (
 						<Note tone="info">

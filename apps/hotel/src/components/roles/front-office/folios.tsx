@@ -184,10 +184,10 @@ function DiscountVoidModal({ folio, open, onOpenChange, isManager, onApplied }: 
 	);
 }
 
-/** 4.6 Print or email: the stay summary comes from folio-service; sending stays a demo until messaging is live. */
+/** 4.6 Print or email: the stay summary comes from folio-service and is emailed for real; WhatsApp is coming soon. */
 function SendFolioModal({ folio, open, onOpenChange }: { folio: FolioRow; open: boolean; onOpenChange: (o: boolean) => void }) {
-	const [how, setHow] = useState<"PRINT" | "EMAIL" | "WHATSAPP">("PRINT");
-	const [to, setTo] = useState(folio.guestEmail ?? folio.guestPhone ?? "");
+	const [how, setHow] = useState<"PRINT" | "EMAIL" | "WHATSAPP">(folio.guestEmail ? "EMAIL" : "PRINT");
+	const [to, setTo] = useState(folio.guestEmail ?? "");
 	const [summary, setSummary] = useState<string | null>(null);
 	const [copied, setCopied] = useState(false);
 	const send = useAction();
@@ -199,10 +199,10 @@ function SendFolioModal({ folio, open, onOpenChange }: { folio: FolioRow; open: 
 	}, [open, folio.id, act.run]);
 	const pending = send.pending || act.pending;
 	return (
-		<Modal open={open} onOpenChange={onOpenChange} title="Print or send the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="form" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Close</button>{how === "PRINT" ? <><button type="button" className={btn.secondary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</button><a href={`/receipt?folio=${encodeURIComponent(folio.id)}`} target="_blank" rel="noopener" className={btn.primary}>Print receipt</a></> : <button type="button" className={btn.primary} disabled={pending || !to.trim()} onClick={() => void send.run(() => withDeliveries(sendFolio(folio.id, how, to), `Folio for ${folio.guestName}`), `Folio sent to ${to.trim()} by ${how === "EMAIL" ? "email" : "WhatsApp"}`, () => onOpenChange(false))}>Send</button>}</>}>
+		<Modal open={open} onOpenChange={onOpenChange} title="Print or email the folio" subtitle={`${folio.guestName} · ${naira(folio.charges + folio.tax)} charges`} icon={MailIcon} size="form" footer={<><button type="button" className={btn.secondary} onClick={() => onOpenChange(false)}>Close</button>{how === "PRINT" ? <><button type="button" className={btn.secondary} disabled={pending || !summary} onClick={() => { navigator.clipboard?.writeText(summary ?? "").then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy summary"}</button><a href={`/receipt?folio=${encodeURIComponent(folio.id)}`} target="_blank" rel="noopener" className={btn.primary}>Print receipt</a></> : <button type="button" className={btn.primary} disabled={pending || !to.trim()} onClick={() => void send.run(() => withDeliveries(sendFolio(folio.id, "EMAIL", to), `Folio for ${folio.guestName}`), `Folio emailed to ${to.trim()}`, () => onOpenChange(false))}>Email folio</button>}</>}>
 			<div className="flex flex-col gap-4">
-				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "PRINT", label: "Print / copy" }, { value: "WHATSAPP", label: "WhatsApp" }, { value: "EMAIL", label: "Email" }]} />
-				{how !== "PRINT" && <TextField label={how === "EMAIL" ? "Email" : "WhatsApp number"} value={to} onChange={setTo} />}
+				<ChoiceCards value={how} onChange={setHow} columns={3} options={[{ value: "PRINT", label: "Print / copy" }, { value: "EMAIL", label: "Email" }, { value: "WHATSAPP", label: "WhatsApp", hint: "Coming soon", disabled: true }]} />
+				{how === "EMAIL" && <TextField label="Guest's email" type="email" value={to} onChange={setTo} />}
 				<TextareaField label="Stay summary" value={summary ?? (act.pending ? "Preparing the summary…" : "")} rows={10} hint={how === "PRINT" ? "Copy it to the desk printer or a document" : "This summary is what the guest receives"} />
 			</div>
 		</Modal>

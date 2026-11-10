@@ -304,12 +304,12 @@ export function MyPaymentsScreen({
 								onClick={() =>
 									run(
 										() => resendReceipt(current.id),
-										(r) => `Receipt sent to ${r.sentTo}`,
+										(r) => `Receipt emailed to ${r.sentTo}`,
 										close,
 									)
 								}
 							>
-								Re-send receipt
+								Email receipt again
 							</BigButton>
 						)}
 					</div>

@@ -15,8 +15,8 @@ import { btn } from "./ui";
 
 /**
  * A new login's temporary password and invite link, shown once (owner Users, manager Staff, the
- * onboarding wizards). The link opens /accept-invite?token= on this app; WhatsApp gets the invite
- * email's wording (Figma 3167:16163) with the link and the temporary password.
+ * onboarding wizards). Identity emails the invite for real (docs/email.md); SMS and WhatsApp invites are coming soon, so
+ * "Share in your WhatsApp" opens the person's own WhatsApp with the invite email's wording, the link and the temporary password.
  */
 
 /** `/accept-invite?token=…` on the host the page is open on (empty on the server). */
@@ -197,8 +197,9 @@ export function InviteCard({
 				</p>
 			</div>
 			<p className="text-xs text-ink-2">
-				Nothing is emailed yet. Send the link yourself, or read out the
-				temporary password. Both are shown only now.
+				The invite was emailed to {email}. SMS and WhatsApp invites are coming
+				soon. The link and temporary password are also shown here, only this
+				once, if you want to pass them on yourself.
 			</p>
 			{inviteToken && (
 				<CopyValue
@@ -228,12 +229,12 @@ export function InviteCard({
 					target="_blank"
 					rel="noreferrer"
 					className={cn(
-						btn.primary,
+						btn.secondary,
 						"flex items-center gap-2",
 						!phone && "pointer-events-none opacity-60",
 					)}
 				>
-					<MessageCircleIcon className="size-4" /> Send on WhatsApp
+					<MessageCircleIcon className="size-4" /> Share in your WhatsApp
 				</a>
 			</div>
 			<p className="text-[11px] text-ink-3">
