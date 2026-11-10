@@ -35,6 +35,14 @@ export function tokenIsStale(session: Session, me: Me): boolean {
 	return token !== server;
 }
 
+/**
+ * A redirect with a path-only Location. Behind nginx the standalone server sees itself as 0.0.0.0:<port>, so
+ * an absolute URL built from request.url would send the browser there.
+ */
+function go(path: string) {
+	return new NextResponse(null, { status: 303, headers: { Location: path, "Cache-Control": "no-store" } });
+}
+
 /** Where the shell sends a stale session: here, then back to the page. */
 export function refreshUrl(from: string | null | undefined): string {
 	const back = from?.startsWith("/dashboard") ? from : "/dashboard";
@@ -50,12 +58,10 @@ export function refreshUrl(from: string | null | undefined): string {
 export async function refreshSessionRoute(request: NextRequest) {
 	const jar = await cookies();
 	const from = request.nextUrl.searchParams.get("from");
-	const back = new URL(from?.startsWith("/dashboard") ? from : "/dashboard", request.url);
+	const back = from?.startsWith("/dashboard") ? from : "/dashboard";
 	const toSignIn = async (reason: string) => {
 		await deleteSession();
-		const url = new URL("/auth", request.url);
-		url.searchParams.set("reason", reason);
-		return NextResponse.redirect(url);
+		return go(`/auth?reason=${encodeURIComponent(reason)}`);
 	};
 	const refreshToken = jar.get(COOKIES.refresh)?.value;
 	if (!refreshToken || jar.get(REFRESHED_COOKIE)?.value) return toSignIn("access-changed");
@@ -69,9 +75,9 @@ export async function refreshSessionRoute(request: NextRequest) {
 		if (mine.length === 1) await setActiveRole(mine[0]);
 		else {
 			await clearActiveRole();
-			return NextResponse.redirect(new URL("/select-role", request.url));
+			return go("/select-role");
 		}
-		return NextResponse.redirect(new URL("/dashboard", request.url));
+		return go("/dashboard");
 	}
-	return NextResponse.redirect(back);
+	return go(back);
 }
