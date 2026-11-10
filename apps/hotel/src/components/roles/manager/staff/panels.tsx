@@ -632,8 +632,8 @@ export function StaffFormPanel({
 								placeholder="Room attendant"
 							/>
 							<Note tone="info">
-								Role and access are changed with Change role; the shift on the
-								rota.
+								Role and access are changed in Roles &amp; Permissions; the shift
+								with Change shift.
 							</Note>
 						</>
 					) : (

@@ -241,7 +241,7 @@ export const laundryHelp: HelpModule = {
 				"Use the “To verify” tab to see payments not yet confirmed.",
 				"Tap a payment to open it.",
 				"For a stuck one, tap “Check with provider”. For a declined card payment, tap “Try again on the POS”.",
-				"For an approved one, tap “Email receipt again” if the guest needs it again. A guest with only a phone can't be sent one yet: print it instead.",
+				"For an approved one, tap “Print or email receipt” if the guest needs it again: the receipt page prints it or emails it to the address they give.",
 			],
 			goodToKnow: [
 				"If the terminal never answered, check the last transaction on the POS before charging the guest again.",
