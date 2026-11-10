@@ -11,12 +11,12 @@ import { api } from "@hospio/api/api/client";
 import type {
 	Business,
 	Hotel,
-	Invoice,
 	ListItem,
 	Organization,
 	SetupSection,
 	UserSummary,
 } from "@hospio/api/api/schema";
+import { allPages } from "./paging";
 import { withSession } from "@hospio/api/api/server";
 import {
 	getActiveHotel,
@@ -52,10 +52,10 @@ import { opsData } from "./ops";
 import { ownerData } from "./owner";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import {
-	type OrganizationParts,
 	toInvoiceRow,
-	toOrganizationRow,
+	toOrganizationSummaryRow,
 	toOrgMemberRow,
+	withDemoFigures,
 } from "./mappers/organizations";
 import { toBookingRow, toFolioRow, toGuestRow } from "./mappers/reservation";
 import {
@@ -92,6 +92,7 @@ import type {
 	OnboardingRow,
 	OwnerHotelRow,
 	OrganizationRow,
+	OrganizationsOverviewRow,
 	PaymentRow,
 	RefundRow,
 	DisputeRow,
@@ -259,60 +260,73 @@ const demoBusinessUsers = (businessId: string): PortalUserRow[] =>
 					lastSignIn: u.lastSignIn,
 				}));
 
-/** folio-service's organizations for the active hotel, once per request. */
-/** Keyed by the hotel the call goes to, so the owner's per-hotel loads (atHotel) don't share one hotel's list. */
-const organizationsAt = cache(async (_hotel: string): Promise<Organization[]> => {
-	const { data: res, error } = await api(
-		"@get/folio/organizations",
-		await withSession(),
-	);
+/** One page of folio-service's accounts, each with its figures (GET /folio/organizations?page=, docs/pagination.md). */
+async function organizationsPage(
+	q: ListQuery,
+): Promise<PageResult<OrganizationRow>> {
+	const { data: res, error } = await api("@get/folio/organizations", {
+		...(await withSession()),
+		query: pageQuery(q),
+	});
 	if (error || !res) {
 		console.error("folio-service organizations:", error);
-		return [];
+		return failedPage(errorMessage(error, "Organizations didn't load"));
 	}
-	return res.data;
-});
-const liveOrganizations = async (): Promise<Organization[]> =>
-	organizationsAt((await withSession()).headers?.["X-Hotel-Id"] ?? "");
+	return { ok: true, data: toPaged(res.data, toOrganizationSummaryRow) };
+}
 
-const organizationInvoices = cache(async (id: string): Promise<Invoice[]> => {
-	const { data: res, error } = await api(
-		"@get/folio/organizations/:id/invoices",
-		{ ...(await withSession()), params: { id } },
-	);
-	if (error || !res) {
-		console.error("folio-service organization invoices:", error);
-		return [];
-	}
-	return res.data;
-});
-
-/** An account's members, folios and outstanding balance, once per request (the list and the account page share them). */
-const organizationParts = cache(
-	async (id: string): Promise<OrganizationParts> => {
-		const s = await withSession();
-		const [members, stays, outstanding] = await Promise.all([
-			api("@get/folio/organizations/:id/members", { ...s, params: { id } }),
-			api("@get/folio/organizations/:id/stays", { ...s, params: { id } }),
-			api("@get/folio/organizations/:id/outstanding", {
-				...s,
-				params: { id },
-			}),
-		]);
-		if (members.error)
-			console.error("folio-service org members:", members.error);
-		if (stays.error) console.error("folio-service org stays:", stays.error);
-		if (outstanding.error)
-			console.error("folio-service org outstanding:", outstanding.error);
-		return {
-			members: (members.data?.data ?? []).map(toOrgMemberRow),
-			stays: (stays.data?.data ?? []).map((f) =>
-				toFolioRow({ ...f, lines: f.lines ?? null }),
-			),
-			outstanding: outstanding.data ? Number(outstanding.data.data) : null,
-		};
-	},
+/** Every account of the hotel the call goes to, 100 at a time (pickers, the owner's credit requests). Keyed by that hotel. */
+const everyOrganization = cache(
+	async (_hotel: string): Promise<OrganizationRow[]> =>
+		(
+			await allPages(async (page, size) => {
+				const r = await organizationsPage({ page, size });
+				return r.ok ? r.data : null;
+			})
+		).rows,
 );
+const allOrganizations = async (): Promise<OrganizationRow[]> =>
+	everyOrganization((await withSession()).headers?.["X-Hotel-Id"] ?? "");
+
+/** One page of invoices: the hotel's, or one account's (`organizationId`), latest due first, with counts and money. */
+async function invoicesPage(
+	q: ListQuery & { organizationId?: string },
+): Promise<PageResult<InvoiceRow>> {
+	const { organizationId, ...rest } = q;
+	const s = await withSession();
+	const { data: res, error } = organizationId
+		? await api("@get/folio/organizations/:id/invoices", {
+				...s,
+				params: { id: organizationId },
+				query: pageQuery(rest),
+			})
+		: await api("@get/folio/organizations/invoices", {
+				...s,
+				query: pageQuery(rest),
+			});
+	if (error || !res) {
+		console.error("folio-service invoices:", error);
+		return failedPage(errorMessage(error, "Invoices didn't load"));
+	}
+	return {
+		ok: true,
+		data: toPaged(res.data, (i) => toInvoiceRow(i, i.organizationName ?? "")),
+	};
+}
+
+/** Demo accounts with the figures folio-service would give them. */
+const demoOrganizationRows = () =>
+	stay.demoOrganizations.map((o) =>
+		withDemoFigures(
+			o,
+			stay.demoFolios.filter((f) => f.organizationName === o.name),
+			stay.demoInvoices.filter((i) => i.organizationId === o.id),
+		),
+	);
+
+const matches = (q: string | undefined, ...fields: (string | undefined)[]) =>
+	!q ||
+	fields.some((f) => (f ?? "").toLowerCase().includes(q.trim().toLowerCase()));
 
 export const data = {
 	/** The owner portal: every hotel of the business, each row tagged with its hotel (./owner, docs/owner-portal.md). */
@@ -803,71 +817,218 @@ export const data = {
 		},
 	},
 	organizations: {
-		/** Every company account with what it owes, who can book and its stays this month (folio-service). */
-		list: async (): Promise<OrganizationRow[]> => {
-			if (!live("folio")) return give(stay.demoOrganizations);
-			const orgs = await liveOrganizations();
-			return Promise.all(
-				orgs.map(async (o) =>
-					toOrganizationRow(o, await organizationParts(o.id)),
-				),
-			);
+		/** One page of the hotel's accounts with their figures; `q` name or contact, `status` ACTIVE or ON_HOLD; counts per status, total owed. */
+		page: async (q: ListQuery = {}): Promise<PageResult<OrganizationRow>> => {
+			if (!live("folio")) {
+				const rows = demoOrganizationRows();
+				const searched = rows.filter((o) =>
+					matches(q.q, o.name, o.contactName, o.contactPhone, o.contactEmail),
+				);
+				const hit = searched.filter((o) => !q.status || o.status === q.status);
+				return give({
+					ok: true,
+					data: slicePage(hit, q.page ?? 0, q.size ?? PAGE_SIZE, {
+						counts: {
+							all: searched.length,
+							ACTIVE: searched.filter((o) => o.status === "ACTIVE").length,
+							ON_HOLD: searched.filter((o) => o.status === "ON_HOLD").length,
+						},
+						totals: { outstanding: hit.reduce((s, o) => s + o.outstanding, 0) },
+					}),
+				});
+			}
+			return organizationsPage(q);
 		},
-		/** The company accounts a booking can be billed to: folio-service's organizations when it is live. */
+		/** The hotel's accounts at a glance for the KPI cards, whatever page the list is on. */
+		overview: async (): Promise<OrganizationsOverviewRow | null> => {
+			if (!live("folio")) {
+				const rows = demoOrganizationRows();
+				const overdue = stay.demoInvoices.filter((i) => i.status === "OVERDUE");
+				return give({
+					accounts: rows.length,
+					staffCanBook: rows.reduce((s, o) => s + o.staffCount, 0),
+					staysThisMonth: rows.reduce((s, o) => s + o.staysThisMonth, 0),
+					outstanding: rows.reduce((s, o) => s + o.outstanding, 0),
+					openInvoices: stay.demoInvoices.filter(
+						(i) => i.status !== "PAID" && i.status !== "DRAFT",
+					).length,
+					overdueInvoices: overdue.length,
+					overdueAmount: overdue.reduce((s, i) => s + i.amount - i.paid, 0),
+					overdueOrganizations: [
+						...new Set(overdue.map((i) => i.organizationName)),
+					],
+					onHold: rows.filter((o) => o.status === "ON_HOLD").length,
+					onHoldOrganizations: rows
+						.filter((o) => o.status === "ON_HOLD")
+						.map((o) => o.name),
+				});
+			}
+			const { data: res, error } = await api(
+				"@get/folio/organizations/overview",
+				await withSession(),
+			);
+			if (error || !res) {
+				console.error("folio-service organizations overview:", error);
+				return null;
+			}
+			return {
+				...res.data,
+				outstanding: Number(res.data.outstanding),
+				overdueAmount: Number(res.data.overdueAmount),
+			};
+		},
+		/** Every account with its figures, read 100 at a time (the owner's credit requests and other whole-list readers). */
+		list: async (): Promise<OrganizationRow[]> => {
+			if (!live("folio")) return give(demoOrganizationRows());
+			return allOrganizations();
+		},
+		/** The company accounts a booking can be billed to (the booking form's picker): every account, 100 at a time. */
 		forBooking: async (): Promise<OrganizationRow[]> => {
 			if (!live("folio")) return give(stay.demoOrganizations);
-			return (await liveOrganizations()).map((o) => toOrganizationRow(o));
+			return allOrganizations();
 		},
+		/** One account with its figures (GET /folio/organizations/:id/summary). */
 		get: async (id: string): Promise<OrganizationRow | null> => {
 			if (!live("folio"))
-				return give(stay.demoOrganizations.find((o) => o.id === id) ?? null);
-			const { data: res, error } = await api("@get/folio/organizations/:id", {
-				...(await withSession()),
-				params: { id },
-			});
+				return give(demoOrganizationRows().find((o) => o.id === id) ?? null);
+			const { data: res, error } = await api(
+				"@get/folio/organizations/:id/summary",
+				{ ...(await withSession()), params: { id } },
+			);
 			if (error || !res) {
 				if (error?.status !== 404)
 					console.error("folio-service organization:", error);
 				return null;
 			}
-			return toOrganizationRow(res.data, await organizationParts(id));
+			return toOrganizationSummaryRow(res.data);
 		},
+		/** The people who can book on the account (a company's staff list: short, not paged). */
 		members: async (id: string): Promise<OrgMemberRow[]> => {
 			if (!live("folio")) return give(stay.demoOrgMembers[id] ?? []);
-			return (await organizationParts(id)).members;
+			const { data: res, error } = await api(
+				"@get/folio/organizations/:id/members",
+				{ ...(await withSession()), params: { id } },
+			);
+			if (error || !res) {
+				console.error("folio-service org members:", error);
+				return [];
+			}
+			return res.data.map(toOrgMemberRow);
 		},
-		/** The account's folios, newest first: what each stay charged, what was paid and what is left. */
-		stays: async (id: string): Promise<FolioRow[]> => {
+		/** One page of the account's stays (its folios), latest opened first; `status` OPEN or CLOSED, `from`/`to` days opened, `q` guest or room. */
+		staysPage: async (
+			id: string,
+			q: ListQuery = {},
+		): Promise<PageResult<FolioRow>> => {
 			if (!live("folio")) {
 				const org = stay.demoOrganizations.find((o) => o.id === id);
-				return give(
-					org
-						? stay.demoFolios.filter((f) => f.organizationName === org.name)
-						: [],
+				const all = org
+					? stay.demoFolios.filter((f) => f.organizationName === org.name)
+					: [];
+				const rows = all.filter(
+					(f) =>
+						(!q.status ||
+							(q.status === "OPEN"
+								? f.status === "OPEN"
+								: f.status !== "OPEN")) &&
+						(!q.from || f.openedAt.slice(0, 10) >= q.from) &&
+						(!q.to || f.openedAt.slice(0, 10) <= q.to) &&
+						matches(q.q, f.guestName, f.roomNumber),
 				);
+				return give({
+					ok: true,
+					data: slicePage(rows, q.page ?? 0, q.size ?? PAGE_SIZE, {
+						counts: {
+							all: all.length,
+							OPEN: all.filter((f) => f.status === "OPEN").length,
+							CLOSED: all.filter((f) => f.status !== "OPEN").length,
+						},
+						totals: { balance: rows.reduce((s, f) => s + f.balance, 0) },
+					}),
+				});
 			}
-			return (await organizationParts(id)).stays;
-		},
-		/** One account's invoices, or every account's when no id is given. */
-		invoices: async (id?: string): Promise<InvoiceRow[]> => {
-			if (!live("folio"))
-				return give(
-					id
-						? stay.demoInvoices.filter((i) => i.organizationId === id)
-						: stay.demoInvoices,
-				);
-			const orgs = (await liveOrganizations()).filter(
-				(o) => !id || o.id === id,
+			const { data: res, error } = await api(
+				"@get/folio/organizations/:id/stays",
+				{ ...(await withSession()), params: { id }, query: pageQuery(q) },
 			);
-			const lists = await Promise.all(
-				orgs.map(async (o) =>
-					(await organizationInvoices(o.id)).map((i) =>
-						toInvoiceRow(i, o.name),
-					),
+			if (error || !res) {
+				console.error("folio-service org stays:", error);
+				return failedPage(errorMessage(error, "Stays didn't load"));
+			}
+			return {
+				ok: true,
+				data: toPaged(res.data, (f) =>
+					toFolioRow({ ...f, lines: f.lines ?? null }),
 				),
-			);
-			return lists.flat().sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+			};
 		},
+		/** Every stay of the account (in the `from`/`to` days when given), 100 at a time: the invoice preview reads its period's stays. */
+		stays: async (
+			id: string,
+			range: { from?: string; to?: string } = {},
+		): Promise<FolioRow[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await data.organizations.staysPage(id, {
+						...range,
+						page,
+						size,
+					});
+					return r.ok ? r.data : null;
+				})
+			).rows,
+		/** One page of invoices, the hotel's or one account's (`organizationId`); `status` OPEN, OVERDUE, SENT, PART_PAID, PAID or DRAFT. */
+		invoicesPage: async (
+			q: ListQuery & { organizationId?: string } = {},
+		): Promise<PageResult<InvoiceRow>> => {
+			if (!live("folio")) {
+				const scope = stay.demoInvoices.filter(
+					(i) =>
+						(!q.organizationId || i.organizationId === q.organizationId) &&
+						matches(q.q, i.number, i.organizationName),
+				);
+				const is = (i: InvoiceRow, st: string) =>
+					st === "OPEN"
+						? i.status !== "PAID" && i.status !== "DRAFT"
+						: i.status === st;
+				const rows = scope
+					.filter((i) => !q.status || is(i, q.status))
+					.sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+				const counts: Record<string, number> = { all: scope.length };
+				for (const st of [
+					"OPEN",
+					"OVERDUE",
+					"SENT",
+					"PART_PAID",
+					"PAID",
+					"DRAFT",
+				])
+					counts[st] = scope.filter((i) => is(i, st)).length;
+				const amount = rows.reduce((s, i) => s + i.amount, 0);
+				const paid = rows.reduce((s, i) => s + i.paid, 0);
+				return give({
+					ok: true,
+					data: slicePage(rows, q.page ?? 0, q.size ?? PAGE_SIZE, {
+						counts,
+						totals: { amount, paid, left: amount - paid },
+					}),
+				});
+			}
+			return invoicesPage(q);
+		},
+		/** Every invoice (one account's, or the hotel's), 100 at a time, with the same filters. */
+		invoices: async (id?: string, q: ListQuery = {}): Promise<InvoiceRow[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await data.organizations.invoicesPage({
+						...q,
+						organizationId: id,
+						page,
+						size,
+					});
+					return r.ok ? r.data : null;
+				})
+			).rows,
 	},
 	staff: {
 		/** The active hotel's people from identity (every grant on this hotel plus the business-wide owner). */
@@ -1030,32 +1191,65 @@ export const data = {
 	/** Guest laundry, the price list, linen batches and laundry money (./lm, housekeeping-service). */
 	laundry: lmData.laundry,
 	platform: {
-		/** Every business on the platform (GET /tenant/businesses, first 200). Health, MRR and tickets are 0 until platform-service is wired. */
-		businesses: async (
-			query: { stage?: string; q?: string } = {},
-		): Promise<BusinessRow[]> => {
-			if (!live("tenant"))
-				return give(
-					platform.demoBusinesses.filter(
-						(b) =>
-							(!query.stage || b.stage === query.stage) &&
-							(!query.q ||
-								b.name.toLowerCase().includes(query.q.toLowerCase())),
-					),
+		/**
+		 * One page of the platform's businesses (GET /tenant/businesses): `stage`, `q` (name, owner, email, city), `sort`; counts per
+		 * stage (and `all`, `hotels`, `rooms`) over the search. Health, MRR and tickets are 0 until platform-service is wired.
+		 */
+		businessesPage: async (
+			query: ListQuery & { stage?: string } = {},
+		): Promise<PageResult<BusinessRow>> => {
+			if (!live("tenant")) {
+				const searched = platform.demoBusinesses.filter(
+					(b) =>
+						!query.q ||
+						`${b.name} ${b.ownerName} ${b.ownerEmail} ${b.city}`
+							.toLowerCase()
+							.includes(query.q.toLowerCase()),
 				);
-			const q: Record<string, string | number> = { page: 0, size: 200 };
-			if (query.stage) q.stage = query.stage;
-			if (query.q) q.q = query.q;
+				const rows = searched.filter(
+					(b) => !query.stage || b.stage === query.stage,
+				);
+				const counts: Record<string, number> = {
+					all: searched.length,
+					hotels: searched.reduce((s, b) => s + b.hotels, 0),
+					rooms: searched.reduce((s, b) => s + b.rooms, 0),
+				};
+				for (const b of searched) counts[b.stage] = (counts[b.stage] ?? 0) + 1;
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts,
+					}),
+				});
+			}
+			const { stage, ...rest } = query;
 			const { data: res, error } = await api("@get/tenant/businesses", {
 				...(await withSession()),
-				query: q,
+				query: { ...pageQuery(rest), ...(stage ? { stage } : {}) } as {
+					page: number;
+					size: number;
+				},
 			});
 			if (error || !res) {
 				console.error("tenant-service businesses:", error);
-				return [];
+				return failedPage(errorMessage(error, "Businesses didn't load"));
 			}
-			return res.data.content.map(toBusinessRow);
+			return { ok: true, data: toPaged(res.data, toBusinessRow) };
 		},
+		/** Every business (the pickers on payments, fees, changes and support), 100 at a time. */
+		businesses: async (
+			query: { stage?: string; q?: string } = {},
+		): Promise<BusinessRow[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await data.platform.businessesPage({
+						...query,
+						page,
+						size,
+					});
+					return r.ok ? r.data : null;
+				})
+			).rows,
 		/** One business. Null only when tenant-service says it does not exist (404); any other failure throws so the page's error boundary offers a retry instead of a wrong "not found". */
 		business: async (id: string): Promise<BusinessRow | null> => {
 			if (!live("tenant"))
@@ -1123,29 +1317,49 @@ export const data = {
 		tickets: () => give(platform.demoTickets),
 		feeStatements: () => give(platform.demoFeeStatements),
 		changes: () => give(platform.demoPlatformChanges),
-		/** The onboarding board (GET /tenant/onboarding). Admin names come from the demo team until identity lists platform staff. */
-		onboarding: async (status?: string): Promise<OnboardingRow[]> => {
-			if (!live("tenant"))
-				return give(
-					status
-						? platform.demoOnboarding.filter((o) => o.status === status)
-						: platform.demoOnboarding,
-				);
+		/**
+		 * One column of the onboarding board (GET /tenant/onboarding?status=&page=), latest saved first, with counts per status.
+		 * Admin names come from the demo team until identity lists platform staff.
+		 */
+		onboardingPage: async (
+			status?: string,
+			page = 0,
+			size = PAGE_SIZE,
+		): Promise<PageResult<OnboardingRow>> => {
+			if (!live("tenant")) {
+				const all = platform.demoOnboarding;
+				const rows = status ? all.filter((o) => o.status === status) : all;
+				const counts: Record<string, number> = { all: all.length };
+				for (const o of all) counts[o.status] = (counts[o.status] ?? 0) + 1;
+				return give({
+					ok: true,
+					data: slicePage(rows, page, size, { counts }),
+				});
+			}
 			const { data: res, error } = await api("@get/tenant/onboarding", {
 				...(await withSession()),
-				query: status ? { status } : {},
+				query: { page, size, ...(status ? { status } : {}) },
 			});
 			if (error || !res) {
 				console.error("tenant-service onboarding:", error);
-				return [];
+				return failedPage(errorMessage(error, "Onboarding didn't load"));
 			}
 			const admins = new Map(
 				platform.demoAdminUsers.map((a) => [a.id, a.fullName]),
 			);
-			return res.data
-				.map((o) => toOnboardingRow(o, admins))
-				.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+			return {
+				ok: true,
+				data: toPaged(res.data, (o) => toOnboardingRow(o, admins)),
+			};
 		},
+		/** The whole board (or one status), 100 at a time. */
+		onboarding: async (status?: string): Promise<OnboardingRow[]> =>
+			(
+				await allPages(async (page, size) => {
+					const r = await data.platform.onboardingPage(status, page, size);
+					return r.ok ? r.data : null;
+				})
+			).rows,
 		onboardingFor: async (
 			businessId: string,
 		): Promise<OnboardingRow | null> => {

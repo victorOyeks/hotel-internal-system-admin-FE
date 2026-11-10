@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName, DetailList, Note } from "@hospio/ui/shared/detail-list";
@@ -33,6 +33,8 @@ import { SectionCard } from "@hospio/ui/shared/section-card";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { billingCycleLabel } from "@hospio/api/data/mappers/organizations";
+import type { Paged, PageResult } from "@hospio/api/data/paging";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import type {
 	FolioRow,
 	InvoiceRow,
@@ -83,24 +85,39 @@ const stayDay = (iso: string | undefined) =>
 export function OrganizationScreen({
 	org: initialOrg,
 	members: initialMembers,
-	invoices: initialInvoices,
-	stays,
+	invoices: invoicePage,
+	stays: stayPage,
+	openInvoices,
+	inHouse: inHousePage,
 }: {
 	org: OrganizationRow;
 	members: OrgMemberRow[];
-	invoices: InvoiceRow[];
-	stays: FolioRow[];
+	/** A page of the account's invoices (`?invPage=`), latest due first. */
+	invoices: PageResult<InvoiceRow>;
+	/** A page of its stays (`?staysPage=`), latest opened first. */
+	stays: PageResult<FolioRow>;
+	/** Every invoice still to be paid (Record payment picks from these). */
+	openInvoices: InvoiceRow[];
+	/** The account's open stays (staff staying now). */
+	inHouse: Paged<FolioRow>;
 }) {
 	const router = useRouter();
 	const [tab] = useQueryState("tab", parseAsString.withDefault("overview"));
 	const [action, setAction] = useQueryState("action");
+	const invList = useListParams({ prefix: "inv" });
+	const stayList = useListParams({ prefix: "stays" });
 	const [org, setOrg] = useState(initialOrg);
 	const [members, setMembers] = useState(initialMembers);
-	const [invoices, setInvoices] = useState(initialInvoices);
+	const [invoices, setInvoices] = useState(invoicePage.data.content);
+	// A new page or new figures from the server replace what is on screen.
+	useEffect(() => setInvoices(invoicePage.data.content), [invoicePage]);
+	useEffect(() => setOrg(initialOrg), [initialOrg]);
+	const stays = stayPage.data.content;
 	const active = (TABS.includes(tab as Tab) ? tab : "overview") as Tab;
-	const overdue = invoices.filter((i) => i.status === "OVERDUE");
-	const inHouse = stays.filter((f) => f.status === "OPEN");
-	const running = inHouse.reduce((s, f) => s + f.balance, 0);
+	const overdueCount = org.overdueInvoices ?? 0;
+	const inHouse = inHousePage.content;
+	const running =
+		org.runningBalance ?? inHouse.reduce((s, f) => s + f.balance, 0);
 	const used =
 		org.creditLimit > 0
 			? Math.round((org.outstanding / org.creditLimit) * 100)
@@ -383,9 +400,17 @@ export function OrganizationScreen({
 				defaultValue="overview"
 				tabs={[
 					{ key: "overview", label: "Overview" },
-					{ key: "stays", label: "Stays & bills", count: stays.length },
+					{
+						key: "stays",
+						label: "Stays & bills",
+						count: stayPage.data.total,
+					},
 					{ key: "staff", label: "Staff", count: members.length },
-					{ key: "invoices", label: "Invoices", count: invoices.length },
+					{
+						key: "invoices",
+						label: "Invoices",
+						count: invoicePage.data.total,
+					},
 					{ key: "agreement", label: "Agreement" },
 				]}
 			/>
@@ -399,13 +424,14 @@ export function OrganizationScreen({
 								{naira(org.outstanding)}
 							</p>
 							<p className="text-xs text-ink-3">
-								What is left on the account's {plural(stays.length, "folio")}
+								What is left on the account's{" "}
+								{plural(org.stays ?? stayPage.data.total, "folio")}
 							</p>
 						</div>
 						<div
 							className={cn(
 								"rounded-card border p-[18px]",
-								overdue.length
+								overdueCount
 									? "border-danger/20 bg-danger-soft"
 									: "border-line bg-card",
 							)}
@@ -414,14 +440,14 @@ export function OrganizationScreen({
 							<p
 								className={cn(
 									"mt-1 text-2xl font-bold",
-									overdue.length ? "text-danger" : "text-ink",
+									overdueCount ? "text-danger" : "text-ink",
 								)}
 							>
-								{naira(overdue.reduce((s, i) => s + i.amount - i.paid, 0))}
+								{naira(org.overdueAmount ?? 0)}
 							</p>
 							<p className="text-xs text-ink-3">
-								{overdue.length
-									? `${overdue[0].number} · due ${fmtDay(overdue[0].dueDate)}`
+								{overdueCount && org.overdueNumber
+									? `${org.overdueNumber} · due ${fmtDay(org.overdueDueDate ?? "")}`
 									: "Nothing overdue"}
 							</p>
 						</div>
@@ -443,8 +469,8 @@ export function OrganizationScreen({
 								{naira(running)}
 							</p>
 							<p className="text-xs text-ink-3">
-								{inHouse.length
-									? `${plural(inHouse.length, "stay")} in house`
+								{(org.openStays ?? inHousePage.total)
+									? `${plural(org.openStays ?? inHousePage.total, "stay")} in house`
 									: "No open stays"}
 							</p>
 						</div>
@@ -490,17 +516,31 @@ export function OrganizationScreen({
 						))}
 					</div>
 					<div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-						<SectionCard title="Invoices" flush count={invoices.length}>
+						<SectionCard
+							title="Invoices"
+							flush
+							count={invoicePage.data.total}
+							action={
+								invoicePage.data.total > 6
+									? {
+											label: `All ${invoicePage.data.total}`,
+											href: `/dashboard/organizations/${org.id}?tab=invoices`,
+										}
+									: undefined
+							}
+						>
 							<DataTable
 								columns={invoiceColumns}
-								data={invoices}
+								data={invoices.slice(0, 6)}
 								pageSize={6}
 								className="rounded-none border-0"
 								emptyTitle="No invoices yet"
+								error={invoicePage.ok ? null : invoicePage.error}
+								onRetry={() => router.refresh()}
 							/>
 						</SectionCard>
 						<div className="flex flex-col gap-4">
-							<SectionCard title="Staff staying now" count={inHouse.length}>
+							<SectionCard title="Staff staying now" count={inHousePage.total}>
 								{inHouse.length === 0 ? (
 									<p className="py-2 text-xs text-ink-3">Nobody in house</p>
 								) : (
@@ -578,6 +618,9 @@ export function OrganizationScreen({
 				<DataTable
 					columns={stayColumns}
 					data={stays}
+					server={{ page: stayPage.data, onPage: stayList.goTo }}
+					error={stayPage.ok ? null : stayPage.error}
+					onRetry={() => router.refresh()}
 					emptyTitle="No stays on this account yet"
 				/>
 			)}
@@ -622,6 +665,9 @@ export function OrganizationScreen({
 					<DataTable
 						columns={invoiceColumns}
 						data={invoices}
+						server={{ page: invoicePage.data, onPage: invList.goTo }}
+						error={invoicePage.ok ? null : invoicePage.error}
+						onRetry={() => router.refresh()}
 						emptyTitle="No invoices yet"
 					/>
 				</>
@@ -687,11 +733,12 @@ export function OrganizationScreen({
 			<OrgPaymentModal
 				open={action === "payment"}
 				org={org}
-				invoices={invoices.filter(
+				invoices={openInvoices.filter(
 					(i) => i.status !== "PAID" && i.status !== "DRAFT",
 				)}
 				onClose={() => setAction(null)}
 				onSaved={(invoiceId, amount) => {
+					router.refresh();
 					setInvoices((is) =>
 						is.map((i) =>
 							i.id === invoiceId
@@ -708,9 +755,11 @@ export function OrganizationScreen({
 			<InvoiceModal
 				open={action === "invoice"}
 				org={org}
-				stays={stays}
 				onClose={() => setAction(null)}
-				onInvoice={(inv) => setInvoices((is) => [inv, ...is])}
+				onInvoice={(inv) => {
+					setInvoices((is) => [inv, ...is]);
+					router.refresh();
+				}}
 			/>
 			<AddStaffPanel
 				open={action === "add-staff"}

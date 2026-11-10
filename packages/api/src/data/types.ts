@@ -541,6 +541,33 @@ export type OrganizationRow = {
 	requestedCreditLimit?: number;
 	creditRequestedBy?: string;
 	creditApprovalId?: string;
+	/** From folio-service's figures (GET /folio/organizations?page=, /:id/summary): one call for the list, not three per account. */
+	stays?: number;
+	openStays?: number;
+	/** Still owed on the stays that are open. */
+	runningBalance?: number;
+	invoices?: number;
+	openInvoices?: number;
+	invoicesLeft?: number;
+	overdueInvoices?: number;
+	overdueAmount?: number;
+	/** The latest overdue invoice's number and due date. */
+	overdueNumber?: string;
+	overdueDueDate?: string;
+};
+
+/** The hotel's organizations at a glance (the KPI cards), whatever page the list is on. */
+export type OrganizationsOverviewRow = {
+	accounts: number;
+	staffCanBook: number;
+	staysThisMonth: number;
+	outstanding: number;
+	openInvoices: number;
+	overdueInvoices: number;
+	overdueAmount: number;
+	overdueOrganizations: string[];
+	onHold: number;
+	onHoldOrganizations: string[];
 };
 export type OrgMemberRow = {
 	id: Id;

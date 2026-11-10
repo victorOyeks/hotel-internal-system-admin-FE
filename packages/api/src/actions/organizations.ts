@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@hospio/api/actions";
 import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
+import { data } from "@hospio/api/data";
 import { live } from "@hospio/api/data/live";
 import {
 	billingCycleCode,
@@ -12,6 +13,7 @@ import {
 	toOrgMemberRow,
 } from "@hospio/api/data/mappers/organizations";
 import type {
+	FolioRow,
 	InvoiceRow,
 	OrgMemberRow,
 	OrganizationRow,
@@ -351,4 +353,17 @@ export async function sendOrgMessage(
 			),
 		};
 	return { ok: true, data: data.data };
+}
+
+/**
+ * An account's stays opened in the Lagos days `from`..`to` (both inclusive), every page of them: the invoice preview
+ * and an invoice's stays read them on demand instead of the screen holding the account's whole history.
+ */
+export async function loadOrgStays(
+	organizationId: string,
+	from: string,
+	to: string,
+): Promise<ActionResult<FolioRow[]>> {
+	const rows = await data.organizations.stays(organizationId, { from, to });
+	return { ok: true, data: rows };
 }

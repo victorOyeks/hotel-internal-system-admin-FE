@@ -806,6 +806,37 @@ export const Organization = z.object({
 	creditSentToOwner: z.boolean().nullable().optional(),
 });
 
+/** An account with its figures, as GET /folio/organizations?page= and /:id/summary answer (docs/pagination.md). */
+export const OrganizationSummary = Organization.extend({
+	outstanding: z.number(),
+	staffCount: z.number(),
+	staysThisMonth: z.number(),
+	stays: z.number(),
+	openStays: z.number(),
+	runningBalance: z.number(),
+	invoices: z.number(),
+	openInvoices: z.number(),
+	invoicesLeft: z.number(),
+	overdueInvoices: z.number(),
+	overdueAmount: z.number(),
+	overdueNumber: z.string().nullable().optional(),
+	overdueDueDate: z.string().nullable().optional(),
+});
+
+/** The hotel's accounts at a glance (GET /folio/organizations/overview). */
+export const OrganizationsOverview = z.object({
+	accounts: z.number(),
+	staffCanBook: z.number(),
+	staysThisMonth: z.number(),
+	outstanding: z.number(),
+	openInvoices: z.number(),
+	overdueInvoices: z.number(),
+	overdueAmount: z.number(),
+	overdueOrganizations: z.array(z.string()),
+	onHold: z.number(),
+	onHoldOrganizations: z.array(z.string()),
+});
+
 /** POST /folio/organizations and PUT /folio/organizations/:id (manager). PUT replaces every field. */
 export const OrganizationRequest = z.object({
 	name: z.string(),
@@ -850,6 +881,12 @@ export const Invoice = z.object({
 	status: z.string(),
 	sentAt: z.string().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
+});
+
+/** An invoice with its account's name; `overdue` when unpaid past due (worked out by folio-service). */
+export const InvoiceView = Invoice.extend({
+	organizationName: z.string().nullable().optional(),
+	overdue: z.boolean().nullable().optional(),
 });
 
 export const OrganizationPayment = z.object({
@@ -1066,10 +1103,11 @@ export const schema = createSchema({
 				q: z.string(),
 				page: z.number(),
 				size: z.number(),
+				sort: z.string(),
 			})
 			.partial()
 			.optional(),
-		output: envelope(paged(BusinessSummary)),
+		output: envelope(pagedOf(BusinessSummary)),
 	},
 	"@post/tenant/businesses": {
 		input: BusinessRequest,
@@ -1102,8 +1140,11 @@ export const schema = createSchema({
 		output: envelope(z.array(Hotel)),
 	},
 	"@get/tenant/onboarding": {
-		query: z.object({ status: z.string() }).partial().optional(),
-		output: envelope(z.array(Onboarding)),
+		query: z
+			.object({ status: z.string(), page: z.number(), size: z.number() })
+			.partial()
+			.optional(),
+		output: envelope(pagedOf(Onboarding)),
 	},
 	"@get/tenant/onboarding/mine": { output: envelope(Onboarding) },
 	"@put/tenant/onboarding/mine/step": {
@@ -1329,7 +1370,20 @@ export const schema = createSchema({
 
 	// maintenance, inventory, folio
 	"@get/folio/folios": { output: envelope(z.array(Folio)) },
-	"@get/folio/organizations": { output: envelope(z.array(Organization)) },
+	"@get/folio/organizations": {
+		query: pageParams,
+		output: envelope(pagedOf(OrganizationSummary)),
+	},
+	"@get/folio/organizations/overview": {
+		output: envelope(OrganizationsOverview),
+	},
+	"@get/folio/organizations/invoices": {
+		query: pageParams,
+		output: envelope(pagedOf(InvoiceView)),
+	},
+	"@get/folio/organizations/:id/summary": {
+		output: envelope(OrganizationSummary),
+	},
 	"@post/folio/organizations": {
 		input: OrganizationRequest,
 		output: envelope(Organization),
@@ -1369,11 +1423,13 @@ export const schema = createSchema({
 		),
 	},
 	"@get/folio/organizations/:id/stays": {
-		output: envelope(z.array(OrganizationStay)),
+		query: pageParams,
+		output: envelope(pagedOf(OrganizationStay)),
 	},
 	"@get/folio/organizations/:id/outstanding": { output: envelope(z.number()) },
 	"@get/folio/organizations/:id/invoices": {
-		output: envelope(z.array(Invoice)),
+		query: pageParams,
+		output: envelope(pagedOf(InvoiceView)),
 	},
 	"@post/folio/organizations/:id/invoices": {
 		input: z.object({
@@ -1521,4 +1577,6 @@ export type Folio = z.infer<typeof Folio>;
 export type Organization = z.infer<typeof Organization>;
 export type OrganizationMember = z.infer<typeof OrganizationMember>;
 export type Invoice = z.infer<typeof Invoice>;
+export type InvoiceView = z.infer<typeof InvoiceView>;
+export type OrganizationSummary = z.infer<typeof OrganizationSummary>;
 export type Notification = z.infer<typeof Notification>;

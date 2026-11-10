@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagedOf } from "./paged";
 
 /**
  * The admin portal's routes (docs/admin-portal.md in hospio-backend): platform-service `/platform/admin/**`
@@ -752,7 +753,7 @@ export const adminRoutes = {
 			.object({ profileId: z.string(), stage: z.string(), ...pageQuery })
 			.partial()
 			.optional(),
-		output: envelope(paged(Referral)),
+		output: envelope(pagedOf(Referral)),
 	},
 	"@put/platform/admin/referrals/:id/stage": {
 		params: z.object({ id: z.string() }),
@@ -769,7 +770,7 @@ export const adminRoutes = {
 			})
 			.partial()
 			.optional(),
-		output: envelope(paged(CommissionRow)),
+		output: envelope(pagedOf(CommissionRow)),
 	},
 	"@post/platform/admin/commissions/:id/pay": {
 		params: z.object({ id: z.string() }),
@@ -798,7 +799,13 @@ export const adminRoutes = {
 		}),
 		output: envelope(MarketerProfile),
 	},
-	"@get/platform/marketer/referrals": { output: envelope(z.array(Referral)) },
+	"@get/platform/marketer/referrals": {
+		query: z
+			.object({ stage: z.string(), page: z.number(), size: z.number() })
+			.partial()
+			.optional(),
+		output: envelope(pagedOf(Referral)),
+	},
 	"@post/platform/marketer/referrals": {
 		input: z.object({
 			hotelName: z.string(),
@@ -814,8 +821,16 @@ export const adminRoutes = {
 		output: envelope(z.array(MarketerBusiness)),
 	},
 	"@get/platform/marketer/commissions": {
-		query: z.object({ month: z.string() }).partial().optional(),
-		output: envelope(z.array(CommissionRow)),
+		query: z
+			.object({
+				month: z.string(),
+				status: z.string(),
+				page: z.number(),
+				size: z.number(),
+			})
+			.partial()
+			.optional(),
+		output: envelope(pagedOf(CommissionRow)),
 	},
 	"@get/platform/marketer/commissions/statement": {
 		query: z.object({ month: z.string() }).partial().optional(),

@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { BuildingIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import {
 	ChoiceCards,
@@ -13,7 +13,7 @@ import {
 	SelectField,
 	TextField,
 } from "@hospio/ui/shared/field";
-import { fmtAgo, naira, nairaShort } from "@hospio/ui/shared/format";
+import { fmtAgo, naira } from "@hospio/ui/shared/format";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
@@ -27,7 +27,9 @@ import type {
 	BusinessRow,
 	MarketerRow,
 } from "@hospio/api/data/types";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { AdminRole } from "@hospio/api/demo/fixtures/platform-extra";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { cn } from "@hospio/ui/utils";
 import { can, HealthBar, ReadOnlyNote, StagePill } from "./shared";
 
@@ -51,19 +53,23 @@ const stageLabel: Record<string, string> = {
 };
 /** The page header's fee line only makes sense once platform-service reports MRR; until then show counts. */
 
+/**
+ * Admin · Hotel businesses: one page at a time from tenant-service (`?stage=&q=&page=` in the URL), with the stage
+ * counts, hotels and rooms over the search from the server, so every page and tab reads the same totals.
+ */
 export function BusinessesScreen({
 	role,
-	businesses,
+	result,
 	marketers,
 	admins = [],
 }: {
 	role: AdminRole;
-	businesses: BusinessRow[];
+	result: PageResult<BusinessRow>;
 	marketers: MarketerRow[];
 	admins?: AdminUserRow[];
 }) {
 	const router = useRouter();
-	const [tab, setTab] = useQueryState("tab");
+	const list = useListParams({ extra: ["stage"] });
 	const [isNew, setNew] = useQueryState("new");
 	// Set when a business was just created: the panel closes without touching the URL (a nuqs write
 	// here would cancel a client-side push) and the browser loads the wizard afresh. A soft push here
@@ -74,15 +80,9 @@ export function BusinessesScreen({
 		if (createdId)
 			window.location.assign(`/dashboard/onboarding/${createdId}?created=1`);
 	}, [createdId]);
-	const [search, setSearch] = useState("");
-	const active = (tab ?? "ALL") as (typeof STAGES)[number];
-	const rows = useMemo(
-		() =>
-			active === "ALL"
-				? businesses
-				: businesses.filter((b) => b.stage === active),
-		[businesses, active],
-	);
+	const page = result.data;
+	const counts = page.counts ?? {};
+	const active = (list.params.stage ?? "ALL") as (typeof STAGES)[number];
 
 	const columns: ColumnDef<BusinessRow, unknown>[] = [
 		{
@@ -177,7 +177,7 @@ export function BusinessesScreen({
 		<>
 			<PageHeader
 				title="Hotel businesses"
-				subtitle={`${businesses.length} businesses · ${businesses.reduce((s, b) => s + b.hotels, 0)} hotels · ${businesses.reduce((s, b) => s + b.rooms, 0)} rooms${businesses.some((b) => b.mrr > 0) ? ` · ${nairaShort(businesses.reduce((s, b) => s + b.mrr, 0))} a month` : ""}`}
+				subtitle={`${counts.all ?? page.total} businesses · ${counts.hotels ?? 0} hotels · ${counts.rooms ?? 0} rooms${list.params.q ? ` matching “${list.params.q}”` : ""}`}
 			>
 				<ExportButton />
 				{can.editBusiness(role) && (
@@ -202,27 +202,34 @@ export function BusinessesScreen({
 						tabs={STAGES.map((s) => ({
 							key: s,
 							label: stageLabel[s],
-							count:
-								s === "ALL"
-									? businesses.length
-									: businesses.filter((b) => b.stage === s).length,
+							count: s === "ALL" ? (counts.all ?? 0) : (counts[s] ?? 0),
 						}))}
 						value={active}
-						onChange={(k) => void setTab(k === "ALL" ? null : k)}
+						onChange={(k) => list.set({ stage: k === "ALL" ? null : k })}
 					/>
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Search business, owner, city…"
+						value={list.search}
+						onChange={list.setSearch}
+						placeholder="Search business, owner, email, city…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
-				data={rows}
-				search={search}
+				data={page.content}
+				server={{
+					page,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: { name: "name", stage: "stage" },
+				}}
+				filtered={list.filtered}
+				onClearFilters={list.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(b) => router.push(`/dashboard/businesses/${b.id}`)}
 				emptyTitle="No businesses here"
 				emptyHint="Try another stage or clear the search."

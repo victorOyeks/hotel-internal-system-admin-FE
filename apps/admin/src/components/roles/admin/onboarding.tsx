@@ -4,13 +4,16 @@ import { ArrowRightIcon, ClipboardCheckIcon, UserCog2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAction } from "@hospio/api/actions/use-action";
 import {
 	assignOnboarding,
 	saveOnboardingStep,
 } from "@hospio/api/actions/tenant";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { AdminUserRow, OnboardingRow } from "@hospio/api/data/types";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import type { AdminRole } from "@hospio/api/demo/fixtures/platform-extra";
 import {
 	ADMIN_ONBOARDING_STEPS,
@@ -42,14 +45,31 @@ import { can, ReadOnlyNote } from "./shared";
  */
 
 const GROUPS = [
-	{ key: "IN_PROGRESS", label: "In progress", tone: "info" as const },
+	{
+		key: "IN_PROGRESS",
+		label: "In progress",
+		tone: "info" as const,
+		prefix: "progress",
+	},
 	{
 		key: "READY_FOR_HANDOVER",
 		label: "Ready for handover",
 		tone: "warning" as const,
+		prefix: "ready",
 	},
-	{ key: "DONE", label: "Handed over", tone: "success" as const },
-];
+	{
+		key: "DONE",
+		label: "Handed over",
+		tone: "success" as const,
+		prefix: "done",
+	},
+] as const;
+
+/** The board's three columns, each paged by tenant-service (`?progressPage=`, `?readyPage=`, `?donePage=`). */
+export type OnboardingColumns = Record<
+	(typeof GROUPS)[number]["key"],
+	PageResult<OnboardingRow>
+>;
 
 const stepLabel = (r: OnboardingRow) => {
 	if (r.status === "DONE") return "Handed over";
@@ -62,15 +82,23 @@ const stepLabel = (r: OnboardingRow) => {
 
 export function OnboardingScreen({
 	role,
-	rows: initialRows,
+	columns,
 	admins,
 }: {
 	role: AdminRole;
-	rows: OnboardingRow[];
+	columns: OnboardingColumns;
 	admins: AdminUserRow[];
 }) {
 	const router = useRouter();
-	const [rows, setRows] = useState(initialRows);
+	const pagers = {
+		IN_PROGRESS: useListParams({ prefix: "progress" }),
+		READY_FOR_HANDOVER: useListParams({ prefix: "ready" }),
+		DONE: useListParams({ prefix: "done" }),
+	};
+	const loaded = GROUPS.flatMap((g) => columns[g.key].data.content);
+	const [rows, setRows] = useState(loaded);
+	// A new page from the server replaces what is on screen.
+	useEffect(() => setRows(loaded), [columns]);
 	const [open, setOpen] = useQueryState("open");
 	const [reassign, setReassign] = useState<OnboardingRow | null>(null);
 	const selected =
@@ -109,15 +137,29 @@ export function OnboardingScreen({
 			)}
 			<div className="grid gap-4 md:grid-cols-3">
 				{GROUPS.map((g) => {
-					const list = rows.filter((r) => r.status === g.key);
+					const column = columns[g.key];
+					const ids = new Set(column.data.content.map((r) => r.businessId));
+					const list = rows.filter(
+						(r) => ids.has(r.businessId) && r.status === g.key,
+					);
 					return (
 						<SectionCard
 							key={g.key}
 							title={g.label}
-							count={list.length}
+							count={column.data.total}
 							bodyClassName="gap-3 pt-2"
 						>
-							{list.length === 0 ? (
+							{!column.ok ? (
+								<EmptyState title="This column didn't load" hint={column.error}>
+									<button
+										type="button"
+										onClick={() => router.refresh()}
+										className={cn(btn.secondary, btn.small, "mt-2")}
+									>
+										Try again
+									</button>
+								</EmptyState>
+							) : list.length === 0 ? (
 								<EmptyState title="Nothing here" />
 							) : (
 								list.map((r) => {
@@ -184,6 +226,13 @@ export function OnboardingScreen({
 										</div>
 									);
 								})
+							)}
+							{column.data.totalPages > 1 && (
+								<ServerPager
+									bare
+									page={column.data}
+									onPage={pagers[g.key].goTo}
+								/>
 							)}
 						</SectionCard>
 					);

@@ -1,7 +1,7 @@
 "use client";
 
 import { BanknoteIcon, DownloadIcon, LandmarkIcon } from "lucide-react";
-import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
 	loadCommissionStatement,
@@ -12,7 +12,11 @@ import type {
 	CommissionLine,
 	MarketerMeData,
 } from "@hospio/api/data/admin-types";
+import type { PageResult } from "@hospio/api/data/paging";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
+import { EmptyState } from "@hospio/ui/shared/empty-state";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import { SelectField, TextField } from "@hospio/ui/shared/field";
 import { naira, nairaShort } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
@@ -41,32 +45,37 @@ const BANKS = [
 	"Wema",
 ];
 
-/** Marketer — Commissions: GET /platform/marketer/commissions, the text statement, and PUT /marketer/me/bank. */
+/**
+ * Marketer — Commissions: GET /platform/marketer/commissions one page at a time (`?status=&page=`), the money and tab
+ * counts over every line from the server, the text statement, and PUT /marketer/me/bank.
+ */
 export function MarketerCommissions({
 	me: initialMe,
-	ledger,
+	result,
+	overall,
 }: {
 	me: MarketerMeData;
-	ledger: CommissionLine[];
+	/** The ledger page on screen, for the status tab. */
+	result: PageResult<CommissionLine>;
+	/** Every line's counts and money (no status filter), for the cards and tabs. */
+	overall: PageResult<CommissionLine>;
 }) {
+	const router = useRouter();
+	const list = useListParams();
 	const [me, setMe] = useState(initialMe);
-	const [tab, setTab] = useQueryState("tab");
 	const [statement, setStatement] = useState(false);
 	const [bank, setBank] = useState(false);
-	const months = [...new Set(ledger.map((c) => c.month))].sort().reverse();
-	const [month, setMonth] = useState(months[0] ?? monthOptions(1)[0].value);
+	const months = monthOptions(12).map((o) => o.value);
+	const [month, setMonth] = useState(months[0]);
 	const [bankName, setBankName] = useState(me.profile.bankName ?? "");
 	const [account, setAccount] = useState(me.profile.bankAccount ?? "");
 	const [accountName, setAccountName] = useState(
 		me.profile.bankAccountName ?? me.profile.fullName,
 	);
 	const { run, pending } = useAction();
-	const active = tab ?? "ALL";
-	const rows = ledger.filter((c) =>
-		active === "ALL" ? true : c.status === active,
-	);
-	const sum = (s?: string) =>
-		ledger.filter((c) => !s || c.status === s).reduce((a, c) => a + c.net, 0);
+	const active = list.params.status ?? "ALL";
+	const counts = overall.data.counts ?? {};
+	const totals = overall.data.totals ?? {};
 	const p = me.profile;
 
 	const download = (text: string, name: string) => {
@@ -114,47 +123,50 @@ export function MarketerCommissions({
 				/>
 				<KpiCard
 					label="Due now"
-					value={nairaShort(sum("DUE"))}
+					value={nairaShort(totals.due ?? 0)}
 					icon={BanknoteIcon}
 					hint="Paid on the 5th"
 				/>
 				<KpiCard
 					label="Waiting on hotels"
-					value={nairaShort(sum("WAITING"))}
+					value={nairaShort(totals.waiting ?? 0)}
 					icon={BanknoteIcon}
 					hint="They haven't paid H.M.S yet"
 				/>
 				<KpiCard
 					label="Gross before WHT"
-					value={nairaShort(ledger.reduce((a, c) => a + c.gross, 0))}
+					value={nairaShort(totals.gross ?? 0)}
 					icon={BanknoteIcon}
-					hint={`WHT ${naira(ledger.reduce((a, c) => a + c.wht, 0))}`}
+					hint={`WHT ${naira(totals.wht ?? 0)}`}
 				/>
 			</div>
 			<PillTabs
 				tabs={[
-					{ key: "ALL", label: "All", count: ledger.length },
-					{
-						key: "DUE",
-						label: "Due",
-						count: ledger.filter((c) => c.status === "DUE").length,
-					},
-					{
-						key: "WAITING",
-						label: "Waiting",
-						count: ledger.filter((c) => c.status === "WAITING").length,
-					},
-					{
-						key: "PAID",
-						label: "Paid",
-						count: ledger.filter((c) => c.status === "PAID").length,
-					},
+					{ key: "ALL", label: "All", count: counts.all ?? 0 },
+					{ key: "DUE", label: "Due", count: counts.DUE ?? 0 },
+					{ key: "WAITING", label: "Waiting", count: counts.WAITING ?? 0 },
+					{ key: "PAID", label: "Paid", count: counts.PAID ?? 0 },
 				]}
 				value={active}
-				onChange={(k) => void setTab(k === "ALL" ? null : k)}
+				onChange={(k) => list.set({ status: k === "ALL" ? null : k })}
 			/>
 			<SectionCard title="Ledger" subtitle="One line per business per month">
-				<CommissionTable rows={rows} sharePct={p.sharePct} />
+				{result.ok ? (
+					<CommissionTable rows={result.data.content} sharePct={p.sharePct} />
+				) : (
+					<EmptyState title="The ledger didn't load" hint={result.error}>
+						<button
+							type="button"
+							onClick={() => router.refresh()}
+							className={cn(btn.secondary, btn.small, "mt-2")}
+						>
+							Try again
+						</button>
+					</EmptyState>
+				)}
+				{result.data.total > 0 && (
+					<ServerPager bare page={result.data} onPage={list.goTo} />
+				)}
 			</SectionCard>
 			<Note tone="info">
 				How it's worked out: the hotel pays H.M.S its monthly fee → you get{" "}
@@ -202,11 +214,7 @@ export function MarketerCommissions({
 					label="Month"
 					value={month}
 					onChange={setMonth}
-					options={
-						months.length
-							? months.map((m) => ({ value: m, label: m }))
-							: monthOptions(6)
-					}
+					options={monthOptions(12)}
 				/>
 			</Modal>
 

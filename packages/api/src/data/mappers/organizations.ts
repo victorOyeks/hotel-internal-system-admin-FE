@@ -2,6 +2,7 @@ import type {
 	Invoice,
 	Organization,
 	OrganizationMember,
+	OrganizationSummary,
 } from "@hospio/api/api/schema";
 import type {
 	FolioRow,
@@ -85,6 +86,56 @@ export function toOrganizationRow(
 	};
 }
 
+/** An account with folio-service's figures (the paged list and the account page). */
+export function toOrganizationSummaryRow(
+	o: OrganizationSummary,
+): OrganizationRow {
+	return {
+		...toOrganizationRow(o),
+		outstanding: Number(o.outstanding),
+		staffCount: o.staffCount,
+		staysThisMonth: o.staysThisMonth,
+		stays: o.stays,
+		openStays: o.openStays,
+		runningBalance: Number(o.runningBalance),
+		invoices: o.invoices,
+		openInvoices: o.openInvoices,
+		invoicesLeft: Number(o.invoicesLeft),
+		overdueInvoices: o.overdueInvoices,
+		overdueAmount: Number(o.overdueAmount),
+		overdueNumber: o.overdueNumber ?? undefined,
+		overdueDueDate: o.overdueDueDate ?? undefined,
+	};
+}
+
+/** Demo figures for an account, worked out from the fixtures the way folio-service does. */
+export function withDemoFigures(
+	o: OrganizationRow,
+	stays: FolioRow[],
+	invoices: InvoiceRow[],
+): OrganizationRow {
+	const open = stays.filter((f) => f.status === "OPEN");
+	const unpaid = invoices.filter(
+		(i) => i.status !== "PAID" && i.status !== "DRAFT",
+	);
+	const overdue = invoices
+		.filter((i) => i.status === "OVERDUE")
+		.sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+	return {
+		...o,
+		stays: stays.length,
+		openStays: open.length,
+		runningBalance: open.reduce((s, f) => s + f.balance, 0),
+		invoices: invoices.length,
+		openInvoices: unpaid.length,
+		invoicesLeft: unpaid.reduce((s, i) => s + i.amount - i.paid, 0),
+		overdueInvoices: overdue.length,
+		overdueAmount: overdue.reduce((s, i) => s + i.amount - i.paid, 0),
+		overdueNumber: overdue[0]?.number,
+		overdueDueDate: overdue[0]?.dueDate,
+	};
+}
+
 export function toOrgMemberRow(m: OrganizationMember): OrgMemberRow {
 	return {
 		id: m.id,
@@ -97,7 +148,10 @@ export function toOrgMemberRow(m: OrganizationMember): OrgMemberRow {
 }
 
 /** folio-service never marks an invoice overdue on its own: an unpaid one past its due date reads as overdue here. */
-export function toInvoiceRow(i: Invoice, organizationName: string): InvoiceRow {
+export function toInvoiceRow(
+	i: Invoice & { overdue?: boolean | null },
+	organizationName: string,
+): InvoiceRow {
 	const amount = Number(i.amount);
 	const paid = Number(i.paidAmount ?? 0);
 	const known = ["DRAFT", "SENT", "PART_PAID", "PAID", "OVERDUE"] as const;
@@ -107,9 +161,10 @@ export function toInvoiceRow(i: Invoice, organizationName: string): InvoiceRow {
 		? (i.status as InvoiceRow["status"])
 		: "SENT";
 	if (
-		(status === "SENT" || status === "PART_PAID") &&
-		paid < amount &&
-		i.dueDate < lagosDate()
+		i.overdue ||
+		((status === "SENT" || status === "PART_PAID") &&
+			paid < amount &&
+			i.dueDate < lagosDate())
 	)
 		status = "OVERDUE";
 	return {
