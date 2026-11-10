@@ -20,7 +20,14 @@ function activeUrl(pathname: string, items: NavLink[]) {
 		.sort((a, b) => b.url.length - a.url.length)[0]?.url;
 }
 
-export function NavMain({ role }: { role: HotelRole }) {
+export function NavMain({
+	role,
+	badges = {},
+}: {
+	role: HotelRole;
+	/** Counts for links that carry one (`NavLink.badge`); nothing is shown for 0 or a missing count. */
+	badges?: Partial<Record<NonNullable<NavLink["badge"]>, number>>;
+}) {
 	const items = linksByRole[role];
 	const pathname = usePathname();
 	const active = activeUrl(pathname, items);
@@ -30,6 +37,7 @@ export function NavMain({ role }: { role: HotelRole }) {
 			<sidebar.SidebarMenu className="gap-y-[10px]">
 				{items.map((item) => {
 					const isActive = active === item.url;
+					const count = item.badge ? (badges[item.badge] ?? 0) : 0;
 					return (
 						<sidebar.SidebarMenuItem key={item.url}>
 							<sidebar.SidebarMenuButton
@@ -46,6 +54,15 @@ export function NavMain({ role }: { role: HotelRole }) {
 								<Link href={item.url} className="flex w-full items-center gap-2">
 									<LinkIcon icon={item.icon} />
 									<span className="truncate">{item.title}</span>
+									{count > 0 && (
+										<span
+											className="ml-auto rounded-pill bg-warning px-[7px] py-px text-[11px] font-bold leading-[18px] text-white group-data-[collapsible=icon]:hidden"
+											title={`${count} unpaid`}
+										>
+											{count > 99 ? "99+" : count}
+											<span className="sr-only"> unpaid</span>
+										</span>
+									)}
 								</Link>
 							</sidebar.SidebarMenuButton>
 						</sidebar.SidebarMenuItem>

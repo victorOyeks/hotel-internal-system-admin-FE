@@ -6,7 +6,10 @@ import type {
 	OrderItem,
 	OutletItem,
 	OutletSalesItem,
+	SaleDetailItem,
+	SaleRowItem,
 	SalesDay,
+	SalesHistoryItem,
 	StockItemFull,
 	StockLevelItem,
 	StockRequestItem,
@@ -23,6 +26,10 @@ import type {
 	OutletRow,
 	OutletSalesDayRow,
 	OutletSalesRow,
+	SaleDetailView,
+	SaleRow,
+	SaleStatus,
+	SalesHistoryView,
 	StockItemRow,
 	StockRequestRow,
 	StoreRow,
@@ -248,6 +255,7 @@ export function toOrderRow(o: Order, outletName?: string): OrderRow {
 		closedByName: o.closedByName ?? undefined,
 		settledBy: o.settledBy ?? undefined,
 		notes: o.notes ?? undefined,
+		paidAmount: o.paidAmount ?? undefined,
 	};
 }
 
@@ -520,4 +528,184 @@ export function toStockRequestRow(r: Request, items: Item[]): StockRequestRow {
 		issuedAt: r.issuedAt ?? undefined,
 		reason: r.reason ?? undefined,
 	};
+}
+
+// ---- sales history -----------------------------------------------------------------------------------
+
+const SALE_STATUSES = new Set<SaleStatus>([
+	"PAID",
+	"TO_PAY",
+	"PART_PAID",
+	"ON_ROOM",
+	"CANCELLED",
+	"IN_PROGRESS",
+]);
+
+export function toSaleRow(r: z.infer<typeof SaleRowItem>): SaleRow {
+	return {
+		id: r.id,
+		number: r.number,
+		outletId: r.outletId,
+		outletName: r.outletName ?? "",
+		outletKind: r.outletKind ?? undefined,
+		kind: (KINDS.has(r.kind) ? r.kind : "DINE_IN") as SaleRow["kind"],
+		tableNo: r.tableNo ?? undefined,
+		roomNumber: r.roomNumber ?? undefined,
+		guestName: r.guestName ?? undefined,
+		createdAt: r.createdAt,
+		openedBy: r.openedBy ?? undefined,
+		openedByName: r.openedByName ?? "Not recorded",
+		items: r.items ?? "",
+		itemCount: num(r.itemCount),
+		total: num(r.total),
+		paidAmount: num(r.paidAmount),
+		balance: num(r.balance),
+		status: (SALE_STATUSES.has(r.status as SaleStatus)
+			? r.status
+			: "IN_PROGRESS") as SaleStatus,
+		orderStatus: r.orderStatus ?? undefined,
+		methods: r.methods ?? [],
+		settledAt: r.settledAt ?? undefined,
+		settledBy: r.settledBy ?? undefined,
+		settledByName: r.settledByName ?? undefined,
+		cancelReason: r.cancelReason ?? undefined,
+	};
+}
+
+export function toSalesHistory(
+	h: z.infer<typeof SalesHistoryItem>,
+): SalesHistoryView {
+	const m = (x: {
+		sales: number;
+		sold: number;
+		paid: number;
+		unpaid: number;
+		onRooms: number;
+		cancelled: number;
+	}) => ({
+		sales: num(x.sales),
+		sold: num(x.sold),
+		paid: num(x.paid),
+		unpaid: num(x.unpaid),
+		onRooms: num(x.onRooms),
+		cancelled: num(x.cancelled),
+	});
+	return {
+		from: h.from,
+		to: h.to,
+		page: h.page,
+		size: h.size,
+		matching: h.matching,
+		rows: h.rows.map(toSaleRow),
+		totals: { ...m(h.totals), cancelledAmount: num(h.totals.cancelledAmount) },
+		outlets: h.outlets.map((o) => ({
+			...m(o),
+			outletId: o.outletId,
+			name: o.name,
+			kind: o.kind ?? undefined,
+		})),
+		attendants: h.attendants.map((a) => ({
+			...m(a),
+			userId: a.userId,
+			name: a.name,
+		})),
+		earlierUnpaid: {
+			count: h.earlierUnpaid.count,
+			amount: num(h.earlierUnpaid.amount),
+			oldest: h.earlierUnpaid.oldest ?? undefined,
+		},
+		viewer: h.viewer,
+		outletChoices: h.outletChoices,
+	};
+}
+
+export function toSaleDetail(
+	d: z.infer<typeof SaleDetailItem>,
+): SaleDetailView {
+	return {
+		sale: toSaleRow(d.sale),
+		roomId: d.roomId ?? undefined,
+		bookingId: d.bookingId ?? undefined,
+		tableId: d.tableId ?? undefined,
+		notes: d.notes ?? undefined,
+		subtotal: num(d.subtotal),
+		discount: num(d.discount),
+		tax: num(d.tax),
+		total: num(d.total),
+		paidAmount: num(d.paidAmount),
+		balance: num(d.balance),
+		lines: d.lines.map((l) => ({
+			id: l.id,
+			name: l.name,
+			quantity: l.quantity,
+			unitPrice: num(l.unitPrice),
+			options: lineOptionsText(l.options),
+			choices: (l.choices ?? []).map((c) => ({
+				name: c.name,
+				extra: num(c.extra),
+			})),
+			notes: l.notes ?? undefined,
+			discount: num(l.discount),
+			amount: num(l.amount),
+			status: l.status,
+			cancelReason: l.cancelReason ?? undefined,
+			cancelledByName: l.cancelledByName ?? undefined,
+		})),
+		payments: d.payments.map((p) => ({
+			paymentId: p.paymentId,
+			method: p.method,
+			amount: num(p.amount),
+			at: p.at ?? undefined,
+			reference: p.reference ?? undefined,
+			takenByName: p.takenByName ?? undefined,
+		})),
+		timeline: {
+			openedAt: d.timeline.openedAt ?? undefined,
+			openedByName: d.timeline.openedByName ?? undefined,
+			sentAt: d.timeline.sentAt ?? undefined,
+			settledAt: d.timeline.settledAt ?? undefined,
+			settledBy: d.timeline.settledBy ?? undefined,
+			settledByName: d.timeline.settledByName ?? undefined,
+			closedAt: d.timeline.closedAt ?? undefined,
+			closedByName: d.timeline.closedByName ?? undefined,
+		},
+		can: {
+			pay: d.can.pay,
+			chargeToRoom: d.can.chargeToRoom,
+			cancel: d.can.cancel,
+			note: d.can.note ?? undefined,
+		},
+	};
+}
+
+/** The query the sales routes take, from the screen's filters (blank ones left out). */
+export function salesQuery(f: {
+	from?: string;
+	to?: string;
+	outletId?: string;
+	desk?: string;
+	status?: string;
+	method?: string;
+	attendant?: string;
+	mine?: boolean;
+	q?: string;
+	page?: number;
+}) {
+	const q: Record<string, string | number | boolean> = {};
+	for (const k of [
+		"from",
+		"to",
+		"outletId",
+		"desk",
+		"status",
+		"method",
+		"attendant",
+		"q",
+	] as const) {
+		const v = f[k]?.trim();
+		if (v) q[k] = v;
+	}
+	if (typeof f.mine === "boolean") q.mine = f.mine;
+	if (typeof f.page === "number" && f.page > 0) q.page = f.page;
+	return q;
 }

@@ -31,15 +31,18 @@ export function OrderPaymentPanel({
 	terminals = [],
 	onDone,
 	onFinish,
+	editAmount,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	payment: DeskPayment | null;
 	/** The desk taking the payment; sent as the payment's role. */
-	desk: "KITCHEN" | "BAR" | "LAUNDRY" | "FRONT_OFFICE";
+	desk: "KITCHEN" | "BAR" | "LAUNDRY" | "FRONT_OFFICE" | "MANAGER" | "OWNER";
 	terminals?: TerminalRow[];
 	onDone?: (payment: TakenPayment) => void;
 	onFinish?: () => void;
+	/** Let the desk take less than the amount (a part payment); fixed otherwise. */
+	editAmount?: boolean;
 }) {
 	const [run, setRun] = useState(0);
 	useEffect(() => {
@@ -66,6 +69,7 @@ export function OrderPaymentPanel({
 			}}
 			onBack={() => onOpenChange(false)}
 			doneLabel="Back to the orders"
+			editAmount={editAmount}
 		>
 			{(v) => (
 				<SidePanel

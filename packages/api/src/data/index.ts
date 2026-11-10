@@ -1263,11 +1263,18 @@ const ROLE_SCREENS: Record<string, string[]> = {
 		"till",
 	],
 	HOUSEKEEPING: ["inspect", "linen", "lost-found", "repairs", "store"],
-	FINANCE: ["expenses", "month", "night-audit", "organizations", "tills"],
+	FINANCE: [
+		"expenses",
+		"month",
+		"night-audit",
+		"organizations",
+		"sales",
+		"tills",
+	],
 	INVENTORY: ["counts", "deliveries", "orders", "requests", "suppliers"],
 	MAINTENANCE: ["preventive", "store", "rooms"],
-	KITCHEN: ["menu", "payments", "store", "till"],
-	BAR: ["menu", "payments", "stock", "tabs", "till"],
+	KITCHEN: ["menu", "payments", "sales", "store", "till"],
+	BAR: ["menu", "payments", "sales", "stock", "tabs", "till"],
 	LAUNDRY: ["linen", "payments", "store"],
 };
 const SHARED_SCREENS = ["notifications", "profile", "help", "shifts"];

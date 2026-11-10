@@ -19,11 +19,13 @@ export function AppSidebar({
 	role,
 	hotels,
 	activeHotel,
+	badges,
 	...props
 }: React.ComponentProps<typeof Sidebar> & {
 	role: HotelRole;
 	hotels: Hotel[];
 	activeHotel: Hotel | null;
+	badges?: React.ComponentProps<typeof NavMain>["badges"];
 }) {
 	return (
 		<Sidebar {...props} className="border-r-0 bg-nav text-white [&_[data-sidebar=sidebar]]:bg-nav">
@@ -48,7 +50,7 @@ export function AppSidebar({
 				</div>
 			</SidebarHeader>
 			<SidebarContent className="scrollbar-hidden px-4">
-				<NavMain role={role} />
+				<NavMain role={role} badges={badges} />
 			</SidebarContent>
 			<SidebarRail />
 		</Sidebar>

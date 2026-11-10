@@ -10,9 +10,12 @@ import type { OutletSalesDayRow } from "@hospio/api/data/types";
 export function OutletSalesCard({
 	sales,
 	className,
+	href = "/dashboard/financials/sales",
 }: {
 	sales: OutletSalesDayRow | null | undefined;
 	className?: string;
+	/** Where "Every sale" opens: the all-outlets sales history. */
+	href?: string;
 }) {
 	return (
 		<SectionCard
@@ -20,6 +23,7 @@ export function OutletSalesCard({
 			subtitle="What was sold, including what went on rooms · not the same as money received"
 			className={className}
 			bodyClassName="gap-3 pt-2"
+			action={{ label: "Every sale", href }}
 		>
 			{!sales || sales.outlets.length === 0 ? (
 				<p className="text-[13px] text-ink-3">
