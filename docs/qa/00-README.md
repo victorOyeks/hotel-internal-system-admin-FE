@@ -22,8 +22,9 @@ refreshing or going back in the middle of a flow.
 | 11 | `11-email-messaging.md` | Real emails, guest conversations, templates | Ready |
 | 12 | `12-profile.md` | Profile, photo, password, devices, 2-step sign-in, email settings | Ready |
 | 13 | `13-owner-portal.md` | Owner screens across several hotels | Ready |
-| 14 | `14-pagination.md` | Paged lists, search and filters on every growing list | Hold: Staff and Roles lists are being changed |
+| 14 | `14-pagination.md` | Paged lists, search and filters on every growing list | Ready (Staff and Roles lists: see 16) |
 | 15 | `15-admin-portal.md` | H.M.S admin and marketer portals | Ready |
+| 16 | `16-small-fixes-1.md` | Bar/kitchen income by outlet, organizations, delivery-log search, owner PIN actions, Inbox for every role, paged Staff and Roles lists | Ready |
 
 ## Before you start
 
