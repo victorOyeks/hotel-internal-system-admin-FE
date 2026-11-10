@@ -24,6 +24,7 @@ import {
 } from "@hospio/api/actions/identity";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { UserCreated } from "@hospio/api/api/schema";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { OwnerHotelRow, PortalUserRow } from "@hospio/api/data/types";
 import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
@@ -48,7 +49,8 @@ import {
 	WhatHappens,
 } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
-import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
+import { useListParams } from "@hospio/ui/shared/list-params";
+import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { useParam } from "./common";
 
@@ -91,20 +93,27 @@ const hotelsLabel = (u: PortalUserRow) =>
 
 /** Hotel Owner · 08 Users (Figma 3079:15815): portal logins, live on identity-service. */
 export function OwnerUsers({
-	users,
+	result,
+	overall,
 	hotels,
 	businessName,
 	ownerName,
 }: {
-	users: PortalUserRow[];
+	/** The page of people on screen (`?q=&status=&page=`). */
+	result: PageResult<PortalUserRow>;
+	/** Counts over everyone (no search or status), for the cards. */
+	overall: PageResult<PortalUserRow>;
 	hotels: OwnerHotelRow[];
 	businessName: string;
 	ownerName: string;
 }) {
 	const router = useRouter();
+	const list = useListParams();
+	const users = result.data.content;
+	const all = overall.data.counts ?? result.data.counts ?? {};
+	const counts = result.data.counts ?? {};
 	const [open, setOpen] = useParam("open");
 	const [invite, setInvite] = useParam("new");
-	const [search, setSearch] = useState("");
 	const [change, setChange] = useState<PortalUserRow | null>(null);
 	const [remove, setRemove] = useState<PortalUserRow | null>(null);
 	const [reset, setReset] = useState<PortalUserRow | null>(null);
@@ -247,28 +256,24 @@ export function OwnerUsers({
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
 				<KpiCard
 					label="Portal users"
-					value={users.length}
+					value={all.all ?? 0}
 					icon={UsersIcon}
-					hint={`${users.filter((u) => u.status === "ACTIVE").length} can sign in`}
+					hint={`${all.ACTIVE ?? 0} can sign in`}
 				/>
 				<KpiCard
 					label="Invites waiting"
-					value={users.filter((u) => u.inviteStatus === "PENDING").length}
+					value={all.INVITE_PENDING ?? 0}
 					icon={MailPlusIcon}
-					hint={`${users.filter((u) => u.inviteStatus === "EXPIRED").length} expired`}
+					hint={`${all.INVITE_EXPIRED ?? 0} expired`}
 				/>
 				<KpiCard
 					label="Paused"
-					value={
-						users.filter(
-							(u) => u.status === "PAUSED" || u.status === "SUSPENDED",
-						).length
-					}
+					value={(all.PAUSED ?? 0) + (all.SUSPENDED ?? 0)}
 					icon={ShieldOffIcon}
 				/>
 				<KpiCard
 					label="Managers"
-					value={users.filter((u) => u.role === "MANAGER").length}
+					value={all.MANAGER ?? 0}
 					icon={ShieldCheckIcon}
 					hint={`for ${plural(hotels.length, "hotel")}`}
 				/>
@@ -276,16 +281,41 @@ export function OwnerUsers({
 			<Toolbar
 				left={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Name or email"
+						value={list.search}
+						onChange={list.setSearch}
+						placeholder="Name, email or phone"
+					/>
+				}
+				right={
+					<FilterSelect
+						value={list.params.status ?? ""}
+						onChange={(v) => list.set({ status: v })}
+						all={`Everyone (${counts.all ?? 0})`}
+						options={[
+							{ value: "ACTIVE", label: `Active (${counts.ACTIVE ?? 0})` },
+							{ value: "PAUSED", label: `Paused (${counts.PAUSED ?? 0})` },
+							{
+								value: "SUSPENDED",
+								label: `Suspended (${counts.SUSPENDED ?? 0})`,
+							},
+						]}
 					/>
 				}
 			/>
 			<DataTable
 				columns={cols}
 				data={users}
-				search={search}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: { fullName: "fullName", lastSignIn: "lastSignInAt" },
+				}}
+				filtered={list.filtered}
+				onClearFilters={list.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(u) => setOpen(u.id)}
 				emptyTitle="No portal users yet"
 				emptyHint="Invite a manager, finance or inventory user."

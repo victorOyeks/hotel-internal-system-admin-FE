@@ -1027,6 +1027,7 @@ export const schema = createSchema({
 	"@get/identity/users/me": { output: envelope(Me) },
 	/** The people at the active hotel (names and roles only) for any staff member: swap and cover pickers. */
 	"@get/identity/users/colleagues": { output: envelope(z.array(UserSummary)) },
+	/** The whole list without page or size (pickers, rotas, Roles & permissions); a page with counts when either is sent. */
 	"@get/identity/users": {
 		query: z
 			.object({
@@ -1034,10 +1035,14 @@ export const schema = createSchema({
 				hotelId: z.string(),
 				role: z.string(),
 				q: z.string(),
+				status: z.string(),
+				page: z.number(),
+				size: z.number(),
+				sort: z.string(),
 			})
 			.partial()
 			.optional(),
-		output: envelope(z.array(UserSummary)),
+		output: envelope(z.union([z.array(UserSummary), pagedOf(UserSummary)])),
 	},
 	"@post/identity/users": {
 		input: CreateUserRequest,

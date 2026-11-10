@@ -314,7 +314,8 @@ async function listUsers(
 		console.error("identity-service users:", error);
 		return [];
 	}
-	return res.data;
+	// Without page or size identity answers the whole list.
+	return Array.isArray(res.data) ? res.data : res.data.content;
 }
 
 /** The active hotel's people for a staff member (names and this hotel's roles only). */
@@ -698,6 +699,63 @@ export const data = {
 			businessId?: string,
 		): Promise<PortalUserRow | null> =>
 			(await data.users.list({ businessId })).find((u) => u.id === id) ?? null,
+		/**
+		 * One page of portal users (GET /identity/users?page=, docs/pagination.md): `q` name, email or phone, `status` ACTIVE,
+		 * PAUSED or SUSPENDED, `role`, `hotelId`; counts per status, managers and pending or expired invites over the rest.
+		 */
+		page: async (
+			query: ListQuery & {
+				businessId?: string;
+				hotelId?: string;
+				role?: string;
+			} = {},
+		): Promise<PageResult<PortalUserRow>> => {
+			if (!live("identity")) {
+				const all = demoOwnerUsers({
+					q: query.q,
+					role: query.role,
+					hotelId: query.hotelId,
+				});
+				const rows = all.filter(
+					(u) => !query.status || u.status === query.status,
+				);
+				const count = (f: (u: PortalUserRow) => boolean) =>
+					all.filter(f).length;
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: {
+							all: all.length,
+							ACTIVE: count((u) => u.status === "ACTIVE"),
+							PAUSED: count((u) => u.status === "PAUSED"),
+							SUSPENDED: count((u) => u.status === "SUSPENDED"),
+							MANAGER: count((u) => u.role === "MANAGER"),
+							INVITE_PENDING: count((u) => u.inviteStatus === "PENDING"),
+							INVITE_EXPIRED: count((u) => u.inviteStatus === "EXPIRED"),
+						},
+					}),
+				});
+			}
+			const [res, hotels] = await Promise.all([
+				api("@get/identity/users", {
+					...(await withSession()),
+					query: pageQuery(query) as { page: number; size: number },
+				}),
+				query.businessId ? businessHotels(query.businessId) : getHotels(),
+			]);
+			if (res.error || !res.data) {
+				console.error("identity-service users page:", res.error);
+				return failedPage(errorMessage(res.error, "People didn't load"));
+			}
+			const page = res.data.data;
+			if (Array.isArray(page))
+				return failedPage("identity-service answered a list, not a page");
+			const names = hotelNameMap(hotels);
+			return {
+				ok: true,
+				data: toPaged(page, (u) => toPortalUserRow(u, names)),
+			};
+		},
 	},
 	rooms: {
 		list: async (): Promise<RoomRow[]> => {
