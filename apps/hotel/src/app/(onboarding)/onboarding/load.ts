@@ -19,6 +19,9 @@ export async function loadOnboarding() {
 		data.business.mine(),
 		data.onboarding.mine(),
 	]);
+	// The wizard is the owner's. Someone else signed in on this browser (an invited manager who accepted
+	// their invite here) goes to their own dashboard, never to the owner's phone check (DEF-029).
+	if (user && !user.roles.includes("OWNER")) redirect("/dashboard");
 	// A self-serve owner confirms their phone before the wizard (the browser's Back can't skip it).
 	if (user && !user.verified && business?.source === "SELF_SERVE")
 		redirect("/verify-phone");

@@ -4,6 +4,7 @@ import { CheckIcon, MailIcon, ShieldIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useInviteAccepted } from "./invite-status";
 import { createUser } from "@hospio/api/actions/identity";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { saveMyOnboardingStep } from "@hospio/api/actions/onboarding";
@@ -40,6 +41,7 @@ export function ManagerStep({
 	const router = useRouter();
 	const hotel = draft.hotel;
 	const [created, setCreated] = useState<Created | null>(draft.manager ?? null);
+	const accepted = useInviteAccepted(created?.userId);
 	useFreshOnOpen();
 	const { form, update, forget } = useStepForm("manager", user?.id, {
 		fullName: "",
@@ -163,7 +165,11 @@ export function ManagerStep({
 				{created ? (
 					<>
 						<InviteCard
-							title={`${created.fullName} is invited`}
+							title={
+								accepted
+									? `${created.fullName} accepted the invite`
+									: `${created.fullName} is invited · waiting for them to accept`
+							}
 							fullName={created.fullName}
 							email={created.email}
 							phone={created.phone}

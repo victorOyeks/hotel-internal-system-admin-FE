@@ -278,3 +278,23 @@ export async function setMyPin(pin: string, password?: string): Promise<ActionRe
 	revalidatePath("/shared/profile");
 	return { ok: true, data: null };
 }
+
+/** Whether the person invited at onboarding has accepted yet (Step 4 and "All set" watch it). */
+export async function inviteStatusOf(
+	userId: string,
+): Promise<ActionResult<{ status: string; signedIn: boolean }>> {
+	if (!live("identity"))
+		return { ok: true, data: { status: "PENDING", signedIn: false } };
+	const { data, error } = await api("@get/identity/users/:id", {
+		...(await withSession()),
+		params: { id: userId },
+	});
+	if (error || !data) return { ok: false, error: errorMessage(error) };
+	return {
+		ok: true,
+		data: {
+			status: data.data.inviteStatus ?? "NONE",
+			signedIn: !!data.data.lastSignInAt,
+		},
+	};
+}
