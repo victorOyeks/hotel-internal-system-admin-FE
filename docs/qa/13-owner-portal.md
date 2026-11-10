@@ -47,10 +47,9 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 
 - Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed.
 - Email, SMS and WhatsApp are not connected on staging. Whenever something would have gone out (an invite, a
-  temporary password, a WhatsApp to a guest or a manager, a report email), a yellow **"What we would have sent"**
-  card appears top-centre with the channel, the recipient and the full text. Close it with **Close**. If it does not
+  temporary password, a WhatsApp to a guest or a manager, a report email), a yellow message card appears top-centre with the channel, the recipient and the full text. Close it with **Close**. If it does not
   appear after a step marked **(delivery)**, that is a bug.
-- The **API** button at the bottom left lists every call the screen made. Copy the failing line into your report.
+- The **API** button at the bottom left lists every call the screen made.
 - Lists are newest first by time. Money is in naira.
 
 ## 1 · Hotels and the dashboard (owner B)
@@ -223,8 +222,3 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 - Settings → Taxes and Approval limits edit the hotel picked in the sidebar.
 - The owner has no folio screen: the booking panel shows the folio totals without "Open full folio".
 
-## How to report a bug
-
-For anything that does not match, send the account, the screen (and tab, and the hotel filter), the steps, what you
-expected (quote this script), what happened (the exact message), the time, a screenshot and the failing line from
-the **API** button.

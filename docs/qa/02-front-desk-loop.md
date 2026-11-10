@@ -106,7 +106,7 @@ ends on the booking summary.
    "Send for approval" → "Sent to the manager to approve"; it shows in the manager's Approvals and the
    discount lands on the folio when approved (over the manager's limit it goes to the owner). Void stays
    manager-only (the button is disabled for front office with a note).
-   - Print or send → WhatsApp or Email → Send → "Folio sent to …"; the "What we would have sent" card shows
+   - Print or send → WhatsApp or Email → Send → "Folio sent to …"; the message card shows
      the stay summary (nothing is really sent on staging).
 3. Bookings → In-house → Check out: one panel with the bill as the folio has it now (room charges, extras,
    paid, balance). With a balance the button reads "Take ₦X": the payment steps run inside the same panel,
@@ -148,8 +148,3 @@ taken with no open till still counts in Today's money and is flagged as unattach
   list. To make a declined payment on staging: take a card payment, then
   `POST /payment/webhooks/pos/logging` with `{"paymentRequestId":"<id>","status":"DECLINED"}`.
 
-## What to report
-
-For anything that does not match: the account used, the screen, what you clicked, what you expected, what
-happened, and the time (the server logs are by time). Screenshots help; the booking reference or room number
-pins it down.

@@ -27,4 +27,3 @@ Staging: https://web-staging.hospio360.com · admin: the admin portal on staging
 - **SMS and WhatsApp show "coming soon"**: expected, not a bug. Phone codes on staging are `123456`.
 - **Card payments can't complete on staging** (the test terminal never confirms). Test cash, transfer and charge to room.
 - **Don't change the shared accounts** (tunde, godwin, victor, grace, segun, mariam, femi, jide): no role, password or 2-step changes. Invite your own staff for anything that changes an account.
-- **Log bugs in the sheet** with the script number and step (for example `08 · step 4.2`).

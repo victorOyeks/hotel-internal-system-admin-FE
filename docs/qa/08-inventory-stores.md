@@ -50,10 +50,9 @@ Godwin open **Inventory** in their menu and get the same screens as tabs along t
 ## Before you start
 
 - Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed.
-- Emails and SMS are not sent on staging. When something would have gone to a supplier, a yellow notice at the
-  top shows exactly what would have been sent ("What we would have sent"); close it with **Close**.
-- The **API** button at the bottom left lists every call the screen made, with the answer. If something fails,
-  open it and copy the failing line into your report.
+- Purchase orders are emailed to the supplier for real. A message card at the top shows what was sent, marked
+  "Email sent to …"; close it with **Close**. SMS and WhatsApp are "coming soon".
+- The **API** button at the bottom left lists every call the screen made, with the answer.
 - Quantities are shown with up to 2 decimals; money in naira.
 
 ## 1 · Stores & stock (Jide)
@@ -233,14 +232,3 @@ Check at the same moment (nobody moving stock in between):
 - The owner sees one hotel's inventory at a time (the branch picked at the top).
 - Correct level needs Inventory **Full** access (or a manager); an Edit-access storekeeper doesn't see the button.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot, and the failing line from the **API** button.

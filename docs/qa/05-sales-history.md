@@ -46,8 +46,7 @@ Use a separate browser profile (or a private window) per account so you can stay
 ## Before you start
 
 - Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed.
-- The **API** button at the bottom left lists every call the screen made, with the answer. If something fails,
-  open it and copy the failing line into your report.
+- The **API** button at the bottom left lists every call the screen made, with the answer.
 - Money is in whole naira. Where a status is shown it is a word (Paid, To pay, Part paid, On a room, Cancelled,
   In progress), never a code like TO_PAY.
 
@@ -191,14 +190,3 @@ rooms**. **Unpaid** includes open tabs and tickets still being cooked. Cancelled
 - Recent sales shows the newest 8; older unpaid sales are on Sales (and counted in the menu).
 - The count in the menu updates when a page loads or after an action; it is not live.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot, and the failing line from the **API** button.

@@ -22,10 +22,11 @@ there and show up for every role, so name them after yourself (e.g. "QA Ada Hote
 
 ## Deliveries
 
-Email and SMS are not connected on staging. Whenever the platform would have sent something (the phone
-code at sign-up, an invite, a temporary password, a handover pack), a yellow **"What we would have
-sent"** card appears top-centre of the hotel app with the channel (Email, SMS), the recipient, the
-subject and the full text, each with a Copy button; it stays until you press Close and several can
+Emails are sent for real, to the address typed. SMS and WhatsApp are not sent yet ("coming soon"); the
+phone code on staging is always `123456`. Whenever the platform sends something (an invite, a temporary
+password, a handover pack), a yellow message card appears top-centre of the hotel app with the channel,
+the recipient, the subject and the full text, each with a Copy button, marked "Email sent to …" or
+"Not sent · … coming soon"; it stays until you press Close and several can
 stack. The invite card inside the panel still shows the password and link as before; the notice is in
 addition. Steps marked **(delivery)** must show it: sign-up (the phone code), the phone-check page
 when the code is sent or re-sent, Invite user, Resend invite, Reset password, the wizard's manager
@@ -269,8 +270,3 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
 - No email or WhatsApp is sent for invites, passwords or the handover pack; the tester shares them.
 - Phone verification is the self-serve path (hotel app); see the owner section of `onboarding.md`.
 
-## What to report
-
-For anything that does not match: the account used, the screen, what you clicked, what you expected,
-what happened, and the time (the server logs are by time). For a failed save, the red toast text is the
-API's message; include it. The business name, hotel name or the invited person's email pins it down.
