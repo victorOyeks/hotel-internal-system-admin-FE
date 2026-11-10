@@ -17,6 +17,7 @@ type ApprovalLike = {
 	hotelName?: string | null;
 	decidedByName?: string | null;
 	note?: string | null;
+	hotelId?: string | null;
 };
 
 export function toApprovalRow(a: ApprovalLike): ApprovalRow {
@@ -38,6 +39,7 @@ export function toApprovalRow(a: ApprovalLike): ApprovalRow {
 				: "PENDING",
 		createdAt: a.createdAt,
 		decidedBy: a.decidedByName ?? undefined,
+		hotelId: a.hotelId ?? undefined,
 		note: a.note ?? undefined,
 		hotelName: a.hotelName ?? undefined,
 		sourceRef: a.sourceRef ?? undefined,

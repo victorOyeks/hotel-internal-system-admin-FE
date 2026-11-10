@@ -5,12 +5,13 @@ import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 10 Company (tenant), taxes & currency and approval limits (hotel-config, active hotel), transfer ownership. */
+/** Hotel Owner · 10 Company (tenant), taxes & currency and approval limits (hotel-config, active hotel), transfer ownership (a request to H.M.S support). */
 export default async function Page() {
-	const [business, hotel, sections] = await Promise.all([
+	const [business, hotel, sections, transfer] = await Promise.all([
 		data.business.mine(),
 		getActiveHotel(),
 		loadSetup(),
+		data.owner.transfer(),
 	]);
 	return (
 		<OwnerSettings
@@ -19,6 +20,7 @@ export default async function Page() {
 			hotelId={hotel?.id}
 			taxes={sections.find((s) => s.key === "taxes")}
 			approvals={sections.find((s) => s.key === "approvals")}
+			transfer={transfer}
 		/>
 	);
 }

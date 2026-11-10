@@ -39,6 +39,7 @@ import { fnbData } from "./fnb";
 import { inventoryData } from "./inventory";
 import { lmData } from "./lm";
 import { opsData } from "./ops";
+import { ownerData } from "./owner";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
 import {
 	type OrganizationParts,
@@ -249,7 +250,8 @@ const demoBusinessUsers = (businessId: string): PortalUserRow[] =>
 				}));
 
 /** folio-service's organizations for the active hotel, once per request. */
-const liveOrganizations = cache(async (): Promise<Organization[]> => {
+/** Keyed by the hotel the call goes to, so the owner's per-hotel loads (atHotel) don't share one hotel's list. */
+const organizationsAt = cache(async (_hotel: string): Promise<Organization[]> => {
 	const { data: res, error } = await api(
 		"@get/folio/organizations",
 		await withSession(),
@@ -260,6 +262,8 @@ const liveOrganizations = cache(async (): Promise<Organization[]> => {
 	}
 	return res.data;
 });
+const liveOrganizations = async (): Promise<Organization[]> =>
+	organizationsAt((await withSession()).headers?.["X-Hotel-Id"] ?? "");
 
 const organizationInvoices = cache(async (id: string): Promise<Invoice[]> => {
 	const { data: res, error } = await api(
@@ -301,6 +305,8 @@ const organizationParts = cache(
 );
 
 export const data = {
+	/** The owner portal: every hotel of the business, each row tagged with its hotel (./owner, docs/owner-portal.md). */
+	owner: ownerData,
 	business: {
 		/** The caller's business with hotels and onboarding state (GET /tenant/businesses/mine). */
 		mine: async (): Promise<Business | null> => {
@@ -1277,10 +1283,10 @@ const ROLE_SCREENS: Record<string, string[]> = {
 	BAR: ["menu", "payments", "sales", "stock", "tabs", "till"],
 	LAUNDRY: ["linen", "payments", "store"],
 };
-const SHARED_SCREENS = ["notifications", "profile", "help", "shifts"];
+const SHARED_SCREENS = ["notifications", "profile", "help", "shifts", "inbox"];
 /** Where a service link lands per role when the role has no screen of that name. */
 const SCREEN_ALIASES: Record<string, Record<string, string>> = {
-	OWNER: { approvals: "", "night-audit": "financials" },
+	OWNER: { approvals: "", "night-audit": "financials", inbox: "messaging" },
 	FINANCE: { financials: "", "night-audit": "night-audit" },
 	MANAGER: { repairs: "tasks", inventory: "inventory" },
 	FRONT_OFFICE: { orders: "", menu: "" },
@@ -1297,7 +1303,9 @@ export function notificationLink(
 ): string | undefined {
 	if (!link) return undefined;
 	if (link.startsWith("/dashboard")) return link;
-	const [rawFirst, second] = link.replace(/^\/+/, "").split("/");
+	// A link may carry a query (/inbox?open=…, /reports?report=…); it is kept on the screen it lands on.
+	const [path, query] = link.split("?");
+	const [rawFirst, second] = path.replace(/^\/+/, "").split("/");
 	if (!rawFirst) return "/dashboard";
 	// A work order opens on the screen that role follows work orders on.
 	if (rawFirst === "repairs" && second && role) {
@@ -1320,7 +1328,7 @@ export function notificationLink(
 	if (first === "bookings" && second)
 		return `/dashboard/bookings?tab=all&open=${second}`;
 	if (first === "staff" && second) return `/dashboard/staff?tab=${second}`;
-	return `/dashboard/${first}`;
+	return `/dashboard/${first}${query ? `?${query}` : ""}`;
 }
 
 function toNotificationRow(

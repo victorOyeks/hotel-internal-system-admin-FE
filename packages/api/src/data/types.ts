@@ -537,6 +537,10 @@ export type OrganizationRow = {
 	staysThisMonth: number;
 	agreementNotes?: string;
 	since: string;
+	/** A credit limit above the owner's threshold that a manager asked for, waiting for the owner. */
+	requestedCreditLimit?: number;
+	creditRequestedBy?: string;
+	creditApprovalId?: string;
 };
 export type OrgMemberRow = {
 	id: Id;
@@ -883,6 +887,7 @@ export type ApprovalRow = {
 	decidedBy?: string;
 	note?: string;
 	hotelName?: string;
+	hotelId?: Id;
 	sourceRef?: string;
 };
 export type NotificationRow = {
@@ -1638,4 +1643,129 @@ export type RolesAccessRow = {
 	otherHotelRoles: number;
 	/** The signed-in person: their own roles are not theirs to change. */
 	self: boolean;
+};
+
+// ---- owner portal (docs/owner-portal.md) -----------------------------------------------------------
+
+/** A row of an owner list: which hotel of the business it belongs to. */
+export type AtHotel = { hotelId: Id; hotelName: string };
+
+/** What a booking panel needs about the booking's hotel: the manager's components act there. */
+export type OwnerHotelContext = AtHotel & {
+	rooms: RoomRow[];
+	types: RoomTypeRow[];
+	folios: FolioRow[];
+	guests: GuestRow[];
+	organizations: OrganizationRow[];
+	terminals: TerminalRow[];
+	pendingOnPos: Record<string, number>;
+};
+
+/** One person at one hotel (a person working at two hotels is two rows). */
+export type OwnerStaffRow = StaffRow &
+	AtHotel & {
+		/** Key for the list: person and hotel. */
+		key: string;
+		pausedUntil?: string;
+		statusReason?: string;
+		statusChangedBy?: string;
+		statusChangedAt?: string;
+		/** Their grants at this hotel, for "remove from hotel". */
+		grantIdsHere: string[];
+		isManager: boolean;
+	};
+
+export type OwnerThreadRow = {
+	id: Id;
+	hotelId?: Id;
+	hotelName?: string;
+	subject: string;
+	audience: "PERSON" | "MANAGERS";
+	withName: string;
+	mine: boolean;
+	lastAt: string;
+	preview: string;
+	unread: number;
+	broadcastId?: string;
+};
+
+export type OwnerThreadMessage = {
+	id: Id;
+	senderName: string;
+	body: string;
+	at: string;
+	mine: boolean;
+};
+
+export type SettlementView = {
+	id: Id;
+	day: string;
+	provider: string;
+	hotelName?: string;
+	gross: number;
+	fees: number;
+	hmsShare: number;
+	net: number;
+	payments: number;
+	status: "PENDING" | "SETTLED" | "FAILED";
+	settledAt?: string;
+	failureReason?: string;
+};
+
+export type OwnerChangeRow = PlatformChangeRow & {
+	hotelName?: string;
+	undoRequestedAt?: string;
+	undoRequestedBy?: string;
+	undoTicketId?: string;
+};
+
+export type ReportScheduleRow = {
+	id: Id;
+	kind: string;
+	name: string;
+	every: "DAILY" | "WEEKLY" | "MONTHLY";
+	sendAt: string;
+	hotelId?: Id;
+	hotelName: string;
+	managers: boolean;
+	status: "SCHEDULED" | "STOPPED";
+	nextRunAt?: string;
+	lastRunAt?: string;
+	requestedBy: string;
+};
+
+export type ReportRunRow = {
+	id: Id;
+	kind: string;
+	name: string;
+	from: string;
+	to: string;
+	hotelId?: Id;
+	hotelName: string;
+	at: string;
+};
+
+export type CreditRequestRow = {
+	approvalId: Id;
+	status: "PENDING" | "APPROVED" | "DECLINED" | "QUESTION";
+	organizationId?: Id;
+	organizationName: string;
+	hotelId?: Id;
+	hotelName: string;
+	currentLimit?: number;
+	requestedLimit: number;
+	outstanding?: number;
+	requesterName: string;
+	createdAt: string;
+	decidedBy?: string;
+	note?: string;
+};
+
+export type TransferRequestRow = {
+	id: Id;
+	subject: string;
+	status: string;
+	createdAt: string;
+	resolvedAt?: string;
+	resolution?: string;
 };

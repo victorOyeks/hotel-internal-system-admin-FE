@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@hospio/api/actions";
 import { api, errorMessage } from "@hospio/api/api/client";
+import type { Delivery } from "@hospio/api/api/routes-admin";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import { toBookingRow, toGuestRow } from "@hospio/api/data/mappers/reservation";
@@ -132,7 +133,8 @@ export async function checkOut(b: BookingRow, input: CheckOutInput, fallback: Pa
 	return { ok: true, data: { status: row.status, checkedOutAt: row.checkedOutAt, paid } };
 }
 
-export async function changeBookingDates(b: BookingRow, checkInDate: string, checkOutDate: string, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow>>> {
+/** PUT /reservation/bookings/{id}: new dates; the guest is told on WhatsApp (what they got comes back as `deliveries` on staging). */
+export async function changeBookingDates(b: BookingRow, checkInDate: string, checkOutDate: string, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow> & { deliveries?: Delivery[] | null }>> {
 	if (!live("reservation")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback };
@@ -141,7 +143,7 @@ export async function changeBookingDates(b: BookingRow, checkInDate: string, che
 	if (error || !data) return { ok: false, error: errorMessage(error, "The dates could not be changed") };
 	revalidateBookings();
 	const row = toBookingRow(data.data, guestMap(), new Map());
-	return { ok: true, data: { checkInDate: row.checkInDate, checkOutDate: row.checkOutDate, nights: row.nights, totalAmount: row.totalAmount, nightlyRate: row.nightlyRate, roomId: row.roomId, roomNumber: row.roomNumber } };
+	return { ok: true, data: { checkInDate: row.checkInDate, checkOutDate: row.checkOutDate, nights: row.nights, totalAmount: row.totalAmount, nightlyRate: row.nightlyRate, roomId: row.roomId, roomNumber: row.roomNumber, deliveries: data.data.deliveries } };
 }
 
 export async function cancelBooking(b: BookingRow, reason: string, refundable: boolean, fallback: Partial<BookingRow>): Promise<ActionResult<Partial<BookingRow>>> {

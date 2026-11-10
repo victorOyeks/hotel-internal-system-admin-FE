@@ -546,7 +546,13 @@ export function OrganizationScreen({
 											label: "Invoices",
 											value: billingCycleLabel(org.billingCycle),
 										},
-										{ label: "Credit limit", value: naira(org.creditLimit) },
+										{
+											label: "Credit limit",
+											value:
+												org.requestedCreditLimit != null
+													? `${naira(org.creditLimit)} · ${naira(org.requestedCreditLimit)} waiting for the owner`
+													: naira(org.creditLimit),
+										},
 										{
 											label: "Daily cap",
 											value: org.dailyCap
@@ -656,7 +662,13 @@ export function OrganizationScreen({
 									label: "Invoices",
 									value: billingCycleLabel(org.billingCycle),
 								},
-								{ label: "Credit limit", value: naira(org.creditLimit) },
+								{
+									label: "Credit limit",
+									value:
+										org.requestedCreditLimit != null
+											? `${naira(org.creditLimit)} · ${naira(org.requestedCreditLimit)} waiting for the owner`
+											: naira(org.creditLimit),
+								},
 								{
 									label: "Daily cap",
 									value: org.dailyCap ? naira(org.dailyCap) : "None",

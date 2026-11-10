@@ -64,7 +64,12 @@ const termsOptions = (days: number) =>
 		: [...TERMS, { value: String(days), label: `${days} days` }];
 
 const OWNER_LIMIT_NOTE =
-	"A credit limit above what managers may set is refused · the owner sets it";
+	"A credit limit above what managers may set goes to the owner to approve · the rest saves now";
+/** What the save says: the limit applied, or waiting for the owner. */
+const savedMessage = (o: OrganizationRow, done: string) =>
+	o.requestedCreditLimit != null
+		? `${done} · the credit limit of ${naira(o.requestedCreditLimit)} is waiting for the owner`
+		: done;
 
 export function NewOrganizationPanel({
 	open,
@@ -130,7 +135,7 @@ export function NewOrganizationPanel({
 		};
 		run(
 			() => createOrganization(input, fallback),
-			`${name} added`,
+			(o) => savedMessage(o, `${name} added`),
 			(o) => {
 				onSaved(o);
 				onClose();
@@ -761,7 +766,7 @@ export function AgreementPanel({
 		};
 		run(
 			() => updateOrganization(org.id, input, org),
-			"Agreement updated",
+			(o) => savedMessage(o, "Agreement updated"),
 			(o) => {
 				onSaved(o);
 				onClose();
@@ -819,7 +824,7 @@ export function AgreementPanel({
 							onChange={setLimit}
 							hint={
 								raised
-									? "Higher than now · refused if above what managers may set"
+									? "Higher than now · above what managers may set, it goes to the owner"
 									: undefined
 							}
 						/>

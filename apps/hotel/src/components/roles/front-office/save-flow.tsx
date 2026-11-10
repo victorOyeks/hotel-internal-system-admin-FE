@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Note } from "@hospio/ui/shared/detail-list";
-import { checkIn } from "@hospio/api/actions/reservation";
+import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import type {
 	BookingRow,
 	FolioRow,
@@ -52,6 +52,7 @@ export function useSaveFlow({
 	/** Closed before anything was saved. */
 	onClose: () => void;
 }) {
+	const { checkIn } = useHotelActions();
 	const [phase, setPhase] = useState<"form" | "pay">("form");
 	const [saved, setSaved] = useState<BookingRow | null>(null);
 	const [walk, setWalk] = useState<WalkIn | null>(null);

@@ -35,11 +35,11 @@ export default async function Page() {
 		maintenance,
 		usage,
 	] = await Promise.all([
-		data.hotels.withMoney(),
+		data.owner.hotels(),
 		data.finance.transactions(),
 		data.finance.expenses(),
-		data.organizations.list(),
-		data.approvals.list(),
+		data.owner.organizations(),
+		data.owner.approvals(),
 		data.finance.series(lagosDay(-29), lagosDay(0)),
 		data.business.mine(),
 		data.hotels.limits(),
@@ -70,6 +70,7 @@ export default async function Page() {
 				expenses={expenses}
 				payroll={ownerPayroll}
 				organizations={organizations}
+				creditRequests={data.owner.creditRequests(approvals, organizations)}
 				approvals={approvals}
 				outletSales={outletSales}
 			/>

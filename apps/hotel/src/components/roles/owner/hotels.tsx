@@ -32,7 +32,7 @@ import {
 import { useAction } from "@hospio/api/actions/use-action";
 import type { HotelStatus, UserCreated } from "@hospio/api/api/schema";
 import type { OwnerHotelRow } from "@hospio/api/data/types";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
+import { startThread } from "@hospio/api/actions/owner";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note } from "@hospio/ui/shared/detail-list";
@@ -541,7 +541,35 @@ export function OwnerHotels({
 				open={exportOpen}
 				onOpenChange={setExportOpen}
 				title="Export hotels"
-				what="Hotels list"
+				what="Hotels"
+				rows={() => [
+					[
+						"Hotel",
+						"City",
+						"Status",
+						"Rooms",
+						"Manager",
+						"Occupancy %",
+						"Revenue this month (NGN)",
+						"Expenses this month (NGN)",
+						"Revenue last month (NGN)",
+						"Staff on shift",
+						"Open repairs",
+					],
+					...rows.map((h) => [
+						h.name,
+						h.city,
+						h.status,
+						h.rooms,
+						h.manager,
+						h.occupancy,
+						h.revenueMonth,
+						h.expensesMonth,
+						h.revenueLastMonth,
+						h.onShift,
+						h.openIssues,
+					]),
+				]}
 			/>
 		</>
 	);
@@ -1151,7 +1179,7 @@ export function EditHotelPanel({
 	);
 }
 
-/** Messaging is not wired yet: this panel still runs on the demo action. */
+/** Message the hotel's manager: a staff thread at that hotel (to the manager, or to its managers when none is named). */
 export function ContactManagerPanel({
 	hotel,
 	onClose,
@@ -1160,15 +1188,20 @@ export function ContactManagerPanel({
 	onClose: () => void;
 }) {
 	const [msg, setMsg] = useState("");
-	const { run, pending } = useNotConnectedAction();
+	const [whatsapp, setWhatsapp] = useState(false);
+	const { run, pending } = useAction();
+	const named = !!hotel?.managerUserId && hotel.manager !== "—";
+	const who = named
+		? (hotel?.manager ?? "the manager")
+		: `${hotel?.name ?? "the hotel"}'s managers`;
 	return (
 		<SidePanel
 			open={!!hotel}
 			onOpenChange={(o) => !o && onClose()}
-			title={`Message ${hotel?.manager && hotel.manager !== "—" ? hotel.manager : "the manager"}`}
+			title={`Message ${who}`}
 			subtitle={`Manager · ${hotel?.name ?? ""}`}
 			icon={MessageSquareIcon}
-			footerInfo="They see it in the app and on WhatsApp"
+			footerInfo="They see it in the app (Inbox) and reply to you on Messaging"
 			footer={
 				<>
 					<Button variant="outline" className={btn.secondary} onClick={onClose}>
@@ -1176,12 +1209,28 @@ export function ContactManagerPanel({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={pending || !msg}
+						disabled={pending || !msg.trim() || !hotel}
 						onClick={() =>
-							run(`Message sent to ${hotel?.manager}`, () => {
-								setMsg("");
-								onClose();
-							})
+							hotel &&
+							run(
+								() =>
+									withDeliveries(
+										startThread({
+											hotelId: hotel.hotelId,
+											toUserId: named ? hotel.managerUserId : undefined,
+											toHotelManagers: !named,
+											body: msg,
+											whatsapp,
+										}),
+										`Message to ${who}`,
+									),
+								`Message sent to ${who}`,
+								() => {
+									setMsg("");
+									setWhatsapp(false);
+									onClose();
+								},
+							)
 						}
 					>
 						Send message
@@ -1193,8 +1242,8 @@ export function ContactManagerPanel({
 				<DetailList
 					columns={2}
 					items={[
-						{ label: "Phone", value: hotel?.phone || "—" },
-						{ label: "Email", value: hotel?.email || "—" },
+						{ label: "Hotel phone", value: hotel?.phone || "—" },
+						{ label: "Hotel email", value: hotel?.email || "—" },
 					]}
 				/>
 				<TextareaField
@@ -1203,6 +1252,12 @@ export function ContactManagerPanel({
 					onChange={setMsg}
 					rows={5}
 					placeholder="e.g. Please send me the diesel usage for last week"
+				/>
+				<ToggleField
+					label="Also send on WhatsApp"
+					hint="To the manager's phone"
+					checked={whatsapp}
+					onChange={setWhatsapp}
 				/>
 			</div>
 		</SidePanel>

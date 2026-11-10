@@ -17,7 +17,6 @@ import { useState } from "react";
 import {
 	changeAccess,
 	createUser,
-	pauseAll,
 	resetPassword,
 } from "@hospio/api/actions/identity";
 import { useAction } from "@hospio/api/actions/use-action";
@@ -32,7 +31,6 @@ import {
 	FieldRow,
 	SelectField,
 	TextField,
-	TextareaField,
 	ToggleField,
 } from "@hospio/ui/shared/field";
 import {
@@ -818,98 +816,6 @@ export function ResetPasswordModal({
 	);
 }
 
-/** POST /identity/users/{id}/pause-all?paused=false. */
-export function ResumeModal({
-	staff,
-	onClose,
-}: {
-	staff: StaffRow | null;
-	onClose: () => void;
-}) {
-	const router = useRouter();
-	const { run, pending } = useAction();
-	return (
-		<ConfirmModal
-			open={!!staff}
-			onOpenChange={(o) => !o && onClose()}
-			title={`Let ${staff?.fullName} sign in again?`}
-			subtitle="Manager only · logged"
-			confirmLabel="Resume access"
-			pending={pending}
-			onConfirm={() =>
-				staff &&
-				run(
-					() => pauseAll(staff.userId ?? staff.id, false),
-					`${staff.fullName} can sign in again`,
-					() => {
-						onClose();
-						router.refresh();
-					},
-				)
-			}
-		>
-			<WhatHappens
-				items={[
-					"Every role they hold is active again",
-					"Their shifts stay as they were on the rota",
-				]}
-			/>
-		</ConfirmModal>
-	);
-}
-
-/** Suspend = POST /identity/users/{id}/pause-all (every role paused; the person cannot sign in). */
-export function SuspendModal({
-	staff,
-	onClose,
-}: {
-	staff: StaffRow | null;
-	onClose: () => void;
-}) {
-	const router = useRouter();
-	const { run, pending } = useAction();
-	const [reason, setReason] = useState("");
-	return (
-		<ConfirmModal
-			open={!!staff}
-			onOpenChange={(o) => !o && onClose()}
-			tone="danger"
-			title={`Suspend ${staff?.fullName}?`}
-			subtitle="Manager only · logged in the activity log"
-			confirmLabel="Suspend"
-			pending={pending}
-			onConfirm={() =>
-				staff &&
-				run(
-					() => pauseAll(staff.userId ?? staff.id, true),
-					`${staff.fullName} suspended`,
-					() => {
-						onClose();
-						router.refresh();
-					},
-				)
-			}
-		>
-			<div className="flex flex-col gap-4">
-				<WhatHappens
-					tone="danger"
-					items={[
-						"They can't sign in on the desk or the tablet until you resume them",
-						"Their shifts this week show as uncovered on the rota",
-						"History (shifts, payments they took) is kept",
-					]}
-				/>
-				<TextareaField
-					label="Reason"
-					value={reason}
-					onChange={setReason}
-					placeholder="For your records · the activity log keeps it when it is wired"
-				/>
-			</div>
-		</ConfirmModal>
-	);
-}
-
 /** Remove = PUT /identity/users/{id}/roles/{grantId} REMOVE on their grant(s) for this hotel. */
 export function RemoveModal({
 	staff,
@@ -978,52 +884,5 @@ export function RemoveModal({
 				]}
 			/>
 		</ConfirmModal>
-	);
-}
-
-export function MessageModal({
-	staff,
-	onClose,
-}: {
-	staff: StaffRow | null;
-	onClose: () => void;
-}) {
-	const pending = false;
-	const [body, setBody] = useState("");
-	return (
-		<Modal
-			open={!!staff}
-			onOpenChange={(o) => !o && onClose()}
-			icon={MessageSquareIcon}
-			title={`Message ${staff?.fullName.split(" ")[0] ?? ""}`}
-			subtitle="Not connected yet · nothing is sent"
-			footer={
-				<>
-					<Button variant="outline" className={btn.secondary} onClick={onClose}>
-						Cancel
-					</Button>
-					<Button
-						className={btn.primary}
-						disabled={!body || pending}
-						onClick={() => {
-							toast.info(
-								"Messaging staff is not connected yet · nothing was sent",
-							);
-							onClose();
-						}}
-					>
-						Send
-					</Button>
-				</>
-			}
-		>
-			<TextareaField
-				label="Message"
-				value={body}
-				onChange={setBody}
-				rows={4}
-				placeholder="Please come 30 minutes early tomorrow…"
-			/>
-		</Modal>
 	);
 }

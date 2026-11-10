@@ -24,7 +24,7 @@ import { fmtDay, naira, plural } from "@hospio/ui/shared/format";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { createBooking } from "@hospio/api/actions/reservation";
+import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	BookingRow,
@@ -79,6 +79,7 @@ export function NewBookingPanel({
 	onFinish,
 }: NewBookingProps) {
 	const { run, pending } = useAction();
+	const { createBooking } = useHotelActions();
 	const flow = useSaveFlow({
 		terminals,
 		folios,

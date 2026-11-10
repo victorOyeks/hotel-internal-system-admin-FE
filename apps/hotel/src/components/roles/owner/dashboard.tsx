@@ -404,7 +404,29 @@ export function OwnerDashboard({
 			<DownloadModal
 				open={download}
 				onOpenChange={setDownload}
-				what="Monthly summary · all branches"
+				what="Monthly summary · every hotel"
+				rows={() => [
+					[
+						"Hotel",
+						"Revenue today (NGN)",
+						"Revenue this month (NGN)",
+						"Expenses this month (NGN)",
+						"Net (NGN)",
+						"Revenue last month (NGN)",
+						"Occupancy %",
+						"Open repairs",
+					],
+					...hotels.map((h) => [
+						h.name,
+						h.revenueToday,
+						h.revenueMonth,
+						h.expensesMonth,
+						h.revenueMonth - h.expensesMonth,
+						h.revenueLastMonth,
+						h.occupancy,
+						h.openIssues,
+					]),
+				]}
 			/>
 		</>
 	);
