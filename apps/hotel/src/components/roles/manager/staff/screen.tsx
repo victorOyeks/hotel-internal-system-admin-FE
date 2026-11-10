@@ -160,6 +160,7 @@ export function StaffScreen({
 			cell: ({ row }) => (
 				<AvatarName
 					name={row.original.fullName}
+					photo={row.original.photo}
 					secondary={`#${row.original.id.replace("u-", "DD0").toUpperCase().slice(0, 6)} · ${row.original.phone}`}
 				/>
 			),

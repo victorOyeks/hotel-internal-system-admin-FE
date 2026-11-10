@@ -8,6 +8,7 @@ import { lmRoutes } from "./routes-lm";
 import { opsRoutes } from "./routes-ops";
 import { ownerRoutes } from "./routes-owner";
 import { paymentRoutes } from "./routes-payments";
+import { profileRoutes } from "./routes-profile";
 import { pagedOf, pageParams } from "./paged";
 
 /**
@@ -98,6 +99,12 @@ export const Me = z.object({
 	createdAt: z.string(),
 	/** A PIN is set for shared devices (docs/shared-devices.md). */
 	hasPin: z.boolean().nullable().optional(),
+	/** en, yo, ha, ig or pcm (docs/profile.md). */
+	language: z.string().nullable().optional(),
+	/** Changes whenever the photo does; null means no photo (initials instead). */
+	photoVersion: z.number().nullable().optional(),
+	passwordChangedAt: z.string().nullable().optional(),
+	jobTitle: z.string().nullable().optional(),
 });
 
 export const InviteStatus = z.enum(["PENDING", "ACCEPTED", "EXPIRED", "NONE"]);
@@ -135,6 +142,8 @@ export const UserSummary = z.object({
 	jobTitle: z.string().nullable().optional(),
 	/** A PIN is set for shared devices; a manager can reset it. */
 	hasPin: z.boolean().nullable().optional(),
+	/** Null when there is no photo: /api/people/<id>/photo?v=<photoVersion> otherwise. */
+	photoVersion: z.number().nullable().optional(),
 });
 
 /** The temporary password and invite token are shown once; the invite link opens /accept-invite?token=. */
@@ -983,20 +992,13 @@ export const schema = createSchema({
 	...inventoryRoutes,
 	...lmRoutes,
 	...deviceRoutes,
+	...profileRoutes,
 	// identity
-	"@post/identity/auth/sign-in": {
-		input: z.object({ email: z.string(), password: z.string() }),
-		output: envelope(AuthResponse),
-	},
 	"@post/identity/auth/refresh": {
 		input: z.object({ refreshToken: z.string() }),
 		output: envelope(AuthResponse),
 	},
 	"@post/identity/auth/logout": { output: envelope(z.null()) },
-	"@post/identity/auth/change-password": {
-		input: z.object({ currentPassword: z.string(), newPassword: z.string() }),
-		output: envelope(z.null()),
-	},
 	"@post/identity/auth/sign-up": {
 		input: z.object({
 			fullName: z.string(),
@@ -1027,6 +1029,12 @@ export const schema = createSchema({
 		output: envelope(AuthResponse),
 	},
 	"@get/identity/users/me": { output: envelope(Me) },
+	/** The caller's own details (docs/profile.md): only what is sent changes; email is not editable here. */
+	"@put/identity/users/me": {
+		input: z.object({ fullName: z.string(), phone: z.string(), language: z.string() }).partial(),
+		output: envelope(Me),
+	},
+	"@delete/identity/users/me/photo": { output: envelope(Me) },
 	/** The people at the active hotel (names and roles only) for any staff member: swap and cover pickers. */
 	"@get/identity/users/colleagues": { output: envelope(z.array(UserSummary)) },
 	/** The whole list without page or size (pickers, rotas, Roles & permissions); a page with counts when either is sent. */

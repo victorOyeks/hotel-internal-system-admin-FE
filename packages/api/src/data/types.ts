@@ -63,6 +63,8 @@ export type OwnerHotelRow = {
 /** A portal user (owner's Users screen, platform People tab): one person, their grants and invite state. */
 export type PortalUserRow = {
 	id: Id;
+	/** /api/people/<id>/photo?v=…; initials without one. */
+	photo?: string;
 	userId: Id;
 	businessId: string;
 	fullName: string;
@@ -1708,6 +1710,7 @@ export type LaundryMoney = {
 /** Roles & permissions · Staff access: one person with their roles at the active hotel (plus business-wide ones). */
 export type RolesAccessRow = {
 	id: Id;
+	photo?: string;
 	fullName: string;
 	email: string;
 	department: string;

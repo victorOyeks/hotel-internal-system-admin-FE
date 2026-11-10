@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Avatar, AvatarFallback } from "@hospio/ui/primitives/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@hospio/ui/primitives/avatar";
 import { cn } from "@hospio/ui/utils";
 import { initials } from "./format";
 
@@ -31,11 +31,13 @@ export function TotalsList({ rows, className }: { rows: { label: string; value: 
 	);
 }
 
-export function AvatarName({ name, secondary, size = "md", className }: { name: string; secondary?: ReactNode; size?: "sm" | "md" | "lg"; className?: string }) {
+/** `photo`: a person's profile photo URL (initials when absent or while it fails to load). */
+export function AvatarName({ name, secondary, size = "md", className, photo }: { name: string; secondary?: ReactNode; size?: "sm" | "md" | "lg"; className?: string; photo?: string | null }) {
 	const sz = { sm: "size-7 text-[10px]", md: "size-9 text-xs", lg: "size-12 text-sm" }[size];
 	return (
 		<div className={cn("flex min-w-0 items-center gap-[10px]", className)}>
 			<Avatar className={sz}>
+				{photo && <AvatarImage src={photo} alt="" className="object-cover" />}
 				<AvatarFallback className="bg-brand-soft font-semibold text-brand">{initials(name)}</AvatarFallback>
 			</Avatar>
 			<div className="min-w-0">

@@ -214,6 +214,7 @@ export function StaffProfilePanel({
 					<div className="flex items-center gap-3">
 						<AvatarName
 							name={staff.fullName}
+							photo={staff.photo}
 							size="lg"
 							secondary={`${staff.email} · ${staff.phone}`}
 						/>

@@ -1,5 +1,5 @@
 import type { HotelSetupSection } from "@hospio/api/data/types";
-import { at, day } from "./hotel";
+import { day } from "./hotel";
 
 /** Extra sample data for the Manager admin screens (roles, hotel setup extras, help). */
 
@@ -126,19 +126,3 @@ export const demoFaq = [
 	{ q: "What does the night audit check?", a: "That every arrival is checked in or marked no-show, every departure has checked out, tills are counted, folios have no unposted charges and the room board matches housekeeping." },
 ];
 
-export const demoSessions = [
-	{ id: "s-1", device: "This device · Chrome on macOS", where: "Ikeja, Lagos", at: at(0, 6, 55), current: true },
-	{ id: "s-2", device: "iPhone · Safari", where: "Ikeja, Lagos", at: at(-1, 21, 10), current: false },
-	{ id: "s-3", device: "Front desk tablet", where: "Simpas Ikeja", at: at(-3, 7, 2), current: false },
-];
-
-export const demoNotificationPrefs = [
-	{ key: "approvals", label: "Approvals waiting on me", inApp: true, email: true, whatsapp: true },
-	{ key: "payments", label: "Declined or disputed payments", inApp: true, email: false, whatsapp: true },
-	{ key: "repairs", label: "Urgent repairs", inApp: true, email: false, whatsapp: true },
-	{ key: "stock", label: "Stock below minimum", inApp: true, email: true, whatsapp: false },
-	{ key: "tills", label: "Till variances", inApp: true, email: true, whatsapp: false },
-	{ key: "audit", label: "Night audit closed", inApp: true, email: true, whatsapp: false },
-	{ key: "messages", label: "Unanswered guest messages", inApp: true, email: false, whatsapp: false },
-	{ key: "platform", label: "Changes made by H.M.S support", inApp: true, email: true, whatsapp: false },
-];

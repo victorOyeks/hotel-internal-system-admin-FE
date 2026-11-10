@@ -204,6 +204,7 @@ export function OwnerStaffScreen({
 			cell: ({ row }) => (
 				<AvatarName
 					name={row.original.fullName}
+					photo={row.original.photo}
 					secondary={row.original.jobTitle}
 					size="sm"
 				/>
