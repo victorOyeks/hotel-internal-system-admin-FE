@@ -3,7 +3,7 @@ import { LaundryMaintenanceMoney } from "@/components/roles/shared-staff/lm-mone
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import { live } from "@hospio/api/data/live";
-import { lagosDay } from "@hospio/api/data/mappers/finance";
+import { lagosDay, withCategoryLabels } from "@hospio/api/data/mappers/finance";
 import {
 	ownerBudgets,
 	ownerPayMix,
@@ -34,6 +34,9 @@ export default async function Page() {
 		laundry,
 		maintenance,
 		usage,
+		budget,
+		dueBills,
+		categories,
 	] = await Promise.all([
 		data.owner.hotels(),
 		data.finance.transactions(),
@@ -49,6 +52,9 @@ export default async function Page() {
 		data.laundry.money(),
 		data.maintenance.money(),
 		data.inventory.usage(),
+		data.finance.budget(lagosDay(0).slice(0, 7)),
+		data.finance.bills({ status: "UNPAID", size: 6, sort: "dueDate,asc" }),
+		data.finance.categories(true),
 	]);
 	const worth = await data.hotels.worth(hotels, approvals);
 	return (
@@ -67,12 +73,15 @@ export default async function Page() {
 				income={income}
 				payMix={ownerPayMix}
 				transactions={transactions}
-				expenses={expenses}
+				expenses={withCategoryLabels(expenses, categories)}
 				payroll={ownerPayroll}
 				organizations={organizations}
 				creditRequests={data.owner.creditRequests(approvals, organizations)}
 				approvals={approvals}
 				outletSales={outletSales}
+				budget={budget}
+				dueBills={dueBills.data.content}
+				categories={categories}
 			/>
 			<LaundryMaintenanceMoney
 				laundry={laundry}

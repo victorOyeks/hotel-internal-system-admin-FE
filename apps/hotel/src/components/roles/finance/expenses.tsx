@@ -54,19 +54,8 @@ export const expenseTone: Record<
 	QUESTION: { label: "Question", tone: "info" },
 };
 
-const categories = [
-	"Fuel & power",
-	"Kitchen supplies",
-	"Bar supplies",
-	"Housekeeping",
-	"Laundry",
-	"Repairs",
-	"Utilities",
-	"Staff welfare",
-	"Marketing",
-	"Office",
-	"Other",
-];
+/** Used only when the hotel's list could not be read (finance-service keeps it per hotel). */
+const fallbackCategories = ["Other"];
 
 /** Finance 3.x · Expenses: list, record, request status, answer a question. */
 export function ExpensesScreen({
@@ -74,9 +63,12 @@ export function ExpensesScreen({
 	me,
 	rules = defaultSpendRules,
 	title = "Expenses",
+	categories = fallbackCategories,
 }: {
 	/** One page of the tab, with the tab counts and totals over the whole filtered range (finance-service). */
 	result: PageResult<ExpenseRow>;
+	/** The hotel's active expense categories, by label. */
+	categories?: string[];
 	me: string;
 	rules?: SpendRules;
 	title?: string;
@@ -508,6 +500,7 @@ export function ExpensesScreen({
 				onOpenChange={(o) => !o && void setIsNew(null)}
 				me={me}
 				rules={rules}
+				categories={categories}
 				onSaved={(e) => {
 					setExpenses((xs) => [e, ...xs]);
 					void setIsNew(null);
@@ -524,12 +517,14 @@ export function RecordExpensePanel({
 	onOpenChange,
 	me,
 	rules = defaultSpendRules,
+	categories = fallbackCategories,
 	onSaved,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	me: string;
 	rules?: SpendRules;
+	categories?: string[];
 	onSaved: (e: ExpenseRow) => void;
 }) {
 	const [category, setCategory] = useState("");
@@ -621,7 +616,7 @@ export function RecordExpensePanel({
 					value={category}
 					onChange={setCategory}
 					options={categories}
-					setupLink="categories"
+					hint="The hotel's list · a manager keeps it in Financials"
 					required
 				/>
 				<TextField

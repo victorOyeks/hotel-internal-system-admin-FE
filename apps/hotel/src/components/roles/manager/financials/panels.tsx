@@ -164,7 +164,7 @@ export function RecordExpensePanel({
 					value={form.category}
 					onChange={(v) => set("category", v)}
 					options={categories}
-					setupLink="charge categories"
+					hint="The hotel's list · a manager keeps it in Financials → Categories & budgets"
 					required
 				/>
 				<TextField

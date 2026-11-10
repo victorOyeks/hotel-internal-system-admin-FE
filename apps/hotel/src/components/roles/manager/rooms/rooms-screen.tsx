@@ -33,7 +33,7 @@ import {
 	OutOfOrderPanel,
 	RoomDetailsPanel,
 } from "./room-panels";
-import { RoomTypesTab } from "./room-types";
+import { type PriceRule, RoomTypesTab } from "./room-types";
 
 type Panel = null | "out-of-order" | "edit" | "assign" | "add";
 
@@ -43,12 +43,14 @@ export function RoomsScreen({
 	types,
 	areas,
 	attendants,
+	priceRule,
 }: {
 	hotelName: string;
 	rooms: RoomRow[];
 	types: RoomTypeRow[];
 	areas: AreaRow[];
 	attendants: StaffRow[];
+	priceRule?: PriceRule;
 }) {
 	const [tab, setTab] = useQueryState(
 		"tab",
@@ -208,6 +210,7 @@ export function RoomsScreen({
 						acc[r.typeId] = (acc[r.typeId] ?? 0) + 1;
 						return acc;
 					}, {})}
+					rule={priceRule}
 				/>
 			) : (
 				<>

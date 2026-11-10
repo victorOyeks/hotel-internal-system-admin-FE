@@ -263,6 +263,19 @@ export const LostFoundItem = z.object({
 	status: z.string(),
 	returnedTo: str,
 	returnedAt: str,
+	details: str,
+	roomNumber: str,
+	foundByName: str,
+	hasPhoto: bool,
+	returnedByName: str,
+	returnIdNote: str,
+	returnHow: str,
+	disposedAt: str,
+	disposedByName: str,
+	disposeReason: str,
+	frontOfficeToldAt: str,
+	disposableFrom: str,
+	holdDays: num,
 });
 
 export const ProblemItem = z.object({
@@ -595,15 +608,37 @@ export const opsRoutes = {
 	"@post/housekeeping/lost-found": {
 		input: z.object({
 			description: z.string(),
+			details: z.string().nullable().optional(),
 			foundWhere: z.string().nullable().optional(),
 			roomId: z.string().nullable().optional(),
+			roomNumber: z.string().nullable().optional(),
 			photoKey: z.string().nullable().optional(),
+			foundById: z.string().nullable().optional(),
+			foundByName: z.string().nullable().optional(),
+			tellFrontOffice: z.boolean().optional(),
 		}),
+		output: envelope(LostFoundItem),
+	},
+	"@get/housekeeping/lost-found/:id": {
+		params: id,
 		output: envelope(LostFoundItem),
 	},
 	"@post/housekeeping/lost-found/:id/return": {
 		params: id,
-		input: z.object({ returnedTo: z.string() }),
+		input: z.object({
+			returnedTo: z.string(),
+			idNote: z.string().nullable().optional(),
+			how: z.string().nullable().optional(),
+		}),
+		output: envelope(LostFoundItem),
+	},
+	"@post/housekeeping/lost-found/:id/tell-front-office": {
+		params: id,
+		output: envelope(LostFoundItem),
+	},
+	"@post/housekeeping/lost-found/:id/dispose": {
+		params: id,
+		input: z.object({ reason: z.string() }),
 		output: envelope(LostFoundItem),
 	},
 	"@post/housekeeping/problems": {

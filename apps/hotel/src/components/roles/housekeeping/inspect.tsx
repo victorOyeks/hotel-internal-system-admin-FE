@@ -12,9 +12,8 @@ import { parseAsString, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
 import { AvatarName, Note } from "@hospio/ui/shared/detail-list";
 import { SelectField, TextareaField } from "@hospio/ui/shared/field";
-import { fmtTime, naira, plural } from "@hospio/ui/shared/format";
+import { fmtTime, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
-import { ConfirmModal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import {
@@ -25,7 +24,6 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { assignRoom, inspectTask } from "@hospio/api/actions/housekeeping";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type {
 	CleaningTaskRow,
 	RoomRow,
@@ -34,34 +32,15 @@ import type {
 import { cn } from "@hospio/ui/utils";
 import { BigButton, RoomBadge, ShiftPill } from "../shared-staff/tablet";
 
-const writeOffs = [
-	{
-		id: "wo-1",
-		item: "Bath towel × 3",
-		reason: "Bleach stains",
-		by: "Lola Eze",
-		value: 12600,
-	},
-	{
-		id: "wo-2",
-		item: "Duvet cover × 1",
-		reason: "Torn",
-		by: "Lola Eze",
-		value: 9500,
-	},
-];
-
-/** Housekeeping supervisor: assign rooms (3241:14341), rooms to inspect (3241:14592), inspect / send back (3241:14696, 3241:14863), approve write-off (3278:9226). */
+/** Housekeeping supervisor: assign rooms (3241:14341), rooms to inspect (3241:14592), inspect / send back (3241:14696, 3241:14863), linen write-offs live with the laundry's linen batches. */
 export function InspectScreen({
 	tasks,
 	rooms,
 	attendants,
-	demo,
 }: {
 	tasks: CleaningTaskRow[];
 	rooms: RoomRow[];
 	attendants: StaffRow[];
-	demo: boolean;
 }) {
 	const [list, setList] = useState(tasks);
 	useEffect(() => setList(tasks), [tasks]);
@@ -73,13 +52,7 @@ export function InspectScreen({
 	const [assigning, setAssigning] = useState(false);
 	const [sendBack, setSendBack] = useState(false);
 	const [reason, setReason] = useState("");
-	const [writeOff, setWriteOff] = useState<(typeof writeOffs)[number] | null>(
-		null,
-	);
-	const [pendingWriteOffs, setPendingWriteOffs] = useState(writeOffs);
 	const { run, pending } = useAction();
-	// Write-offs have no backend yet: they stay on the demo flow and are only shown in demo mode.
-	const { run: demoRun, pending: demoPending } = useNotConnectedAction();
 
 	const current = list.find((t) => t.id === open) ?? null;
 	const toInspect = list.filter((t) => t.status === "DONE");
@@ -163,43 +136,11 @@ export function InspectScreen({
 				tabs={[
 					{ key: "inspect", label: "To inspect", count: toInspect.length },
 					{ key: "all", label: "All rooms", count: list.length },
-					...(demo
-						? [
-								{
-									key: "writeoffs",
-									label: "Write-offs",
-									count: pendingWriteOffs.length,
-								},
-							]
-						: []),
 				]}
 				value={tab}
 				onChange={(k) => void setTab(k === "inspect" ? null : k)}
 			/>
 
-			{tab === "writeoffs" ? (
-				<ul className="flex flex-col gap-3">
-					{pendingWriteOffs.length === 0 && (
-						<Note tone="success">Nothing waiting for approval.</Note>
-					)}
-					{pendingWriteOffs.map((w) => (
-						<li
-							key={w.id}
-							className="flex items-center gap-4 rounded-card border border-line bg-card px-5 py-4"
-						>
-							<div className="min-w-0 flex-1">
-								<p className="text-[15px] font-semibold text-ink">{w.item}</p>
-								<p className="text-[13px] text-ink-3">
-									{w.reason} · asked by {w.by} · {naira(w.value)}
-								</p>
-							</div>
-							<BigButton tone="secondary" onClick={() => setWriteOff(w)}>
-								Review
-							</BigButton>
-						</li>
-					))}
-				</ul>
-			) : (
 				<ul className="flex flex-col gap-3">
 					{(tab === "inspect" ? toInspect : list).map((t) => (
 						<li
@@ -267,7 +208,6 @@ export function InspectScreen({
 						</Note>
 					)}
 				</ul>
-			)}
 
 			{/* Inspect panel */}
 			<SidePanel
@@ -511,52 +451,6 @@ export function InspectScreen({
 				</div>
 			</SidePanel>
 
-			{demo && (
-				<ConfirmModal
-					open={!!writeOff}
-					onOpenChange={(o) => !o && setWriteOff(null)}
-					title={`Write off ${writeOff?.item ?? ""}?`}
-					subtitle={
-						writeOff
-							? `${writeOff.reason} · ${naira(writeOff.value)} of linen`
-							: undefined
-					}
-					confirmLabel="Approve write-off"
-					tone="danger"
-					pending={demoPending}
-					alternative={{
-						label: "Decline · keep in stock",
-						onClick: () =>
-							writeOff &&
-							demoRun(
-								"Write-off declined",
-								() => {
-									setPendingWriteOffs((w) =>
-										w.filter((x) => x.id !== writeOff.id),
-									);
-									setWriteOff(null);
-								},
-								{ tone: "info" },
-							),
-					}}
-					onConfirm={() =>
-						writeOff &&
-						demoRun("Write-off approved · stock updated", () => {
-							setPendingWriteOffs((w) => w.filter((x) => x.id !== writeOff.id));
-							setWriteOff(null);
-						})
-					}
-				>
-					<WhatHappens
-						tone="warning"
-						items={[
-							"The items leave the linen count for good",
-							"The manager sees it on the stock movement report",
-							"Above ₦50,000 the manager must approve instead",
-						]}
-					/>
-				</ConfirmModal>
-			)}
 		</>
 	);
 }

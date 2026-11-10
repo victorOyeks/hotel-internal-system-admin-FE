@@ -79,6 +79,11 @@ const whatHappens = (a: ApprovalRow): string[] => {
 				"The rota shows the days as leave",
 				"Shift cover is suggested from the team",
 			];
+		case "ROOM_PRICE":
+			return [
+				`The room type's base price becomes ${naira(a.amount ?? 0)} for new bookings`,
+				"Existing bookings keep their agreed price; declined keeps the old price",
+			];
 		case "RATE_CHANGE":
 			return [
 				"New bookings use the new price from the start date",

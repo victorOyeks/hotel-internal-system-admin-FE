@@ -5,6 +5,7 @@ import {
 } from "@/components/roles/manager/department-detail";
 import { naira, fmtDay, fmtTime } from "@hospio/ui/shared/format";
 import { data } from "@hospio/api/data";
+import { ACTIVITY_DEPARTMENTS } from "@hospio/api/data/activity-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -177,23 +178,23 @@ export default async function DepartmentPage({
 }) {
 	const { key } = await params;
 	const roleKey = key.toUpperCase().replace(/-/g, "_");
-	const [departments, staff, activity] = await Promise.all([
+	const [departments, staff] = await Promise.all([
 		data.departments.live(),
 		data.staff.list(),
-		data.activity.list(),
 	]);
 	const department = departments.find((d) => d.key === roleKey);
 	if (!department) notFound();
+	// The team's last ten entries, filtered by the service (the log's departments are the board's names).
+	const known = (ACTIVITY_DEPARTMENTS as readonly string[]).includes(department.name);
+	const activity = known
+		? (await data.activity.page({ department: department.name, size: 10 })).data.content
+		: [];
 	const open = await openItemsFor(roleKey);
 	return (
 		<DepartmentDetail
 			department={department}
 			staff={staff.filter((s) => s.role === roleKey)}
-			activity={activity
-				.filter(
-					(a) => a.department === department.name || a.actorRole === roleKey,
-				)
-				.slice(0, 10)}
+			activity={activity}
 			openItems={open.items}
 			openTitle={open.title}
 			teamHref={teamHref[roleKey] ?? "/dashboard"}

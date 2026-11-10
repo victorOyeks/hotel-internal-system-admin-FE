@@ -3,27 +3,31 @@ import { LaundryMaintenanceMoney } from "@/components/roles/shared-staff/lm-mone
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import {
+	lagosDate,
+	withCategoryLabels,
+} from "@hospio/api/data/mappers/finance";
+import {
 	listQueryFrom,
 	type SearchParamsRecord,
 } from "@hospio/api/data/paging";
-import { live } from "@hospio/api/data/live";
-import {
-	demoBills,
-	demoBudget,
-	demoExpenseCategories,
-} from "@hospio/api/demo/fixtures/manager-ops";
 
 export const dynamic = "force-dynamic";
 
-/** Manager · Financials: overview, expenses, transactions, spend requests and tills. */
+/** Manager · Financials: overview (budget against actual, bills), expenses, bills, transactions, spend requests and tills. */
 export default async function FinancialsPage({
 	searchParams,
 }: {
 	searchParams: Promise<SearchParamsRecord>;
 }) {
-	const query = listQueryFrom(await searchParams, ["tab", "category"]);
+	const sp = await searchParams;
+	const query = listQueryFrom(sp, ["tab", "category"]);
+	const month =
+		typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month)
+			? sp.month
+			: lagosDate().slice(0, 7);
 	// The Expenses tab pages every expense, Spend requests the waiting and questioned ones; the overview card shows the newest requests.
 	const onRequests = query.tab === "requests";
+	const onBills = query.tab === "bills";
 	const listQuery = {
 		...query,
 		tab: onRequests ? "requests" : undefined,
@@ -36,7 +40,7 @@ export default async function FinancialsPage({
 		tills,
 		transactions,
 		today,
-		month,
+		monthSummary,
 		week,
 		income,
 		settings,
@@ -45,9 +49,13 @@ export default async function FinancialsPage({
 		laundry,
 		maintenance,
 		usage,
+		categories,
+		budget,
+		dueBills,
+		bills,
 	] = await Promise.all([
 		getActiveHotel(),
-		data.finance.expensesPage(listQuery),
+		data.finance.expensesPage(onBills ? { size: 1 } : listQuery),
 		onRequests
 			? null
 			: data.finance.expensesPage({ tab: "requests", size: 10 }),
@@ -63,25 +71,48 @@ export default async function FinancialsPage({
 		data.laundry.money(),
 		data.maintenance.money(),
 		data.inventory.usage(),
+		data.finance.categories(true),
+		data.finance.budget(month),
+		data.finance.bills({ status: "UNPAID", size: 6, sort: "dueDate,asc" }),
+		onBills
+			? data.finance.bills({
+					q: query.q,
+					status: query.status,
+					page: query.page,
+				})
+			: null,
 	]);
-	// Budgets and bills have no endpoint yet: only the demo has them.
-	const demo = !live("finance");
+	const label = <T extends { category: string; categoryCode?: string }>(
+		rows: T[],
+	) => withCategoryLabels(rows, categories);
+	const labelled = {
+		...expenses,
+		data: { ...expenses.data, content: label(expenses.data.content) },
+	};
 	return (
 		<>
 			<FinancialsScreen
 				hotelName={hotel?.name ?? "This hotel"}
-				expenses={expenses}
-				requests={(requests ?? expenses).data.content}
+				expenses={labelled}
+				requests={label((requests ?? expenses).data.content)}
 				tills={tills}
 				transactions={transactions}
 				today={today}
 				outletSales={outletSales}
-				month={month}
-				budget={demo ? demoBudget : null}
+				month={{
+					...monthSummary,
+					budget:
+						budget && budget.totals.budget > 0
+							? budget.totals.budget
+							: monthSummary.budget,
+				}}
+				budget={budget}
+				budgetMonth={month}
 				income={income}
-				bills={demo ? demoBills : null}
+				dueBills={dueBills.data.content}
+				bills={bills}
 				week={week}
-				categories={demoExpenseCategories}
+				categories={categories}
 				rules={{
 					limits: settings.limits,
 					ownerName: business?.ownerName ?? "the owner",

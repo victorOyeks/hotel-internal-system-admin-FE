@@ -5,6 +5,7 @@ import { deviceRoutes } from "./routes-devices";
 import { fnbRoutes } from "./routes-fnb";
 import { inventoryRoutes } from "./routes-inventory";
 import { lmRoutes } from "./routes-lm";
+import { mlRoutes } from "./routes-ml";
 import { opsRoutes } from "./routes-ops";
 import { ownerRoutes } from "./routes-owner";
 import { paymentRoutes } from "./routes-payments";
@@ -619,6 +620,10 @@ export const RoomType = z.object({
 	active: z.boolean(),
 	roomCount: z.number(),
 	specialPrices: z.array(SpecialPrice).nullable(),
+	requestedBasePrice: z.number().nullable().optional(),
+	priceRequestedByName: z.string().nullable().optional(),
+	priceRequestedAt: z.string().nullable().optional(),
+	priceSentToOwner: z.boolean().nullable().optional(),
 });
 
 export const RoomTypeRequest = z.object({
@@ -755,6 +760,7 @@ export const ActivityEntry = z.object({
 	hotelId: z.string().nullable().optional(),
 	actorId: z.string().nullable().optional(),
 	topic: z.string().nullable().optional(),
+	payload: z.string().nullable().optional(),
 });
 
 export const Repair = z.object({
@@ -985,6 +991,7 @@ export const Notification = z.object({
 
 export const schema = createSchema({
 	...ownerRoutes,
+	...mlRoutes,
 	...adminRoutes,
 	...opsRoutes,
 	...paymentRoutes,
@@ -1383,7 +1390,14 @@ export const schema = createSchema({
 	"@get/platform/approvals": { output: envelope(z.array(Approval)) },
 	"@get/platform/activity": {
 		query: z
-			.object({ page: z.number(), size: z.number() })
+			.object({
+				page: z.number(),
+				size: z.number(),
+				q: z.string(),
+				department: z.string(),
+				from: z.string(),
+				to: z.string(),
+			})
 			.partial()
 			.optional(),
 		output: envelope(paged(ActivityEntry)),

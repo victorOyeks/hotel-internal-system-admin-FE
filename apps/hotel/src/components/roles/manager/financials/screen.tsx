@@ -55,11 +55,15 @@ import type {
 	TillRow,
 	TransactionRow,
 } from "@hospio/api/data/types";
-import type {
-	demoBills,
-	demoBudget,
-	demoIncomeSources,
-} from "@hospio/api/demo/fixtures/manager-ops";
+import type { demoIncomeSources } from "@hospio/api/demo/fixtures/manager-ops";
+import type { BillRow, BudgetView, ExpenseCategoryRow } from "@hospio/api/data/ml-types";
+import {
+	BillPanel,
+	BillsCard,
+	BillsTab,
+	BudgetList,
+	CategoriesBudgetsPanel,
+} from "../../shared-staff/budgets-bills";
 import { cn } from "@hospio/ui/utils";
 import {
 	EndOfDayCashModal,
@@ -72,7 +76,7 @@ import {
 } from "./panels";
 import { OutletSalesCard } from "../outlet-sales";
 
-type Tab = "overview" | "expenses" | "transactions" | "requests" | "tills";
+type Tab = "overview" | "expenses" | "bills" | "transactions" | "requests" | "tills";
 
 export type FinancialsProps = {
 	hotelName: string;
@@ -89,12 +93,17 @@ export type FinancialsProps = {
 	/** What the restaurant and bar sold today; sales, not money received. */
 	outletSales?: OutletSalesDayRow | null;
 	month: MonthSummaryRow;
-	/** Budget, income sources and bills have no API yet: null shows "Not connected yet". */
-	budget: typeof demoBudget | null;
+	/** Budget against actual for `budgetMonth` (finance-service); null when it didn't load. */
+	budget: BudgetView | null;
+	budgetMonth: string;
 	income: typeof demoIncomeSources | null;
-	bills: typeof demoBills | null;
+	/** The next unpaid bills, for the overview card. */
+	dueBills: BillRow[];
+	/** The Bills tab's page (only loaded on that tab). */
+	bills: PageResult<BillRow> | null;
 	week: SeriesPointRow[];
-	categories: string[];
+	/** The hotel's expense categories, archived ones included (finance-service). */
+	categories: ExpenseCategoryRow[];
 	rules: SpendRules;
 };
 
@@ -118,6 +127,13 @@ export function FinancialsScreen(p: FinancialsProps) {
 	const category = list.params.category ?? "";
 	const setCategory = (v: string) => list.set({ category: v || null, tab });
 	const [cash, setCash] = useState(false);
+	const [setup, setSetup] = useQueryState("budgets");
+	const [budgetMonth, setBudgetMonth] = useQueryState("month", {
+		shallow: false,
+	});
+	const [billOpen, setBillOpen] = useState<BillRow | null>(null);
+	const [addingBill, setAddingBill] = useState(false);
+	const activeCategories = p.categories.filter((c) => c.active).map((c) => c.label);
 	const [exporting, setExporting] = useState(false);
 	const page = p.expenses.data;
 	const counts = page.counts ?? {};
@@ -499,6 +515,7 @@ export function FinancialsScreen(p: FinancialsProps) {
 						tabs={[
 							{ key: "overview", label: "Overview" },
 							{ key: "expenses", label: "Expenses", count: counts.all ?? 0 },
+							{ key: "bills", label: "Bills" },
 							{ key: "transactions", label: "Transactions" },
 							{
 								key: "requests",
@@ -514,14 +531,18 @@ export function FinancialsScreen(p: FinancialsProps) {
 					/>
 				}
 				right={
-					active !== "overview" && (
+					active !== "overview" &&
+					active !== "bills" && (
 						<>
 							{active === "expenses" && (
 								<FilterSelect
 									value={category}
 									onChange={setCategory}
 									all="All categories"
-									options={p.categories.map((c) => ({ value: c, label: c }))}
+									options={p.categories.map((c) => ({
+										value: c.label,
+										label: c.active ? c.label : `${c.label} (archived)`,
+									}))}
 								/>
 							)}
 							<SearchBox
@@ -672,52 +693,30 @@ export function FinancialsScreen(p: FinancialsProps) {
 						<SectionCard
 							title="Spend vs budget"
 							subtitle={
-								p.budget
-									? `This month · ${nairaShort(p.month.expenses)} of ${nairaShort(p.month.budget ?? 0)}`
-									: "Budgets"
+								p.budget && p.budget.totals.budget > 0
+									? `This month · ${nairaShort(p.budget.totals.spent)} of ${nairaShort(p.budget.totals.budget)}`
+									: "This month · by category"
 							}
-							action={{
-								label: "Expenses",
-								href: "/dashboard/financials?tab=expenses",
-							}}
+							headerRight={
+								<button
+									type="button"
+									onClick={() => void setSetup("1")}
+									className="text-[13px] font-semibold text-brand hover:underline"
+								>
+									Categories & budgets
+								</button>
+							}
 							bodyClassName="gap-3 pt-2"
 						>
-							{!p.budget ? (
-								<NotConnected what="Budgets" />
-							) : (
-								p.budget.map((b) => {
-									const pct = Math.round((b.spent / b.budget) * 100);
-									return (
-										<div key={b.category} className="flex flex-col gap-1">
-											<div className="flex items-center justify-between text-[13px]">
-												<span className="font-medium text-ink">
-													{b.category}
-												</span>
-												<span
-													className={cn(
-														"text-xs",
-														pct > 100
-															? "font-semibold text-danger"
-															: "text-ink-3",
-													)}
-												>
-													{pct}%{" "}
-													<span className="font-semibold text-ink">
-														{nairaShort(b.spent)} of {nairaShort(b.budget)}
-													</span>
-												</span>
-											</div>
-											<ProgressBar
-												value={b.spent}
-												max={b.budget}
-												tone={
-													pct > 100 ? "danger" : pct >= 95 ? "warning" : "brand"
-												}
-											/>
-										</div>
-									);
-								})
-							)}
+							<BudgetList
+								budget={p.budget}
+								empty={
+									<EmptyState
+										title="No budgets or spending this month"
+										hint="Set a monthly budget for each category in Categories & budgets."
+									/>
+								}
+							/>
 						</SectionCard>
 						<div className="flex flex-col gap-4">
 							<SectionCard
@@ -748,34 +747,23 @@ export function FinancialsScreen(p: FinancialsProps) {
 							</SectionCard>
 							<SectionCard
 								title="Bills to pay"
-								subtitle="This hotel's share · due soon"
+								subtitle="Unpaid · overdue first"
+								headerRight={
+									<button
+										type="button"
+										onClick={() => list.set({ tab: "bills", q: null, category: null })}
+										className="text-[13px] font-semibold text-brand hover:underline"
+									>
+										All bills
+									</button>
+								}
 								bodyClassName="pt-1"
 							>
-								{!p.bills ? (
-									<NotConnected what="Bills" />
-								) : (
-									p.bills.map((b) => (
-										<div
-											key={b.name}
-											className="flex items-center justify-between border-b border-line py-2 text-[13px] last:border-b-0"
-										>
-											<div>
-												<p className="font-medium text-ink">{b.name}</p>
-												<p
-													className={cn(
-														"text-xs",
-														b.note ? "text-warning" : "text-ink-3",
-													)}
-												>
-													{b.note ?? `Due ${fmtDay(b.due)}`}
-												</p>
-											</div>
-											<span className="font-semibold text-ink">
-												{naira(b.amount)}
-											</span>
-										</div>
-									))
-								)}
+								<BillsCard
+									bills={p.dueBills}
+									onOpen={setBillOpen}
+									onAdd={() => setAddingBill(true)}
+								/>
 							</SectionCard>
 						</div>
 					</div>
@@ -900,6 +888,17 @@ export function FinancialsScreen(p: FinancialsProps) {
 					}
 				/>
 			)}
+			{active === "bills" && (
+				<>
+					<div className="flex justify-end">
+						<Button className={btn.primary} onClick={() => setAddingBill(true)}>
+							<PlusIcon className="size-4" /> Add bill
+						</Button>
+					</div>
+					{p.bills && <BillsTab result={p.bills} onOpen={setBillOpen} />}
+				</>
+			)}
+
 			{active === "transactions" && (
 				<DataTable
 					columns={txColumns}
@@ -964,9 +963,27 @@ export function FinancialsScreen(p: FinancialsProps) {
 				</>
 			)}
 
+			<CategoriesBudgetsPanel
+				open={!!setup}
+				onClose={() => void setSetup(null)}
+				categories={p.categories}
+				budget={p.budget}
+				month={budgetMonth ?? p.budgetMonth}
+				onMonth={(m) => void setBudgetMonth(m)}
+			/>
+			<BillPanel
+				bill={billOpen}
+				adding={addingBill}
+				categories={p.categories}
+				canWrite
+				onClose={() => {
+					setBillOpen(null);
+					setAddingBill(false);
+				}}
+			/>
 			<RecordExpensePanel
 				open={isNew === "expense"}
-				categories={p.categories}
+				categories={activeCategories}
 				rules={p.rules}
 				onClose={() => setIsNew(null)}
 			/>

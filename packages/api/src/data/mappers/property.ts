@@ -17,6 +17,10 @@ export function toRoomTypeRow(t: z.infer<typeof RoomType>): RoomTypeRow {
 			.map((f) => f.trim())
 			.filter(Boolean),
 		specialPrices: (t.specialPrices ?? []).map((sp) => ({ id: sp.id, name: sp.name, price: Number(sp.price), fromDate: sp.fromDate, toDate: sp.toDate })),
+		requestedBasePrice: t.requestedBasePrice ?? undefined,
+		priceRequestedBy: t.priceRequestedByName ?? undefined,
+		priceRequestedAt: t.priceRequestedAt ?? undefined,
+		priceSentToOwner: t.priceSentToOwner ?? undefined,
 	};
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { CreditCardIcon, RotateCcwIcon, SendIcon } from "lucide-react";
+import { CreditCardIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
@@ -113,7 +113,7 @@ export function MyPaymentsScreen({ payments: result, opened, folios, terminals, 
 					{(pay.status === "DECLINED" || pay.status === "NO_RESPONSE") && <button type="button" className={btn.primary} onClick={() => { void setOpenId(null); void setIsNew("1"); }}><RotateCcwIcon className="mr-1 inline size-4" /> Try again</button>}
 					{pay.status === "PROCESSING" && <button type="button" className={btn.secondary} onClick={() => setPayments((xs) => xs.map((p) => (p.id === pay.id ? { ...p, status: "APPROVED", resolvedAt: new Date().toISOString() } : p)))}>I've confirmed it landed</button>}
 					{pay.status === "APPROVED" && <button type="button" className={btn.secondary} onClick={() => setRefundFor(pay)}>Request refund <ManagerMark className="ml-1" /></button>}
-					{pay.status === "APPROVED" && <button type="button" className={btn.primary} onClick={() => void setOpenId(null)}><SendIcon className="mr-1 inline size-4" /> Resend receipt</button>}
+					{pay.status === "APPROVED" && <a href={`/receipt?payment=${encodeURIComponent(pay.id)}`} target="_blank" rel="noopener" className={btn.primary}><PrinterIcon className="mr-1 inline size-4" /> Print receipt</a>}
 				</>
 			)} footerInfo={pay && <StatusPill tone={payTone[pay.status].tone}>{payTone[pay.status].label}</StatusPill>}>
 				{pay && (

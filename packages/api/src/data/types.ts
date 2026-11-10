@@ -120,6 +120,12 @@ export type RoomTypeRow = {
 		fromDate: string;
 		toDate: string;
 	}[];
+	/** A base price waiting for the owner's approval. */
+	requestedBasePrice?: number;
+	priceRequestedBy?: string;
+	priceRequestedAt?: string;
+	/** True on the save that sent the price to the owner. */
+	priceSentToOwner?: boolean;
 };
 
 export type RoomState =
@@ -419,6 +425,8 @@ export type ExpenseRow = {
 	/** When it was recorded, so same-day expenses list newest first. */
 	createdAt?: string;
 	category: string;
+	/** The stored category (a code like FUEL_AND_POWER, or an older label), to put the hotel's own label on it. */
+	categoryCode?: string;
 	description: string;
 	amount: number;
 	paidFrom: "CASH" | "TRANSFER" | "CARD";
@@ -555,6 +563,10 @@ export type ApprovalLimits = {
 	ownerExpenseLimit: number;
 	discountPct: number;
 	refundsNeedOwner: boolean;
+	/** A manager's room base price change waits for the owner (Approval limits). */
+	rateChangesNeedOwner?: boolean;
+	/** Changes above this many percent go to the owner; 0 means every change. */
+	rateChangeOwnerPct?: number;
 };
 export type ClockStatus = {
 	clockedIn: boolean;
@@ -1280,6 +1292,20 @@ export type LostFoundRow = {
 	foundAt: string;
 	status: "FOUND" | "RETURNED" | "DISPOSED";
 	returnedTo?: string;
+	details?: string;
+	roomNumber?: string;
+	hasPhoto?: boolean;
+	returnedAt?: string;
+	returnedBy?: string;
+	returnIdNote?: string;
+	returnHow?: string;
+	disposedAt?: string;
+	disposedBy?: string;
+	disposeReason?: string;
+	frontOfficeToldAt?: string;
+	/** The Lagos day from which the item may be disposed of (found day + the hotel's hold days). */
+	disposableFrom?: string;
+	holdDays?: number;
 };
 
 export type HotelSetupSection = {

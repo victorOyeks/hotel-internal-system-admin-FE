@@ -248,6 +248,13 @@ export const SETUP_CATALOGUE: SectionDef[] = [
 				default: true,
 			},
 			{
+				key: "lostFoundHoldDays",
+				label: "Days lost & found items are kept",
+				type: "number",
+				default: 90,
+				help: "After this an item can be disposed of, with a reason",
+			},
+			{
 				key: "checklist",
 				list: "HOUSEKEEPING_CHECKLIST",
 				label: "Cleaning checklist",
@@ -518,6 +525,13 @@ export const SETUP_CATALOGUE: SectionDef[] = [
 				label: "Room price changes need the owner",
 				type: "toggle",
 				default: true,
+			},
+			{
+				key: "rateChangeOwnerPct",
+				label: "Only price changes above this need the owner",
+				type: "percent",
+				default: 0,
+				help: "0 means every base price change a manager makes",
 			},
 		],
 	},

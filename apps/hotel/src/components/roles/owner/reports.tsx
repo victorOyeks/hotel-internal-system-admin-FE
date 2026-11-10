@@ -5,6 +5,7 @@ import {
 	DownloadIcon,
 	FileTextIcon,
 	FolderIcon,
+	MailIcon,
 	SendIcon,
 	SquareIcon,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
 	buildReport,
 	type ReportKind,
 } from "@hospio/api/actions/owner-reports";
+import { emailReport } from "@hospio/api/actions/ml";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { ReportRunRow, ReportScheduleRow } from "@hospio/api/data/types";
 import { Button } from "@hospio/ui/primitives/button";
@@ -448,6 +450,7 @@ function ReportPanel({
 }) {
 	const [built, setBuilt] = useState<BuiltReport | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const mail = useAction();
 	const [loading, setLoading] = useState(false);
 	const [f, t] = from && to ? [from, to] : period("month");
 	const hotelName = hotel
@@ -506,6 +509,28 @@ function ReportPanel({
 							onClick={onSchedule}
 						>
 							<CalendarClockIcon className="size-4" /> Schedule
+						</Button>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							disabled={mail.pending || loading}
+							onClick={() =>
+								mail.run(
+									() =>
+										withDeliveries(
+											emailReport({
+												kind: report.kind,
+												from: f,
+												to: t,
+												hotelId: hotel ?? undefined,
+											}),
+											`${report.name} · emailed`,
+										),
+									(d) => `Report emailed to ${d.to}`,
+								)
+							}
+						>
+							<MailIcon className="size-4" /> Email me
 						</Button>
 						<Button
 							className={btn.primary}
@@ -736,9 +761,9 @@ function ScheduleModal({
 				)}
 				<Note tone="info">
 					Each run covers {COVERS[every]}. Saving the same report for the same
-					hotel again changes its schedule. Email is not connected on staging:
-					the in-app notice is how it arrives; Send now shows the email that
-					would go out.
+					hotel again changes its schedule. Each run arrives as an in-app notice
+					and an email to your address with a link that opens it here; Send now
+					sends the latest one at once.
 				</Note>
 			</div>
 		</Modal>

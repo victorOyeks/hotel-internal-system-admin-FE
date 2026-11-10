@@ -1186,6 +1186,16 @@ function CheckOutPanel({
 					>
 						Not yet
 					</button>
+					{folio && (
+						<a
+							href={`/receipt?folio=${encodeURIComponent(folio.id)}`}
+							target="_blank"
+							rel="noopener"
+							className={btn.secondary}
+						>
+							Print receipt
+						</a>
+					)}
 					{due > 0 ? (
 						<button
 							type="button"
