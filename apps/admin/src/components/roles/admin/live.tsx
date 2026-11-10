@@ -1,12 +1,10 @@
 "use client";
 
-import { ChevronLeftIcon, ChevronRightIcon, Loader2Icon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import type { ActionResult } from "@hospio/api/actions";
-import type { Paged } from "@hospio/api/data/admin-types";
-import { cn } from "@hospio/ui/utils";
 
 /**
  * Small pieces the live admin screens share: filters kept in the URL so the server component
@@ -24,13 +22,23 @@ export function useFilterParam(key: string) {
 	return [value ?? "", set] as const;
 }
 
-/** The page number in the URL (0-based on the server, 1-based for people). */
+/**
+ * The page in the URL: 1-based for people (`?page=2` is the second page, none on the first), 0-based in
+ * and out of this hook like the services. Each page is a history entry, so Back goes to the previous one.
+ */
 export function usePageParam() {
 	const [page, setPage] = useQueryState(
 		"page",
-		parseAsInteger.withDefault(0).withOptions({ shallow: false }),
+		parseAsInteger.withOptions({
+			shallow: false,
+			history: "push",
+			scroll: false,
+		}),
 	);
-	return [page, (p: number) => void setPage(p <= 0 ? null : p)] as const;
+	return [
+		Math.max(0, (page ?? 1) - 1),
+		(p: number) => void setPage(p <= 0 ? null : p + 1),
+	] as const;
 }
 
 /** Re-reads the server components after a write landed, with a pending flag for the button. */
@@ -85,55 +93,8 @@ export function Loading({ label = "Loading…" }: { label?: string }) {
 	);
 }
 
-/** Footer for a server-paged list: "Showing 1–25 of 212" with previous/next. */
-export function ServerPager<T>({
-	page,
-	onPage,
-	className,
-}: {
-	page: Paged<T>;
-	onPage: (p: number) => void;
-	className?: string;
-}) {
-	const from = page.total === 0 ? 0 : page.page * page.size + 1;
-	const to = Math.min(page.total, (page.page + 1) * page.size);
-	return (
-		<div
-			className={cn("flex items-center gap-3 text-xs text-ink-3", className)}
-		>
-			<span className="flex-1">
-				{page.total === 0
-					? "No rows"
-					: `Showing ${from}–${to} of ${page.total}`}
-			</span>
-			{page.totalPages > 1 && (
-				<div className="flex items-center gap-1">
-					<button
-						type="button"
-						onClick={() => onPage(page.page - 1)}
-						disabled={page.page <= 0}
-						className="flex size-7 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-subtle disabled:opacity-40"
-						aria-label="Previous page"
-					>
-						<ChevronLeftIcon className="size-4" />
-					</button>
-					<span className="px-2 font-medium text-ink-2">
-						{page.page + 1} / {page.totalPages}
-					</span>
-					<button
-						type="button"
-						onClick={() => onPage(page.page + 1)}
-						disabled={page.page + 1 >= page.totalPages}
-						className="flex size-7 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-subtle disabled:opacity-40"
-						aria-label="Next page"
-					>
-						<ChevronRightIcon className="size-4" />
-					</button>
-				</div>
-			)}
-		</div>
-	);
-}
+/** The shared server pager ("Showing 26–48 of 48" and page numbers); DataTable's `server` mode uses it too. */
+export { ServerPager } from "@hospio/ui/shared/server-pager";
 
 export {
 	monthOptions,

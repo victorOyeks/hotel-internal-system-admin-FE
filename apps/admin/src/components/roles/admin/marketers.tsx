@@ -423,10 +423,9 @@ export function MarketersScreen({
 				<DataTable
 					columns={commissionCols}
 					data={commissions.content}
-					pageSize={commissions.size}
+					server={{ page: commissions, onPage: setPage }}
 					emptyTitle="No commissions"
 					emptyHint="Commissions are created when a referred business pays its monthly fee."
-					footer={<ServerPager page={commissions} onPage={setPage} />}
 				/>
 			)}
 			{active === "referrals" && (
@@ -936,7 +935,11 @@ function ReferralsBoard({
 					);
 				})}
 			</div>
-			<ServerPager page={referrals} onPage={onPage} />
+			<ServerPager
+				page={referrals}
+				onPage={onPage}
+				className="rounded-card border border-line bg-card"
+			/>
 		</div>
 	);
 }

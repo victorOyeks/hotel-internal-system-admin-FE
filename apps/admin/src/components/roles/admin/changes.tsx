@@ -180,7 +180,7 @@ export function ChangesScreen({
 					pageSize={initial.size}
 					emptyTitle="No changes"
 					emptyHint="Edits made as H.M.S appear here."
-					footer={<ServerPager page={initial} onPage={setPage} />}
+					footer={<ServerPager bare page={initial} onPage={setPage} />}
 				/>
 			) : (
 				<SectionCard
@@ -211,7 +211,7 @@ export function ChangesScreen({
 						</ul>
 					)}
 					<div className="border-t border-line px-5 py-3">
-						<ServerPager page={activity} onPage={setPage} />
+						<ServerPager bare page={activity} onPage={setPage} />
 					</div>
 				</SectionCard>
 			)}

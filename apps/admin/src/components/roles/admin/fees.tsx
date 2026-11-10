@@ -59,10 +59,10 @@ import { cn } from "@hospio/ui/utils";
 import {
 	Loading,
 	monthOptions,
-	ServerPager,
 	thisMonth,
 	useFilterParam,
 	useLoaded,
+	ServerPager,
 	usePageParam,
 	useRefresh,
 } from "./live";
@@ -309,6 +309,7 @@ export function FeesScreen({
 				data={statements.content}
 				search={search}
 				pageSize={statements.size}
+				footer={<ServerPager bare page={statements} onPage={setPage} />}
 				onRowClick={(s) => setOpen(s.id)}
 				emptyTitle="No statements"
 				emptyHint={
@@ -316,7 +317,6 @@ export function FeesScreen({
 						? "Generate this month's statements from the button above."
 						: undefined
 				}
-				footer={<ServerPager page={statements} onPage={setPage} />}
 			/>
 
 			<StatementPanel
