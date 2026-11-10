@@ -16,6 +16,7 @@ import {
 	PlusIcon,
 	ShieldCheckIcon,
 	SprayCanIcon,
+	TabletSmartphoneIcon,
 	UsersIcon,
 	WalletIcon,
 	XIcon,
@@ -46,6 +47,7 @@ import type {
 	OutletRow,
 	StoreRow,
 } from "@hospio/api/data/types";
+import { SharedDevicesSection } from "./hotel-setup-devices";
 import { RestaurantsSection } from "./hotel-setup-restaurants";
 import { cn } from "@hospio/ui/utils";
 
@@ -64,6 +66,7 @@ const icons: Record<string, LucideIcon> = {
 	"credit-card": CreditCardIcon,
 	list: ListIcon,
 	coins: CoinsIcon,
+	tablet: TabletSmartphoneIcon,
 };
 
 const why: Record<string, string> = {
@@ -145,7 +148,9 @@ export function HotelSetupScreen({
 						/>
 					))}
 				</nav>
-				{section.key === "restaurants" ? (
+				{section.key === "devices" ? (
+					<SharedDevicesSection key={section.key} hotelId={hotelId} />
+				) : section.key === "restaurants" ? (
 					<RestaurantsSection
 						key={section.key}
 						outlets={outlets}

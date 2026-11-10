@@ -9,6 +9,8 @@ import { DEMO_AUTH, demoDelay } from "@hospio/api/demo/mode";
 import { mintDemoToken, nameFromEmail } from "@hospio/api/demo/token";
 import { APP_ROLES, isAppRole } from "@hospio/api/app";
 import type { HotelRole } from "@hospio/api/roles";
+import { lockDevice } from "@hospio/api/actions/devices";
+import { askForPin, getDeviceToken, getSharedDevice } from "@hospio/api/device";
 import { createSession, decodeSession, deleteSession, setActiveHotel, setActiveRole } from "@hospio/api/session";
 
 export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
@@ -31,11 +33,20 @@ export async function login(input: { email: string; password: string }): Promise
 	const mine = session.roleSet.filter((r) => isAppRole(r));
 	if (mine.length === 1) await setActiveRole(mine[0]);
 	if (session.hotels.length >= 1) await setActiveHotel(session.hotels[0]);
+	// The PIN prompt after a sign-in on a shared device (that hotel first) or a first sign-in (docs/shared-devices.md).
+	const { device } = await getSharedDevice();
+	if (device && session.hotels.includes(device.hotelId)) await setActiveHotel(device.hotelId);
+	if (device || data.data.mustChangePassword) await askForPin();
 	return { ok: true, data: { mustChangePassword: data.data.mustChangePassword, roles: data.data.roles } };
 }
 
 /** Signs out. `notice: "saved"` (onboarding's "Save and finish later") tells the sign-in page to say the setup was kept. */
 export async function logout(notice?: unknown) {
+	// On a shared device signing out is locking: only this session ends, and the lock screen opens.
+	if (!DEMO_AUTH && (await getDeviceToken())) {
+		await lockDevice("button");
+		redirect("/lock");
+	}
 	const { auth } = await withSession();
 	if (auth && !DEMO_AUTH) await api("@post/identity/auth/logout", { auth }).catch(() => undefined);
 	await deleteSession();

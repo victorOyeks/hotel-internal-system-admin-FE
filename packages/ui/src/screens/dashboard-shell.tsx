@@ -21,6 +21,21 @@ import { live } from "@hospio/api/data/live";
 import { DEMO_AUTH } from "@hospio/api/demo/mode";
 import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-refresh";
 import { cn } from "@hospio/ui/utils";
+import { getSharedDevice, pinPromptAsked } from "@hospio/api/device";
+import type { Hotel, Me } from "@hospio/api/api/schema";
+import { DEVICE_ROLES, type DeviceSetupHotel, IdleLock, PinPrompt, SHARED_DESK_ROLES } from "@hospio/ui/shared/shared-device";
+
+/** The hotels where this person may set up a shared device, with the roles they may pick there (docs/shared-devices.md). */
+function deviceSetupHotels(user: Me, hotels: Hotel[]): DeviceSetupHotel[] {
+	const owner = user.roles.includes("OWNER");
+	return hotels
+		.map((h) => {
+			const here = user.roleLevels.filter((g) => g.hotelId === h.id);
+			const roles = owner || here.some((g) => g.role === "MANAGER") ? DEVICE_ROLES : here.filter((g) => g.level === "FULL").map((g) => g.role).filter((r) => (DEVICE_ROLES as string[]).includes(r));
+			return { id: h.id, name: h.name, roles: [...new Set(roles)] };
+		})
+		.filter((h) => h.roles.length > 0);
+}
 
 export async function DashboardShell({ children }: PropsWithChildren) {
 	const [session, user, role, hotels, activeHotel] = await Promise.all([
@@ -50,6 +65,21 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 			redirect("/onboarding");
 		if (business?.stage === "HANDED_OVER") redirect("/handover");
 	}
+
+	// Shared devices (docs/shared-devices.md in hospio-backend): a removed device forgets its token and goes to sign-in; on a
+	// shared device the header has Lock and the idle lock runs; anyone with Full access, a manager or the owner can set one up.
+	const shared = APP === "hotel" && !DEMO_AUTH ? await getSharedDevice() : null;
+	if (shared?.state === "removed") redirect("/api/device/forget");
+	const device = shared?.state === "ok" ? shared.device : null;
+	const setupHotels = APP === "hotel" && !support && !shared?.device && shared?.state !== "error" ? deviceSetupHotels(user, hotels) : [];
+	const pinPrompt =
+		APP === "hotel" &&
+		!support &&
+		!user.hasPin &&
+		!user.roles.includes("OWNER") &&
+		!!user.businessId &&
+		(await pinPromptAsked()) &&
+		(!!device || user.roles.some((r) => SHARED_DESK_ROLES.includes(r)));
 
 	const [unread, unpaidSales] = await Promise.all([
 		data.notifications.unreadCount().catch(() => 0),
@@ -83,7 +113,12 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 							role={role}
 							hotelCount={hotels.length}
 							unread={unread}
+							device={device ? { name: device.name } : undefined}
+							setupHotels={setupHotels}
+							activeHotelId={activeHotel?.id}
 						/>
+						{device && <IdleLock minutes={device.autoLockMinutes} />}
+						{pinPrompt && <PinPrompt onDevice={!!device} />}
 						<div className="flex flex-1 flex-col gap-5 px-8 py-6">
 							{children}
 						</div>

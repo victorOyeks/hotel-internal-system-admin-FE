@@ -153,6 +153,7 @@ export function toStaffRow(
 		grants: u.grants.map((g) => toGrantRow(g, hotelNames)),
 		inviteStatus: u.inviteStatus ?? "NONE",
 		mustChangePassword: u.mustChangePassword ?? false,
+		hasPin: u.hasPin ?? undefined,
 	};
 }
 

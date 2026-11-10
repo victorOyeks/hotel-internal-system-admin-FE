@@ -19,6 +19,7 @@ import {
 	createUser,
 	resetPassword,
 } from "@hospio/api/actions/identity";
+import { remindStaffPin, resetStaffPin } from "@hospio/api/actions/devices";
 import { useAction } from "@hospio/api/actions/use-action";
 import { addShift } from "@hospio/api/actions/workforce";
 import type { UserCreated } from "@hospio/api/api/schema";
@@ -90,7 +91,58 @@ export function staffStatusPill(s: StaffRow) {
 		ON_LEAVE: ["On leave", "warning"],
 	} as const;
 	const [label, tone] = map[s.status];
-	return <StatusPill tone={tone}>{label}</StatusPill>;
+	// Shared devices: who still has to set a PIN (docs/shared-devices.md); a manager can remind them from the profile.
+	const noPin = s.hasPin === false && s.status === "ACTIVE" && s.role !== "OWNER";
+	return noPin ? (
+		<span className="inline-flex flex-wrap items-center gap-1">
+			<StatusPill tone={tone}>{label}</StatusPill>
+			<StatusPill tone="grey" dot={false}>No PIN yet</StatusPill>
+		</span>
+	) : (
+		<StatusPill tone={tone}>{label}</StatusPill>
+	);
+}
+
+/**
+ * The person's PIN for shared devices: Remind (an in-app notice) when they have none, Reset (clears it) when they do. A manager
+ * never sets someone else's PIN.
+ */
+function StaffPinActions({ staff }: { staff: StaffRow }) {
+	const { run, pending } = useAction();
+	const [hasPin, setHasPin] = useState(staff.hasPin);
+	const [confirm, setConfirm] = useState(false);
+	if (hasPin === undefined || staff.role === "OWNER") return null;
+	const id = staff.userId ?? staff.id;
+	return (
+		<PanelSection title="PIN for shared devices">
+			<div className="flex flex-wrap items-center gap-3">
+				<p className="flex-1 text-[13px] text-ink-2">
+					{hasPin ? "PIN set. Reset it if it was forgotten or seen; they set a new one at their next sign-in." : "No PIN yet. They set it themselves after signing in."}
+				</p>
+				{hasPin ? (
+					<Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => setConfirm(true)}>
+						<KeyRoundIcon className="size-4" /> Reset PIN
+					</Button>
+				) : (
+					<Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(() => remindStaffPin(id), `Reminder sent to ${staff.fullName}`)}>
+						Remind
+					</Button>
+				)}
+			</div>
+			<ConfirmModal
+				open={confirm}
+				onOpenChange={setConfirm}
+				title={`Reset ${staff.fullName}'s PIN?`}
+				subtitle="Their PIN stops working on every shared device"
+				confirmLabel="Reset PIN"
+				tone="danger"
+				pending={pending}
+				onConfirm={() => run(() => resetStaffPin(id), "PIN reset", () => { setHasPin(false); setConfirm(false); })}
+			>
+				<p className="text-[13px] text-ink-2">They sign in with email and set a new PIN. You never see or choose it.</p>
+			</ConfirmModal>
+		</PanelSection>
+	);
 }
 
 // ---- profile ---------------------------------------------------------------------------------------
@@ -229,6 +281,7 @@ export function StaffProfilePanel({
 									))}
 								</div>
 							</PanelSection>
+							<StaffPinActions key={staff.id} staff={staff} />
 							<PanelSection title="Quick actions">
 								<div className="grid grid-cols-2 gap-2">
 									{[

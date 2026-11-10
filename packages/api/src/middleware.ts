@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { APP_ROLES, isAppRole, OTHER_APP_URL } from "./app";
+import { APP, APP_ROLES, isAppRole, OTHER_APP_URL } from "./app";
 import { DEMO_AUTH } from "./demo/mode";
 import { rolePaths } from "./roles";
 import { COOKIES, decodeSession } from "./session";
 
 const PREFIX = "/dashboard";
-const PUBLIC = ["/auth", "/auth/support", "/forgot-password", "/reset-password", "/sign-up", "/accept-invite"];
+const PUBLIC = ["/auth", "/lock", "/auth/support", "/forgot-password", "/reset-password", "/sign-up", "/accept-invite"];
 /**
  * Public screens a signed-in user may still open: the invite flow signs a different user in, and the
  * support link (/auth/support?token=) replaces whatever session the browser holds with the owner view.
@@ -36,6 +36,8 @@ export async function appMiddleware(request: NextRequest) {
 			: NextResponse.next();
 	}
 	if (!session) {
+		// A shared device (docs/shared-devices.md) shows its lock screen instead of the sign-in page.
+		if (APP === "hotel" && request.cookies.get("hms.device")?.value) return NextResponse.redirect(new URL("/lock", request.url));
 		const login = new URL("/auth", request.url);
 		if (pathname.startsWith(PREFIX)) login.searchParams.set("from", pathname + request.nextUrl.search);
 		return NextResponse.redirect(login);

@@ -1,5 +1,6 @@
 "use server";
 
+import { askForPin } from "@hospio/api/device";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { ActionResult } from "@hospio/api/actions/auth";
@@ -216,6 +217,8 @@ export async function acceptInvite(input: {
 			error: errorMessage(error, "The invite could not be accepted"),
 		};
 	await settleSession(data.data.accessToken, data.data.refreshToken);
+	// First sign-in: staff on a shared desk are asked for a PIN (skippable; docs/shared-devices.md).
+	await askForPin();
 	return { ok: true, data: { roles: data.data.roles } };
 }
 

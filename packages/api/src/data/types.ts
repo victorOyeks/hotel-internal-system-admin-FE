@@ -364,6 +364,8 @@ export type StaffRow = {
 	grants?: GrantRow[];
 	inviteStatus?: InviteState;
 	mustChangePassword?: boolean;
+	/** A PIN is set for shared devices (false shows "No PIN yet"; undefined when the service does not say). */
+	hasPin?: boolean;
 };
 export type ShiftRow = {
 	id: Id;

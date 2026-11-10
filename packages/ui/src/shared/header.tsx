@@ -1,8 +1,8 @@
 "use client";
 
-import { BellIcon, ChevronDownIcon, CircleHelpIcon, LogOutIcon, SearchIcon, UserIcon } from "lucide-react";
+import { BellIcon, ChevronDownIcon, CircleHelpIcon, LogOutIcon, SearchIcon, TabletSmartphoneIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Avatar, AvatarFallback } from "@hospio/ui/primitives/avatar";
 import {
 	DropdownMenu,
@@ -17,6 +17,7 @@ import type { Me } from "@hospio/api/api/schema";
 import { logout } from "@hospio/api/actions";
 import { roleLabels, type HotelRole } from "@hospio/api/roles";
 import { cn } from "@hospio/ui/utils";
+import { type DeviceSetupHotel, LockButton, SetupDeviceModal } from "@hospio/ui/shared/shared-device";
 
 function initials(name: string) {
 	return name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -29,13 +30,22 @@ export function Header({
 	role,
 	hotelCount,
 	unread,
+	device,
+	setupHotels = [],
+	activeHotelId,
 }: {
 	user: Me;
 	role: HotelRole;
 	hotelCount: number;
 	unread: number;
+	/** On a shared device: its name, for the Lock button (docs/shared-devices.md). */
+	device?: { name: string };
+	/** Where this person may set up a shared device; empty hides "Use this device as a shared device". */
+	setupHotels?: DeviceSetupHotel[];
+	activeHotelId?: string;
 }) {
 	const [pending, startTransition] = useTransition();
+	const [setupOpen, setSetupOpen] = useState(false);
 	const subtitle = `${roleLabels[role]}${hotelCount > 0 ? ` · ${hotelCount} ${hotelCount === 1 ? "branch" : "branches"}` : ""}`;
 
 	return (
@@ -54,6 +64,7 @@ export function Header({
 			</div>
 
 			<div className="flex items-center gap-3">
+				{device && <LockButton deviceName={device.name} />}
 				<Link href="/dashboard/help" className={iconButton} aria-label="Help">
 					<CircleHelpIcon className="size-5" />
 				</Link>
@@ -89,16 +100,24 @@ export function Header({
 						<DropdownMenuItem asChild className="rounded-lg">
 							<Link href="/select-role">Switch role</Link>
 						</DropdownMenuItem>
+						{setupHotels.length > 0 && (
+							<DropdownMenuItem className="rounded-lg" onSelect={() => setSetupOpen(true)}>
+								<TabletSmartphoneIcon /> Use this device as a shared device
+							</DropdownMenuItem>
+						)}
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							className="rounded-lg text-danger focus:text-danger"
 							disabled={pending}
 							onSelect={() => startTransition(() => logout())}
 						>
-							<LogOutIcon /> Sign out
+							<LogOutIcon /> {device ? "Lock" : "Sign out"}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
+				{setupHotels.length > 0 && (
+					<SetupDeviceModal open={setupOpen} onOpenChange={setSetupOpen} hotels={setupHotels} activeHotelId={activeHotelId} activeRole={role} />
+				)}
 			</div>
 		</header>
 	);
