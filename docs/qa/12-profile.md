@@ -58,7 +58,7 @@ You need an authenticator app on a phone (Google Authenticator, Microsoft Authen
 | 3.1 | Sign in as the QA person in two more browsers (e.g. Chrome and Safari, or a phone) | Security lists each: "Chrome on macOS", "Safari on iPhone" …, last used and signed-in times, and "This device" on the one you are using. No IP address anywhere |
 | 3.2 | Sign out one other row → confirm | "Device signed out"; the row goes. That browser lands on sign-in at its next click (a few seconds) |
 | 3.3 | Sign out all other devices → confirm | "N other devices signed out"; only "This device" is left; you stay signed in; the others land on sign-in |
-| 3.4 | On a shared device (docs/qa/shared-devices.md), unlock as Segun, then open Segun's profile in a normal browser | A row "Bar tablet · PIN". Signing it out sends the tablet back to its lock screen |
+| 3.4 | On a shared device (docs/qa/06-shared-devices.md), unlock as Segun, then open Segun's profile in a normal browser | A row "Bar tablet · PIN". Signing it out sends the tablet back to its lock screen |
 
 ## 4 · 2-step sign-in
 
