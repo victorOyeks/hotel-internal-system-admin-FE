@@ -9,21 +9,7 @@ import type { AdminUserRow, PlatformChangeRow } from "./types";
 
 export type { Delivery };
 
-export type Paged<T> = {
-	content: T[];
-	page: number;
-	size: number;
-	total: number;
-	totalPages: number;
-};
-
-export const emptyPage = <T>(size = 25): Paged<T> => ({
-	content: [],
-	page: 0,
-	size,
-	total: 0,
-	totalPages: 0,
-});
+export { emptyPage, type Paged } from "./paging";
 
 /** Anything that may carry the messages the platform would have sent. */
 export type WithDeliveries<T> = T & { deliveries?: Delivery[] };

@@ -139,10 +139,13 @@ export function OwnerReports({
 	hotels,
 	schedules,
 	runs,
+	owner = true,
 }: {
 	hotels: Hotel[];
 	schedules: ReportScheduleRow[];
 	runs: ReportRunRow[];
+	/** The owner schedules for every hotel and for the managers; a manager for their own hotel only. */
+	owner?: boolean;
 }) {
 	const [q, setQ] = useQueryStates({
 		report: parseAsString,
@@ -388,7 +391,8 @@ export function OwnerReports({
 			<ScheduleModal
 				kind={schedule}
 				hotels={hotels}
-				defaultHotel={q.hotel ?? ""}
+				defaultHotel={q.hotel ?? (owner ? "" : (hotels[0]?.hotelId ?? ""))}
+				owner={owner}
 				onClose={() => setSchedule(null)}
 			/>
 			<ConfirmModal
@@ -630,11 +634,13 @@ function ScheduleModal({
 	kind,
 	hotels,
 	defaultHotel,
+	owner,
 	onClose,
 }: {
 	kind: ReportKind | null;
 	hotels: Hotel[];
 	defaultHotel: string;
+	owner: boolean;
 	onClose: () => void;
 }) {
 	const router = useRouter();
@@ -715,17 +721,19 @@ function ScheduleModal({
 						value={scope || ALL}
 						onChange={(v) => setHotel(v === ALL ? "" : v)}
 						options={[
-							{ value: ALL, label: "All hotels" },
+							...(owner ? [{ value: ALL, label: "All hotels" }] : []),
 							...hotels.map((h) => ({ value: h.hotelId, label: h.name })),
 						]}
 					/>
 				</FieldRow>
-				<ToggleField
-					label="Also send to the managers"
-					hint="Each hotel's managers get their own hotel"
-					checked={managers}
-					onChange={setManagers}
-				/>
+				{owner && (
+					<ToggleField
+						label="Also send to the managers"
+						hint="Each hotel's managers get their own hotel"
+						checked={managers}
+						onChange={setManagers}
+					/>
+				)}
 				<Note tone="info">
 					Each run covers {COVERS[every]}. Saving the same report for the same
 					hotel again changes its schedule. Email is not connected on staging:
