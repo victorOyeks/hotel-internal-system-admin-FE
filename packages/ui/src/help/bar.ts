@@ -155,7 +155,7 @@ export const barHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"“Print receipt” only shows on a sale once a payment has been taken on it.",
-				"To send a receipt again by email, open “My payments”, tap the payment and tap “Re-send receipt”.",
+				"To send a receipt again by email, open “My payments”, tap the payment and tap “Email receipt again”.",
 			],
 		},
 		{

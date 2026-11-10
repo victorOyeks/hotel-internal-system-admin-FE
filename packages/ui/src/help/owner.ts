@@ -35,7 +35,7 @@ export const ownerHelp: HelpModule = {
 				"Rooms & prices: put the “Number of rooms”, the “Starting price per night” and the “Name of this room type”, or leave the rooms blank to add them later.",
 				"Manager: turn on “Invite a manager now” and fill their name, email and phone, or skip it.",
 				"Check the Review and tap “Add hotel”.",
-				"If you invited a manager, copy their invite link and temporary password, or tap “Send on WhatsApp”. Then tap “Done”.",
+				"If you invited a manager, the invite is emailed to them. You can also copy their invite link and temporary password, or tap “Share in your WhatsApp”. Then tap “Done”.",
 			],
 			goodToKnow: [
 				"Nothing is saved until you tap “Add hotel”.",
@@ -74,14 +74,14 @@ export const ownerHelp: HelpModule = {
 			topic: "People",
 			steps: [
 				"Open “Users” and tap “Invite user”.",
-				"Fill “Full name”, “Email” and “Phone”.",
+				"Fill “Full name” and “Email”. “Phone” is optional.",
 				"Pick the “Role”: Manager, Finance or Inventory.",
 				"Pick the “Hotel” they work at.",
 				"Tap “Create login”.",
-				"Copy the invite link and temporary password, or tap “Send on WhatsApp”, then tap “Done”.",
+				"The invite is emailed to them. If they need it now, copy the invite link and temporary password, or tap “Share in your WhatsApp”, then tap “Done”.",
 			],
 			goodToKnow: [
-				"The invite email goes out in the hotel's name. SMS and WhatsApp from Hospio360 are coming soon; “Send on WhatsApp” opens WhatsApp on your own phone or computer with the message ready.",
+				"The invite is emailed to the address you typed, in the hotel's name. SMS and WhatsApp invites are coming soon; “Share in your WhatsApp” opens WhatsApp on your own phone or computer with the message ready.",
 				"The link and temporary password are shown only once.",
 				"Each role is given for one hotel. Add more hotels afterwards with “Change role & hotels”.",
 				"Front desk, housekeeping, kitchen and other tablet staff are added on “Staff”, not here.",
@@ -119,7 +119,7 @@ export const ownerHelp: HelpModule = {
 			topic: "People",
 			steps: [
 				"Open “Staff” and tap “Add staff”.",
-				"Fill “Full name”, “Email” and “Phone”.",
+				"Fill “Full name” and “Email”. “Phone” is optional.",
 				"Pick the “Hotel”, the “Role” and type a “Job title”.",
 				"Pick the “Access level”: “Full”, “Can edit” or “View only”.",
 				"Tap “Add staff”.",

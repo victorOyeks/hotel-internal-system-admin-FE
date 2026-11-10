@@ -1,9 +1,24 @@
 import type { WhatsNewItem } from "./types";
 
 /** This week's changes, in the user's words. Newest first; keep it to the last week or two. */
-export const whatsNewWeek = "Week of 3 November 2026";
+export const whatsNewWeek = "Week of 10 November 2026";
 
 export const whatsNew: WhatsNewItem[] = [
+	{
+		title: "Housekeeping reports, notes and linen requests are real",
+		body: "“Report a problem → Now” makes an urgent work order, can take the room out of order and tells the front office, with an optional photo. Your note for the supervisor and “Try again at” are saved and shown on Inspect. Minibar prices come from Hotel setup, and linen you ask for shows on the laundry's Linen screen with “Mark sent”.",
+		audience: ["HOUSEKEEPING", "LAUNDRY", "MANAGER", "FRONT_OFFICE"],
+	},
+	{
+		title: "Receipts go by email or print",
+		body: "Taking a payment offers “Email” (picked when the guest has one) or “Print”; WhatsApp and SMS are coming soon. Invites say the address they were emailed to. Front desk to-dos now come from today's bookings, and a stuck card has “Check with the POS”.",
+		audience: ["FRONT_OFFICE", "MANAGER", "OWNER", "BAR", "KITCHEN", "LAUNDRY"],
+	},
+	{
+		title: "Approvals in the manager's sidebar",
+		body: "Managers have “Approvals” in the sidebar with the number waiting for a decision.",
+		audience: ["MANAGER"],
+	},
 	{
 		title: "Shared tablets with a PIN",
 		body: "A manager can make a tablet a shared device from the menu under their name. Staff switch in with their own PIN, and the tablet locks itself when nobody uses it.",

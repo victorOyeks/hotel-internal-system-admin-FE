@@ -103,18 +103,35 @@ export const frontOfficeHelp: HelpModule = {
 				"Pick the “Guest folio”, check “Who is paying”, the “Amount” and “What for”, then tap “Continue · ₦…”.",
 				"Under “How is the guest paying?”, choose “Card on the POS”, “Bank transfer” or “Cash”.",
 				"Card: pick the “Terminal” and tap “Send to POS”, then hand the guest the POS. Transfer: tap “Show transfer details”, wait for the alert and tap “I've confirmed the transfer”. Cash: tap “Count cash”, enter the “Cash received” and tap “Cash received”.",
-				"Under “Send the receipt by”, choose “Email” and type the address, then tap “Send receipt & record”. Or tap “Skip receipt”.",
+				"Under “Receipt”, “Email” is picked when the guest has an email: check the “Guest's email” and tap “Email receipt & record”. Or pick “Print” and tap “Record payment”, or tap “Skip receipt”.",
 				"Tap “Done”. The folio and your payments list update.",
 			],
 			goodToKnow: [
 				"Open your till before you take cash. Cash goes into your till.",
 				"A card stays “Processing” until the POS answers. If it is declined, tap “Try another way” or “Try again on POS”. Nothing was charged.",
+				"A card still “Processing” later: open it in “Payments” and tap “Check with the POS”. It is approved only when the POS says so.",
 				"Transfers are matched to the bank by finance later.",
-				"Receipts by WhatsApp are coming soon: only email is really sent.",
+				"The receipt email is sent for real. WhatsApp and SMS receipts are coming soon, so they are greyed out. Without an email, print the receipt from the done screen.",
 				"To give money back, open the payment in “Payments” and tap “Request refund”. A manager approves refunds.",
 			],
 			route: "/dashboard/payments",
 			screen: "Payments",
+		},
+		{
+			id: "fo-todos",
+			title: "Work through the front desk to-dos",
+			when: "At the start of a shift, to see what still needs doing today.",
+			topic: "Today",
+			steps: [
+				"Open “Today”. The “Front desk to-dos” card lists what is left.",
+				"Tap a line to go straight to it: an arrival with no room yet, arrivals to check in, departures to check out, or guests in house with a balance.",
+			],
+			goodToKnow: [
+				"The to-dos come from today's bookings and folios. Each one goes away by itself once the work is done; there is nothing to tick.",
+				"Company accounts are left out of the balances: they are billed to the company.",
+			],
+			route: "/dashboard",
+			screen: "Today",
 		},
 		{
 			id: "fo-post-charge",
@@ -170,7 +187,7 @@ export const frontOfficeHelp: HelpModule = {
 			goodToKnow: [
 				"Only an approved payment has a receipt to print.",
 				"Right after you take a payment, the last step also has “Print receipt”.",
-				"Sending the folio by WhatsApp is coming soon: only email is really sent.",
+				"The folio window is “Print or email the folio”: “Email” is sent for real to the guest's email. WhatsApp is coming soon and greyed out.",
 			],
 		},
 		{

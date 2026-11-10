@@ -101,13 +101,16 @@ ends on the booking summary.
 ### 3e · Folio and check-out
 
 1. Folios → the guest's folio is open with the room charge and the payment, balance ₦0.
-2. In the folio: Post a charge "Minibar", ₦4,000 → balance ₦4,000. (Manager only: Discount ₦1,000 with a
-   reason → balance ₦3,000; Void the minibar line with a reason → balance back.) Front office: Discount →
+2. In the folio: Post charge "Minibar", ₦4,000 → balance ₦4,000. (Manager only: Discount / void → Discount
+   ₦1,000 with a reason → balance ₦3,000; Void the minibar line with a reason → balance back.) Front office:
+   Discount / void →
    "Send for approval" → "Sent to the manager to approve"; it shows in the manager's Approvals and the
    discount lands on the folio when approved (over the manager's limit it goes to the owner). Void stays
    manager-only (the button is disabled for front office with a note).
-   - Print or send → WhatsApp or Email → Send → "Folio sent to …"; the message card shows
-     the stay summary (nothing is really sent on staging).
+   - Print or email → the window is "Print or email the folio"; "Email" is picked when the guest has an email
+     and WhatsApp is greyed "Coming soon" (can't be picked) → Email folio → "Folio emailed to …"; the message
+     card says "Email sent to …" (sent for real: use a `@hospio-qa.test` guest). Without a guest email only
+     "Print / copy" can be used → Print receipt.
 3. Bookings → In-house → Check out: one panel with the bill as the folio has it now (room charges, extras,
    paid, balance). With a balance the button reads "Take ₦X": the payment steps run inside the same panel,
    "Back to check-out" returns with "nothing left to pay", then Check out. Status becomes Checked out and the
@@ -141,8 +144,18 @@ After any payment the booking summary (Paid/Balance), the folio (after check-in)
 till (cash only, when a till is open: Till screen) and Today's money (`/finance/today`, manager) agree. Cash
 taken with no open till still counts in Today's money and is flagged as unattached cash.
 - Payments → request a refund on a payment → it appears for the manager under Payments → Refunds.
-- Manager Payments → an approved payment → Resend receipt (panel or row menu) → "Receipt resent to …" and
-  the card shows the receipt (WhatsApp to the guest's phone, else email; a payment with neither says so).
+- Manager Payments → an approved payment → Email receipt again (panel or row menu) → "Receipt emailed to …"
+  and the card shows "Email sent to …". A payment whose guest has only a phone is refused: "This guest has no
+  email · print the receipt or email it from the receipt page (WhatsApp receipts are coming soon)".
+- Take payment → receipt step: "Receipt" offers Email (picked when the guest has an email, address filled in),
+  Print, and "WhatsApp · coming soon" / "SMS · coming soon" greyed out. Email → "Email receipt & record" → the
+  toast says "Receipt emailed to …". A bad address keeps the button disabled. Print → "Record payment" → the
+  done screen has Print receipt.
+- My payments (front office) → a card payment still Processing → "Check with the POS" → the toast says what the
+  POS answered; it turns Approved only if the POS approved it (no "I've confirmed it landed" any more).
+- Today → "Front desk to-dos" lists only real work from today's bookings and folios (an arrival with no room,
+  arrivals to check in, departures to check out, guests in house with a balance); each line opens the screen.
+  With none it says "Nothing waiting". There are no tick boxes.
 - Manager Payments → a Declined (or No response) card payment → Retry on POS → a new payment for the same
   amount goes to the POS of the desk that took it ("sent to the POS again"); the declined one stays in the
   list. To make a declined payment on staging: take a card payment, then
