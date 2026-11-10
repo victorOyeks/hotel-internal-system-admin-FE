@@ -52,6 +52,36 @@ const humanize = (code: string) => {
 	return s ? s[0].toUpperCase() + s.slice(1) : s;
 };
 
+/** A person as the owner's Staff rows: one per hotel of the business they hold a role at. */
+function ownerStaffRows(u: UserSummary, names: Map<string, string>): OwnerStaffRow[] {
+	const hotelIds = [
+		...new Set(
+			u.grants.map((g) => g.hotelId).filter((h): h is string => !!h && names.has(h)),
+		),
+	];
+	return hotelIds.map((hotelId) => {
+		const row = toStaffRow(u, hotelId, names);
+		const here = u.grants.filter((g) => g.hotelId === hotelId);
+		const timedPause = u.status === "PAUSED" && !!u.pausedUntil;
+		return {
+			...row,
+			jobTitle: u.jobTitle || row.jobTitle,
+			// A suspended or paused account is that, whatever its roles here say.
+			status:
+				u.status === "SUSPENDED" ? "SUSPENDED" : u.status === "PAUSED" ? "PAUSED" : row.status,
+			key: `${u.id}:${hotelId}`,
+			hotelId,
+			hotelName: names.get(hotelId) ?? "Hotel",
+			pausedUntil: timedPause ? (u.pausedUntil ?? undefined) : undefined,
+			statusReason: u.statusReason ?? undefined,
+			statusChangedBy: u.statusChangedBy ?? undefined,
+			statusChangedAt: u.statusChangedAt ?? undefined,
+			grantIdsHere: here.map((g) => g.id),
+			isManager: here.some((g) => g.role === "MANAGER"),
+		};
+	});
+}
+
 /** The data seam, loaded when called: it imports this module, so a static import would be circular. */
 const seam = async () => (await import("./index")).data;
 
@@ -272,44 +302,53 @@ export const ownerData = {
 		const rows: OwnerStaffRow[] = [];
 		for (const u of res.data as UserSummary[]) {
 			if (u.grants.some((g) => g.role === "OWNER")) continue;
-			const hotelIds = [
-				...new Set(
-					u.grants
-						.map((g) => g.hotelId)
-						.filter((h): h is string => !!h && names.has(h)),
-				),
-			];
-			for (const hotelId of hotelIds) {
-				const row = toStaffRow(u, hotelId, names);
-				const here = u.grants.filter((g) => g.hotelId === hotelId);
-				const timedPause = u.status === "PAUSED" && !!u.pausedUntil;
-				rows.push({
-					...row,
-					jobTitle: u.jobTitle || row.jobTitle,
-					// A suspended or paused account is that, whatever its roles here say.
-					status:
-						u.status === "SUSPENDED"
-							? "SUSPENDED"
-							: u.status === "PAUSED"
-								? "PAUSED"
-								: row.status,
-					key: `${u.id}:${hotelId}`,
-					hotelId,
-					hotelName: names.get(hotelId) ?? "Hotel",
-					pausedUntil: timedPause ? (u.pausedUntil ?? undefined) : undefined,
-					statusReason: u.statusReason ?? undefined,
-					statusChangedBy: u.statusChangedBy ?? undefined,
-					statusChangedAt: u.statusChangedAt ?? undefined,
-					grantIdsHere: here.map((g) => g.id),
-					isManager: here.some((g) => g.role === "MANAGER"),
-				});
-			}
+			rows.push(...ownerStaffRows(u, names));
 		}
 		return rows.sort(
 			(a, b) =>
 				a.fullName.localeCompare(b.fullName) ||
 				a.hotelName.localeCompare(b.hotelName),
 		);
+	},
+
+	/**
+	 * Hotel Owner · Staff, a page at a time: the people who work for the owner (the owner left out), searched (`q`), filtered by
+	 * `hotel` and `tab` (active, invited, held) and sorted in identity-service. A person is one row per hotel they work at, so a
+	 * page of 25 people can show a few more rows; `total` and the counts are people. Counts: all, WORKING, INVITED, HELD.
+	 */
+	staffPage: async (
+		query: ListQuery & { hotel?: string | null; tab?: string | null } = {},
+	): Promise<PageResult<OwnerStaffRow>> => {
+		if (!live("identity")) return { ok: true, data: emptyPage<OwnerStaffRow>() };
+		const hotels = await hotelsOf();
+		const names = new Map(hotels.map((h) => [h.id, h.name]));
+		const { hotel, tab, ...rest } = query;
+		const status =
+			tab === "active" ? "WORKING" : tab === "invited" ? "INVITED" : tab === "held" ? "HELD" : undefined;
+		const { data: res, error } = await businessWide(async () =>
+			api("@get/identity/users", {
+				...(await withSession()),
+				query: pageQuery({ ...rest, status, hotelId: hotel || undefined, staffOnly: true }) as {
+					page: number;
+					size: number;
+				},
+			}),
+		);
+		if (error || !res) {
+			console.error("identity-service users page (owner):", error);
+			return failedPage(errorMessage(error, "Staff didn't load"));
+		}
+		if (Array.isArray(res.data)) return failedPage("identity-service answered a list, not a page");
+		const paged = toPaged(res.data, (u) => u);
+		return {
+			ok: true,
+			data: {
+				...paged,
+				content: paged.content.flatMap((u) =>
+					ownerStaffRows(u, names).filter((r) => !hotel || r.hotelId === hotel),
+				),
+			},
+		};
 	},
 
 	/**
@@ -333,6 +372,16 @@ export const ownerData = {
 			return failedPage(errorMessage(error, "Messages didn't load"));
 		}
 		return { ok: true, data: toPaged(res.data, (t) => toThreadRow(t, names)) };
+	},
+
+	/** Unread messages over my staff threads at every hotel (the Inbox badge in the sidebar); null when it can't be read. */
+	inboxUnread: async (): Promise<number | null> => {
+		if (!live("messaging")) return null;
+		const { data: res, error } = await businessWide(async () =>
+			api("@get/messaging/threads/unread-count", await withSession()),
+		);
+		if (error || !res) return null;
+		return Number(res.data) || 0;
 	},
 
 	/** One thread's messages (and it is marked read for me). */

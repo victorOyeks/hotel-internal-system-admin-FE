@@ -18,6 +18,7 @@ import {
 	HeadsetIcon,
 	HomeIcon,
 	IdCardIcon,
+	InboxIcon,
 	LayoutGridIcon,
 	MegaphoneIcon,
 	MessageSquareIcon,
@@ -44,8 +45,8 @@ export type NavLink = {
 	title: string;
 	url: string;
 	icon: LucideIcon;
-	/** A count shown on the link (the shell fills it): unpaid sales for the bar and kitchen. */
-	badge?: "unpaidSales";
+	/** A count shown on the link (the shell fills it): unpaid sales for the bar and kitchen, unread staff messages for the Inbox. */
+	badge?: "unpaidSales" | "inbox";
 };
 
 /** Manager portal, in the order of the Figma sidebar. */
@@ -65,6 +66,7 @@ export const managerLinks: NavLink[] = [
 	},
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
 	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
 	{ title: "Menus", url: "/dashboard/menus", icon: BookOpenIcon },
 	{ title: "Reports", url: "/dashboard/reports", icon: FolderIcon },
@@ -94,7 +96,13 @@ export const ownerLinks: NavLink[] = [
 	},
 	{ title: "Operations", url: "/dashboard/operations", icon: ActivityIcon },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
-	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
+	// The owner's staff threads live on Messaging (their Inbox), so the unread count shows here.
+	{
+		title: "Messaging",
+		url: "/dashboard/messaging",
+		icon: MessageSquareIcon,
+		badge: "inbox",
+	},
 	{
 		title: "Hotel setup",
 		url: "/dashboard/hotel-setup",
@@ -116,6 +124,7 @@ export const frontOfficeLinks: NavLink[] = [
 	{ title: "Messages", url: "/dashboard/messages", icon: MessageSquareIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -127,6 +136,7 @@ export const housekeepingLinks: NavLink[] = [
 	{ title: "Housekeeping store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "Repairs", url: "/dashboard/repairs", icon: WrenchIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -136,6 +146,7 @@ export const laundryLinks: NavLink[] = [
 	{ title: "Laundry store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -145,6 +156,7 @@ export const maintenanceLinks: NavLink[] = [
 	{ title: "Maintenance store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "Rooms out of order", url: "/dashboard/rooms", icon: BedDoubleIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -161,6 +173,7 @@ export const kitchenLinks: NavLink[] = [
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -178,6 +191,7 @@ export const barLinks: NavLink[] = [
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
 	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -188,6 +202,7 @@ export const inventoryLinks: NavLink[] = [
 	{ title: "Deliveries", url: "/dashboard/deliveries", icon: TruckIcon },
 	{ title: "Stock counts", url: "/dashboard/counts", icon: ClipboardCheckIcon },
 	{ title: "Suppliers", url: "/dashboard/suppliers", icon: HandshakeIcon },
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 
@@ -203,6 +218,7 @@ export const financeLinks: NavLink[] = [
 		url: "/dashboard/organizations",
 		icon: HandshakeIcon,
 	},
+	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
 

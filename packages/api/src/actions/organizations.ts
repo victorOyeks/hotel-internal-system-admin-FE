@@ -65,6 +65,11 @@ function organizationBody(input: OrganizationInput) {
 	};
 }
 
+/** An id that isn't there ("undefined" from a missing value): the call is never sent. */
+function noOrg(id?: string | null): boolean {
+	return !id || id === "undefined" || id === "null";
+}
+
 /** Manager. A credit limit above the owner's threshold is saved as a request to the owner (requestedCreditLimit). */
 export async function createOrganization(
 	input: OrganizationInput,
@@ -100,6 +105,7 @@ export async function updateOrganization(
 	input: OrganizationInput,
 	current: OrganizationRow,
 ): Promise<ActionResult<OrganizationRow>> {
+	if (noOrg(id)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) {
 		await demoDelay(400);
 		return {
@@ -156,6 +162,7 @@ export async function addOrgMember(
 	input: MemberInput,
 	fallback: OrgMemberRow,
 ): Promise<ActionResult<OrgMemberRow>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback };
@@ -180,6 +187,7 @@ export async function importOrgMembers(
 	rows: MemberInput[],
 	fallback: OrgMemberRow[],
 ): Promise<ActionResult<OrgMemberRow[]>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback };
@@ -212,6 +220,7 @@ export async function createOrgInvoice(
 	input: { periodFrom: string; periodTo: string; dueDate?: string },
 	fallback: InvoiceRow,
 ): Promise<ActionResult<InvoiceRow>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) {
 		await demoDelay(400);
 		return { ok: true, data: fallback };
@@ -247,6 +256,7 @@ export async function recordOrgPayment(
 		invoiceId?: string;
 	},
 ): Promise<ActionResult<{ id: string; amount: number }>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) {
 		await demoDelay(400);
 		return {
@@ -281,6 +291,7 @@ export async function setOrganizationStatus(
 	orgId: string,
 	status: "ACTIVE" | "ON_HOLD",
 ): Promise<ActionResult<OrganizationRow>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
 	const { data, error } = await api("@put/folio/organizations/:id/status", {
 		...(await withSession()),
@@ -302,6 +313,7 @@ export async function setOrgMemberActive(
 	memberId: string,
 	active: boolean,
 ): Promise<ActionResult<OrgMemberRow>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
 	const { data, error } = await api(
 		"@put/folio/organizations/:id/members/:memberId/active",
@@ -331,6 +343,7 @@ export async function sendOrgMessage(
 	orgId: string,
 	what: "statement" | "reminder",
 ): Promise<ActionResult<OrgSent>> {
+	if (noOrg(orgId)) return { ok: false, error: "Organization not found" };
 	if (!live("folio")) return { ok: false, error: "Not connected in demo mode" };
 	const { data, error } =
 		what === "statement"

@@ -18,11 +18,18 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createUser } from "@hospio/api/actions/identity";
-import { removeFromHotel, updateStaffDetails } from "@hospio/api/actions/owner";
+import {
+	remindPinAsOwner,
+	removeFromHotel,
+	resetPinAsOwner,
+	updateStaffDetails,
+} from "@hospio/api/actions/owner";
+import { exportOwnerStaff } from "@hospio/api/actions/staff-lists";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { UserCreated } from "@hospio/api/api/schema";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { OwnerStaffRow } from "@hospio/api/data/types";
 import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
@@ -49,8 +56,13 @@ import {
 } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { btn } from "@hospio/ui/shared/ui";
-import { ResetPasswordModal, ROLE_OPTIONS } from "../manager/staff/panels";
+import {
+	ResetPasswordModal,
+	ROLE_OPTIONS,
+	StaffPinActions,
+} from "../manager/staff/panels";
 import {
 	EditDetailsModal,
 	MessageStaffModal,
@@ -64,6 +76,7 @@ import { DownloadModal, HotelFilter } from "./common";
 type Hotel = { hotelId: string; name: string };
 type Tab = "all" | "active" | "held" | "invited";
 type ModalKind =
+	| "pin"
 	| "edit"
 	| "pause"
 	| "suspend"
@@ -109,41 +122,40 @@ function statusOf(s: OwnerStaffRow): {
  * from the hotel and message them. Roles and levels are changed on Roles & permissions.
  */
 export function OwnerStaffScreen({
-	staff,
+	result,
+	overall,
 	hotels,
 	businessName,
 	ownerName,
 }: {
-	staff: OwnerStaffRow[];
+	/** The page on screen (`?q=&hotel=&tab=&sort=&page=`): people, one row per hotel they work at. */
+	result: PageResult<OwnerStaffRow>;
+	/** The same hotel without search or tab, for the cards. */
+	overall: PageResult<OwnerStaffRow>;
 	hotels: Hotel[];
 	businessName: string;
 	ownerName: string;
 }) {
-	const [hotel, setHotel] = useQueryState("hotel", parseAsString);
+	const router = useRouter();
+	const list = useListParams({ extra: ["hotel", "tab"] });
+	const hotel = list.params.hotel || null;
+	const tab = (list.params.tab as Tab | null) ?? "all";
 	const [open, setOpen] = useQueryState("open", parseAsString);
 	const [isNew, setIsNew] = useQueryState("new", parseAsString);
-	const [tab, setTab] = useState<Tab>("all");
-	const [search, setSearch] = useState("");
 	const [exportOpen, setExportOpen] = useState(false);
 	const [modal, setModal] = useState<{
 		kind: ModalKind;
 		s: OwnerStaffRow;
 	} | null>(null);
+	const { run, pending } = useAction();
 
-	const scoped = useMemo(
-		() => staff.filter((s) => !hotel || s.hotelId === hotel),
-		[staff, hotel],
-	);
 	const held = (s: OwnerStaffRow) =>
 		s.status === "PAUSED" || s.status === "SUSPENDED";
-	const inTab = (s: OwnerStaffRow, t: Tab) =>
-		t === "all" ||
-		(t === "active" && !held(s) && !invited(s)) ||
-		(t === "held" && held(s)) ||
-		(t === "invited" && invited(s) && !held(s));
-	const rows = scoped.filter((s) => inTab(s, tab));
-	const selected = staff.find((s) => s.key === open) ?? null;
-	const people = new Set(scoped.map((s) => s.userId ?? s.id)).size;
+	const rows = result.data.content;
+	const counts = result.data.counts ?? {};
+	const cards = overall.data.counts ?? counts;
+	const selected = rows.find((s) => s.key === open) ?? null;
+	const people = cards.all ?? 0;
 	const hotelName = hotel
 		? (hotels.find((h) => h.hotelId === hotel)?.name ?? "this hotel")
 		: null;
@@ -166,6 +178,27 @@ export function OwnerStaffScreen({
 			icon: KeyRoundIcon,
 			onClick: () => show("reset", s),
 		},
+		...(s.hasPin === false && s.status === "ACTIVE"
+			? [
+					{
+						label: "Remind to set a PIN",
+						icon: KeyRoundIcon,
+						onClick: () =>
+							run(
+								() => remindPinAsOwner(s.userId ?? s.id),
+								`Reminder sent to ${s.fullName}`,
+							),
+					},
+				]
+			: s.hasPin
+				? [
+						{
+							label: "Reset PIN",
+							icon: KeyRoundIcon,
+							onClick: () => show("pin", s),
+						},
+					]
+				: []),
 		...(held(s)
 			? [
 					{
@@ -210,11 +243,12 @@ export function OwnerStaffScreen({
 				/>
 			),
 		},
-		{ accessorKey: "hotelName", header: "Hotel" },
-		{ accessorKey: "department", header: "Department" },
+		{ accessorKey: "hotelName", header: "Hotel", enableSorting: false },
+		{ accessorKey: "department", header: "Department", enableSorting: false },
 		{
 			accessorKey: "role",
 			header: "Role",
+			enableSorting: false,
 			cell: ({ row }) =>
 				`${roleName(row.original.role)} · ${levelName[row.original.level]}`,
 		},
@@ -222,9 +256,24 @@ export function OwnerStaffScreen({
 			id: "status",
 			header: "Status",
 			accessorFn: (s) => statusOf(s).label,
+			enableSorting: false,
 			cell: ({ row }) => {
 				const st = statusOf(row.original);
-				return <StatusPill tone={st.tone}>{st.label}</StatusPill>;
+				// Shared devices: who still has to set a PIN, as on the manager's Staff screen.
+				const noPin =
+					row.original.hasPin === false &&
+					row.original.status === "ACTIVE" &&
+					!invited(row.original);
+				return noPin ? (
+					<span className="inline-flex flex-wrap items-center gap-1">
+						<StatusPill tone={st.tone}>{st.label}</StatusPill>
+						<StatusPill tone="grey" dot={false}>
+							No PIN yet
+						</StatusPill>
+					</span>
+				) : (
+					<StatusPill tone={st.tone}>{st.label}</StatusPill>
+				);
 			},
 		},
 		{
@@ -261,23 +310,23 @@ export function OwnerStaffScreen({
 					label="Total staff"
 					value={people}
 					icon={UsersIcon}
-					hint={`${plural(scoped.length, "role")} at ${hotelName ?? "your hotels"}`}
+					hint={`People at ${hotelName ?? "your hotels"}`}
 				/>
 				<KpiCard
 					label="Active"
-					value={scoped.filter((s) => !held(s) && !invited(s)).length}
+					value={cards.WORKING ?? 0}
 					icon={ShieldCheckIcon}
 					hint="Signed in at least once"
 				/>
 				<KpiCard
 					label="Invite not accepted"
-					value={scoped.filter((s) => invited(s) && !held(s)).length}
+					value={cards.INVITED ?? 0}
 					icon={MailIcon}
 					hint="Resend from their profile"
 				/>
 				<KpiCard
 					label="Paused or suspended"
-					value={scoped.filter(held).length}
+					value={cards.HELD ?? 0}
 					icon={PauseCircleIcon}
 					hint="Can't sign in"
 				/>
@@ -286,25 +335,17 @@ export function OwnerStaffScreen({
 				left={
 					<PillTabs
 						tabs={[
-							{ key: "all", label: "All", count: scoped.length },
-							{
-								key: "active",
-								label: "Active",
-								count: scoped.filter((s) => inTab(s, "active")).length,
-							},
-							{
-								key: "invited",
-								label: "Invited",
-								count: scoped.filter((s) => inTab(s, "invited")).length,
-							},
+							{ key: "all", label: "All", count: counts.all ?? 0 },
+							{ key: "active", label: "Active", count: counts.WORKING ?? 0 },
+							{ key: "invited", label: "Invited", count: counts.INVITED ?? 0 },
 							{
 								key: "held",
 								label: "Paused or suspended",
-								count: scoped.filter(held).length,
+								count: counts.HELD ?? 0,
 							},
 						]}
 						value={tab}
-						onChange={setTab}
+						onChange={(k) => list.set({ tab: k === "all" ? null : k })}
 					/>
 				}
 				right={
@@ -312,12 +353,12 @@ export function OwnerStaffScreen({
 						<HotelFilter
 							hotels={hotels}
 							value={hotel ?? ""}
-							onChange={(v) => void setHotel(v || null)}
+							onChange={(v) => list.set({ hotel: v || null })}
 						/>
 						<SearchBox
-							value={search}
-							onChange={setSearch}
-							placeholder="Name, hotel, role"
+							value={list.search}
+							onChange={list.setSearch}
+							placeholder="Name, email or phone"
 						/>
 					</>
 				}
@@ -325,7 +366,17 @@ export function OwnerStaffScreen({
 			<DataTable
 				columns={columns}
 				data={rows}
-				search={search}
+				server={{
+					page: result.data,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: { fullName: "fullName", lastSignIn: "lastSignInAt" },
+				}}
+				filtered={list.filtered}
+				onClearFilters={list.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(s) => void setOpen(s.key)}
 				emptyTitle="No staff here"
 				emptyHint="Try another tab or hotel, or add someone."
@@ -440,6 +491,9 @@ export function OwnerStaffScreen({
 								]}
 							/>
 						</PanelSection>
+						{!invited(selected) && (
+							<StaffPinActions key={selected.key} staff={selected} asOwner />
+						)}
 						<PanelSection title="Access">
 							<p className="text-[13px] text-ink-2">
 								Roles and levels are changed on{" "}
@@ -507,45 +561,73 @@ export function OwnerStaffScreen({
 				staff={modal?.kind === "remove" ? modal.s : null}
 				onClose={() => setModal(null)}
 			/>
+			<ConfirmModal
+				open={modal?.kind === "pin"}
+				onOpenChange={(o) => !o && setModal(null)}
+				title={`Reset ${modal?.s.fullName ?? ""}'s PIN?`}
+				subtitle="Their PIN stops working on every shared device"
+				confirmLabel="Reset PIN"
+				tone="danger"
+				pending={pending}
+				onConfirm={() =>
+					modal &&
+					run(
+						() => resetPinAsOwner(modal.s.userId ?? modal.s.id),
+						"PIN reset",
+						() => {
+							setModal(null);
+							router.refresh();
+						},
+					)
+				}
+			>
+				<p className="text-[13px] text-ink-2">
+					They sign in with email and set a new PIN. You never see or choose it.
+				</p>
+			</ConfirmModal>
 			<DownloadModal
 				open={exportOpen}
 				onOpenChange={setExportOpen}
 				title="Export staff"
 				what={`Staff · ${hotelName ?? "All hotels"}`}
-				rows={() => [
-					[
-						"Name",
-						"Email",
-						"Phone",
-						"Hotel",
-						"Department",
-						"Role",
-						"Level",
-						"Job title",
-						"Status",
-						"Last sign-in",
-					],
-					...rows
-						.filter(
-							(s) =>
-								!search ||
-								`${s.fullName} ${s.hotelName} ${roleName(s.role)} ${s.department}`
-									.toLowerCase()
-									.includes(search.toLowerCase()),
-						)
-						.map((s) => [
-							s.fullName,
-							s.email,
-							s.phone,
-							s.hotelName,
-							s.department,
-							roleName(s.role),
-							levelName[s.level],
-							s.jobTitle,
-							statusOf(s).label,
-							s.lastSignIn ?? "",
-						]),
-				]}
+				total={result.data.total}
+				load={async () => {
+					const r = await exportOwnerStaff({
+						q: list.params.q ?? undefined,
+						hotel,
+						tab: tab === "all" ? null : tab,
+					});
+					if (!r.ok) return r;
+					return {
+						ok: true as const,
+						rows: [
+							[
+								"Name",
+								"Email",
+								"Phone",
+								"Hotel",
+								"Department",
+								"Role",
+								"Level",
+								"Job title",
+								"Status",
+								"Last sign-in",
+							],
+							...r.data.rows.map((s) => [
+								s.fullName,
+								s.email,
+								s.phone,
+								s.hotelName,
+								s.department,
+								roleName(s.role),
+								levelName[s.level],
+								s.jobTitle,
+								statusOf(s).label,
+								s.lastSignIn ?? "",
+							]),
+						],
+					};
+				}}
 			/>
 		</>
 	);
