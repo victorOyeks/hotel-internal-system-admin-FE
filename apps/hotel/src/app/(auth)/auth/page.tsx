@@ -5,11 +5,16 @@ import { AuthForm } from "@hospio/ui/screens/auth-form";
 export default async function AuthPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ from?: string }>;
+	searchParams: Promise<{ from?: string; saved?: string }>;
 }) {
-	const { from } = await searchParams;
+	const { from, saved } = await searchParams;
 	return (
 		<>
+			{saved && (
+				<p className="mb-4 rounded-[10px] bg-success-soft px-4 py-3 text-[13px] text-success">
+					Your setup is saved. Sign in any time to carry on where you stopped.
+				</p>
+			)}
 			<AuthForm from={from} />
 			<p className="mt-6 text-center text-[13px] text-ink-2">
 				New here?{" "}

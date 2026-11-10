@@ -2,7 +2,7 @@
 
 import { CheckIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type PropsWithChildren, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@hospio/api/types";
 import { HomeIcon } from "@hospio/ui/svgs/home";
 import { cn } from "@hospio/ui/utils";
+import { logout } from "@hospio/api/actions";
 import { saveForLater } from "./persist";
 import { STEP_META, stepHref } from "./steps";
 
@@ -106,10 +107,9 @@ export function OnboardingShell({ children }: PropsWithChildren) {
 
 /**
  * Saves the open step when its entries are complete (or keeps them in this browser when they are not),
- * then leaves the wizard. Signing in again opens the checklist at the first unfinished step.
+ * then signs out to the sign-in page. Signing in again opens the checklist at the first unfinished step.
  */
 function SaveLater() {
-	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	return (
 		<button
@@ -125,12 +125,12 @@ function SaveLater() {
 					);
 					return;
 				}
-				toast.success(
-					r === "kept"
-						? "Progress kept. This step isn't complete yet, so its entries are kept on this device; finish it any time"
-						: "Progress saved. Sign in any time to carry on where you stopped",
-				);
-				router.push("/onboarding");
+				if (r === "kept")
+					toast.success(
+						"This step isn't complete yet, so its entries are kept on this device",
+					);
+				// Leave the wizard: sign out and land on sign-in, which says the setup was saved.
+				await logout("saved");
 			}}
 			className="text-[13px] font-semibold text-brand hover:underline disabled:opacity-60"
 		>
