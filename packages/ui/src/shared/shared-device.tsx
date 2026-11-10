@@ -10,7 +10,7 @@ import {
 	setupDevice,
 } from "@hospio/api/actions/devices";
 import { setMyPin } from "@hospio/api/actions/identity";
-import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
+import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
 import { Field, SelectField, TextField } from "@hospio/ui/shared/field";
 import { Modal } from "@hospio/ui/shared/modal";
