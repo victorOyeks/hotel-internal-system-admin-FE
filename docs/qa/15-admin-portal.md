@@ -117,7 +117,9 @@ Sign in as each account once and check the buttons match the table (the read-onl
 
 1. Changes → the paged list with business filter; each row shows the reason and who made it. Rows inside the 7-day
    window show **Undo · Nd left** (Support and Super admin only).
-2. Undo one → confirm → it shows "undone"; the business's owner sees it in their activity log.
+2. Undo one → the confirm says to put the previous value back first (Undo doesn't change the setting) → **Mark undone**
+   → "Marked undone"; it shows "undone", the owner's undo ticket is resolved and the owner sees it in their activity
+   log. Check the value itself only changed where you put it back by hand.
 3. Admin activity tab → the platform team's actions from the activity log.
 
 ## 8 · Settings (as super admin, then as support)
@@ -125,8 +127,9 @@ Sign in as each account once and check the buttons match the table (the read-onl
 1. Settings → General: change the support WhatsApp number → "Save changes" (enabled only once something changed) →
    toast; refresh → it stays. Put it back.
 2. Fee defaults → change grace days → Save. Marketer defaults → Save. Security → toggle 2-step → Save.
-3. Integrations → database, Kafka and the payment provider are connected; WhatsApp, email, SMS and KYC are "not
-   configured" with the note that messages are shown on screen. **Refresh** re-reads them.
+3. Integrations → database, Kafka and the payment provider are connected; the note says email goes out for real
+   through Brevo and SMS and WhatsApp are coming soon (recorded and shown on screen, not sent). **Refresh** re-reads
+   them.
 4. As `kola@hospio360.com` every field is disabled and there is no Save.
 
 ## 9 · Business detail tabs (any admin)

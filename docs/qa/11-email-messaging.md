@@ -110,8 +110,12 @@ Use your own inbox (a gmail you read) wherever a step says "your address".
 ## 8. Other screens
 
 - Owner Messaging, Hotels → Message the manager, Staff → Message: the toggle reads **"WhatsApp copy (coming soon)"**.
-- Help → Contact support says the ticket number shows on screen; payments show "Saved for WhatsApp (coming soon)" for
-  a WhatsApp receipt; suppliers say "Orders are emailed here (SMS is coming soon)".
+- Help → Contact support says the ticket number shows on screen; suppliers say "Orders are emailed here (SMS is coming
+  soon)".
+- Every invite card (onboarding step 4, manager Staff, owner Users and Staff, admin team and marketers) says "The invite
+  was emailed to <address>. SMS and WhatsApp invites are coming soon." The phone field is optional.
+- Take payment, Record payment and the folio's "Print or email the folio" offer Email (sent for real) or Print;
+  WhatsApp (and SMS on take payment) are greyed "coming soon". "Email receipt again" says "Receipt emailed to …".
 - Phone verification at sign-up still shows the code on screen.
 
 ## Known limits

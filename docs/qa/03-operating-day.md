@@ -153,10 +153,25 @@ rooms given to her. A stay-over clean is due the day after check-in.
    passed · room is ready"; Victor's Rooms board shows it Ready.
 7. **Do:** Victor → open the ready room → Send to housekeeping. **Expect:** "Room <n> sent to housekeeping"
    (Needs cleaning). Then Mark ready → "Room <n> marked ready".
-8. **Do (minibar):** for a guest in house, open their stay-over task (Grace) → Minibar → add a Coca-Cola →
-   post. **Expect:** "Minibar charges posted to the folio"; the guest's folio has a Minibar line.
-9. **Do:** Kemi → Report a problem → room, "QA tap dripping", how urgent → Send to Maintenance. **Expect:**
-   "Repair reported · Maintenance alerted".
+8. **Do (minibar):** as Tunde → Hotel setup → Housekeeping → Minibar prices → Add item "QA Water" ₦1,000.
+   Then for a guest in house, open their stay-over task (Grace) → Minibar → the list shows the Hotel setup
+   items → add one QA Water → Post charges. **Expect:** "Minibar charges posted to the folio"; the guest's folio
+   has a Minibar line of ₦1,000. With no prices set the panel says "No minibar prices yet".
+9. **Do:** Kemi → Report a problem → room, "QA tap dripping", How urgent "Today" → Send to Maintenance.
+   **Expect:** "Sent to Maintenance"; the work order shows priority Normal.
+9a. **Do:** Kemi → Report a problem → a room nobody is checked into → "Now", keep "Take room … out of order" on,
+   add a photo → Send to Maintenance. **Expect:** "Sent to Maintenance · Room <n> is out of order · front
+   office told", "Photo added to the work order"; Victor gets "Room <n> is out of order"; the room shows out of
+   order on the board and in Maintenance → Rooms out of order. Clear it from the work order afterwards.
+9b. **Do:** the same with "Now" + out of order on a room with a guest checked in. **Expect:** refused: "Room <n>
+   has a guest checked in (<guest>) · it can't go out of order · …"; nothing is opened. Turn the switch off and
+   send: "Sent to Maintenance as urgent · front office told".
+9c. **Do:** Kemi → open a room → type a "Note for the supervisor" → Save note. **Expect:** "Note saved for the
+   supervisor"; Grace sees it on Inspect ("Note: …" on the row, "Attendant's note" in the panel). Can't clean →
+   Do not disturb → Try again at 15:30 → Skip for now. **Expect:** the row says "Do not disturb · try again at
+   15:30" for Kemi and on Grace's Inspect.
+9d. **Do:** a housekeeping attendant at Edit level (not Grace): **Expect:** no "Inspect" in the sidebar,
+   `/dashboard/inspect` says it is for the supervisor, and a held lost & found item has no "Dispose" button.
 10. **Do (manager board):** Tunde → Rooms → a room that needs cleaning → Mark ready, or a ready room →
     Assign cleaning to Kemi. **Expect:** "Room <n> marked ready" / "<n> assigned to Kemi Adebayo"; the board
     shows "Needs cleaning · not assigned" for a dirty room nobody has.
@@ -285,10 +300,9 @@ Check these at the same moment (nobody taking money in between):
   that still shows in Today's money but not in that day's report.
 - Not connected yet (they say so on screen): payroll, bills, budgets, bank balance, branch P&L, organization
   credit, invoice PDFs and emailing invoices, every Export button (greyed out with a tooltip), the terminal
-  "Send test", staff messages, guest messaging screens, editing a person's details, language, receipt photos.
+  "Send test", language, receipt photos.
 - Any other button that has no server route yet answers "Not connected yet · nothing was saved or sent"
-  (blue notice) and leaves the screen as it was. A green success toast always means the server saved it;
-  if you ever see a green toast and the API log has no matching 2xx call, report it.
-- Emails are sent for real, to the address on the record. SMS and WhatsApp are not sent yet ("coming soon"). The message card at the top shows each message, marked "Email sent to …" or "Not sent · … coming soon".
+  (blue notice) and leaves the screen as it was. A green success toast always means the server saved it.
+- Emails are sent for real, to the address on the record. SMS and WhatsApp are "coming soon". The message card at the top shows each message, marked "Email sent to …" or "Not sent · … coming soon".
 - Services read hotel settings at most a minute late: wait a minute after changing a limit or the till float.
 

@@ -162,7 +162,7 @@ export const kitchenHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"“Print receipt” only shows on a sale once a payment has been taken on it.",
-				"To send a receipt again by email, open “My payments”, tap the payment and tap “Re-send receipt”.",
+				"To send a receipt again, open “My payments”, tap the payment and tap “Print or email receipt”: the receipt page prints it or emails it to the address the guest gives.",
 			],
 		},
 		{

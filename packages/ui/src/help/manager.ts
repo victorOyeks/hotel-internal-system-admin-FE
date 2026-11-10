@@ -13,15 +13,16 @@ export const managerHelp: HelpModule = {
 			topic: "Team",
 			steps: [
 				"Open “Staff” and tap “Add staff”.",
-				"Fill in “Full name”, “Phone” and “Email” (they sign in with this email).",
+				"Fill in “Full name” and “Email” (they sign in with this email). “Phone” is optional.",
 				"Pick their “Role”, “Department” and “Access level”: “Full”, “Can edit” or “View only”.",
 				"Add a “Job title”, “Shift” and “Start date” if you know them, then tap “Add staff”.",
-				"Pass on the invite: copy the “Invite link” or the “Temporary password”, or tap “Copy the message” or “Send on WhatsApp”.",
+				"The invite is emailed to them. If they need it now, copy the “Invite link” or the “Temporary password”, or tap “Copy the message” or “Share in your WhatsApp”.",
 				"Tap “Done”.",
 			],
 			goodToKnow: [
-				"Nothing is emailed yet. The invite link and temporary password are shown only once, so pass them on straight away.",
-				"“Send on WhatsApp” opens WhatsApp with the message ready for you to send yourself. It needs a phone number.",
+				"The invite is emailed to the address you typed, in the hotel's name. SMS and WhatsApp invites are coming soon.",
+				"The invite link and temporary password are shown here only once.",
+				"“Share in your WhatsApp” opens your own WhatsApp with the message ready. It needs a phone number.",
 				"Shifts, job titles and departments come from Hotel setup.",
 				"To give the person a second role later, use “Roles & Permissions”.",
 			],
@@ -141,7 +142,7 @@ export const managerHelp: HelpModule = {
 			when: "Someone has asked to spend money, give a refund, order stock or change a price.",
 			topic: "Approvals",
 			steps: [
-				"Open “Dashboard” and tap “All approvals” on the “Needs your action” card.",
+				"Open “Approvals” in the sidebar (the number next to it is how many are waiting), or tap “All approvals” on the Dashboard.",
 				"On the “Waiting” tab, tap the request to open it.",
 				"Read the amount, who asked and what happens if you approve.",
 				"Tap “Approve”, or “Decline” and write the reason, then “Decline request”.",
@@ -163,7 +164,7 @@ export const managerHelp: HelpModule = {
 			when: "The kitchen or bar asked to change the price of a dish or drink.",
 			topic: "Approvals",
 			steps: [
-				"Open “Dashboard” and tap “All approvals”.",
+				"Open “Approvals” in the sidebar.",
 				"On the “Waiting” tab, open the price change.",
 				"Check the item and the new price.",
 				"Tap “Approve” to use the new price, or “Decline” with a reason to keep the old one.",
@@ -212,7 +213,7 @@ export const managerHelp: HelpModule = {
 			goodToKnow: [
 				"Only approved payments have a receipt.",
 				"Emails are sent in the hotel's name. WhatsApp and SMS are coming soon.",
-				"“Resend receipt” in the payment's menu sends it to the guest again.",
+				"“Email receipt again” in the payment's menu emails it to the guest again. A guest with only a phone can't be sent one yet: print it.",
 				"A sale at the restaurant or bar can be printed from its sale panel too.",
 			],
 			route: "/dashboard/payments",
@@ -331,7 +332,7 @@ export const managerHelp: HelpModule = {
 				"Pick a section on the left, for example “Hotel basics”, “Housekeeping” or “Night audit”.",
 				"Change the values you need.",
 				"Tap “Save changes”, or “Discard” to undo.",
-				"For kitchens, bars and tables, use “Restaurants & tables”. For tablets, use “Shared devices”.",
+				"For kitchens, bars and tables, use “Restaurants & tables”. For tablets, use “Shared devices”. Minibar prices are under “Housekeeping”.",
 			],
 			goodToKnow: [
 				"Changes apply to this hotel only.",
@@ -340,6 +341,41 @@ export const managerHelp: HelpModule = {
 			],
 			route: "/dashboard/hotel-setup",
 			screen: "Hotel setup",
+		},
+		{
+			id: "mgr-minibar-prices",
+			title: "Set the minibar prices",
+			when: "Attendants need to post what guests took from the minibar, or a price changed.",
+			topic: "Hotel setup",
+			steps: [
+				"Open “Hotel setup” and pick “Housekeeping”.",
+				"Under “Minibar prices”, tap “Add item”, type the “Item” and its “Price”, then tap “Add item”.",
+				"To change one, tap “Edit”, change it and tap “Save price”.",
+				"To stop offering one, tap “Switch off”. “Offer again” brings it back.",
+			],
+			goodToKnow: [
+				"Attendants see the items that are offered on My rooms → “Minibar”; what they post goes on the guest's bill.",
+				"A price is switched off, never deleted, so past charges keep their name.",
+			],
+			route: "/dashboard/hotel-setup",
+			screen: "Hotel setup",
+		},
+		{
+			id: "mgr-edit-staff",
+			title: "Change someone's details",
+			when: "A person's name, phone, email or job title is wrong or has changed.",
+			topic: "Team",
+			steps: [
+				"Open “Staff”, open the person's row menu and tap “Edit details”.",
+				"Change the “Full name”, “Phone”, “Email” or “Job title”.",
+				"Tap “Save changes”.",
+			],
+			goodToKnow: [
+				"A new email is the one they sign in with from then on. It can't be one someone else already uses.",
+				"Roles and access levels are changed in “Roles & Permissions”; the shift with “Change shift” in the row menu.",
+			],
+			route: "/dashboard/staff",
+			screen: "Staff",
 		},
 	],
 };

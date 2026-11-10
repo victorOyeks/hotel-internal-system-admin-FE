@@ -20,7 +20,6 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import type { PaymentRow } from "@hospio/api/data/types";
 import {
-	resendReceipt,
 	retryPayment,
 	verifyPayment,
 } from "@hospio/api/actions/payment";
@@ -298,19 +297,15 @@ export function MyPaymentsScreen({
 								</BigButton>
 							)}
 						{current.status === "APPROVED" && (
-							<BigButton
-								tone="secondary"
-								pending={pending}
-								onClick={() =>
-									run(
-										() => resendReceipt(current.id),
-										(r) => `Receipt emailed to ${r.sentTo}`,
-										close,
-									)
-								}
+							// The receipt page prints it or emails it to the address the guest gives (resend is for managers and finance).
+							<a
+								href={`/receipt?payment=${encodeURIComponent(current.id)}`}
+								target="_blank"
+								rel="noopener"
+								className="flex h-14 items-center justify-center gap-2 rounded-control border border-line bg-card px-5 text-[15px] font-semibold text-ink hover:bg-subtle"
 							>
-								Email receipt again
-							</BigButton>
+								Print or email receipt
+							</a>
 						)}
 					</div>
 				)}

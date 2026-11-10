@@ -68,7 +68,9 @@ provider keys. Housekeeping has "Days lost & found items are kept" (90).
 2. Front office gets a notice "Found in Room …"; Front office → Lost & found lists it.
 3. Open the item: photo, where, by, when, "Told …". Tell front office again works.
 4. Return: name, ID shown, how → Returned, with who handed it over.
-5. Dispose on a new item: refused until the hold days are over, with the date it can be disposed of.
+5. Dispose on a new item: refused until the hold days are over, with the date it can be disposed of. Only a
+   supervisor (Housekeeping Full) or a manager sees "Dispose"; an Edit-level attendant doesn't, and the note says
+   it can be disposed of "by a housekeeping supervisor or a manager".
 6. Tabs Held / Returned / Disposed of / All with counts; search; paging.
 
 ## 7. Inspection (housekeeping supervisor)
@@ -77,6 +79,10 @@ provider keys. Housekeeping has "Days lost & found items are kept" (90).
    goes back to Dirty.
 2. Clean it again → Pass · room ready: the room shows Ready (inspected) on the front desk board.
 3. No "Write-offs" tab (linen losses live with the laundry's linen batches).
+4. The attendant's "Note for the supervisor" (saved with Save note on My rooms) shows on the row ("Note: …") and in the
+   inspect panel as "Attendant's note"; a skipped room shows its "try again at" time.
+5. An Edit-level housekeeping attendant has no "Inspect" in the sidebar; opening `/dashboard/inspect` says it is for the
+   supervisor.
 
 ## 8. Receipts
 
@@ -85,12 +91,17 @@ provider keys. Housekeeping has "Days lost & found items are kept" (90).
    took it, and the guest.
 2. Print receipt opens the print dialog; only the receipt prints. Switch "80 mm roll": a narrow receipt sized for a
    thermal printer. A4 has margins.
-3. Email receipt: the guest's email is filled in when known; the toast says where it went.
+3. Email receipt: the guest's email is filled in when known; the toast says where it went (sent for real). The take-payment
+   receipt step offers Email (default with a guest email) or Print; WhatsApp and SMS show "coming soon" and can't be picked.
 4. Bar → Sales → a paid sale → Print receipt: every item, discount, tax, total, each payment with its receipt number;
    paid = total.
 5. Front office → check-out panel → Print receipt; Folios → Print or email → Print receipt: the stay's charges,
    discounts, tax, payments and balance.
-6. Manager → Payments → an approved payment → Print receipt.
+6. Manager → Payments → an approved payment → Print receipt; "Email receipt again" → "Receipt emailed to …" (a guest with
+   only a phone is refused: WhatsApp receipts are coming soon).
+7. Manager sidebar → "Approvals" with the number waiting; it opens the same screen as Dashboard → All approvals.
+8. Hotel setup → Housekeeping → Minibar prices: Add item, Edit, Switch off / Offer again; a negative price is refused.
+   Housekeeping → Minibar lists only the offered items.
 
 ## Automated runs
 

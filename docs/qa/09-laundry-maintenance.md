@@ -146,6 +146,22 @@ Laundry prices).
 6. **Do:** **Chemicals used** → Laundry detergent + 2 → **Record**. **Expect:** "Chemicals recorded"; the Laundry
    store shows 2 kg less.
 
+## 5b · Linen requests and housekeeping problems (Grace, Lola, Victor)
+
+1. **Do:** as Grace → My rooms → **Ask for linen** → 4 Bath towel → **Send request**. **Expect:** "Linen request sent
+   · it is on laundry's Linen screen".
+2. **Do:** as Lola → Linen. **Expect:** "Linen asked for by housekeeping" lists "4 × Bath towel · Grace Okafor · asked
+   …". **Mark sent** → "Marked sent · Grace Okafor is told"; the row moves under "Recently sent"; Grace gets "Linen on
+   its way". Marking the same request again (API `POST /housekeeping/linen-requests/{id}/sent`) → "This request was
+   already sent by …".
+3. **Do:** as Grace → Report a problem → a vacant room → "Now" with "Take room … out of order" on → Send to Maintenance.
+   **Expect:** an Urgent work order (due 4 hours) raised by Grace; the room is out of order (Chinedu → Rooms out of
+   order); Victor gets "Room … is out of order". Complete or cancel the work order to put it back.
+4. **Do:** the same on a room with a guest checked in. **Expect:** refused "Room … has a guest checked in (…) · it can't
+   go out of order · send the report without taking it out of order, or move the guest first"; no work order opened.
+5. **Do:** Report a problem → a public area (e.g. Lobby) → "Today". **Expect:** "Sent to Maintenance"; the work order's
+   place is the area, not a room.
+
 ## 6 · Ask the store (Grace, Lola, Chinedu, Jide)
 
 1. **Do:** as Chinedu → **Maintenance store** → **Ask the store** → add AC filter (Add an item lists the main
@@ -193,6 +209,8 @@ Laundry prices).
 | Lola | Count in more than was sent / return more than is at the laundry | "More Bed sheet counted (11) than were sent (10)" / "Only 9 Bed sheet still at the laundry on LNB-…" |
 | Lola | Condemn with no reason | "Say why the linen is condemned" |
 | Grace | Close a batch (API) | 403 "You don't have access to do that" |
+| Grace | Mark a linen request sent (API) | 403 "Only laundry or a manager can mark linen sent" |
+| Mariam | List linen requests (API `GET /housekeeping/linen-requests`) | 403 "Only laundry, housekeeping and managers can see linen requests" |
 | Lola (Edit access) | Close a batch short | 403 "Closing a batch short is for the laundry supervisor or a manager" |
 | Mariam | Open /dashboard/repairs or read work orders (API) | 404 page / 403 "You don't have access to do that" |
 | Femi | Raise a work order (API) | 403; Femi reads only the money summaries |

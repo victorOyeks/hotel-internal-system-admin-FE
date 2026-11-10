@@ -14,11 +14,12 @@ there and show up for every role, so name them after yourself (e.g. "QA Ada Hote
   owner Hotels / Users / Settings / Hotel setup, manager Staff (list, add, reset password, suspend,
   resume, remove) and Hotel setup (saves and the danger zone).
 - Still sample data: finance figures on the Hotels screen (revenue, expenses, margin, occupancy show
-  "—" until finance-service is wired), the manager's rota, leave and shift requests, "Edit details" on
-  a staff member (job title, shift), Contact manager / Message, Transfer ownership, exports.
-- Nothing is emailed or sent on WhatsApp by the backend yet. Every new login shows its temporary
-  password and invite link once, with Copy buttons and a "Send on WhatsApp" button that opens WhatsApp
-  with the message ready. Write them down during the test.
+  "—" until finance-service is wired), the manager's rota, leave and shift requests, Contact manager /
+  Message, Transfer ownership, exports.
+- Invites and temporary passwords are emailed for real to the address typed; SMS and WhatsApp invites are
+  "coming soon" and the phone is optional. Every new login also shows its temporary password and invite link
+  once, with Copy buttons and a "Share in your WhatsApp" button that opens your own WhatsApp with the message
+  ready. The card says "The invite was emailed to <address>". Use `@hospio-qa.test` addresses.
 
 ## Deliveries
 
@@ -267,6 +268,6 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
 
 - Fee statements, support tickets and the "Changes by H.M.S" timeline stay on sample data until
   platform-service lands.
-- No email or WhatsApp is sent for invites, passwords or the handover pack; the tester shares them.
+- Invites and passwords are emailed for real; SMS and WhatsApp are "coming soon" (shown on screen, not sent).
 - Phone verification is the self-serve path (hotel app); see the owner section of `onboarding.md`.
 

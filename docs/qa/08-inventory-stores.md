@@ -88,10 +88,9 @@ Godwin open **Inventory** in their menu and get the same screens as tabs along t
 
 ## 2 · Requests (Grace, Mariam, Jide)
 
-1. **Do:** as Grace (Housekeeping) ask the store. Housekeeping has no ask-the-store screen yet, so use the API
-   signed in as Grace: `POST /inventory/requests` `{fromTeam:"HOUSEKEEPING", storeId:"<Housekeeping store id>",
-   lines:[{itemId:"90000000-0000-4000-8000-000000000021", quantity:10}, {itemId:"90000000-0000-4000-8000-000000000022",
-   quantity:6}]}` (Bath soap and Toilet roll). As Mariam → Kitchen store → **Ask the store** for 5 kg Rice.
+1. **Do:** as Grace → **Housekeeping store** → **Ask the store** → 10 Bath soap and 6 Toilet roll → **Send
+   request**. As Mariam → Kitchen store → **Ask the store** for 5 kg Rice. (Laundry and Maintenance ask the same
+   way from **Laundry store** and **Maintenance store**.)
 2. **Do:** as Jide → Requests. **Expect:** both under **Waiting** with team, who, what, "For store" and
    **Issue**.
 3. **Do:** open Grace's request. **Expect:** "Issue from" = Main store ("Stock moves into the Housekeeping
@@ -156,7 +155,8 @@ Godwin open **Inventory** in their menu and get the same screens as tabs along t
 
 ## 6 · Stock counts (Jide, Tunde, Mariam)
 
-1. **Do:** Stock counts → **Start a count** → Store Housekeeping store → **Start**. **Expect:** the count sheet
+1. **Do:** Stores & stock → **Stock count** (or Stock counts → **Start a count**) → Store Housekeeping store →
+   **Start**. **Expect:** the count sheet
    with every item in that store and its system quantity.
 2. **Do:** **Start a count** again for the same store. **Expect:** refused: "The Housekeeping store already has
    a count open (started by Jide Alabi) · finish or cancel it first".
@@ -227,8 +227,8 @@ Check at the same moment (nobody moving stock in between):
 - Stock drawn when an order is settled is not given back if the order is cancelled afterwards; correct the level.
 - Counts and orders made before this release (with the old line format) show without expected quantities; start
   a new count rather than approving an old one.
-- Housekeeping, laundry and maintenance have no ask-the-store screen yet (kitchen and bar do); they ask through
-  the API, and see the answer in Notifications.
+- Housekeeping, laundry and maintenance ask the store from their own store screen (Housekeeping store, Laundry
+  store, Maintenance store), like the kitchen and bar; they see the answer there and in Notifications.
 - The owner sees one hotel's inventory at a time (the branch picked at the top).
 - Correct level needs Inventory **Full** access (or a manager); an Edit-access storekeeper doesn't see the button.
 

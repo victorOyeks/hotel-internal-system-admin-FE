@@ -91,7 +91,8 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
    Tiles: total people, active, invite not accepted, paused or suspended. All = Ikoyi + Abuja (hotel filter).
 2. **Do:** **Add staff** → name "QA Owner <your initials>", email, phone, hotel Abuja, role Front office, job title →
    **Add staff**. **Expect:** "… added at QA B Abuja", the invite with the temporary password and link
-   **(delivery)** (email + SMS). The row shows **Invited**.
+   **(delivery)**: the email "Email sent to …" and the SMS "Not sent · SMS coming soon". The invite card says "The
+   invite was emailed to <address>". The row shows **Invited**.
 3. **Do:** row menu → **Edit details** → change the job title → **Save changes**. **Expect:** "… saved"; the job title
    shows under the name. Saving with nothing changed is not possible (button disabled); typing an email another
    account uses → "Someone already signs in with …".
@@ -102,7 +103,7 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
    **Suspend**. **Expect:** **Suspended**; the profile shows "Suspended by <you> on <date>: <reason>"; the person
    cannot sign in ("This account is suspended…"); the hotel's manager gets an in-app notice. **Reinstate** → Active.
 6. **Do:** row menu → **New temporary password** → **Reset password**. **Expect:** the temporary password shown once
-   and **(delivery)** an email and an **SMS** to the person's phone.
+   and **(delivery)** an email (sent) and an SMS row "Not sent · SMS coming soon".
 7. **Do:** row menu → **Message** → type → **Send**. **Expect:** "Message sent to …"; the person sees it in
    **Inbox** (sign in as them: Inbox in the notification, or `/dashboard/inbox`) and can reply.
 8. **Do:** row menu → **Remove from QA B Abuja** → **Remove from hotel**. **Expect:** "… removed from QA B Abuja"; the

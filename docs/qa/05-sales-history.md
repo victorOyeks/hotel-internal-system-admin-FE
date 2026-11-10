@@ -88,6 +88,8 @@ rooms**. **Unpaid** includes open tabs and tickets still being cooked. Cancelled
 2. **Do:** **Collect the balance** → Bank transfer → **Show transfer details** → **I've confirmed the
    transfer** → **Skip receipt** → **Back to the orders**. **Expect:** Paid; two payments (Cash ₦1,000, Transfer
    ₦1,400); the list row shows "Cash + Transfer".
+   **Do:** on that paid sale's panel → **Print receipt**. **Expect:** the receipt opens in a new tab with both
+   payments; "Email receipt" there sends it to the address typed (sent for real; use `@hospio-qa.test`).
 3. **Do:** make an unpaid sale, open it → **Charge to room** → Hotel guest **A107 · QA LM Guest 2120**.
    **Expect:** "What happens: ₦… goes on QA LM Guest 2120's folio". **Charge to room** → **Expect:** "₦… charged to
    room A107"; the sale shows **Room A107**, a Payment line "Charged to room A107 · QA LM Guest 2120 · By Segun
@@ -182,8 +184,6 @@ rooms**. **Unpaid** includes open tabs and tickets still being cooked. Cancelled
 - Edit-access staff only see buttons on sales they opened; the order routes themselves keep their old rules (a tab
   is still settled by whoever is on shift on the Tabs screen).
 - Choice prices on a line ("Hot +₦500") are read from today's menu, not from the moment of the sale.
-- No receipt printing from the panel: there is no receipt print yet (the manager and finance can resend a
-  receipt from Payments).
 - A card payment that is still processing does not change the sale; when the POS approves it the sale updates (on
   staging the test POS never answers).
 - The export stops at 5,000 sales; narrow the range for more.
