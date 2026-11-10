@@ -102,6 +102,9 @@ const loadStock = cache(async () => {
 	return { stores: stores.data.data, items: items.data.data, rows };
 });
 
+/** Sales per page on the Sales screens (fnb-service pages on the server, up to 100). */
+const SALES_PAGE = 25;
+
 /** Where a demo order stands, by the same rule as fnb-service's SaleBucket. */
 function demoBucket(o: OrderRow, outletKind: string): SaleRow["status"] {
 	if (o.status === "CANCELLED") return "CANCELLED";
@@ -191,10 +194,13 @@ function demoSalesHistory(
 	return {
 		from: f.from ?? today,
 		to: f.to ?? f.from ?? today,
-		page: 0,
-		size: 50,
+		page: f.page ?? 0,
+		size: SALES_PAGE,
 		matching: rows.length,
-		rows: rows.slice(0, 50),
+		rows: rows.slice(
+			(f.page ?? 0) * SALES_PAGE,
+			((f.page ?? 0) + 1) * SALES_PAGE,
+		),
 		totals: {
 			...money(rows),
 			cancelledAmount: rows
@@ -371,7 +377,7 @@ export const fnbData = {
 				};
 			const { data: res, error } = await api("@get/fnb/sales/history", {
 				...(await withSession()),
-				query: salesQuery(f),
+				query: { ...salesQuery(f), size: SALES_PAGE },
 			});
 			if (error || !res) {
 				console.error("fnb-service sales history:", error);
