@@ -431,7 +431,7 @@ export async function requestProviderAccount(
 		};
 	return {
 		ok: true,
-		data: { reference: `TKT-${data.data.id.slice(0, 6).toUpperCase()}` },
+		data: { reference: `T-${data.data.id.slice(0, 6).toUpperCase()}` },
 	};
 }
 
@@ -461,7 +461,7 @@ export async function openSupportTicket(input: {
 		};
 	return {
 		ok: true,
-		data: { reference: `TKT-${data.data.id.slice(0, 6).toUpperCase()}` },
+		data: { reference: `T-${data.data.id.slice(0, 6).toUpperCase()}` },
 	};
 }
 
