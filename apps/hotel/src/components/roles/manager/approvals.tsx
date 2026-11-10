@@ -269,7 +269,7 @@ export function ApprovalsScreen({
 					hint={`Over ${naira(limit)} or owner-only`}
 				/>
 				<KpiCard
-					label="Decided this week"
+					label="Decided · 90 days"
 					value={counts.decided ?? 0}
 					icon={CheckIcon}
 				/>
