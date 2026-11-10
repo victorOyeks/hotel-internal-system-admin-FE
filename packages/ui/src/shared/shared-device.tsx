@@ -113,7 +113,8 @@ export function SetupDeviceModal({
 	const [hotelId, setHotelId] = useState(first?.id ?? "");
 	const allowed = hotels.find((h) => h.id === hotelId)?.roles ?? [];
 	const [roles, setRoles] = useState<string[]>(
-		activeRole && first?.roles.includes(activeRole) ? [activeRole] : [],
+		// The desk the person works at is the likely one; a manager picks the desk themselves.
+		activeRole && activeRole !== "MANAGER" && first?.roles.includes(activeRole) ? [activeRole] : [],
 	);
 	const [minutes, setMinutes] = useState("5");
 	const [error, setError] = useState<string | undefined>();

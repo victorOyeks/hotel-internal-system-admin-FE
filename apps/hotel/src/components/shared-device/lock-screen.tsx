@@ -142,6 +142,7 @@ export function LockScreen({
 								<button
 									type="button"
 									onClick={() => open(p)}
+									title={p.fullName}
 									className="flex min-h-[88px] w-full items-center gap-3 rounded-card border border-line bg-card p-4 text-left transition-colors hover:border-brand/50 hover:bg-brand-soft/30 focus-visible:outline-2 focus-visible:outline-brand"
 								>
 									<span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand text-base font-bold text-white">
