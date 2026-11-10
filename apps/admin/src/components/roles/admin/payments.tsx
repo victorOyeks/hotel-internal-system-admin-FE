@@ -462,30 +462,27 @@ export function PaymentsScreen({
 				<DataTable
 					columns={settlementCols}
 					data={rows}
-					pageSize={settlements.size}
+					server={{ page: settlements, onPage: setPage }}
 					onRowClick={(s) => setOpen(s.id)}
 					emptyTitle="No settlements"
 					emptyHint="Run settlements for yesterday to build them from approved card and transfer payments."
-					footer={<ServerPager page={settlements} onPage={setPage} />}
 				/>
 			)}
 			{active === "batches" && (
 				<DataTable
 					columns={batchCols}
 					data={batches.content}
-					pageSize={batches.size}
+					server={{ page: batches, onPage: setPage }}
 					onRowClick={(b) => setBatchId(b.id)}
 					emptyTitle="No payout batches yet"
-					footer={<ServerPager page={batches} onPage={setPage} />}
 				/>
 			)}
 			{active === "payments" && (
 				<DataTable
 					columns={paymentCols}
 					data={payments.content}
-					pageSize={payments.size}
+					server={{ page: payments, onPage: setPage }}
 					emptyTitle="No payments"
-					footer={<ServerPager page={payments} onPage={setPage} />}
 				/>
 			)}
 			{active === "failed" && (
@@ -537,7 +534,7 @@ export function PaymentsScreen({
 						))
 					)}
 					<div className="pt-3">
-						<ServerPager page={failed} onPage={setPage} />
+						<ServerPager bare page={failed} onPage={setPage} />
 					</div>
 				</SectionCard>
 			)}

@@ -53,7 +53,6 @@ import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import {
 	Loading,
-	ServerPager,
 	useFilterParam,
 	useLoaded,
 	usePageParam,
@@ -311,10 +310,9 @@ export function SupportScreen({
 					<DataTable
 						columns={columns}
 						data={tickets.content}
-						pageSize={tickets.size}
+						server={{ page: tickets, onPage: setPage }}
 						onRowClick={(t) => setOpen(t.id)}
 						emptyTitle="No tickets"
-						footer={<ServerPager page={tickets} onPage={setPage} />}
 					/>
 				</div>
 			</div>

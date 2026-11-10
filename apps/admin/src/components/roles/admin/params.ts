@@ -16,9 +16,10 @@ export function param(
 	return Array.isArray(v) ? v[0] : v || undefined;
 }
 
+/** The 0-based page from the URL's 1-based `?page=` (absent or 1 is the first page). */
 export function pageParam(sp: Record<string, string | string[] | undefined>) {
-	const v = Number(param(sp, "page") ?? 0);
-	return Number.isFinite(v) && v > 0 ? v : 0;
+	const v = Number(param(sp, "page") ?? 1);
+	return Number.isInteger(v) && v > 1 ? v - 1 : 0;
 }
 
 /** "2026-11" for the current month. */

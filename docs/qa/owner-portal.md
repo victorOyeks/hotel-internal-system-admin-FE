@@ -169,6 +169,9 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 4. **Do:** **Send now**. **Expect:** **(delivery)** the email with the link; an in-app notice "Daily summary · <day>
    is ready" for you (and each hotel's managers); the run appears under Sent reports and opens the report for that day.
 5. **Do:** **Stop** → **Stop schedule**. **Expect:** status Stopped.
+6. **Do:** sign in as Tunde → **Reports**. **Expect:** the same live reports for Simpas Ikeja; Schedule offers only his
+   hotel and no "send to the managers"; he sees and stops only his own schedules. A report the owner sent to the
+   managers opens here from the notice.
 
 ## 9 · Ownership transfer (owner B)
 

@@ -102,6 +102,7 @@ export function DataTablePagination<T>(
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
+				aria-label="Previous page"
 				disabled={
 					table
 						? !table.getCanPreviousPage()
@@ -136,7 +137,9 @@ export function DataTablePagination<T>(
 						key={pageNumber}
 						variant={pageIndex === pageNumber - 1 ? "default" : "outline"}
 						size="icon"
-						className="h-6 w-6"
+						className="h-6 w-auto min-w-6 px-1"
+						aria-label={`Page ${pageNumber}`}
+						aria-current={pageIndex === pageNumber - 1 ? "page" : undefined}
 						// `pageNumber` is 1-indexed, `setPageIndex` is 0-indexed
 						onClick={() => {
 							if (table) {
@@ -158,6 +161,7 @@ export function DataTablePagination<T>(
 				variant="outline"
 				size="icon"
 				className="h-6 w-6"
+				aria-label="Next page"
 				disabled={
 					table
 						? !table.getCanNextPage()

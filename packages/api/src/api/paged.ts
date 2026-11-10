@@ -19,13 +19,12 @@ export const pagedOf = <T extends z.ZodTypeAny>(item: T) =>
 	});
 
 /** The query every paged list takes, plus its own filters. */
-export const pageParams = z
-	.looseObject({
-		page: z.number().optional(),
-		size: z.number().optional(),
-		sort: z.string().optional(),
-		q: z.string().optional(),
-		status: z.string().optional(),
-		from: z.string().optional(),
-		to: z.string().optional(),
-	});
+export const pageParams = z.looseObject({
+	page: z.number().optional(),
+	size: z.number().optional(),
+	sort: z.string().optional(),
+	q: z.string().optional(),
+	status: z.string().optional(),
+	from: z.string().optional(),
+	to: z.string().optional(),
+});
