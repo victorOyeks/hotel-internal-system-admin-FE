@@ -64,7 +64,7 @@ export function ReceiptView({
 			</style>
 			<style>
 				{
-					"@media print { body { background: #fff !important; } .no-print { display: none !important; } }"
+					"@media print { body { background: #fff !important; } .no-print, body .fixed, [data-sonner-toaster] { display: none !important; } }"
 				}
 			</style>
 
