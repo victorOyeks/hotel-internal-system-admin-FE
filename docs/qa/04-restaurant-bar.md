@@ -57,8 +57,7 @@ once.
 - **Tills:** cash needs an open till for the desk. Open the Kitchen and Bar tills first (section 11 step 1).
   Cash taken with no till open still counts, but shows on Finance's Today and the manager's night audit as
   "cash taken with no till open".
-- The **API** button at the bottom left lists every call the screen made, with the answer. If something fails,
-  copy the failing line into your bug report.
+- The **API** button at the bottom left lists every call the screen made, with the answer.
 - Name guests and notes with "QA " at the start so they can be found later.
 - Services read hotel settings up to a minute late: after changing a setting wait a minute, then reload.
 - Write down the figures on Tunde's "Restaurant & bar sales today" card and Femi's Today before you start;
@@ -349,18 +348,6 @@ a fresh test hotel if today is already closed: the Night audit screen then says 
   list shows guests checked in when the screen was opened).
 - Inventory's purchasing screens (purchase orders, deliveries, counts approval, suppliers) are outside this
   script.
-- Emails and SMS are not sent on staging; read the delivery notice and Notifications instead.
+- Emails are sent for real, to the address on the record. SMS and WhatsApp are not sent yet ("coming soon"). The message card at the top shows each message, marked "Email sent to …" or "Not sent · … coming soon".
 - Services read hotel settings at most a minute late.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot,
-- the failing line from the **API** button (method, path, status and the answer).

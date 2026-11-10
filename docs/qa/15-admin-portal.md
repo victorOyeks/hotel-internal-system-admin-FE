@@ -11,8 +11,8 @@ the real staging database and shows up for every admin, so name what you create 
   `godwin@royalsuites.ng`, 4 hotels).
 - Live: every admin screen reads platform-service, payment-service, identity and tenant; every button writes to them.
   Nothing on these screens is sample data any more.
-- Email and SMS are not connected on staging. Whenever the platform would have sent something (an invite, a temporary
-  password, a statement, a ticket reply), a yellow **"What we would have sent"** card appears top-centre with the
+- Emails are sent for real, to the address on the record; SMS and WhatsApp are "coming soon". Whenever the platform
+  sends something (an invite, a temporary password, a statement, a ticket reply), a yellow message card appears top-centre with the
   channel, the recipient, the subject and the full text, each with a Copy button. It stays until you press Close; several
   can stack. If it does not appear after one of the steps marked **(delivery)** below, that is a bug.
 
@@ -175,8 +175,3 @@ refused with "Nothing has changed yet".
 4. Commissions → Bank details → bank, account number, name → Save → the warning about missing bank details goes away.
    **Download statement** → pick a month → a `hms-commissions-<month>.txt` file downloads with the month's lines.
 
-## What to report
-
-For anything that does not match: the account used, the screen, what you clicked, what you expected, what happened, the
-time (server logs are by time), and whether the delivery card appeared when the step says **(delivery)**. Ticket
-subjects, batch refs and statement months pin it down.

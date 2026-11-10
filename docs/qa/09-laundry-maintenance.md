@@ -59,9 +59,8 @@ Laundry prices).
 ## Before you start
 
 - Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed.
-- Emails and SMS are not sent on staging; in-app notifications (the bell) are real.
-- The **API** button at the bottom left lists every call the screen made, with the answer. If something fails, open
-  it and copy the failing line into your report.
+- Emails are sent for real, to the address on the record; SMS and WhatsApp are "coming soon". In-app notifications (the bell) are real.
+- The **API** button at the bottom left lists every call the screen made, with the answer.
 - Money is shown in whole naira; quantities with up to 2 decimals.
 
 ## 1 · Raise a work order (Victor, Grace)
@@ -209,14 +208,3 @@ Laundry prices).
 - A role opening another role's screen gets the 404 page (each role's menu shows only its screens); the services
   refuse with a sentence.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot, and the failing line from the **API** button.

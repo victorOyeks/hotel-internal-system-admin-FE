@@ -52,8 +52,7 @@ manager and as the person whose roles you change at the same time.
   roles; they do not need to sign out.
 - A "last day" means the role works through that day and ends at midnight after it (Lagos time). The server
   removes ended roles every hour at :05.
-- The **API** button at the bottom left lists every call the screen made, with the answer. If something fails,
-  open it and copy the failing line into your report.
+- The **API** button at the bottom left lists every call the screen made, with the answer.
 
 ## 1 · Roles tab (Tunde)
 
@@ -163,14 +162,3 @@ manager and as the person whose roles you change at the same time.
 - **Pause all access** (the Staff screen) is separate from pausing one role here. A person paused there can't
   sign in, whatever their roles say.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot, and the failing line from the **API** button.

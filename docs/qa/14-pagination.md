@@ -126,7 +126,3 @@ these, Requests and Work orders have more than 25 rows. Notifications, approvals
 - **Marketers.** Referrals and commissions page; tabs and money from the server.
 - **Fees.** The open statements and this month's figures include every statement (more than 100 work).
 
-## What to report
-
-For any step that fails: the screen, the account, the address (with `page=`), what you expected and what you
-saw, and the failing line from the API log.

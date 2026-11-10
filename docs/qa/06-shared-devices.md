@@ -40,7 +40,7 @@ Bar staff left by the automated runs (bar role at Simpas Ikeja, password `Hospio
 
 Other "QA PIN …" people from earlier runs were taken off the hotel. For lockout, pause and suspend tests make fresh
 staff through **Staff → Add staff** (invite), named "QA PIN <your initials>", and accept the invite from the link in
-the yellow "What we would have sent" notice.
+the yellow message card.
 
 Use a separate browser profile (or private window) per person when you need two people at once: one window is the
 tablet, the other is the manager's desk.
@@ -199,14 +199,3 @@ unlocked.
 - The owner's Staff screen has no PIN reset or remind yet (the manager's has).
 - Unsaved form state is lost when the device locks.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account and the device name you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot, and the failing line from the **API** button.

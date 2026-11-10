@@ -37,12 +37,11 @@ once.
 - Take money by **Cash** or **Bank transfer**. Card payments go to a test terminal that never answers, so they
   stay "Processing".
 - If a screen asks for a phone code, use `123456`.
-- Emails and text messages are not sent on staging. Where the app would have sent one (a leave decision, a
-  till that is short, an approval, the day report) a notice "would have sent · email and SMS are not
-  connected on staging" appears with the message. Read it as part of the step. The person it was for also
+- Emails are sent for real, to the address on the record; SMS and WhatsApp are "coming soon". Where the app
+  sends a message (a leave decision, a till that is short, an approval, the day report) a message card appears
+  at the top with the text, marked "Email sent to …" or "Not sent · … coming soon". Read it as part of the step. The person it was for also
   gets it in **Notifications** (the bell, top right).
-- The **API** button at the bottom left lists every call the screen made to the server, with the answer. If
-  something fails, open it and copy the failing line into your bug report.
+- The **API** button at the bottom left lists every call the screen made to the server, with the answer.
 - Name everything you create with "QA " at the start (guests, expenses, notes) so it can be found later.
 - Spend limits come from Hotel setup → Approval limits. The steps assume the manager's limit is ₦200,000.
 - The night audit closes each business day once. If someone already closed today, section 5 tells you what
@@ -256,7 +255,7 @@ Negative checks
 5. **Do:** Organizations (Tunde, Femi). **Expect:** the real company accounts from the server (no sample
    companies).
    - Row menu → Send reminder (needs something owed and a contact email or phone) → "Payment reminder sent
-     to …" and the "What we would have sent" card shows the reminder. With nothing owed: "<name> owes
+     to …" and the message card shows the reminder. With nothing owed: "<name> owes
      nothing right now".
    - Open an account → Send statement (Tunde) / Statement (Femi) → "Statement sent to …" plus the card.
    - Row menu → Put on hold → "<name> is on hold · no new stays on account"; the pill says On hold and the
@@ -290,18 +289,6 @@ Check these at the same moment (nobody taking money in between):
 - Any other button that has no server route yet answers "Not connected yet · nothing was saved or sent"
   (blue notice) and leaves the screen as it was. A green success toast always means the server saved it;
   if you ever see a green toast and the API log has no matching 2xx call, report it.
-- Emails and SMS are not sent on staging; read the delivery notice and Notifications instead.
+- Emails are sent for real, to the address on the record. SMS and WhatsApp are not sent yet ("coming soon"). The message card at the top shows each message, marked "Email sent to …" or "Not sent · … coming soon".
 - Services read hotel settings at most a minute late: wait a minute after changing a limit or the till float.
 
-## How to report a bug
-
-For anything that does not match, send:
-
-- the account you used,
-- the screen (and tab),
-- the steps you took,
-- what you expected (quote this script),
-- what happened (the exact message),
-- the time (the server logs are by time),
-- a screenshot,
-- the failing line from the **API** button (method, path, status and the answer).
