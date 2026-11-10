@@ -8,6 +8,7 @@ import {
 	BuildingIcon,
 	CalendarCheckIcon,
 	CalendarDaysIcon,
+	CheckCircle2Icon,
 	ChefHatIcon,
 	ClipboardCheckIcon,
 	ClipboardListIcon,
@@ -46,13 +47,21 @@ export type NavLink = {
 	url: string;
 	icon: LucideIcon;
 	/** A count shown on the link (the shell fills it): unpaid sales for the bar and kitchen, unread staff messages for the Inbox. */
-	badge?: "unpaidSales" | "inbox";
+	badge?: "unpaidSales" | "inbox" | "approvals";
+	/** Shown only to a housekeeping supervisor (Full access) or a manager, the rule the service applies. */
+	supervisorOnly?: boolean;
 };
 
 /** Manager portal, in the order of the Figma sidebar. */
 export const managerLinks: NavLink[] = [
 	{ title: "Dashboard", url: "/dashboard", icon: HomeIcon },
 	{ title: "Departments", url: "/dashboard/departments", icon: LayoutGridIcon },
+	{
+		title: "Approvals",
+		url: "/dashboard/approvals",
+		icon: CheckCircle2Icon,
+		badge: "approvals",
+	},
 	{ title: "Rooms", url: "/dashboard/rooms", icon: BuildingIcon },
 	{ title: "Bookings", url: "/dashboard/bookings", icon: CalendarCheckIcon },
 	{ title: "Folios", url: "/dashboard/folios", icon: ReceiptIcon },
@@ -130,7 +139,12 @@ export const frontOfficeLinks: NavLink[] = [
 
 export const housekeepingLinks: NavLink[] = [
 	{ title: "My rooms", url: "/dashboard", icon: SprayCanIcon },
-	{ title: "Inspect", url: "/dashboard/inspect", icon: ClipboardCheckIcon },
+	{
+		title: "Inspect",
+		url: "/dashboard/inspect",
+		icon: ClipboardCheckIcon,
+		supervisorOnly: true,
+	},
 	{ title: "Lost & found", url: "/dashboard/lost-found", icon: SearchIcon },
 	{ title: "Linen", url: "/dashboard/linen", icon: ShirtIcon },
 	{ title: "Housekeeping store", url: "/dashboard/store", icon: PackageIcon },

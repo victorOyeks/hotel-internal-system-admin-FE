@@ -391,8 +391,8 @@ export function OrganizationScreen({
 			</PageHeader>
 			{org.status === "ON_HOLD" && (
 				<Note tone="danger">
-					On hold · staff from {org.name} cannot book on account. Taking an
-					account off hold is not connected yet.
+					On hold · staff from {org.name} cannot book on account. Take it off
+					hold from its row menu on Organizations.
 				</Note>
 			)}
 			<PillTabs

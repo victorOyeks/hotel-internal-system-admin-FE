@@ -73,17 +73,37 @@ export async function skipTask(
 	id: string,
 	reason: string,
 	demo?: CleaningTaskRow,
+	retryAt?: string,
 ): Promise<Task> {
 	return taskCall(
 		demo,
-		{ status: "SKIPPED", note: reason },
+		{ status: "SKIPPED", note: reason, retryAt },
 		async () =>
 			api("@post/housekeeping/tasks/:id/skip", {
 				...(await withSession()),
 				params: { id },
-				body: { reason },
+				body: { reason, retryAt: retryAt || null },
 			}),
 		"The room could not be skipped",
+	);
+}
+
+/** My rooms → "Note for the supervisor": saved on the task, shown on Inspect. Blank clears it. */
+export async function saveTaskNote(
+	id: string,
+	note: string,
+	demo?: CleaningTaskRow,
+): Promise<Task> {
+	return taskCall(
+		demo,
+		{ attendantNote: note.trim() || undefined },
+		async () =>
+			api("@put/housekeeping/tasks/:id/note", {
+				...(await withSession()),
+				params: { id },
+				body: { note: note.trim() || null },
+			}),
+		"The note could not be saved",
 	);
 }
 
@@ -207,30 +227,44 @@ export async function setRoomStatus(
 	return { ok: true, data: null };
 }
 
+/**
+ * Report a problem → a work order in maintenance with the chosen urgency; `outOfOrder` takes the room out of order with it
+ * (refused while a guest is checked in, in words). Answers the work order id (to add a photo) and whether the room went out of order.
+ */
 export async function reportProblem(input: {
 	roomId?: string;
 	roomNumber?: string;
 	description: string;
-}): Promise<ActionResult> {
+	priority?: "LOW" | "NORMAL" | "URGENT";
+	outOfOrder?: boolean;
+}): Promise<ActionResult<{ repairId: string | null; outOfOrder: boolean }>> {
 	if (!live("housekeeping")) {
 		await demoDelay(400);
-		return { ok: true, data: null };
+		return { ok: true, data: { repairId: null, outOfOrder: !!input.outOfOrder } };
 	}
-	const { error } = await api("@post/housekeeping/problems", {
+	const { data, error } = await api("@post/housekeeping/problems", {
 		...(await withSession()),
 		body: {
 			roomId: input.roomId ?? null,
 			roomNumber: input.roomNumber ?? null,
 			description: input.description,
+			priority: input.priority,
+			outOfOrder: input.outOfOrder,
 		},
 	});
-	if (error)
+	if (error || !data)
 		return {
 			ok: false,
 			error: errorMessage(error, "The problem could not be sent"),
 		};
 	revalidateOps();
-	return { ok: true, data: null };
+	return {
+		ok: true,
+		data: {
+			repairId: data.data.repairId ?? null,
+			outOfOrder: !!data.data.outOfOrder,
+		},
+	};
 }
 
 /** What was used from the minibar: charged to the room's folio. `items` reads like "2 × Water, 1 × Star Lager". */
@@ -277,6 +311,25 @@ export async function askForLinen(input: {
 		return {
 			ok: false,
 			error: errorMessage(error, "The linen request could not be sent"),
+		};
+	revalidateOps();
+	return { ok: true, data: null };
+}
+
+/** Laundry: the linen is on its way; the request leaves the open list and whoever asked is told. */
+export async function markLinenSent(id: string): Promise<ActionResult<null>> {
+	if (!live("housekeeping")) {
+		await demoDelay(400);
+		return { ok: true, data: null };
+	}
+	const { error } = await api("@post/housekeeping/linen-requests/:id/sent", {
+		...(await withSession()),
+		params: { id },
+	});
+	if (error)
+		return {
+			ok: false,
+			error: errorMessage(error, "The request could not be marked sent"),
 		};
 	revalidateOps();
 	return { ok: true, data: null };

@@ -168,7 +168,7 @@ export const platformHelp: HelpModule = {
 				"Put the old value back yourself, for example with “Edit as H.M.S” on the business page.",
 				"Open “Changes by H.M.S” and find the change.",
 				"Tap “Undo” on its row (it shows how many days are left).",
-				"Tap “Undo change” to confirm. The owner's ticket is resolved and the owner sees the change as undone.",
+				"Tap “Mark undone” to confirm. The owner's ticket is resolved and the owner sees the change as undone.",
 			],
 			goodToKnow: [
 				"Only Support or a Super admin can undo. Finance admin sees the days left but no button.",

@@ -459,7 +459,7 @@ function AddAdminPanel({
 				onOpenChange(o);
 			}}
 			title="Add an admin"
-			subtitle="They get a temporary password and an invite link, shown once here"
+			subtitle="The invite is emailed to them; the temporary password and link are also shown here once"
 			icon={UserPlusIcon}
 			width="md"
 			footer={

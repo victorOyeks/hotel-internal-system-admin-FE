@@ -1,8 +1,13 @@
 import type {
 	CleaningTaskItem,
+	LinenRequestItem,
 	LostFoundItem,
 } from "@hospio/api/api/routes-ops";
-import type { CleaningTaskRow, LostFoundRow } from "@hospio/api/data/types";
+import type {
+	CleaningTaskRow,
+	LinenRequestRow,
+	LostFoundRow,
+} from "@hospio/api/data/types";
 
 /** housekeeping-service responses → the rows the my-rooms, inspect and lost & found screens render. */
 
@@ -67,6 +72,21 @@ export function toCleaningTaskRow(t: CleaningTaskItem): CleaningTaskRow {
 		priority: t.priority === "RUSH",
 		startedAt: t.startedAt ?? undefined,
 		doneAt: t.doneAt ?? undefined,
+		attendantNote: t.attendantNote ?? undefined,
+		retryAt: t.retryAt ?? undefined,
+	};
+}
+
+export function toLinenRequestRow(r: LinenRequestItem): LinenRequestRow {
+	return {
+		id: r.id,
+		items: r.items,
+		roomNumber: r.roomNumber ?? undefined,
+		requestedBy: r.requestedByName ?? "Housekeeping",
+		requestedAt: r.createdAt ?? "",
+		status: r.status === "SENT" ? "SENT" : "REQUESTED",
+		sentAt: r.sentAt ?? undefined,
+		sentBy: r.sentByName ?? undefined,
 	};
 }
 

@@ -833,7 +833,7 @@ function AddStaffPanel({
 							value={form.phone}
 							onChange={(v) => set("phone", v)}
 							placeholder="+234 …"
-							hint="For the SMS invite"
+							hint="Optional · SMS and WhatsApp invites are coming soon"
 						/>
 					</FieldRow>
 					<SelectField
@@ -877,8 +877,8 @@ function AddStaffPanel({
 						]}
 					/>
 					<Note tone="info">
-						The invite email and SMS are not connected on staging: what would
-						have been sent is shown at the top.
+						The invite is emailed to them for real. SMS and WhatsApp invites
+						are coming soon.
 					</Note>
 				</div>
 			)}

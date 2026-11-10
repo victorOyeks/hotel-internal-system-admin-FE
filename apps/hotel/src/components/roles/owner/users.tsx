@@ -468,7 +468,7 @@ export function OwnerUsers({
 				<WhatHappens
 					items={[
 						"Their current password stops working",
-						"You get a temporary password to pass on, shown once",
+						"A temporary password is emailed to them and shown to you once",
 						"They choose a new one at their next sign-in",
 					]}
 				/>
@@ -528,7 +528,7 @@ export function OwnerUsers({
 				open={!!creds}
 				onOpenChange={(o) => !o && setCreds(null)}
 				title={creds?.title ?? ""}
-				subtitle="Shown once · pass it on now"
+				subtitle="Emailed to them · shown here once"
 				icon={KeyRoundIcon}
 				footer={
 					<Button
@@ -685,7 +685,7 @@ function InvitePanel({
 						onChange={setPhone}
 						type="tel"
 						placeholder="+234 …"
-						hint="For the WhatsApp invite"
+						hint="Optional · SMS and WhatsApp invites are coming soon"
 					/>
 					<ChoiceCards
 						label="Role"

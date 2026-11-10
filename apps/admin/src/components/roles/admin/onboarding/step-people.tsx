@@ -471,7 +471,7 @@ function AddPersonPanel({
 			open={open}
 			onOpenChange={onOpenChange}
 			title="Add a person"
-			subtitle="They get a temporary password and an invite link to set their own"
+			subtitle="The invite and temporary password are emailed to them"
 			icon={UserPlusIcon}
 			width="md"
 			footerInfo="Managers run a hotel; every other role is one department."

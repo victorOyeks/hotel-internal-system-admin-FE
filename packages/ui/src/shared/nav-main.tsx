@@ -13,6 +13,12 @@ function LinkIcon({ icon: Icon }: { icon: NavLink["icon"] }) {
 	return pending ? <Loader2Icon className="size-[18px] animate-spin" /> : <Icon className="size-[18px]" />;
 }
 
+const badgeWord: Record<NonNullable<NavLink["badge"]>, string> = {
+	inbox: "unread",
+	unpaidSales: "unpaid",
+	approvals: "waiting",
+};
+
 /** Which link owns the current path: the longest matching prefix. */
 function activeUrl(pathname: string, items: NavLink[]) {
 	return items
@@ -23,12 +29,15 @@ function activeUrl(pathname: string, items: NavLink[]) {
 export function NavMain({
 	role,
 	badges = {},
+	supervisor = true,
 }: {
 	role: HotelRole;
+	/** False hides the supervisor-only links (Inspect) from a housekeeping attendant. */
+	supervisor?: boolean;
 	/** Counts for links that carry one (`NavLink.badge`); nothing is shown for 0 or a missing count. */
 	badges?: Partial<Record<NonNullable<NavLink["badge"]>, number>>;
 }) {
-	const items = linksByRole[role];
+	const items = linksByRole[role].filter((i) => supervisor || !i.supervisorOnly);
 	const pathname = usePathname();
 	const active = activeUrl(pathname, items);
 
@@ -60,12 +69,10 @@ export function NavMain({
 												"ml-auto rounded-pill px-[7px] py-px text-[11px] font-bold leading-[18px] text-white group-data-[collapsible=icon]:hidden",
 												item.badge === "inbox" ? "bg-danger" : "bg-warning",
 											)}
-											title={`${count} ${item.badge === "inbox" ? "unread" : "unpaid"}`}
+											title={`${count} ${badgeWord[item.badge ?? "inbox"]}`}
 										>
 											{count > 99 ? "99+" : count}
-											<span className="sr-only">
-												{item.badge === "inbox" ? " unread" : " unpaid"}
-											</span>
+											<span className="sr-only"> {badgeWord[item.badge ?? "inbox"]}</span>
 										</span>
 									)}
 								</Link>

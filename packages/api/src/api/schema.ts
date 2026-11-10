@@ -475,6 +475,30 @@ export const ListItem = z.object({
 	updatedAt: z.string().nullable().optional(),
 });
 
+/** A hotel's price list for things charged outside F&B (Hotel setup): minibar, laundry, extras. */
+export const PriceListEntry = z.object({
+	id: z.string(),
+	name: z.string(),
+	price: z.number(),
+	taxRate: z.number().nullable().optional(),
+	chargeCategory: z.string().nullable().optional(),
+	active: z.boolean(),
+});
+export const PriceList = z.object({
+	id: z.string(),
+	kind: z.string(),
+	name: z.string(),
+	active: z.boolean(),
+	items: z.array(PriceListEntry),
+});
+export const PriceListItemInput = z.object({
+	name: z.string(),
+	price: z.number(),
+	taxRate: z.number().nullable().optional(),
+	chargeCategory: z.string().nullable().optional(),
+	active: z.boolean().nullable().optional(),
+});
+
 export const ListItemRequest = z.object({
 	label: z.string(),
 	code: z.string().nullable().optional(),
@@ -1212,6 +1236,21 @@ export const schema = createSchema({
 			settings: JsonObject.nullable().optional(),
 		}),
 		output: envelope(z.unknown()),
+	},
+	/** A price list by kind (MINIBAR, LAUNDRY, EXTRAS, …); 404 until the first price is added. */
+	"@get/hotel-config/setup/price-lists/:kind": {
+		params: z.object({ kind: z.string() }),
+		output: envelope(PriceList),
+	},
+	"@post/hotel-config/setup/price-lists/:kind/items": {
+		params: z.object({ kind: z.string() }),
+		input: PriceListItemInput,
+		output: envelope(PriceList),
+	},
+	"@put/hotel-config/setup/price-lists/:kind/items/:itemId": {
+		params: z.object({ kind: z.string(), itemId: z.string() }),
+		input: PriceListItemInput,
+		output: envelope(PriceList),
 	},
 	"@get/hotel-config/setup/lists/:listName": {
 		params: z.object({ listName: z.string() }),

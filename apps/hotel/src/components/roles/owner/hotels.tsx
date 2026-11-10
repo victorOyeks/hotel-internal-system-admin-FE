@@ -732,7 +732,7 @@ export function AddHotelWizard({
 					: step < steps.length - 1
 						? "Nothing is saved until you finish"
 						: wantsManager
-							? "The manager gets a temporary password and an invite link you can send"
+							? "The invite is emailed to the manager; the link and temporary password are also shown once"
 							: "You can invite a manager later from Users"
 			}
 			footer={

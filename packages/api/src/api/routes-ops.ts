@@ -251,6 +251,9 @@ export const CleaningTaskItem = z.object({
 	skipReason: str,
 	priority: str,
 	guestArrives: bool,
+	/** The attendant's note for the supervisor and when a skipped room is tried again ("HH:mm"). */
+	attendantNote: str,
+	retryAt: str,
 });
 
 export const LostFoundItem = z.object({
@@ -285,6 +288,22 @@ export const ProblemItem = z.object({
 	description: z.string(),
 	repairId: str,
 	status: str,
+	priority: str,
+	outOfOrder: bool,
+});
+
+/** A housekeeping request for linen that laundry fulfils (REQUESTED, then SENT). */
+export const LinenRequestItem = z.object({
+	id: z.string(),
+	roomId: str,
+	roomNumber: str,
+	items: z.string(),
+	requestedBy: str,
+	requestedByName: str,
+	status: z.string(),
+	sentAt: str,
+	sentByName: str,
+	createdAt: str,
 });
 
 // ---- routes ---------------------------------------------------------------------------------------
@@ -561,7 +580,15 @@ export const opsRoutes = {
 	},
 	"@post/housekeeping/tasks/:id/skip": {
 		params: id,
-		input: z.object({ reason: z.string() }),
+		input: z.object({
+			reason: z.string(),
+			retryAt: z.string().nullable().optional(),
+		}),
+		output: envelope(CleaningTaskItem),
+	},
+	"@put/housekeeping/tasks/:id/note": {
+		params: id,
+		input: z.object({ note: z.string().nullable() }),
 		output: envelope(CleaningTaskItem),
 	},
 	"@post/housekeeping/tasks/:id/inspect": {
@@ -598,7 +625,16 @@ export const opsRoutes = {
 			roomNumber: z.string().nullable().optional(),
 			items: z.string(),
 		}),
-		output: envelope(z.unknown()),
+		output: envelope(LinenRequestItem),
+	},
+	/** Open requests (oldest first), or `status=SENT` for the last 30 sent. */
+	"@get/housekeeping/linen-requests": {
+		query: z.object({ status: z.string() }).partial().optional(),
+		output: envelope(z.array(LinenRequestItem)),
+	},
+	"@post/housekeeping/linen-requests/:id/sent": {
+		params: id,
+		output: envelope(LinenRequestItem),
 	},
 	/** Paged: status (FOUND, RETURNED, DISPOSED), q, from, to (on when it was found); counts per status. */
 	"@get/housekeeping/lost-found": {
@@ -647,6 +683,8 @@ export const opsRoutes = {
 			roomNumber: z.string().nullable().optional(),
 			description: z.string(),
 			photoKey: z.string().nullable().optional(),
+			priority: z.enum(["LOW", "NORMAL", "URGENT"]).optional(),
+			outOfOrder: z.boolean().optional(),
 		}),
 		output: envelope(ProblemItem),
 	},
@@ -705,3 +743,4 @@ export type TransactionItem = z.infer<typeof TransactionItem>;
 export type OwnerSummary = z.infer<typeof OwnerSummary>;
 export type CleaningTaskItem = z.infer<typeof CleaningTaskItem>;
 export type LostFoundItem = z.infer<typeof LostFoundItem>;
+export type LinenRequestItem = z.infer<typeof LinenRequestItem>;

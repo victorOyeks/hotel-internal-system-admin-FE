@@ -119,7 +119,7 @@ export function ActivityTab({
 				<div className="flex flex-col gap-4">
 					<SectionCard
 						title="Changes by H.M.S"
-						subtitle="Undoable for 7 days"
+						subtitle="The owner can ask support to undo one within 7 days"
 						count={changes.length}
 						action={{
 							label: "All changes",
@@ -230,13 +230,13 @@ export function ActivityTab({
 				tone="danger"
 				title="Undo this change?"
 				subtitle={undo?.description}
-				confirmLabel="Undo change"
+				confirmLabel="Mark undone"
 				pending={pending}
 				onConfirm={() =>
 					undo &&
 					run(
 						() => undoChange(undo.id, undo),
-						"Change undone",
+						"Marked undone",
 						(c) => {
 							setChanges((all) => all.map((x) => (x.id === c.id ? c : x)));
 							setUndo(null);
@@ -247,8 +247,8 @@ export function ActivityTab({
 				<WhatHappens
 					tone="warning"
 					items={[
-						"The previous value is restored right now",
-						"The owner sees 'undone by H.M.S' in their activity log",
+						"Put the previous value back first (for example with Edit as H.M.S): Undo doesn't change the setting itself",
+						"The change is marked undone; the owner sees 'undone by H.M.S' in their activity log",
 					]}
 				/>
 			</ConfirmModal>

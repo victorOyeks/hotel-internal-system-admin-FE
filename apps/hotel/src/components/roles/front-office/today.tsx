@@ -24,15 +24,20 @@ function greeting() {
 /** Front office 1.1 · Today at the desk. */
 export function FrontDeskToday({ user, hotelName, buckets, rooms, folios, terminals, till }: { user: Me; hotelName: string; buckets: ReturnType<typeof bookingBuckets>; rooms: RoomRow[]; folios: FolioRow[]; terminals: TerminalRow[]; till: TillRow | null }) {
 	const [payOpen, setPayOpen] = useState(false);
-	const [todos, setTodos] = useState([
-		{ id: 1, text: "Pillows and kettle to A325 · guest asked", done: false },
-		{ id: 2, text: "Call Musa Ibrahim about his 6pm arrival", done: false },
-		{ id: 3, text: "2 guest messages waiting", done: false },
-	]);
 	const arrivalsLeft = buckets.arrivals.filter((b) => b.status === "BOOKED");
 	const arrived = buckets.arrivals.filter((b) => b.status === "CHECKED_IN").length;
 	const count = (s: RoomRow["state"]) => rooms.filter((r) => r.state === s).length;
 	const balanceOf = (bookingId: string) => folios.find((f) => f.bookingId === bookingId)?.balance ?? 0;
+	// To-dos worked out from today's bookings and folios (nothing typed in): they go away as the work is done.
+	const noRoom = arrivalsLeft.filter((b) => !b.roomId);
+	const toCheckIn = arrivalsLeft.filter((b) => !!b.roomId);
+	const owing = buckets.inHouse.filter((b) => balanceOf(b.id) > 0 && !b.organizationName);
+	const todos = [
+		...noRoom.map((b) => ({ key: `room-${b.id}`, text: `Assign a room to ${b.guestName} · ${b.roomTypeName}`, href: `/dashboard/bookings?open=${b.id}` })),
+		...(toCheckIn.length ? [{ key: "checkin", text: `${plural(toCheckIn.length, "arrival")} to check in`, href: "/dashboard/bookings?tab=arrivals" }] : []),
+		...(buckets.departures.length ? [{ key: "checkout", text: `${plural(buckets.departures.length, "departure")} to check out`, href: "/dashboard/bookings?tab=departures" }] : []),
+		...(owing.length ? [{ key: "owing", text: `${plural(owing.length, "guest")} in house with a balance to pay`, href: "/dashboard/folios" }] : []),
+	];
 
 	const quick = [
 		{ label: "Check in", href: "/dashboard/bookings?tab=arrivals", icon: ArrowRightToLineIcon },
@@ -170,13 +175,18 @@ export function FrontDeskToday({ user, hotelName, buckets, rooms, folios, termin
 						<Link href="/dashboard/rooms" className={`${btn.secondary} mt-2 text-center`}>Open room board</Link>
 					</SectionCard>
 
-					<SectionCard title="Front desk to-dos" bodyClassName="gap-2 pt-2">
-						{todos.map((t) => (
-							<label key={t.id} className="flex cursor-pointer items-center gap-3 text-[13px] text-ink">
-								<input type="checkbox" checked={t.done} onChange={() => setTodos((xs) => xs.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)))} className="size-4 accent-brand" />
-								<span className={t.done ? "line-through text-ink-3" : ""}>{t.text}</span>
-							</label>
-						))}
+					<SectionCard title="Front desk to-dos" subtitle="From today's bookings and folios" bodyClassName="gap-2 pt-2">
+						{todos.length === 0 ? (
+							<p className="text-[13px] text-ink-3">Nothing waiting: every arrival has a room, nobody is left to check in or out, and in-house balances are paid.</p>
+						) : (
+							todos.map((t) => (
+								<Link key={t.key} href={t.href} className="flex items-center gap-3 rounded-control px-1 py-1 text-[13px] text-ink hover:bg-subtle">
+									<span className="size-2 shrink-0 rounded-full bg-warning" />
+									<span className="flex-1">{t.text}</span>
+									<span className="text-brand">→</span>
+								</Link>
+							))
+						)}
 					</SectionCard>
 
 					<SectionCard title="Your till" subtitle={till ? `${naira(till.openingFloat)} float · ${naira(till.cashIn)} cash taken` : "Not open yet"} action={{ label: "Till", href: "/dashboard/till" }}>

@@ -164,8 +164,11 @@ export function InspectScreen({
 								<p className="text-[13px] text-ink-3">
 									{t.status === "DONE"
 										? `Finished ${fmtTime(t.doneAt ?? t.due)} · ${t.guestArrives ? "guest arrives today" : "no arrival today"}`
-										: (t.note ??
-											(t.guestArrives ? `Arrival ${t.guestArrives}` : ""))}
+										: t.status === "SKIPPED"
+											? `${t.note ?? "Skipped"}${t.retryAt ? ` · try again at ${t.retryAt}` : ""}`
+											: (t.note ??
+												(t.guestArrives ? `Arrival ${t.guestArrives}` : ""))}
+									{t.attendantNote ? ` · Note: ${t.attendantNote}` : ""}
 								</p>
 							</button>
 							<StatusPill
@@ -317,8 +320,10 @@ export function InspectScreen({
 										))}
 									</ul>
 								</PanelSection>
-								{current.note && (
-									<Note tone="info">Attendant's note: {current.note}</Note>
+								{current.attendantNote && (
+									<Note tone="info">
+										Attendant's note: {current.attendantNote}
+									</Note>
 								)}
 								<WhatHappens
 									items={[

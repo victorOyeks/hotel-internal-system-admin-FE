@@ -14,12 +14,14 @@ import {
 } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Note } from "@hospio/ui/shared/detail-list";
 import {
 	ChoiceCards,
 	SelectField,
 	TextField,
 	TextareaField,
+	ToggleField,
 } from "@hospio/ui/shared/field";
 import { fmtTime, naira } from "@hospio/ui/shared/format";
 import { Modal } from "@hospio/ui/shared/modal";
@@ -37,12 +39,15 @@ import {
 	finishTask,
 	reportProblem,
 	saveTaskChecklist,
+	saveTaskNote,
 	skipTask,
 	startTask,
 } from "@hospio/api/actions/housekeeping";
+import { uploadWorkOrderPhoto } from "@hospio/api/actions/maintenance";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	CleaningTaskRow,
+	MinibarPrice,
 	RoomRow,
 	StaffRow,
 } from "@hospio/api/data/types";
@@ -53,15 +58,6 @@ import {
 	ShiftPill,
 	Stepper,
 } from "../shared-staff/tablet";
-
-const minibar = [
-	{ name: "Water · 75cl", price: 1000 },
-	{ name: "Coca-Cola", price: 1200 },
-	{ name: "Star Lager", price: 2000 },
-	{ name: "Pringles", price: 2500 },
-	{ name: "Peanuts", price: 1500 },
-	{ name: "Chocolate bar", price: 1800 },
-];
 
 type Panel =
 	| { kind: "task"; id: string }
@@ -88,18 +84,29 @@ function statusPill(t: CleaningTaskRow) {
 	}
 }
 
-/** Housekeeping · My rooms today (Figma 3238:14342) with the checklist, minibar, problem, linen and can't-clean flows. */
+/**
+ * Housekeeping · My rooms today (Figma 3238:14342) with the checklist, minibar, problem, linen and can't-clean flows. Minibar prices
+ * come from Hotel setup (price list MINIBAR); the note for the supervisor and "try again at" are saved on the task; a problem goes to
+ * maintenance with its urgency (and can take the room out of order) and an optional photo; linen requests appear on laundry's Linen.
+ */
 export function MyRoomsScreen({
 	tasks,
 	rooms,
 	me,
 	hotelName,
+	minibarPrices = [],
+	areas = [],
 }: {
 	tasks: CleaningTaskRow[];
 	rooms: RoomRow[];
 	me: StaffRow | null;
 	hotelName: string;
+	/** Active and inactive minibar prices from Hotel setup; only active ones are offered. */
+	minibarPrices?: MinibarPrice[];
+	/** The hotel's public areas (property areas and Hotel setup → Public areas) for "Report a problem → Where". */
+	areas?: string[];
 }) {
+	const minibar = minibarPrices.filter((m) => m.active);
 	const [list, setList] = useState(tasks);
 	useEffect(() => setList(tasks), [tasks]);
 	const [open, setOpen] = useQueryState("open", parseAsString);
@@ -148,6 +155,14 @@ export function MyRoomsScreen({
 		what: "",
 		priority: "NORMAL",
 	});
+	const [ooo, setOoo] = useState(true);
+	const [photo, setPhoto] = useState<File | null>(null);
+	const photoTooBig = !!photo && photo.size > 2 * 1024 * 1024;
+	/** The room the problem is in (a room number), or null for a public area. */
+	const problemRoom =
+		rooms.find((r) => r.number === problem.room) ??
+		null;
+	const [noteFor, setNoteFor] = useState<string | null>(null);
 	const [linen, setLinen] = useState({
 		"Bath towel": 6,
 		"Hand towel": 6,
@@ -179,6 +194,8 @@ export function MyRoomsScreen({
 					tone="secondary"
 					onClick={() => {
 						setProblem({ room: "", what: "", priority: "NORMAL" });
+						setOoo(true);
+						setPhoto(null);
 						setPanel({ kind: "problem" });
 					}}
 				>
@@ -193,7 +210,7 @@ export function MyRoomsScreen({
 					const title = `${t.kind === "DEPARTURE" ? "Departure clean" : t.kind === "DEEP" ? "Deep clean" : "Stay-over"}${room?.guestName && t.kind === "STAYOVER" ? ` · ${room.guestName}` : ""} · ${room?.typeName ?? ""}`;
 					const sub =
 						t.status === "SKIPPED"
-							? `${t.note ?? "Do not disturb"} · try again after 3pm`
+							? `${t.note ?? "Do not disturb"}${t.retryAt ? ` · try again at ${t.retryAt}` : ""}`
 							: t.status === "SENT_BACK"
 								? `Sent back · ${t.note}`
 								: t.status === "DONE" || t.status === "INSPECTED"
@@ -382,7 +399,7 @@ export function MyRoomsScreen({
 								))}
 							</ul>
 						</PanelSection>
-						<div className="grid grid-cols-3 gap-2">
+						<div className="grid grid-cols-2 gap-2">
 							<BigButton
 								tone="secondary"
 								onClick={() => {
@@ -400,22 +417,46 @@ export function MyRoomsScreen({
 										what: "",
 										priority: "NORMAL",
 									});
+									setOoo(true);
+									setPhoto(null);
 									setPanel({ kind: "problem", id: current.id });
 								}}
 							>
 								<WrenchIcon className="size-5" /> Problem
 							</BigButton>
-							<BigButton tone="secondary" disabled>
-								<CameraIcon className="size-5" /> Photo
-							</BigButton>
 						</div>
-						<TextareaField
-							label="Note for the supervisor"
-							value={note}
-							onChange={setNote}
-							placeholder="e.g. stain on the carpet near the window"
-							rows={2}
-						/>
+						<div className="flex flex-col gap-2">
+							<TextareaField
+								label="Note for the supervisor"
+								value={noteFor === current.id ? note : (current.attendantNote ?? "")}
+								onChange={(v) => {
+									setNoteFor(current.id);
+									setNote(v);
+								}}
+								placeholder="e.g. stain on the carpet near the window"
+								rows={2}
+								hint="Your supervisor sees it when they inspect the room"
+							/>
+							{noteFor === current.id &&
+								note.trim() !== (current.attendantNote ?? "") && (
+									<BigButton
+										tone="secondary"
+										pending={pending}
+										onClick={() =>
+											run(
+												() => saveTaskNote(current.id, note, current),
+												note.trim() ? "Note saved for the supervisor" : "Note cleared",
+												(row) => {
+													update(current.id, { attendantNote: row.attendantNote });
+													setNoteFor(null);
+												},
+											)
+										}
+									>
+										Save note
+									</BigButton>
+								)}
+						</div>
 					</div>
 				)}
 			</SidePanel>
@@ -474,7 +515,18 @@ export function MyRoomsScreen({
 					</>
 				}
 			>
-				<ul className="divide-y divide-line rounded-control border border-line">
+				{minibar.length === 0 && (
+					<Note tone="info">
+						No minibar prices yet. A manager adds them in Hotel setup →
+						Housekeeping → Minibar prices; then they show here.
+					</Note>
+				)}
+				<ul
+					className={cn(
+						"divide-y divide-line rounded-control border border-line",
+						minibar.length === 0 && "hidden",
+					)}
+				>
 					{minibar.map((m) => (
 						<li key={m.name} className="flex items-center gap-3 px-4 py-3">
 							<span className="min-w-0 flex-1">
@@ -494,7 +546,7 @@ export function MyRoomsScreen({
 				</ul>
 				<p className="mt-3 text-xs text-ink-3">
 					Restock what was used from the housekeeping store. Prices come from
-					Hotel setup → Charges.
+					Hotel setup → Housekeeping → Minibar prices.
 				</p>
 			</SidePanel>
 
@@ -505,7 +557,7 @@ export function MyRoomsScreen({
 					!o && (current ? setPanel({ kind: "task", id: current.id }) : close())
 				}
 				title="Report a problem"
-				subtitle="Goes to Maintenance as a repair"
+				subtitle="Goes to Maintenance as a work order"
 				icon={WrenchIcon}
 				tone={problem.priority === "URGENT" ? "danger" : "default"}
 				footer={
@@ -520,21 +572,40 @@ export function MyRoomsScreen({
 						</BigButton>
 						<BigButton
 							pending={pending}
-							disabled={!problem.what}
+							disabled={!problem.what.trim() || !problem.room || photoTooBig}
 							onClick={() => {
-								const r = list.find((t) => t.roomNumber === problem.room);
+								const takeOut =
+									problem.priority === "URGENT" && !!problemRoom && ooo;
+								const back = () =>
+									current
+										? setPanel({ kind: "task", id: current.id })
+										: close();
 								run(
 									() =>
 										reportProblem({
-											roomId: r?.roomId,
+											roomId: problemRoom?.id,
 											roomNumber: problem.room || undefined,
-											description: `${problem.priority === "URGENT" ? "[URGENT] " : ""}${problem.what}`,
+											description: problem.what.trim(),
+											priority: problem.priority as "LOW" | "NORMAL" | "URGENT",
+											outOfOrder: takeOut,
 										}),
-									"Repair reported · Maintenance alerted",
-									() =>
-										current
-											? setPanel({ kind: "task", id: current.id })
-											: close(),
+									(r) =>
+										r.outOfOrder
+											? `Sent to Maintenance · Room ${problem.room} is out of order · front office told`
+											: problem.priority === "URGENT"
+												? "Sent to Maintenance as urgent · front office told"
+												: "Sent to Maintenance",
+									async (r) => {
+										if (photo && r.repairId) {
+											const form = new FormData();
+											form.set("file", photo);
+											const up = await uploadWorkOrderPhoto(r.repairId, form);
+											if (up.ok) toast.success("Photo added to the work order");
+											else toast.error(`The report was sent, but the photo wasn't: ${up.error}`);
+										}
+										setPhoto(null);
+										back();
+									},
 								);
 							}}
 						>
@@ -549,12 +620,17 @@ export function MyRoomsScreen({
 						value={problem.room}
 						onChange={(v) => setProblem({ ...problem, room: v })}
 						options={[
-							...list.map((t) => ({
-								value: t.roomNumber,
-								label: `Room ${t.roomNumber}`,
-							})),
-							{ value: "Floor 2 corridor", label: "Floor 2 corridor" },
-							{ value: "Lobby", label: "Lobby" },
+							...Array.from(
+								new Set([
+									...list.map((t) => t.roomNumber),
+									...rooms.map((r) => r.number),
+								]),
+							)
+								.filter((n) => n && n !== "—")
+								.map((n) => ({ value: n, label: `Room ${n}` })),
+							...areas
+								.filter((a) => !rooms.some((r) => r.number === a))
+								.map((a) => ({ value: a, label: a })),
 						]}
 						placeholder="Room or area"
 						required
@@ -573,16 +649,50 @@ export function MyRoomsScreen({
 						options={[
 							{ value: "LOW", label: "Can wait" },
 							{ value: "NORMAL", label: "Today" },
-							{ value: "URGENT", label: "Now", hint: "Room can't be sold" },
+							{ value: "URGENT", label: "Now", hint: "Due within 4 hours" },
 						]}
 					/>
+					{problem.priority === "URGENT" && problemRoom && (
+						<ToggleField
+							label={`Take room ${problemRoom.number} out of order`}
+							hint="Nobody can be checked in until Maintenance clears it. Not possible while a guest is checked in."
+							checked={ooo}
+							onChange={setOoo}
+						/>
+					)}
+					<div className="flex flex-col gap-2">
+						<p className="text-[13px] font-semibold text-ink">
+							Photo <span className="font-normal text-ink-3">(optional)</span>
+						</p>
+						<input
+							type="file"
+							accept="image/jpeg,image/png,image/webp"
+							capture="environment"
+							aria-label="Photo of the problem"
+							onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+							className="block w-full text-[13px] text-ink file:mr-3 file:rounded-control file:border file:border-line file:bg-card file:px-3 file:py-2 file:font-semibold"
+						/>
+						{photoTooBig ? (
+							<Note tone="danger">That photo is over 2 MB · take a smaller one.</Note>
+						) : (
+							<p className="text-xs text-ink-3">
+								<CameraIcon className="mr-1 inline size-3" />
+								JPEG, PNG or WebP up to 2 MB, added to the work order.
+							</p>
+						)}
+					</div>
 
 					{problem.priority === "URGENT" && (
 						<WhatHappens
 							tone="danger"
 							items={[
-								"The room is put out of order until Maintenance clears it",
-								"Front office is told so nobody is checked in there",
+								"Maintenance gets it as urgent, due within 4 hours; managers are told",
+								problemRoom && ooo
+									? `Room ${problemRoom.number} goes out of order until Maintenance clears it`
+									: "The room stays in service",
+								problemRoom
+									? "Front office is told straight away"
+									: "Front office is told about problems in rooms",
 							]}
 						/>
 					)}
@@ -613,7 +723,7 @@ export function MyRoomsScreen({
 												.map(([n, q]) => `${q} × ${n}`)
 												.join(", "),
 										}),
-									"Linen request sent to Laundry",
+									"Linen request sent · it is on laundry's Linen screen",
 									close,
 								)
 							}
@@ -637,7 +747,8 @@ export function MyRoomsScreen({
 					))}
 				</ul>
 				<p className="mt-3 text-xs text-ink-3">
-					Laundry brings it to your floor.
+					Laundry sees the request on their Linen screen and you get a notice
+					when it is sent.
 				</p>
 			</Modal>
 
@@ -675,8 +786,9 @@ export function MyRoomsScreen({
 													? "Guest in the room"
 													: "Something is broken",
 											current,
+											reason !== "OOO" ? retry : undefined,
 										),
-									`Room ${current.roomNumber} skipped · supervisor told`,
+									`Room ${current.roomNumber} skipped${reason !== "OOO" && retry ? ` · try again at ${retry}` : ""}`,
 									(row) => {
 										update(current.id, row);
 										close();

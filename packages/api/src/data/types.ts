@@ -1270,7 +1270,24 @@ export type CleaningTaskRow = {
 	attendantId?: Id;
 	startedAt?: string;
 	doneAt?: string;
+	/** The attendant's note for the supervisor (My rooms), shown on Inspect. */
+	attendantNote?: string;
+	/** When a skipped room is tried again, "HH:mm". */
+	retryAt?: string;
 };
+/** A housekeeping request for linen, for laundry to send. */
+export type LinenRequestRow = {
+	id: Id;
+	items: string;
+	roomNumber?: string;
+	requestedBy: string;
+	requestedAt: string;
+	status: "REQUESTED" | "SENT";
+	sentAt?: string;
+	sentBy?: string;
+};
+/** One minibar price from Hotel setup (price list MINIBAR). */
+export type MinibarPrice = { id: Id; name: string; price: number; active: boolean };
 export type LaundryOrderRow = {
 	id: Id;
 	guestName: string;
