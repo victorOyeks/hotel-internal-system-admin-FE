@@ -10,6 +10,7 @@ import {
 	TruckIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -18,6 +19,7 @@ import { SelectField, TextareaField, TextField } from "@hospio/ui/shared/field";
 import { fmtDay, fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { ConfirmModal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
@@ -27,10 +29,12 @@ import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import {
 	cancelOrder,
 	closeOrder,
+	loadPurchaseOrder,
 	saveOrder,
 	submitOrder,
 } from "@hospio/api/actions/inventory";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type {
 	DeliveryRow,
 	PurchaseOrderRow,
@@ -61,46 +65,66 @@ type Line = {
 };
 const q = (n: number) => Number(n.toFixed(2)).toLocaleString("en-NG");
 
-/** Inventory 3.x · Purchase orders: list, new / draft, send (or to approval), cancel, close short, receive. */
+/**
+ * Inventory 3.x · Purchase orders: list, new / draft, send (or to approval), cancel, close short, receive. Paged by
+ * inventory-service: the tab is the status, search, supplier and page are in the URL, the tab counts are the service's.
+ * The open order (and what was delivered against it) is read on its own, so a link to any order opens it.
+ */
 export function OrdersScreen({
-	orders,
+	orders: result,
 	items,
 	suppliers,
 	stores,
-	deliveries,
 }: {
-	orders: PurchaseOrderRow[];
+	orders: PageResult<PurchaseOrderRow>;
 	items: StockItemRow[];
 	suppliers: SupplierRow[];
 	stores: StoreRow[];
-	deliveries: DeliveryRow[];
 }) {
+	const router = useRouter();
+	const list$ = useListParams({ extra: ["tab", "supplier"] });
+	const page = result.data;
+	const orders = page.content;
+	const count = (...keys: string[]) =>
+		keys.reduce((n, k) => n + (page.counts?.[k] ?? 0), 0);
 	const perms = useInvPerms();
 	const href = useInvHref();
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [seedItem, setSeedItem] = useQueryState("item");
 	const [seedQty, setSeedQty] = useQueryState("qty");
-	const [tab, setTab] = useQueryState("tab");
-	const [search, setSearch] = useState("");
+	const tab = list$.params.tab;
+	const setTab = (k: string | null) => list$.set({ tab: k });
 	const [editing, setEditing] = useState<PurchaseOrderRow | null>(null);
 	const [ending, setEnding] = useState<"cancel" | "close" | null>(null);
 	const [reason, setReason] = useState("");
 	const { run, pending } = useAction();
 	const active = tab ?? "all";
-	const lists: Record<string, PurchaseOrderRow[]> = {
-		all: orders,
-		draft: orders.filter((o) => o.status === "DRAFT"),
-		approval: orders.filter((o) => o.status === "PENDING_APPROVAL"),
-		sent: orders.filter((o) => o.status === "SENT" || o.status === "PARTIAL"),
-		done: orders.filter((o) =>
-			["RECEIVED", "CLOSED", "CANCELLED"].includes(o.status),
-		),
-	};
-	const po = orders.find((o) => o.id === openId) ?? null;
-	const poDeliveries = po
-		? deliveries.filter((d) => d.purchaseOrderId === po.id)
-		: [];
+	// The open order as the service has it now, with its deliveries (again after the page is read again).
+	const [loaded, setLoaded] = useState<
+		(PurchaseOrderRow & { deliveries: DeliveryRow[] }) | null
+	>(null);
+	useEffect(() => {
+		if (!openId) {
+			setLoaded(null);
+			return;
+		}
+		let alive = true;
+		void loadPurchaseOrder(openId).then((r) => {
+			if (alive) setLoaded(r.ok ? r.data : null);
+		});
+		return () => {
+			alive = false;
+		};
+	}, [openId, result]);
+	const po =
+		(loaded?.id === openId ? loaded : null) ??
+		orders.find((o) => o.id === openId) ??
+		null;
+	const poDeliveries = loaded?.id === openId ? loaded.deliveries : [];
+	const supplierName = suppliers.find(
+		(x) => x.id === list$.params.supplier,
+	)?.name;
 
 	const columns = useMemo<ColumnDef<PurchaseOrderRow, unknown>[]>(
 		() => [
@@ -170,7 +194,7 @@ export function OrdersScreen({
 		<>
 			<PageHeader
 				title="Purchase orders"
-				subtitle={`${plural(lists.sent.length, "order")} on the way · ${plural(lists.approval.length, "order")} waiting for approval · over the hotel's approval limit an order needs the manager (or the owner when a manager raises it)`}
+				subtitle={`${plural(count("SENT", "PARTIAL"), "order")} on the way · ${plural(count("PENDING_APPROVAL"), "order")} waiting for approval · over the hotel's approval limit an order needs the manager (or the owner when a manager raises it)`}
 			>
 				{perms.store && (
 					<button
@@ -186,32 +210,56 @@ export function OrdersScreen({
 				left={
 					<PillTabs
 						value={active}
-						onChange={(k) => void setTab(k === "all" ? null : k)}
+						onChange={(k) => setTab(k === "all" ? null : k)}
 						tabs={[
-							{ key: "all", label: "All", count: orders.length },
-							{ key: "draft", label: "Draft", count: lists.draft.length },
+							{ key: "all", label: "All", count: count("all") },
+							{ key: "draft", label: "Draft", count: count("DRAFT") },
 							{
 								key: "approval",
 								label: "Needs approval",
-								count: lists.approval.length,
+								count: count("PENDING_APPROVAL"),
 							},
-							{ key: "sent", label: "On the way", count: lists.sent.length },
-							{ key: "done", label: "Done", count: lists.done.length },
+							{
+								key: "sent",
+								label: "On the way",
+								count: count("SENT", "PARTIAL"),
+							},
+							{
+								key: "done",
+								label: "Done",
+								count: count("RECEIVED", "CLOSED", "CANCELLED"),
+							},
 						]}
 					/>
 				}
 				right={
-					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Order, supplier, item…"
-					/>
+					<div className="flex items-center gap-2">
+						{supplierName && (
+							<button
+								type="button"
+								className={`${btn.secondary} ${btn.small}`}
+								onClick={() => list$.set({ supplier: null })}
+								aria-label="Show every supplier"
+							>
+								{supplierName} ×
+							</button>
+						)}
+						<SearchBox
+							value={list$.search}
+							onChange={list$.setSearch}
+							placeholder="Order, supplier, item…"
+						/>
+					</div>
 				}
 			/>
 			<DataTable
 				columns={columns}
-				data={lists[active] ?? orders}
-				search={search}
+				data={orders}
+				server={{ page, onPage: list$.goTo }}
+				filtered={!!list$.params.q || !!list$.params.supplier}
+				onClearFilters={list$.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(o) => void setOpenId(o.id)}
 				emptyTitle="No orders here"
 			/>

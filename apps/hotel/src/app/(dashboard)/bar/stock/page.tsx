@@ -7,7 +7,7 @@ export default async function BarStockPage() {
 	const outlet = await data.outlets.forRole("BAR");
 	const [items, requests] = await Promise.all([
 		data.inventory.items(),
-		data.inventory.requests(),
+		data.inventory.teamRequests("BAR"),
 	]);
 	return (
 		<BarStockScreen

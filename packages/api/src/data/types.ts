@@ -612,6 +612,13 @@ export type StockRequestRow = {
 	/** Why it was declined or closed short. */
 	reason?: string;
 };
+/** A team's store screen: its latest requests (with the counts of all of them) and today's. */
+export type TeamRequests = {
+	latest: import("./paging").Paged<StockRequestRow>;
+	today: StockRequestRow[];
+	error?: string;
+};
+
 export type PurchaseOrderRow = {
 	id: Id;
 	number: string;

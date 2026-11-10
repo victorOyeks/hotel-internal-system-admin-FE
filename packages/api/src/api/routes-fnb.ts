@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * Restaurant and bar (docs/restaurant-bar.md in hospio-backend): fnb-service (outlets, tables, menus,
@@ -605,9 +606,10 @@ export const fnbRoutes = {
 		}),
 		output: envelope(StockLevelItem),
 	},
+	/** Paged (docs/pagination.md): team, status (OPEN, comma lists), q, from, to; counts per status. */
 	"@get/inventory/requests": {
-		query: z.object({ team: z.string() }).partial().optional(),
-		output: envelope(z.array(StockRequestItem)),
+		query: pageParams,
+		output: envelope(pagedOf(StockRequestItem)),
 	},
 	"@post/inventory/requests": {
 		input: z.object({

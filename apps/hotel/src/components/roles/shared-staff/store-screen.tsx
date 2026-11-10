@@ -28,7 +28,11 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { askTheStore, useOrWasteStock } from "@hospio/api/actions/fnb";
 import { useAction } from "@hospio/api/actions/use-action";
-import type { StockItemRow, StockRequestRow } from "@hospio/api/data/types";
+import type {
+	StockItemRow,
+	StockRequestRow,
+	TeamRequests,
+} from "@hospio/api/data/types";
 import { BigButton, ShiftPill, Stepper } from "./tablet";
 
 export type RequestLine = { item: StockItemRow; qty: number };
@@ -40,7 +44,7 @@ export type RequestLine = { item: StockItemRow; qty: number };
  */
 export function StoreScreen({
 	items,
-	requests = [],
+	requests,
 	team,
 	storeId,
 	title,
@@ -50,7 +54,8 @@ export function StoreScreen({
 	catalogue = [],
 }: {
 	items: StockItemRow[];
-	requests?: StockRequestRow[];
+	/** The team's latest requests (with the counts of all of them) and today's, from inventory-service. */
+	requests?: TeamRequests;
 	team: "KITCHEN" | "BAR" | "HOUSEKEEPING" | "LAUNDRY" | "MAINTENANCE";
 	/** Items the hotel stocks elsewhere that the team may ask for even when its own shelf has none yet. */
 	catalogue?: StockItemRow[];
@@ -71,9 +76,8 @@ export function StoreScreen({
 	const [useKind, setUseKind] = useState<"USE" | "WASTE">("USE");
 	const [wasteReason, setWasteReason] = useState("Expired");
 	const { run, pending } = useAction();
-	const mine = requests.filter((r) => r.fromTeam === team);
-	const today = new Date().toISOString().slice(0, 10);
-	const todays = mine.filter((r) => r.createdAt.slice(0, 10) === today);
+	const todays = requests?.today ?? [];
+	const waiting = requests?.latest.counts?.REQUESTED ?? 0;
 
 	const low = rows.filter((i) => i.quantity <= i.minLevel);
 	const value = rows.reduce((s, i) => s + i.quantity * i.unitCost, 0);
@@ -131,8 +135,8 @@ export function StoreScreen({
 					value={todays.length}
 					icon={SendIcon}
 					hint={
-						mine.filter((r) => r.status === "REQUESTED").length
-							? `${plural(mine.filter((r) => r.status === "REQUESTED").length, "request")} waiting for the store`
+						waiting
+							? `${plural(waiting, "request")} waiting for the store`
 							: todays.some((r) => r.status === "PART_ISSUED")
 								? "Some part-issued by the store"
 								: "None waiting"
@@ -165,7 +169,7 @@ export function StoreScreen({
 					</BigButton>
 				</div>
 			)}
-			<MyRequests requests={mine} />
+			{requests && <MyRequests requests={requests} />}
 			{children}
 			<Toolbar
 				left={
@@ -506,13 +510,20 @@ const REQUEST_TONE: Record<
 	CLOSED: { label: "Closed short", tone: "grey" },
 };
 
-/** The team's latest requests to the store with what was issued, or why the store declined. */
-function MyRequests({ requests }: { requests: StockRequestRow[] }) {
+/** The team's latest requests to the store (the 10 newest) with what was issued, or why the store declined. */
+function MyRequests({ requests: { latest } }: { requests: TeamRequests }) {
+	const requests = latest.content;
 	if (requests.length === 0) return null;
 	return (
 		<details className="rounded-card border border-line bg-card px-5 py-3">
 			<summary className="cursor-pointer text-[15px] font-semibold text-ink">
-				Your requests to the store · {requests.length}
+				Your requests to the store · {latest.total}
+				{latest.total > requests.length && (
+					<span className="font-normal text-ink-3">
+						{" "}
+						(the latest {requests.length})
+					</span>
+				)}
 			</summary>
 			<ul className="mt-2 divide-y divide-line text-[13px]">
 				{requests.slice(0, 10).map((r) => (

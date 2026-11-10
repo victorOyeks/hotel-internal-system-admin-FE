@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { PackageCheckIcon, TruckIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -13,6 +14,7 @@ import {
 	TextField,
 } from "@hospio/ui/shared/field";
 import { fmtDay, fmtWhen, naira, plural } from "@hospio/ui/shared/format";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
@@ -20,6 +22,7 @@ import { SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn, input } from "@hospio/ui/shared/ui";
 import { receiveDelivery } from "@hospio/api/actions/inventory";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type {
 	DeliveryRow,
 	PurchaseOrderRow,
@@ -42,25 +45,31 @@ type Row = {
 };
 const q = (n: number) => Number(n.toFixed(2)).toLocaleString("en-NG");
 
-/** Inventory 4.x · Deliveries: receive against an order (received, damaged and cost per line) or without one; past deliveries. */
+/**
+ * Inventory 4.x · Deliveries: receive against an order (received, damaged and cost per line) or without one; past
+ * deliveries, paged by inventory-service (search and page in the URL; the value is over every matching delivery).
+ */
 export function DeliveriesScreen({
-	deliveries,
+	deliveries: result,
 	orders,
 	items,
 	stores,
 	suppliers,
 }: {
-	deliveries: DeliveryRow[];
+	deliveries: PageResult<DeliveryRow>;
 	orders: PurchaseOrderRow[];
 	items: StockItemRow[];
 	stores: StoreRow[];
 	suppliers: SupplierRow[];
 }) {
 	const perms = useInvPerms();
+	const router = useRouter();
+	const list$ = useListParams();
+	const page = result.data;
+	const deliveries = page.content;
 	const [isNew, setIsNew] = useQueryState("new");
 	const [poParam, setPoParam] = useQueryState("po");
 	const [openId, setOpenId] = useQueryState("open");
-	const [search, setSearch] = useState("");
 	const onTheWay = orders.filter(
 		(o) => o.status === "SENT" || o.status === "PARTIAL",
 	);
@@ -175,18 +184,28 @@ export function DeliveriesScreen({
 				</div>
 			)}
 			<Toolbar
+				left={
+					<span className="text-[13px] text-ink-3">
+						{plural(page.total, "delivery", "deliveries")} ·{" "}
+						{naira(page.totals?.value ?? 0)} received
+					</span>
+				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
-						placeholder="Supplier, order…"
+						value={list$.search}
+						onChange={list$.setSearch}
+						placeholder="Supplier, order, invoice, item…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
 				data={deliveries}
-				search={search}
+				server={{ page, onPage: list$.goTo }}
+				filtered={list$.filtered}
+				onClearFilters={list$.clear}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
 				onRowClick={(d) => void setOpenId(d.id)}
 				emptyTitle="No deliveries yet"
 			/>

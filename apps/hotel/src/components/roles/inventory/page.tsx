@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getActiveHotel, getActiveRole, getUser } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { listQueryFrom } from "@hospio/api/data/paging";
 import { CountsScreen } from "./counts";
 import { DeliveriesScreen } from "./deliveries";
 import {
@@ -16,6 +17,19 @@ import { SuppliersScreen } from "./suppliers";
 
 type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+/** Each screen's tab in the URL as the service's status filter (absent: every status). */
+const REQUEST_TAB: Record<string, string | undefined> = {
+	waiting: "OPEN",
+	issued: "ISSUED",
+	declined: "DECLINED,CLOSED",
+	all: undefined,
+};
+const ORDER_TAB: Record<string, string | undefined> = {
+	draft: "DRAFT",
+	approval: "PENDING_APPROVAL",
+	sent: "SENT,PARTIAL",
+	done: "DONE",
+};
 const SCREENS: InvScreen[] = [
 	"stock",
 	"requests",
@@ -69,7 +83,8 @@ export async function InventoryPage({
 		const [stores, items, orders, value, usage] = await Promise.all([
 			data.inventory.stores(),
 			data.inventory.items(),
-			data.inventory.purchaseOrders(),
+			// The orders still to arrive or waiting for approval (what the stock screen marks "on order").
+			data.inventory.purchaseOrders("PENDING_APPROVAL,SENT,PARTIAL"),
 			data.inventory.value(),
 			data.inventory.usage(from, to),
 		]);
@@ -86,19 +101,30 @@ export async function InventoryPage({
 			/>
 		);
 	} else if (screen === "requests") {
+		const query = listQueryFrom(sp, ["tab"]);
+		const tab = (query.tab as string | undefined) ?? "waiting";
 		const [requests, items, stores] = await Promise.all([
-			data.inventory.requests(),
+			data.inventory.requestsPage({
+				q: query.q,
+				page: query.page,
+				status: tab in REQUEST_TAB ? REQUEST_TAB[tab] : "OPEN",
+			}),
 			data.inventory.items(),
 			data.inventory.stores(),
 		]);
 		body = <RequestsScreen requests={requests} items={items} stores={stores} />;
 	} else if (screen === "orders") {
-		const [orders, items, suppliers, stores, deliveries] = await Promise.all([
-			data.inventory.purchaseOrders(),
+		const query = listQueryFrom(sp, ["tab", "supplier"]);
+		const [orders, items, suppliers, stores] = await Promise.all([
+			data.inventory.purchaseOrdersPage({
+				q: query.q,
+				page: query.page,
+				status: ORDER_TAB[(query.tab as string | undefined) ?? ""],
+				supplierId: query.supplier as string | undefined,
+			}),
 			data.inventory.items(),
 			data.inventory.suppliers(),
 			data.inventory.stores(),
-			data.inventory.deliveries(),
 		]);
 		body = (
 			<OrdersScreen
@@ -106,13 +132,19 @@ export async function InventoryPage({
 				items={items}
 				suppliers={suppliers}
 				stores={stores}
-				deliveries={deliveries}
 			/>
 		);
 	} else if (screen === "deliveries") {
+		const query = listQueryFrom(sp);
 		const [deliveries, orders, items, stores, suppliers] = await Promise.all([
-			data.inventory.deliveries(),
-			data.inventory.purchaseOrders(),
+			data.inventory.deliveriesPage({
+				q: query.q,
+				page: query.page,
+				from: query.from,
+				to: query.to,
+			}),
+			// The orders still on the way, to receive against.
+			data.inventory.purchaseOrders("SENT,PARTIAL"),
 			data.inventory.items(),
 			data.inventory.stores(),
 			data.inventory.suppliers(),
@@ -127,16 +159,31 @@ export async function InventoryPage({
 			/>
 		);
 	} else if (screen === "counts") {
-		const [counts, stores, items] = await Promise.all([
-			data.inventory.counts(),
+		const query = listQueryFrom(sp, ["store"]);
+		const [counts, openCounts, stores, items] = await Promise.all([
+			data.inventory.countsPage({
+				q: query.q,
+				page: query.page,
+				status: query.status,
+				storeId: query.store as string | undefined,
+			}),
+			data.inventory.openCounts(),
 			data.inventory.stores(),
 			data.inventory.items(),
 		]);
-		body = <CountsScreen counts={counts} stores={stores} items={items} />;
+		body = (
+			<CountsScreen
+				counts={counts}
+				openCounts={openCounts}
+				stores={stores}
+				items={items}
+			/>
+		);
 	} else {
 		const [suppliers, items, orders] = await Promise.all([
 			data.inventory.suppliers(),
 			data.inventory.items(),
+			// The open orders (drafts to on the way); every order of a supplier is on Purchase orders.
 			data.inventory.purchaseOrders(),
 		]);
 		body = (

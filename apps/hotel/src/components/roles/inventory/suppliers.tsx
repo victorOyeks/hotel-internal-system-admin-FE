@@ -263,7 +263,7 @@ export function SuppliersScreen({
 								)}
 							</ul>
 						</PanelSection>
-						<PanelSection title="Orders">
+						<PanelSection title="Open orders">
 							<ul className="divide-y divide-line text-[13px]">
 								{supOrders.map((o) => (
 									<li
@@ -283,9 +283,15 @@ export function SuppliersScreen({
 									</li>
 								))}
 								{supOrders.length === 0 && (
-									<li className="py-2 text-ink-3">No orders yet.</li>
+									<li className="py-2 text-ink-3">Nothing open.</li>
 								)}
 							</ul>
+							<Link
+								href={href("orders", { supplier: sup.id })}
+								className="text-[13px] font-semibold text-brand"
+							>
+								Every order from {sup.name}
+							</Link>
 						</PanelSection>
 					</div>
 				)}

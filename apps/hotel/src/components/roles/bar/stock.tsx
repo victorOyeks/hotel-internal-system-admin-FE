@@ -14,7 +14,7 @@ import {
 } from "@hospio/ui/shared/side-panel";
 import { submitStockCount, useOrWasteStock } from "@hospio/api/actions/fnb";
 import { useAction } from "@hospio/api/actions/use-action";
-import type { StockItemRow, StockRequestRow } from "@hospio/api/data/types";
+import type { StockItemRow, TeamRequests } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 import { StoreScreen } from "../shared-staff/store-screen";
 import { BigButton, Stepper } from "../shared-staff/tablet";
@@ -26,7 +26,7 @@ export function BarStockScreen({
 	storeId,
 }: {
 	items: StockItemRow[];
-	requests: StockRequestRow[];
+	requests: TeamRequests;
 	storeId?: string;
 }) {
 	const [tab, setTab] = useQueryState("tab", parseAsString);
