@@ -940,6 +940,7 @@ export function RemoveModal({
 					const r = await changeAccess(staff.userId ?? staff.id, g.id, {
 						change: "REMOVE",
 						reason: "Removed from the hotel by the manager",
+						allowLastRole: true,
 					});
 					if (!r.ok) return r;
 				}

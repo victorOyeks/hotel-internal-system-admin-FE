@@ -1,3 +1,4 @@
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -16,6 +17,9 @@ import {
 	getSession,
 	getUser,
 } from "@hospio/api/dal";
+import { live } from "@hospio/api/data/live";
+import { DEMO_AUTH } from "@hospio/api/demo/mode";
+import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-refresh";
 import { cn } from "@hospio/ui/utils";
 
 export async function DashboardShell({ children }: PropsWithChildren) {
@@ -28,6 +32,13 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 	]);
 	// "View as owner" from the admin portal: a read-only session with the admin in `act`.
 	const support = session.actedBy ? { endsAt: session.exp } : null;
+	if (!DEMO_AUTH && live("identity")) {
+		// A manager changed this person's roles since the token was issued: the services refuse the old token
+		// (401 "Your access has changed"), so swap it for one with the current roles and come back to this page.
+		const from = (await headers()).get("x-hospio-path");
+		const justRefreshed = !!(await cookies()).get(REFRESHED_COOKIE)?.value;
+		if ((!user || tokenIsStale(session, user)) && !(justRefreshed && user)) redirect(refreshUrl(from));
+	}
 	if (!user) redirect("/auth");
 	if (!user.changedPassword) redirect("/reset-password");
 	if (!role) redirect("/select-role");

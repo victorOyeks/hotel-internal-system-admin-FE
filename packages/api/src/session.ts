@@ -63,6 +63,12 @@ export async function setActiveRole(role: HotelRole) {
 	jar.set(COOKIES.role, role, cookieOptions(new Date(Date.now() + 12 * 3_600_000)));
 }
 
+/** Forget the chosen role (it was taken away): the role picker opens next. */
+export async function clearActiveRole() {
+	const jar = await cookies();
+	jar.set(COOKIES.role, "", cookieOptions(new Date(0)));
+}
+
 export async function setActiveHotel(hotelId: string) {
 	const jar = await cookies();
 	jar.set(COOKIES.hotel, hotelId, cookieOptions(new Date(Date.now() + 30 * 86_400_000)));

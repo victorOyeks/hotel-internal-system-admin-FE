@@ -23,6 +23,7 @@ import {
 	getActiveRole,
 	getBusiness,
 	getHotels,
+	getSession,
 } from "@hospio/api/dal";
 import { demoDelay } from "@hospio/api/demo/mode";
 import { isHotelRole } from "@hospio/api/roles";
@@ -32,7 +33,7 @@ import {
 	type SetupListName,
 	toSetupSections,
 } from "./mappers/hotel-config";
-import { toPortalUserRow, toStaffRow } from "./mappers/identity";
+import { toPortalUserRow, toRolesAccessRow, toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
 import { fnbData } from "./fnb";
 import { inventoryData } from "./inventory";
@@ -87,6 +88,7 @@ import type {
 	RoomRow,
 	RoomTypeRow,
 	SetupTemplateRow,
+	RolesAccessRow,
 	StaffRow,
 	TerminalRow,
 	WorthRow,
@@ -874,6 +876,36 @@ export const data = {
 		get: async (id: string): Promise<StaffRow | null> =>
 			(await data.staff.list()).find((s) => s.id === id) ?? null,
 		...opsData.staff,
+	},
+	roles: {
+		/**
+		 * Roles & permissions · Staff access: everyone with a role at the active hotel (GET /identity/users?hotelId=),
+		 * with their roles here and the business-wide ones. Managers and the owner only; empty for anyone else.
+		 */
+		access: async (): Promise<RolesAccessRow[]> => {
+			const [active, session] = await Promise.all([getActiveHotel(), getSession()]);
+			if (!live("identity")) {
+				const { demoStaffAccess } = await import("@hospio/api/demo/fixtures/manager-admin");
+				return give(
+					demoStaffAccess.map((a) => ({
+						id: a.id,
+						fullName: a.fullName,
+						email: "",
+						department: a.department,
+						status: a.grants.every((g) => g.paused) ? ("PAUSED" as const) : ("ACTIVE" as const),
+						grants: a.grants.map((g, i) => ({ id: `${a.id}-${i}`, role: g.role, level: g.level, paused: !!g.paused, until: g.until?.slice(0, 10) })),
+						otherHotelRoles: 0,
+						self: false,
+					})),
+				);
+			}
+			if (!active) return [];
+			const users = await listUsers({ hotelId: active.id });
+			return users
+				.map((u) => toRolesAccessRow(u, active.id, session.sub))
+				.filter((r) => r.grants.length > 0 || r.otherHotelRoles === 0)
+				.sort((a, b) => a.fullName.localeCompare(b.fullName));
+		},
 	},
 	finance: opsData.finance,
 	inventory: {

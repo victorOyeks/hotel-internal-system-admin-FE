@@ -3,6 +3,7 @@ import type {
 	AccessLevel,
 	GrantRow,
 	PortalUserRow,
+	RolesAccessRow,
 	StaffRow,
 } from "@hospio/api/data/types";
 import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
@@ -55,6 +56,7 @@ export function toGrantRow(
 		hotelName: g.hotelId ? hotelNames.get(g.hotelId) : undefined,
 		paused: g.paused,
 		expiresAt: g.expiresAt ?? undefined,
+		until: g.until ?? undefined,
 	};
 }
 
@@ -151,5 +153,35 @@ export function toStaffRow(
 		grants: u.grants.map((g) => toGrantRow(g, hotelNames)),
 		inviteStatus: u.inviteStatus ?? "NONE",
 		mustChangePassword: u.mustChangePassword ?? false,
+	};
+}
+
+/**
+ * Roles & permissions · Staff access row: the person's roles at this hotel plus the business-wide ones (the owner),
+ * and how many they hold elsewhere. Paused when every role here is paused or the account is.
+ */
+export function toRolesAccessRow(u: UserSummary, hotelId: string, me?: string): RolesAccessRow {
+	const here = u.grants.filter((g) => g.hotelId === hotelId || !g.hotelId);
+	const main = primaryGrant(here);
+	const role = main?.role ?? "";
+	const status: RolesAccessRow["status"] =
+		u.inviteStatus === "PENDING" || u.inviteStatus === "EXPIRED"
+			? "INVITED"
+			: u.status === "SUSPENDED"
+				? "SUSPENDED"
+				: u.status === "PAUSED" || (here.length > 0 && here.every((g) => g.paused))
+					? "PAUSED"
+					: "ACTIVE";
+	return {
+		id: u.id,
+		fullName: u.fullName,
+		email: u.email,
+		department: departmentOf[role] ?? "Other",
+		status,
+		grants: [...here]
+			.sort((a, b) => ROLE_RANK.indexOf(a.role as HotelRole) - ROLE_RANK.indexOf(b.role as HotelRole))
+			.map((g) => toGrantRow(g)),
+		otherHotelRoles: u.grants.length - here.length,
+		self: !!me && me === u.id,
 	};
 }

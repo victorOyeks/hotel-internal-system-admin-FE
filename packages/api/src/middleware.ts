@@ -73,7 +73,10 @@ export async function appMiddleware(request: NextRequest) {
 		// the server is bound to 127.0.0.1) is proxied as an external URL and lands on the guard below as a 404.
 		const target = request.nextUrl.clone();
 		target.pathname = base + (rest === "/" ? "" : rest);
-		return NextResponse.rewrite(target);
+		// The shell sends a stale session through /api/session/refresh and back to this page.
+		const forwarded = new Headers(request.headers);
+		forwarded.set("x-hospio-path", pathname + request.nextUrl.search);
+		return NextResponse.rewrite(target, { request: { headers: forwarded } });
 	}
 	if ([...Object.values(rolePaths), "/shared"].some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
 		// Role areas are only reachable through /dashboard.

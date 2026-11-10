@@ -37,6 +37,10 @@ export function useAction() {
 			const result = await action();
 			if (!result.ok) {
 				toast.error(readable(result.error), { duration: 8000 });
+				// The person's roles changed since they signed in: pick up a token with the current ones.
+				if (/access has changed/i.test(result.error)) {
+					window.location.assign(`/api/session/refresh?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+				}
 				return;
 			}
 			toast.success(typeof message === "function" ? message(result.data) : message);

@@ -343,6 +343,7 @@ export function TeamScreen({
 								? changeAccess(remove.userId, remove.grantId, {
 										change: "REMOVE",
 										reason: "Removed from the admin team",
+										allowLastRole: true,
 									})
 								: pauseAll(remove.userId, true),
 						`${remove.fullName} removed`,
