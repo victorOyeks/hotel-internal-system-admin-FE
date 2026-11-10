@@ -7,6 +7,7 @@ import { api, errorMessage } from "@hospio/api/api/client";
 import type { SharedDevice } from "@hospio/api/api/routes-devices";
 import { withSession } from "@hospio/api/api/server";
 import { isAppRole } from "@hospio/api/app";
+import { clientAgentHeaders } from "@hospio/api/client-agent";
 import { DEMO_AUTH } from "@hospio/api/demo/mode";
 import {
 	clearDeviceToken,
@@ -69,7 +70,7 @@ export async function unlockWithPin(input: {
 			error: "This device is not set up as a shared device. Sign in with email",
 		};
 	const { data, error } = await api("@post/identity/auth/pin-sign-in", {
-		headers: { [DEVICE_HEADER]: token },
+		headers: { [DEVICE_HEADER]: token, ...(await clientAgentHeaders()) },
 		body: { identifier: input.userId, pin: input.pin },
 	});
 	if (error || !data)

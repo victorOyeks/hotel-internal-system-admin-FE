@@ -191,6 +191,7 @@ export function OwnerUsers({
 			cell: ({ row }) => (
 				<AvatarName
 					name={row.original.fullName}
+					photo={row.original.photo}
 					secondary={row.original.email}
 					size="sm"
 				/>

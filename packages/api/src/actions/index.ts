@@ -10,3 +10,4 @@ export * from "./workforce";
 export * from "./finance";
 export * from "./housekeeping";
 export * from "./approvals";
+export * from "./profile";

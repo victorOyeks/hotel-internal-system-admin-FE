@@ -6,6 +6,7 @@ import type {
 	RolesAccessRow,
 	StaffRow,
 } from "@hospio/api/data/types";
+import { photoUrl } from "@hospio/api/profile-options";
 import { type HotelRole, isHotelRole, roleLabels } from "@hospio/api/roles";
 
 /** identity-service users → the rows the owner Users screen, the platform People tab and the manager Staff screen render. */
@@ -113,6 +114,7 @@ export function toPortalUserRow(
 		twoStep: u.twoStepEnabled ?? false,
 		lastSignIn: u.lastSignInAt ?? undefined,
 		createdAt: u.createdAt ?? undefined,
+		photo: photoUrl(u.id, u.photoVersion) ?? undefined,
 	};
 }
 
@@ -154,6 +156,7 @@ export function toStaffRow(
 		inviteStatus: u.inviteStatus ?? "NONE",
 		mustChangePassword: u.mustChangePassword ?? false,
 		hasPin: u.hasPin ?? undefined,
+		photo: photoUrl(u.id, u.photoVersion) ?? undefined,
 	};
 }
 
@@ -184,5 +187,6 @@ export function toRolesAccessRow(u: UserSummary, hotelId: string, me?: string): 
 			.map((g) => toGrantRow(g)),
 		otherHotelRoles: u.grants.length - here.length,
 		self: !!me && me === u.id,
+		photo: photoUrl(u.id, u.photoVersion) ?? undefined,
 	};
 }

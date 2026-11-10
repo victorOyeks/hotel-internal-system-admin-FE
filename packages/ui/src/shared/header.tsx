@@ -3,7 +3,8 @@
 import { BellIcon, ChevronDownIcon, CircleHelpIcon, LogOutIcon, SearchIcon, TabletSmartphoneIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Avatar, AvatarFallback } from "@hospio/ui/primitives/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@hospio/ui/primitives/avatar";
+import { photoUrl } from "@hospio/api/profile-options";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -77,6 +78,7 @@ export function Header({
 					<DropdownMenuTrigger asChild>
 						<button type="button" className="flex items-center gap-[10px] rounded-xl py-1 pl-1 pr-2 text-left hover:bg-subtle">
 							<Avatar className="size-10">
+								{user.photoVersion ? <AvatarImage src={photoUrl(user.id, user.photoVersion) ?? undefined} alt="" className="object-cover" /> : null}
 								<AvatarFallback className="bg-brand text-sm font-semibold text-white">{initials(user.fullName)}</AvatarFallback>
 							</Avatar>
 							<span className="hidden flex-col lg:flex">

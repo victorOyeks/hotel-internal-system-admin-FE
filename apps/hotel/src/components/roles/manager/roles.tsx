@@ -98,7 +98,7 @@ export function RolesScreen({ access, hotelName, hotelId }: { access: RolesAcces
 	const first = (r: RolesAccessRow) => changeable(r)[0]?.id ?? "";
 
 	const columns: ColumnDef<RolesAccessRow, unknown>[] = [
-		{ accessorKey: "fullName", header: "Person", cell: ({ row }) => <AvatarName name={row.original.fullName} secondary={row.original.self ? `${row.original.department} · you` : row.original.department} size="sm" /> },
+		{ accessorKey: "fullName", header: "Person", cell: ({ row }) => <AvatarName name={row.original.fullName} photo={row.original.photo} secondary={row.original.self ? `${row.original.department} · you` : row.original.department} size="sm" /> },
 		{
 			id: "roles",
 			header: "Roles & levels",

@@ -1,5 +1,6 @@
 "use server";
 
+import { clientAgentHeaders } from "@hospio/api/client-agent";
 import { askForPin } from "@hospio/api/device";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -90,6 +91,7 @@ export async function signUp(
 	}
 	const { data, error } = await api("@post/identity/auth/sign-up", {
 		body: { ...input, city: input.city ?? null },
+		headers: await clientAgentHeaders(),
 	});
 	if (error || !data)
 		return {
@@ -210,6 +212,7 @@ export async function acceptInvite(input: {
 	}
 	const { data, error } = await api("@post/identity/auth/accept-invite", {
 		body: input,
+		headers: await clientAgentHeaders(),
 	});
 	if (error || !data)
 		return {
