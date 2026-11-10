@@ -246,7 +246,7 @@ export function OwnerFinancials(props: FinancialsProps) {
 							what="Cash in the bank, bills to pay and payroll"
 						/>
 					)}
-					<div className="grid gap-4 xl:grid-cols-[1fr_380px]">
+					<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
 						<SectionCard
 							title="Revenue, expenses & profit"
 							subtitle={

@@ -773,7 +773,10 @@ function ChangeDatesModal({
 					<Button
 						className={btn.primary}
 						disabled={
-							pending || checkOut <= checkIn || (!locked && checkIn < today())
+							pending ||
+							checkOut <= checkIn ||
+							(!locked && checkIn < today()) ||
+							(checkIn === b.checkInDate && checkOut === b.checkOutDate)
 						}
 						onClick={() =>
 							run(
