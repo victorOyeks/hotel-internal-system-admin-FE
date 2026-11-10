@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Deliveries } from "./routes-admin";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * The operating day's routes (docs/operating-day.md in hospio-backend): finance-service (workforce,
@@ -275,6 +276,25 @@ export const ProblemItem = z.object({
 
 // ---- routes ---------------------------------------------------------------------------------------
 
+/** One approval (platform-service), the row of the Approvals screens. */
+export const ApprovalItem = z.object({
+	id: z.string(),
+	sourceModule: z.string(),
+	sourceRef: str,
+	kind: z.string(),
+	amount: num,
+	requesterName: str,
+	requesterId: str,
+	requesterRole: str,
+	approverLevel: z.string(),
+	description: str,
+	status: z.string(),
+	createdAt: z.string(),
+	decidedByName: str,
+	note: str,
+	hotelName: str,
+});
+
 export const opsRoutes = {
 	// finance · workforce
 	"@get/finance/workforce/shifts/mine": {
@@ -417,12 +437,10 @@ export const opsRoutes = {
 	},
 
 	// finance · expenses
+	/** With page or size: a page with tab counts and totals over the range (docs/pagination.md). */
 	"@get/finance/expenses": {
-		query: z
-			.object({ status: z.string(), from: z.string(), to: z.string() })
-			.partial()
-			.optional(),
-		output: envelope(z.array(ExpenseItem)),
+		query: pageParams.optional(),
+		output: envelope(pagedOf(ExpenseItem)),
 	},
 	"@post/finance/expenses": {
 		input: z.object({
@@ -451,7 +469,10 @@ export const opsRoutes = {
 		query: dateQuery,
 		output: envelope(NightAuditDay),
 	},
-	"@get/finance/night-audit/past": { output: envelope(z.array(NightAuditDay)) },
+	"@get/finance/night-audit/past": {
+		query: pageParams.optional(),
+		output: envelope(pagedOf(NightAuditDay)),
+	},
 	"@post/finance/night-audit/close": {
 		query: dateQuery,
 		input: z.object({
@@ -592,28 +613,14 @@ export const opsRoutes = {
 	},
 
 	// platform · approvals (the pending list is in ./schema.ts)
+	/** With page or size: a page with tab counts and money (docs/pagination.md); the screens always page. */
 	"@get/platform/approvals/all": {
-		output: envelope(
-			z.array(
-				z.object({
-					id: z.string(),
-					sourceModule: z.string(),
-					sourceRef: str,
-					kind: z.string(),
-					amount: num,
-					requesterName: str,
-					requesterId: str,
-					requesterRole: str,
-					approverLevel: z.string(),
-					description: str,
-					status: z.string(),
-					createdAt: z.string(),
-					decidedByName: str,
-					note: str,
-					hotelName: str,
-				}),
-			),
-		),
+		query: pageParams.optional(),
+		output: envelope(pagedOf(ApprovalItem)),
+	},
+	"@get/platform/approvals/:id": {
+		params: id,
+		output: envelope(ApprovalItem),
 	},
 	"@post/platform/approvals/:id/decide": {
 		params: id,

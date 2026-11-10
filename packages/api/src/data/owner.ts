@@ -7,11 +7,19 @@ import "server-only";
  * the single hotels. The manager's data functions are reused per hotel through `atHotel`, never copied.
  */
 
-import { api } from "@hospio/api/api/client";
+import { api, errorMessage } from "@hospio/api/api/client";
 import type { UserSummary } from "@hospio/api/api/schema";
 import { atHotel, withSession } from "@hospio/api/api/server";
 import { getHotels } from "@hospio/api/dal";
 import { live } from "./live";
+import {
+	emptyPage,
+	failedPage,
+	type ListQuery,
+	type PageResult,
+	pageQuery,
+	toPaged,
+} from "./paging";
 import { toStaffRow } from "./mappers/identity";
 import { lagosDate } from "./mappers/finance";
 import type {
@@ -364,20 +372,27 @@ export const ownerData = {
 		);
 	},
 
-	/** My staff threads across the business, newest first. */
-	threads: async (): Promise<OwnerThreadRow[]> => {
-		if (!live("messaging")) return [];
+	/**
+	 * My staff threads, newest message first, a page at a time (messaging-service pages and searches `q`). Across the
+	 * business, or at one hotel when `hotelId` is given (that hotel's X-Hotel-Id).
+	 */
+	threads: async (
+		query: ListQuery = {},
+		hotelId?: string | null,
+	): Promise<PageResult<OwnerThreadRow>> => {
+		if (!live("messaging")) return { ok: true, data: emptyPage() };
 		const names = new Map((await hotelsOf()).map((h) => [h.id, h.name]));
-		const { data: res, error } = await businessWide(async () =>
-			api("@get/messaging/threads", await withSession()),
+		const { data: res, error } = await atHotel(hotelId ?? null, async () =>
+			api("@get/messaging/threads", {
+				...(await withSession()),
+				query: pageQuery(query),
+			}),
 		);
 		if (error || !res) {
 			console.error("messaging-service threads:", error);
-			return [];
+			return failedPage(errorMessage(error, "Messages didn't load"));
 		}
-		return res.data
-			.map((t) => toThreadRow(t, names))
-			.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+		return { ok: true, data: toPaged(res.data, (t) => toThreadRow(t, names)) };
 	},
 
 	/** One thread's messages (and it is marked read for me). */

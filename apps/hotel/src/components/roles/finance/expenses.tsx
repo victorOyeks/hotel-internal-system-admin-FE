@@ -3,7 +3,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { MessageCircleQuestionIcon, PlusIcon, ReceiptIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note, Timeline } from "@hospio/ui/shared/detail-list";
@@ -25,11 +27,15 @@ import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import {
 	answerExpense,
+	exportExpenses,
 	markExpensePaid,
 	recordExpense,
 } from "@hospio/api/actions/finance";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type { ExpenseRow } from "@hospio/api/data/types";
+import { csvName, downloadCsv } from "@hospio/ui/shared/csv";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import {
 	defaultSpendRules,
@@ -64,39 +70,77 @@ const categories = [
 
 /** Finance 3.x · Expenses: list, record, request status, answer a question. */
 export function ExpensesScreen({
-	expenses: initial,
+	result,
 	me,
 	rules = defaultSpendRules,
 	title = "Expenses",
 }: {
-	expenses: ExpenseRow[];
+	/** One page of the tab, with the tab counts and totals over the whole filtered range (finance-service). */
+	result: PageResult<ExpenseRow>;
 	me: string;
 	rules?: SpendRules;
 	title?: string;
 }) {
-	const [expenses, setExpenses] = useState(initial);
-	useEffect(() => setExpenses(initial), [initial]);
+	const router = useRouter();
+	const page = result.data;
+	// The page's rows, patched in place after a write until the server page comes back.
+	const [expenses, setExpenses] = useState(page.content);
+	useEffect(() => setExpenses(page.content), [page.content]);
 	const limit = rules.limits.managerExpenseLimit;
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
-	const [tab, setTab] = useQueryState("tab");
-	const [search, setSearch] = useState("");
+	const list = useListParams({ extra: ["tab", "category"] });
 	const [answering, setAnswering] = useState(false);
 	const [answer, setAnswer] = useState("");
+	const [exporting, setExporting] = useState(false);
 	const { run, pending } = useAction();
-	const active = tab ?? "all";
-	const lists: Record<string, ExpenseRow[]> = {
-		all: expenses,
-		approval: expenses.filter((e) => e.status === "PENDING_APPROVAL"),
-		questions: expenses.filter((e) => e.status === "QUESTION"),
-		paid: expenses.filter(
-			(e) => e.status === "PAID" || e.status === "APPROVED",
-		),
-	};
+	const active = list.params.tab ?? "all";
+	const counts = page.counts ?? {};
 	const exp = expenses.find((e) => e.id === openId) ?? null;
-	const monthTotal = expenses
-		.filter((e) => e.status !== "DECLINED")
-		.reduce((s, e) => s + e.amount, 0);
+	const monthTotal = page.totals?.recorded ?? 0;
+	const doExport = async () => {
+		setExporting(true);
+		try {
+			const r = await exportExpenses({
+				tab: list.params.tab ?? undefined,
+				category: list.params.category ?? undefined,
+				q: list.params.q ?? undefined,
+				from: list.params.from ?? undefined,
+				to: list.params.to ?? undefined,
+			});
+			if (!r.ok) {
+				toast.error(r.error);
+				return;
+			}
+			downloadCsv(csvName(title), [
+				[
+					"Date",
+					"Description",
+					"Category",
+					"Requested by",
+					"Paid from",
+					"Amount",
+					"Status",
+				],
+				...r.data.rows.map((e) => [
+					e.date,
+					e.description,
+					e.category,
+					e.requestedBy,
+					e.paidFrom,
+					e.amount,
+					expenseTone[e.status].label,
+				]),
+			]);
+			toast.success(
+				r.data.truncated
+					? `Exported the first ${r.data.rows.length} of ${r.data.total} expenses`
+					: `Exported ${r.data.rows.length} ${r.data.rows.length === 1 ? "expense" : "expenses"}`,
+			);
+		} finally {
+			setExporting(false);
+		}
+	};
 
 	const columns = useMemo<ColumnDef<ExpenseRow, unknown>[]>(
 		() => [
@@ -166,9 +210,12 @@ export function ExpensesScreen({
 		<>
 			<PageHeader
 				title={title}
-				subtitle={`${naira(monthTotal)} recorded this month · ${plural(lists.approval.length, "request")} waiting on the manager`}
+				subtitle={`${naira(monthTotal)} recorded in the last 90 days · ${plural(counts.approval ?? 0, "request")} waiting on the manager`}
 			>
-				<ExportButton />
+				<ExportButton
+					onClick={exporting ? undefined : () => void doExport()}
+					label={exporting ? "Exporting…" : "Export"}
+				/>
 				<button
 					type="button"
 					className={btn.primary}
@@ -181,39 +228,57 @@ export function ExpensesScreen({
 				left={
 					<PillTabs
 						value={active}
-						onChange={(k) => void setTab(k === "all" ? null : k)}
+						onChange={(k) => list.set({ tab: k === "all" ? null : k })}
 						tabs={[
-							{ key: "all", label: "All", count: lists.all.length },
+							{ key: "all", label: "All", count: counts.all ?? 0 },
 							{
 								key: "approval",
 								label: "Needs approval",
-								count: lists.approval.length,
+								count: counts.approval ?? 0,
 							},
 							{
 								key: "questions",
 								label: "Questions",
-								count: lists.questions.length,
+								count: counts.questions ?? 0,
 							},
 							{
 								key: "paid",
 								label: "Approved & paid",
-								count: lists.paid.length,
+								count: counts.paid ?? 0,
 							},
 						]}
 					/>
 				}
 				right={
 					<SearchBox
-						value={search}
-						onChange={setSearch}
+						value={list.search}
+						onChange={list.setSearch}
 						placeholder="Description, category, who…"
 					/>
 				}
 			/>
 			<DataTable
 				columns={columns}
-				data={lists[active] ?? expenses}
-				search={search}
+				data={expenses}
+				server={{
+					page,
+					onPage: list.goTo,
+					sort: list.sort,
+					onSort: list.setSort,
+					sortKeys: {
+						date: "date",
+						description: "description",
+						amount: "amount",
+					},
+				}}
+				filtered={!!list.params.q || !!list.params.category}
+				onClearFilters={() => {
+					list.setSearch("");
+					list.set({ q: null, category: null, tab: list.params.tab });
+				}}
+				error={result.ok ? null : result.error}
+				onRetry={() => router.refresh()}
+				emptyTitle={active === "all" ? "No expenses yet" : "Nothing here"}
 				onRowClick={(e) => void setOpenId(e.id)}
 			/>
 

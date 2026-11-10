@@ -21,7 +21,8 @@ export default async function FinanceMonthPage({
 		month === "last" ? [`${prevEnd.slice(0, 8)}01`, prevEnd] : [first, today];
 	const [hotel, expenses, series, income] = await Promise.all([
 		getActiveHotel(),
-		data.finance.expenses(),
+		// The month's expenses only (every page of them), not the 90-day list.
+		data.finance.expenses({ from, to }),
 		data.finance.series(from, to),
 		data.finance.income(from, to),
 	]);

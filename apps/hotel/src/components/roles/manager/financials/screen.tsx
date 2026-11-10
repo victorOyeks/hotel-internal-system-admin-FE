@@ -12,8 +12,10 @@ import {
 	PiggyBankIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { EmptyState } from "@hospio/ui/shared/empty-state";
@@ -39,7 +41,10 @@ import {
 	Toolbar,
 } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { markExpensePaid } from "@hospio/api/actions/finance";
+import { exportExpenses, markExpensePaid } from "@hospio/api/actions/finance";
+import type { PageResult } from "@hospio/api/data/paging";
+import { csvName, downloadCsv } from "@hospio/ui/shared/csv";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	ExpenseRow,
@@ -71,7 +76,13 @@ type Tab = "overview" | "expenses" | "transactions" | "requests" | "tills";
 
 export type FinancialsProps = {
 	hotelName: string;
-	expenses: ExpenseRow[];
+	/**
+	 * One page of expenses from finance-service: every expense on the Expenses tab, the waiting and questioned ones on
+	 * Spend requests (`?tab=&q=&category=&page=`). Counts (`all`, `requests`) and totals cover the whole filtered range.
+	 */
+	expenses: PageResult<ExpenseRow>;
+	/** The newest spend requests waiting or questioned, for the overview card. */
+	requests: ExpenseRow[];
 	tills: TillRow[];
 	transactions: TransactionRow[];
 	today: MoneyTodayRow;
@@ -97,20 +108,68 @@ function NotConnected({ what }: { what: string }) {
 }
 
 export function FinancialsScreen(p: FinancialsProps) {
-	const [tab] = useQueryState("tab");
+	const router = useRouter();
+	const list = useListParams({ extra: ["tab", "category"] });
+	const tab = list.params.tab;
 	const [isNew, setIsNew] = useQueryState("new");
 	const [openId, setOpenId] = useQueryState("open");
-	const [search, setSearch] = useState("");
-	const [category, setCategory] = useState("");
+	const search = list.search;
+	const setSearch = list.setSearch;
+	const category = list.params.category ?? "";
+	const setCategory = (v: string) => list.set({ category: v || null, tab });
 	const [cash, setCash] = useState(false);
+	const [exporting, setExporting] = useState(false);
+	const page = p.expenses.data;
+	const counts = page.counts ?? {};
 	const [toOwner, setToOwner] = useState<ExpenseRow | null>(null);
 	const { run } = useAction();
 	const limit = p.rules.limits.managerExpenseLimit;
 	const active = (tab as Tab) || "overview";
-	const requests = p.expenses.filter(
-		(e) => e.status === "PENDING_APPROVAL" || e.status === "QUESTION",
-	);
-	const reviewing = p.expenses.find((e) => e.id === openId) ?? null;
+	const requests = p.requests;
+	const reviewing =
+		page.content.find((e) => e.id === openId) ??
+		requests.find((e) => e.id === openId) ??
+		null;
+	const doExport = async () => {
+		setExporting(true);
+		try {
+			const r = await exportExpenses({
+				tab: active === "requests" ? "requests" : undefined,
+				category: active === "expenses" ? category || undefined : undefined,
+				q: list.params.q ?? undefined,
+			});
+			if (!r.ok) {
+				toast.error(r.error);
+				return;
+			}
+			downloadCsv(
+				csvName(active === "requests" ? "Spend requests" : "Expenses"),
+				[
+					[
+						"Date",
+						"Description",
+						"Category",
+						"Requested by",
+						"Paid from",
+						"Amount",
+						"Status",
+					],
+					...r.data.rows.map((e) => [
+						e.date,
+						e.description,
+						e.category,
+						e.requestedBy,
+						e.paidFrom,
+						e.amount,
+						expenseLabel[e.status] ?? e.status,
+					]),
+				],
+			);
+			toast.success(`Exported ${r.data.rows.length} of ${r.data.total}`);
+		} finally {
+			setExporting(false);
+		}
+	};
 	const maxWeek = Math.max(
 		1,
 		...p.week.map((w) => Math.max(w.revenue, w.expenses)),
@@ -433,15 +492,18 @@ export function FinancialsScreen(p: FinancialsProps) {
 			<Toolbar
 				left={
 					<PillTabs<Tab>
-						param="tab"
+						value={active}
+						onChange={(k) =>
+							list.set({ tab: k === "overview" ? null : k, category: null })
+						}
 						tabs={[
 							{ key: "overview", label: "Overview" },
-							{ key: "expenses", label: "Expenses", count: p.expenses.length },
+							{ key: "expenses", label: "Expenses", count: counts.all ?? 0 },
 							{ key: "transactions", label: "Transactions" },
 							{
 								key: "requests",
 								label: "Spend requests",
-								count: requests.length,
+								count: counts.requests ?? 0,
 							},
 							{
 								key: "tills",
@@ -467,7 +529,14 @@ export function FinancialsScreen(p: FinancialsProps) {
 								onChange={setSearch}
 								placeholder="Search…"
 							/>
-							<ExportButton />
+							<ExportButton
+								onClick={
+									(active === "expenses" || active === "requests") && !exporting
+										? () => void doExport()
+										: undefined
+								}
+								label={exporting ? "Exporting…" : "Export"}
+							/>
 						</>
 					)
 				}
@@ -812,14 +881,21 @@ export function FinancialsScreen(p: FinancialsProps) {
 			{active === "expenses" && (
 				<DataTable
 					columns={expenseColumns}
-					data={p.expenses.filter((e) => !category || e.category === category)}
-					search={search}
+					data={page.content}
+					server={{ page, onPage: list.goTo }}
+					filtered={!!list.params.q || !!category}
+					onClearFilters={() => {
+						setSearch("");
+						list.set({ q: null, category: null, tab });
+					}}
+					error={p.expenses.ok ? null : p.expenses.error}
+					onRetry={() => router.refresh()}
 					onRowClick={(e) => setOpenId(e.id)}
 					emptyTitle="No expenses yet"
 					footer={
 						<span>
-							{plural(p.expenses.length, "expense")} ·{" "}
-							{naira(p.expenses.reduce((s, e) => s + e.amount, 0))}
+							{plural(page.total, "expense")} ·{" "}
+							{naira(page.totals?.matching ?? 0)}
 						</span>
 					}
 				/>
@@ -854,8 +930,15 @@ export function FinancialsScreen(p: FinancialsProps) {
 								),
 							},
 						])}
-					data={requests}
-					search={search}
+					data={page.content}
+					server={{ page, onPage: list.goTo }}
+					filtered={!!list.params.q}
+					onClearFilters={() => {
+						setSearch("");
+						list.set({ q: null, tab });
+					}}
+					error={p.expenses.ok ? null : p.expenses.error}
+					onRetry={() => router.refresh()}
 					emptyTitle="No spend requests waiting"
 					emptyHint="Requests from your team land here the moment they are raised."
 				/>

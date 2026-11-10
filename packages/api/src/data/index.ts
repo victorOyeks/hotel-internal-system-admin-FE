@@ -29,6 +29,16 @@ import { demoDelay } from "@hospio/api/demo/mode";
 import { isHotelRole } from "@hospio/api/roles";
 import { live } from "./live";
 import {
+	failedPage,
+	type ListQuery,
+	PAGE_SIZE,
+	type PageResult,
+	pageQuery,
+	slicePage,
+	toPaged,
+} from "./paging";
+import { errorMessage } from "@hospio/api/api/client";
+import {
 	SETUP_LISTS,
 	type SetupListName,
 	toSetupSections,
@@ -927,28 +937,50 @@ export const data = {
 	},
 	approvals: opsData.approvals,
 	notifications: {
-		/** messaging-service's notifications for the signed-in person: their own plus their roles' at this hotel. */
-		list: async (): Promise<NotificationRow[]> => {
-			if (!live("messaging")) return give(ops.demoNotifications);
+		/**
+		 * messaging-service's notifications for the signed-in person (their own plus their roles' at this hotel), a page at a
+		 * time, newest first: `unread` ("true"), `q`, `from`/`to` (90 days back by default on the server). Counts all/unread.
+		 */
+		page: async (query: ListQuery = {}): Promise<PageResult<NotificationRow>> => {
+			if (!live("messaging")) {
+				const rows = ops.demoNotifications.filter(
+					(n) =>
+						(query.unread !== "true" || !n.read) &&
+						(!query.q ||
+							`${n.title} ${n.body ?? ""}`
+								.toLowerCase()
+								.includes(String(query.q).toLowerCase())),
+				);
+				return give({
+					ok: true,
+					data: slicePage(rows, query.page ?? 0, query.size ?? PAGE_SIZE, {
+						counts: {
+							all: ops.demoNotifications.length,
+							unread: ops.demoNotifications.filter((n) => !n.read).length,
+						},
+					}),
+				});
+			}
 			const { data: res, error } = await api("@get/messaging/notifications", {
 				...(await withSession()),
-				query: { unreadOnly: false },
+				query: pageQuery(query),
 			});
 			if (error || !res) {
 				console.error("messaging-service notifications:", error);
-				return [];
+				return failedPage(errorMessage(error, "Notifications didn't load"));
 			}
 			const role = await getActiveRole();
-			return res.data.map((n) => toNotificationRow(role, n));
+			return { ok: true, data: toPaged(res.data, (n) => toNotificationRow(role, n)) };
 		},
+		/** The bell's badge: how many are unread (a count from the service, not the list). */
 		unreadCount: async (): Promise<number> => {
 			if (!live("messaging"))
 				return give(ops.demoNotifications.filter((n) => !n.read).length);
-			const { data: res, error } = await api("@get/messaging/notifications", {
-				...(await withSession()),
-				query: { unreadOnly: true },
-			});
-			return error || !res ? 0 : res.data.length;
+			const { data: res, error } = await api(
+				"@get/messaging/notifications/unread-count",
+				await withSession(),
+			);
+			return error || !res ? 0 : res.data.count;
 		},
 	},
 	messaging: {
@@ -1284,6 +1316,11 @@ const ROLE_SCREENS: Record<string, string[]> = {
 	LAUNDRY: ["linen", "payments", "store"],
 };
 const SHARED_SCREENS = ["notifications", "profile", "help", "shifts", "inbox"];
+
+/** The `/dashboard/<screen>` pages the role has (its own and the shared ones): links to anything else would 404. */
+export function roleScreens(role: string | null | undefined): string[] {
+	return [...(role ? (ROLE_SCREENS[role] ?? []) : []), ...SHARED_SCREENS];
+}
 /** Where a service link lands per role when the role has no screen of that name. */
 const SCREEN_ALIASES: Record<string, Record<string, string>> = {
 	OWNER: { approvals: "", "night-audit": "financials", inbox: "messaging" },

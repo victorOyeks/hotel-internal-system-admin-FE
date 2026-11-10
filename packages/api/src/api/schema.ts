@@ -7,6 +7,7 @@ import { lmRoutes } from "./routes-lm";
 import { opsRoutes } from "./routes-ops";
 import { ownerRoutes } from "./routes-owner";
 import { paymentRoutes } from "./routes-payments";
+import { pagedOf, pageParams } from "./paged";
 
 /**
  * The new hospio-backend behind the gateway. Every service is reachable at
@@ -1460,8 +1461,11 @@ export const schema = createSchema({
 
 	// messaging
 	"@get/messaging/notifications": {
-		query: z.object({ unreadOnly: z.boolean() }).partial().optional(),
-		output: envelope(z.array(Notification)),
+		query: pageParams.optional(),
+		output: envelope(pagedOf(Notification)),
+	},
+	"@get/messaging/notifications/unread-count": {
+		output: envelope(z.object({ count: z.number() })),
 	},
 	"@post/messaging/notifications/:id/read": {
 		params: z.object({ id: z.string() }),

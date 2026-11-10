@@ -7,7 +7,8 @@ import {
 	PrinterIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
+import { parseAsInteger, useQueryState } from "nuqs";
 import { useState } from "react";
 import { DetailList, Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import {
@@ -32,7 +33,9 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { closeDay } from "@hospio/api/actions/finance";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { Paged } from "@hospio/api/data/paging";
 import type { MoneyTodayRow, NightAuditRow } from "@hospio/api/data/types";
+import { ServerPager } from "@hospio/ui/shared/server-pager";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { cn } from "@hospio/ui/utils";
 
@@ -55,15 +58,35 @@ const num = (v: unknown): number | undefined =>
 /** Finance 5.x · Night audit: the checklist is computed by the service, so a line turns green when the work is done, not when someone taps it. */
 export function NightAuditScreen({
 	audits,
+	past: pastPage,
+	pastError,
 	today,
 	ownerName,
 	hotelName,
+	screens,
 }: {
 	audits: NightAuditRow[];
+	/** One page of closed audits (finance-service pages them). */
+	past: Paged<NightAuditRow>;
+	pastError?: string;
 	today: MoneyTodayRow;
 	ownerName: string;
 	hotelName: string;
+	/** The `/dashboard/<screen>` pages the signed-in role has: a checklist link to any other is not shown (it would 404). */
+	screens?: string[];
 }) {
+	const router = useRouter();
+	const [, setPage] = useQueryState(
+		"page",
+		parseAsInteger.withOptions({
+			shallow: false,
+			history: "push",
+			scroll: false,
+		}),
+	);
+	const canOpen = (href: string) =>
+		!screens ||
+		screens.includes(href.replace(/^\/dashboard\//, "").split(/[/?]/)[0]);
 	const [reportId, setReportId] = useQueryState("report");
 	const [closing, setClosing] = useState(false);
 	const [cash, setCash] = useState<number | "">("");
@@ -72,8 +95,11 @@ export function NightAuditScreen({
 	const { run, pending } = useAction();
 	const tonight = audits[0] ?? null;
 	const open = tonight && tonight.status === "OPEN" ? tonight : null;
-	const past = audits.filter((a) => a.status === "CLOSED");
-	const report = audits.find((a) => a.id === reportId) ?? null;
+	const past = pastPage.content;
+	const report =
+		audits.find((a) => a.id === reportId) ??
+		past.find((a) => a.id === reportId) ??
+		null;
 	const checks = open?.checklist ?? [];
 	const done = checks.filter((c) => c.done).length;
 	const tillsDone = checks.find((c) => c.key === "tills")?.done ?? true;
@@ -191,7 +217,7 @@ export function NightAuditScreen({
 												</span>
 											)}
 										</span>
-										{!c.done && link && (
+										{!c.done && link && canOpen(link.href) && (
 											<Link
 												href={link.href}
 												className={`${btn.secondary} ${btn.small}`}
@@ -246,7 +272,20 @@ export function NightAuditScreen({
 						{past.length === 0 && (
 							<tr>
 								<td colSpan={7} className="px-5 py-6 text-center text-ink-3">
-									No day has been closed yet.
+									{pastError ? (
+										<>
+											{pastError} ·{" "}
+											<button
+												type="button"
+												className="font-semibold text-brand"
+												onClick={() => router.refresh()}
+											>
+												Try again
+											</button>
+										</>
+									) : (
+										"No day has been closed yet."
+									)}
 								</td>
 							</tr>
 						)}
@@ -290,6 +329,10 @@ export function NightAuditScreen({
 						))}
 					</tbody>
 				</table>
+				<ServerPager
+					page={pastPage}
+					onPage={(p) => void setPage(p <= 0 ? null : p + 1)}
+				/>
 			</SectionCard>
 
 			<Modal

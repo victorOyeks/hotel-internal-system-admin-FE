@@ -9,7 +9,13 @@ import {
 	PrinterIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
+import {
+	parseAsInteger,
+	parseAsString,
+	useQueryState,
+	useQueryStates,
+} from "nuqs";
 import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -38,6 +44,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { closeDay } from "@hospio/api/actions/finance";
+import type { Paged } from "@hospio/api/data/paging";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { MoneyTodayRow, NightAuditRow } from "@hospio/api/data/types";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
@@ -154,17 +161,29 @@ const methodLabel = (m: string) =>
 export function NightAuditScreen({
 	hotelName,
 	audits,
+	past: pastPage,
+	pastError,
 	today,
 	ownerName,
 }: {
 	hotelName: string;
 	audits: NightAuditRow[];
+	/** One page of closed audits (finance-service pages them; `?past=1&page=2` in the URL). */
+	past: Paged<NightAuditRow>;
+	pastError?: string;
 	today: MoneyTodayRow;
 	ownerName: string;
 }) {
+	const router = useRouter();
 	const [reportId, setReportId] = useQueryState("report");
 	const [closing, setClosing] = useState(false);
-	const [showPast, setShowPast] = useState(false);
+	const [{ past: showPastParam }, setPastView] = useQueryStates(
+		{ past: parseAsString, page: parseAsInteger },
+		{ shallow: false, history: "push", scroll: false },
+	);
+	const showPast = showPastParam === "1";
+	const setShowPast = (f: (v: boolean) => boolean) =>
+		void setPastView({ past: f(showPast) ? "1" : null, page: null });
 	const [cash, setCash] = useState<number | "">("");
 	const [note, setNote] = useState("");
 	const [markNoShows, setMarkNoShows] = useState(false);
@@ -172,8 +191,15 @@ export function NightAuditScreen({
 	const { run, pending } = useAction();
 	const tonight = audits[0] ?? null;
 	const open = tonight && tonight.status === "OPEN" ? tonight : null;
-	const past = audits.filter((a) => a.status === "CLOSED");
-	const report = audits.find((a) => a.id === reportId) ?? null;
+	const past = pastPage.content;
+	// The newest closed audit is on the first page of the past ones (or in tonight's rows).
+	const lastClosed =
+		(pastPage.page === 0 ? past[0] : undefined) ??
+		audits.find((a) => a.status === "CLOSED");
+	const report =
+		audits.find((a) => a.id === reportId) ??
+		past.find((a) => a.id === reportId) ??
+		null;
 	const checks = open?.checklist ?? [];
 	const tillsDone = checks.find((c) => c.key === "tills")?.done ?? true;
 	const arrivalsOpen = checks.some((c) => c.key === "arrivals" && !c.done);
@@ -309,6 +335,12 @@ export function NightAuditScreen({
 					columns={pastColumns}
 					data={past}
 					emptyTitle="No past audits"
+					server={{
+						page: pastPage,
+						onPage: (p) => void setPastView({ page: p <= 0 ? null : p + 1 }),
+					}}
+					error={pastError}
+					onRetry={() => router.refresh()}
 				/>
 			) : (
 				<>
@@ -351,8 +383,8 @@ export function NightAuditScreen({
 											: " · ready to close"}
 								</p>
 								<p className="text-xs text-ink-2">
-									{past[0]
-										? `Last audit: ${fmtWhen(past[0].closedAt)}${past[0].closedBy ? ` by ${past[0].closedBy}` : ""}`
+									{lastClosed
+										? `Last audit: ${fmtWhen(lastClosed.closedAt)}${lastClosed.closedBy ? ` by ${lastClosed.closedBy}` : ""}`
 										: "No day has been closed yet"}
 								</p>
 							</div>
