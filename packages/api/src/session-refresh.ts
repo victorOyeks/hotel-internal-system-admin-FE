@@ -44,8 +44,10 @@ function go(path: string) {
 }
 
 /** Where the shell sends a stale session: here, then back to the page. */
+const safeBack = (from: string | null | undefined) => (from?.startsWith("/dashboard") || from === "/select-role" ? (from as string) : "/dashboard");
+
 export function refreshUrl(from: string | null | undefined): string {
-	const back = from?.startsWith("/dashboard") ? from : "/dashboard";
+	const back = safeBack(from);
 	return `${SESSION_REFRESH_PATH}?from=${encodeURIComponent(back)}`;
 }
 
@@ -58,7 +60,7 @@ export function refreshUrl(from: string | null | undefined): string {
 export async function refreshSessionRoute(request: NextRequest) {
 	const jar = await cookies();
 	const from = request.nextUrl.searchParams.get("from");
-	const back = from?.startsWith("/dashboard") ? from : "/dashboard";
+	const back = safeBack(from);
 	const toSignIn = async (reason: string) => {
 		await deleteSession();
 		return go(`/auth?reason=${encodeURIComponent(reason)}`);
