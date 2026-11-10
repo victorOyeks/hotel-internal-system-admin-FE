@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ExpensesScreen } from "@/components/roles/finance/expenses";
 import { getUser } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { withCategoryLabels } from "@hospio/api/data/mappers/finance";
 import {
 	listQueryFrom,
 	type SearchParamsRecord,
@@ -18,15 +19,21 @@ export default async function FinanceExpensesPage({
 	const user = await getUser();
 	if (!user) redirect("/auth");
 	const query = listQueryFrom(await searchParams, ["tab", "category"]);
-	const [result, settings, business] = await Promise.all([
+	const [result, settings, business, categories] = await Promise.all([
 		data.finance.expensesPage(query),
 		data.hotels.limits(),
 		data.business.mine(),
+		data.finance.categories(),
 	]);
+	const labelled = {
+		...result,
+		data: { ...result.data, content: withCategoryLabels(result.data.content, categories) },
+	};
 	return (
 		<ExpensesScreen
-			result={result}
+			result={labelled}
 			me={user.fullName}
+			categories={categories.map((c) => c.label)}
 			rules={{
 				limits: settings.limits,
 				ownerName: business?.ownerName ?? "the owner",

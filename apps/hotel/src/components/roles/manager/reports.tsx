@@ -13,7 +13,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
+import { useDemoAction } from "@hospio/api/demo/actions";
 import type { ReportRow } from "@hospio/api/data/types";
 
 const previewRows = [
@@ -35,7 +35,8 @@ export function ReportsScreen({ reports, hotelName }: { reports: ReportRow[]; ho
 	const [frequency, setFrequency] = useState("Daily");
 	const [time, setTime] = useState("06:00");
 	const [recipients, setRecipients] = useState("Owner, Manager");
-	const { run, pending } = useNotConnectedAction();
+	// Demo mode only: with platform live the page renders the live reports (OwnerReports).
+	const { run, pending } = useDemoAction();
 
 	const current = reports.find((r) => r.id === open) ?? null;
 	const kinds = Array.from(new Set(reports.map((r) => r.kind)));

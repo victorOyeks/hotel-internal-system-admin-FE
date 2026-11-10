@@ -13,19 +13,24 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { addSpecialPrice, saveRoomType } from "@hospio/api/actions/property";
 import { useAction } from "@hospio/api/actions/use-action";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type { RoomTypeRow } from "@hospio/api/data/types";
+
+/** Hotel setup → Approval limits for a manager's base price change; the owner's own changes apply at once. */
+export type PriceRule = { needsOwner: boolean; pct: number; owner: boolean };
+
+const goesToOwner = (rule: PriceRule, pct: number) => !rule.owner && rule.needsOwner && pct !== 0 && (rule.pct <= 0 || Math.abs(pct) > rule.pct);
 
 type ModalState = null | { kind: "price"; type: RoomTypeRow } | { kind: "special"; type: RoomTypeRow } | { kind: "add" } | { kind: "edit"; type: RoomTypeRow };
 
-export function RoomTypesTab({ types: initial, roomsByType }: { types: RoomTypeRow[]; roomsByType: Record<string, number> }) {
+export function RoomTypesTab({ types: initial, roomsByType, rule = { needsOwner: true, pct: 0, owner: false } }: { types: RoomTypeRow[]; roomsByType: Record<string, number>; rule?: PriceRule }) {
 	const [types, setTypes] = useState(initial);
+	useEffect(() => setTypes(initial), [initial]);
 	const [modal, setModal] = useState<ModalState>(null);
 	const patch = (id: string, changes: Partial<RoomTypeRow>) => setTypes((ts) => ts.map((t) => (t.id === id ? { ...t, ...changes } : t)));
 	return (
 		<>
 			<div className="flex items-center justify-between">
-				<p className="text-sm text-ink-2">Base prices apply every night unless a special price covers the date. Price changes over 10% go to the owner.</p>
+				<p className="text-sm text-ink-2">Base prices apply every night unless a special price covers the date. {rule.owner || !rule.needsOwner ? "Price changes apply at once." : rule.pct > 0 ? `A base price change over ${rule.pct}% goes to the owner.` : "Every base price change goes to the owner."}</p>
 				<Button className={btn.primary} onClick={() => setModal({ kind: "add" })}><PlusIcon className="size-[15px]" /> Add room type</Button>
 			</div>
 			<div className="grid gap-4 md:grid-cols-2">
@@ -40,6 +45,7 @@ export function RoomTypesTab({ types: initial, roomsByType }: { types: RoomTypeR
 							<div className="text-right">
 								<p className="text-lg font-bold text-ink">{naira(t.basePrice)}</p>
 								<p className="text-[11px] text-ink-3">per night</p>
+								{t.requestedBasePrice !== undefined && <StatusPill tone="warning" dot={false}>{naira(t.requestedBasePrice)} waiting for the owner</StatusPill>}
 							</div>
 							<RowActions actions={[
 								{ label: "Change base price", managerOnly: true, onClick: () => setModal({ kind: "price", type: t }) },
@@ -66,30 +72,31 @@ export function RoomTypesTab({ types: initial, roomsByType }: { types: RoomTypeR
 					</section>
 				))}
 			</div>
-			<ChangePriceModal item={modal?.kind === "price" ? modal.type : null} onClose={() => setModal(null)} onSaved={(id, p) => patch(id, { basePrice: p })} />
+			<ChangePriceModal item={modal?.kind === "price" ? modal.type : null} rule={rule} onClose={() => setModal(null)} onSaved={(t) => patch(t.id, t)} />
 			<SpecialPricePanel item={modal?.kind === "special" ? modal.type : null} onClose={() => setModal(null)} onSaved={(id, sp) => patch(id, { specialPrices: [...(types.find((t) => t.id === id)?.specialPrices ?? []), sp] })} />
-			<TypePanel open={modal?.kind === "add" || modal?.kind === "edit"} item={modal?.kind === "edit" ? modal.type : null} onClose={() => setModal(null)} onSaved={(t) => (types.some((x) => x.id === t.id) ? patch(t.id, t) : setTypes((ts) => [...ts, t]))} />
+			<TypePanel open={modal?.kind === "add" || modal?.kind === "edit"} item={modal?.kind === "edit" ? modal.type : null} rule={rule} onClose={() => setModal(null)} onSaved={(t) => (types.some((x) => x.id === t.id) ? patch(t.id, t) : setTypes((ts) => [...ts, t]))} />
 		</>
 	);
 }
 
-function ChangePriceModal({ item, onClose, onSaved }: { item: RoomTypeRow | null; onClose: () => void; onSaved: (id: string, price: number) => void }) {
-	const demo = useNotConnectedAction();
-	const act = useAction();
-	const pending = demo.pending || act.pending;
+function ChangePriceModal({ item, rule, onClose, onSaved }: { item: RoomTypeRow | null; rule: PriceRule; onClose: () => void; onSaved: (t: RoomTypeRow) => void }) {
+	const { run, pending } = useAction();
 	const [price, setPrice] = useState<number | "">("");
 	useEffect(() => setPrice(item?.basePrice ?? ""), [item]);
-	const pct = item && price !== "" ? Math.round(((price - item.basePrice) / item.basePrice) * 100) : 0;
-	const needsOwner = Math.abs(pct) > 10;
+	const exact = item && price !== "" && item.basePrice > 0 ? ((price - item.basePrice) / item.basePrice) * 100 : 0;
+	const pct = Math.round(exact * 10) / 10;
+	const needsOwner = goesToOwner(rule, exact);
+	const waiting = item?.requestedBasePrice;
 	return (
 		<Modal open={!!item} onOpenChange={(o) => !o && onClose()} title={`Change price · ${item?.name ?? ""}`} subtitle="Applies to new bookings from tonight" icon={TagIcon} size="confirm"
 			footerInfo={<span className="flex items-center gap-2"><ManagerMark /> logged</span>}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || price === ""} onClick={() => item && price !== "" && (needsOwner ? demo.run("Sent to the owner for approval", onClose, { tone: "info" }) : act.run(() => saveRoomType({ name: item.name, basePrice: price, capacityAdults: item.capacityAdults, capacityChildren: item.capacityChildren, facilities: item.facilities }, item.id, { ...item, basePrice: price }), `${item.name} now ${naira(price)}`, (saved) => { onSaved(item.id, saved.basePrice); onClose(); }))}>{needsOwner ? "Send to owner" : "Change price"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || price === "" || price <= 0 || price === item?.basePrice} onClick={() => item && price !== "" && run(() => saveRoomType({ name: item.name, basePrice: price, capacityAdults: item.capacityAdults, capacityChildren: item.capacityChildren, facilities: item.facilities }, item.id, { ...item, basePrice: price }), (saved) => (saved.priceSentToOwner || saved.requestedBasePrice === price ? `${naira(price)} for ${item.name} sent to the owner for approval` : `${item.name} now ${naira(saved.basePrice)}`), (saved) => { onSaved(saved); onClose(); })}>{needsOwner ? "Send to owner" : "Change price"}</Button></>}
 		>
 			<div className="flex flex-col gap-4">
+				{waiting !== undefined && <Note tone="warning">{naira(waiting)} is already waiting for the owner{item?.priceRequestedBy ? ` (asked by ${item.priceRequestedBy})` : ""}. Another price waits for their answer first.</Note>}
 				<MoneyField label="New base price per night" value={price} onChange={setPrice} hint={item ? `Now ${naira(item.basePrice)}` : undefined} />
-				{price !== "" && pct !== 0 && <Note tone={needsOwner ? "warning" : "info"}>{pct > 0 ? "+" : ""}{pct}% · {needsOwner ? "over 10% — the owner approves this change" : "within your limit"}</Note>}
-				<WhatHappens items={["Existing bookings keep the price they were quoted", "Special prices still win on their dates", "Front office sees the new price on the board"]} />
+				{price !== "" && pct !== 0 && <Note tone={needsOwner ? "warning" : "info"}>{pct > 0 ? "+" : ""}{pct}% · {needsOwner ? "the owner approves this change; the old price stays until they do" : "applies at once"}</Note>}
+				<WhatHappens items={needsOwner ? ["The owner gets it in Approvals", "Approved: the new price applies to new bookings", "Declined: the price stays as it is"] : ["Existing bookings keep the price they were quoted", "Special prices still win on their dates", "Front office sees the new price on the board"]} />
 			</div>
 		</Modal>
 	);
@@ -121,7 +128,7 @@ function SpecialPricePanel({ item, onClose, onSaved }: { item: RoomTypeRow | nul
 	);
 }
 
-function TypePanel({ open, item, onClose, onSaved }: { open: boolean; item: RoomTypeRow | null; onClose: () => void; onSaved: (t: RoomTypeRow) => void }) {
+function TypePanel({ open, item, rule, onClose, onSaved }: { open: boolean; item: RoomTypeRow | null; rule: PriceRule; onClose: () => void; onSaved: (t: RoomTypeRow) => void }) {
 	const { run, pending } = useAction();
 	const [name, setName] = useState("");
 	const [price, setPrice] = useState<number | "">("");
@@ -131,11 +138,12 @@ function TypePanel({ open, item, onClose, onSaved }: { open: boolean; item: Room
 	useEffect(() => { setName(item?.name ?? ""); setPrice(item?.basePrice ?? ""); setAdults(String(item?.capacityAdults ?? 2)); setChildren(String(item?.capacityChildren ?? 1)); setFacilities(item?.facilities.join(", ") ?? "AC, TV, Wi-Fi, Hot water"); }, [item?.id]);
 	return (
 		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title={item ? `Edit ${item.name}` : "Add a room type"} subtitle="Name, price, how many it sleeps and what is in the room" icon={TagIcon}
-			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => { if (price === "") return; const input = { name, basePrice: price, capacityAdults: Number(adults) || 2, capacityChildren: Number(children) || 0, facilities: facilities.split(",").map((f) => f.trim()).filter(Boolean) }; run(() => saveRoomType(input, item?.id, { id: item?.id ?? `rt-${name.toLowerCase().replace(/\s+/g, "-")}`, ...input, rooms: item?.rooms ?? 0, specialPrices: item?.specialPrices ?? [] }), item ? `${name} updated` : `${name} added`, (saved) => { onSaved({ ...saved, rooms: item?.rooms ?? saved.rooms, specialPrices: saved.specialPrices.length ? saved.specialPrices : (item?.specialPrices ?? []) }); onClose(); }); }}>{item ? "Save changes" : "Add room type"}</Button></>}
+			footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name || price === ""} onClick={() => { if (price === "") return; const input = { name, basePrice: price, capacityAdults: Number(adults) || 2, capacityChildren: Number(children) || 0, facilities: facilities.split(",").map((f) => f.trim()).filter(Boolean) }; run(() => saveRoomType(input, item?.id, { id: item?.id ?? `rt-${name.toLowerCase().replace(/\s+/g, "-")}`, ...input, rooms: item?.rooms ?? 0, specialPrices: item?.specialPrices ?? [] }), (saved) => (saved.priceSentToOwner ? `${name} updated · the new price ${naira(price)} is waiting for the owner` : item ? `${name} updated` : `${name} added`), (saved) => { onSaved({ ...saved, rooms: item?.rooms ?? saved.rooms, specialPrices: saved.specialPrices.length ? saved.specialPrices : (item?.specialPrices ?? []) }); onClose(); }); }}>{item ? "Save changes" : "Add room type"}</Button></>}
 		>
 			<div className="flex flex-col gap-5">
 				<TextField label="Name" value={name} onChange={setName} placeholder="Deluxe" required />
 				<MoneyField label="Base price per night" value={price} onChange={setPrice} required />
+				{item && price !== "" && price !== item.basePrice && goesToOwner(rule, item.basePrice > 0 ? ((price - item.basePrice) / item.basePrice) * 100 : 100) && <Note tone="warning">The new price goes to the owner; the rest saves now and the old price stays until they approve.</Note>}
 				<FieldRow>
 					<TextField label="Adults" type="number" value={adults} onChange={setAdults} />
 					<TextField label="Children" type="number" value={children} onChange={setChildren} />

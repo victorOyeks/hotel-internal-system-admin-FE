@@ -1,6 +1,5 @@
 import { InspectScreen } from "@/components/roles/housekeeping/inspect";
 import { data } from "@hospio/api/data";
-import { live } from "@hospio/api/data/live";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +23,6 @@ export default async function InspectPage() {
 				(s) =>
 					s.role === "HOUSEKEEPING" && s.jobTitle !== "Housekeeping supervisor",
 			)}
-			demo={!live("housekeeping")}
 		/>
 	);
 }

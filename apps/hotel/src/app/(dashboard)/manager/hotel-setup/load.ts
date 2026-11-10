@@ -1,4 +1,5 @@
 import { data } from "@hospio/api/data";
+import { live } from "@hospio/api/data/live";
 import { demoSetupExtras } from "@hospio/api/demo/fixtures/manager-admin";
 
 /** The setup sections in sidebar order: brand first, hotel sections, then the owner-only ones. */
@@ -11,7 +12,9 @@ export async function loadSetup() {
 	// Shared devices (docs/shared-devices.md in hospio-backend): the tablets staff switch on with their PIN.
 	const devices = { key: "devices", title: "Shared devices", description: "Tablets your staff switch on with their PIN: names, auto-lock and removal", icon: "tablet", fields: [] };
 	if (!base.some((s) => s.key === "devices")) base = [...base, devices];
-	const extras = demoSetupExtras.filter((e) => !base.some((b) => b.key === e.key));
+	// Live, every section (brand, POS, reasons, taxes included) comes from hotel-config; the sample sections only fill the
+	// demo's setup, never a live one (a failed load must not show sample values as if they were the hotel's).
+	const extras = live("hotel-config") ? [] : demoSetupExtras.filter((e) => !base.some((b) => b.key === e.key));
 	// Brand first, hotel sections, then the owner-only ones at the end.
 	const brand = extras.filter((e) => e.key === "brand");
 	const rest = extras.filter((e) => e.key !== "brand");

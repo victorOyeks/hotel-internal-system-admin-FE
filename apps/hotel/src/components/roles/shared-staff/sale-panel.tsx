@@ -4,6 +4,7 @@ import {
 	BanIcon,
 	BedDoubleIcon,
 	CreditCardIcon,
+	PrinterIcon,
 	ReceiptIcon,
 	RotateCwIcon,
 } from "lucide-react";
@@ -244,6 +245,14 @@ export function SalePanel({
 				}
 				footer={
 					<>
+						{sale && s && s.status !== "CANCELLED" && sale.payments.length > 0 && (
+							<BigButton
+								tone="secondary"
+								onClick={() => window.open(`/receipt?sale=${encodeURIComponent(s.id)}`, "_blank", "noopener")}
+							>
+								<PrinterIcon className="size-5" /> Print receipt
+							</BigButton>
+						)}
 						{sale?.can.cancel && (
 							<BigButton tone="ghost" onClick={() => setSub("cancel")}>
 								<BanIcon className="size-5" /> Cancel sale

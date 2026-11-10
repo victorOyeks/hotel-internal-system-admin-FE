@@ -103,6 +103,27 @@ export function categoryLabel(c: string): string {
 	return w.charAt(0).toUpperCase() + w.slice(1);
 }
 
+/** The key finance-service files a category under: "Fuel & power", "FUEL_AND_POWER" and "fuel and power" are one category. */
+export function categoryCodeOf(c: string): string {
+	return c
+		.toUpperCase()
+		.replace(/&/g, " AND ")
+		.replace(/[^A-Z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "");
+}
+
+/** Puts the hotel's own category labels on expense rows (renamed categories read as they are called now). */
+export function withCategoryLabels<T extends { category: string; categoryCode?: string }>(
+	rows: T[],
+	categories: { code: string; label: string }[],
+): T[] {
+	const labels = new Map(categories.map((c) => [c.code, c.label]));
+	return rows.map((r) => {
+		const label = labels.get(categoryCodeOf(r.categoryCode ?? r.category));
+		return label ? { ...r, category: label } : r;
+	});
+}
+
 export function toExpenseRow(e: ExpenseItem): ExpenseRow {
 	const status =
 		e.status === "PENDING_APPROVAL" ||
@@ -116,6 +137,7 @@ export function toExpenseRow(e: ExpenseItem): ExpenseRow {
 		id: e.id,
 		date: e.expenseDate ?? (e.createdAt ?? "").slice(0, 10),
 		category: categoryLabel(e.category),
+		categoryCode: e.category,
 		description: e.description ?? "",
 		createdAt: e.createdAt ?? undefined,
 		amount: e.amount,

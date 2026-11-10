@@ -3,6 +3,7 @@
 import {
 	BanknoteIcon,
 	CheckCircle2Icon,
+	PrinterIcon,
 	CreditCardIcon,
 	Loader2Icon,
 	MailIcon,
@@ -825,6 +826,16 @@ export function usePaymentSteps(
 								? "Finance will match the transfer."
 								: ""}
 					</p>
+					{recorded?.id && (recorded.status === "APPROVED" || card === "approved") && (
+						<a
+							href={`/receipt?payment=${encodeURIComponent(recorded.id)}`}
+							target="_blank"
+							rel="noopener"
+							className={`${btn.secondary} flex items-center gap-2`}
+						>
+							<PrinterIcon className="size-4" /> Print receipt
+						</a>
+					)}
 					{doneExtra}
 				</div>
 			)}

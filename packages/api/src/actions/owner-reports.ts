@@ -4,6 +4,7 @@ import type { ActionResult } from "@hospio/api/actions/auth";
 import { atHotel } from "@hospio/api/api/server";
 import { getHotels } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
+import { withCategoryLabels } from "@hospio/api/data/mappers/finance";
 
 /**
  * Owner portal · Reports (docs/owner-portal.md): a report built from live data for a period and one hotel or every hotel.
@@ -206,7 +207,14 @@ export async function buildReport(input: {
 			};
 		}
 		case "EXPENSES": {
-			const expenses = await each(() => data.finance.expenses({ from, to }));
+			// Each hotel's own category labels (finance-service keeps the list per hotel).
+			const expenses = await each(async () => {
+				const [list, categories] = await Promise.all([
+					data.finance.expenses({ from, to }),
+					data.finance.categories(true),
+				]);
+				return withCategoryLabels(list, categories);
+			});
 			const rows = expenses
 				.flatMap(({ hotel, v }) => v.map((e) => ({ e, hotel })))
 				.sort(

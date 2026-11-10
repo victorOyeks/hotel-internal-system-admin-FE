@@ -30,6 +30,7 @@ export function PaymentPanel({ payment: p, onClose, onRefund, onDispute, onStatu
 		<SidePanel open onOpenChange={(o) => !o && onClose()} title={naira(p.amount)} subtitle={<span className="flex items-center gap-2">{p.reference} · {p.guestName} <StatusPill tone={paymentTone[p.status]}>{humanize(p.status)}</StatusPill></span>} icon={CreditCardIcon}
 			footerInfo={p.status === "APPROVED" ? `Receipt ${p.receiptSent === "NONE" ? "not sent" : `sent by ${p.receiptSent?.toLowerCase()}`}` : undefined}
 			footer={<>
+				{p.status === "APPROVED" && <a href={`/receipt?payment=${encodeURIComponent(p.id)}`} target="_blank" rel="noopener" className={btn.secondary}>Print receipt</a>}
 				{p.status === "APPROVED" && <Button variant="outline" className={btn.secondary} disabled={pending} onClick={() => run(() => withDeliveries(resendReceipt(p.id), `Receipt for ${p.guestName}`), `Receipt resent to ${p.guestName}`)}>Resend receipt</Button>}
 				{p.status === "APPROVED" && <Button className={btn.primary} onClick={() => { onClose(); onRefund(p); }}><RotateCcwIcon className="size-4" /> Refund</Button>}
 				{(p.status === "DECLINED" || p.status === "FAILED") && p.method === "CARD" && <Button className={btn.primary} disabled={pending} onClick={retry}>Retry on POS</Button>}

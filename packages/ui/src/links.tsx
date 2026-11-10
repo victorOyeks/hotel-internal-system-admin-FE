@@ -112,6 +112,7 @@ export const frontOfficeLinks: NavLink[] = [
 	{ title: "Guest laundry", url: "/dashboard/laundry", icon: ShirtIcon },
 	{ title: "Repairs", url: "/dashboard/repairs", icon: WrenchIcon },
 	{ title: "Guests", url: "/dashboard/guests", icon: UsersIcon },
+	{ title: "Lost & found", url: "/dashboard/lost-found", icon: SearchIcon },
 	{ title: "Messages", url: "/dashboard/messages", icon: MessageSquareIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },

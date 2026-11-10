@@ -11,6 +11,7 @@ import { api, errorMessage } from "@hospio/api/api/client";
 import type { UserSummary } from "@hospio/api/api/schema";
 import { atHotel, withSession } from "@hospio/api/api/server";
 import { getHotels } from "@hospio/api/dal";
+import { actionOf, departmentOfTopic, readableSummary } from "./activity-labels";
 import { live } from "./live";
 import {
 	emptyPage,
@@ -87,76 +88,7 @@ const DEPARTMENTS: { key: string; name: string; roles: string[] }[] = [
 	{ key: "FINANCE", name: "Finance", roles: ["FINANCE"] },
 ];
 
-/** platform-service's topic → department, as its Departments board counts them. */
-const TOPIC_DEPARTMENT: [string, string][] = [
-	["booking", "Front office"],
-	["guest", "Front office"],
-	["folio", "Front office"],
-	["charge", "Front office"],
-	["room-cleaned", "Housekeeping"],
-	["problem", "Housekeeping"],
-	["linen", "Laundry"],
-	["repair", "Maintenance"],
-	["parts", "Maintenance"],
-	["room-out", "Maintenance"],
-	["room-back", "Maintenance"],
-	["order", "Kitchen"],
-	["item-sold", "Bar"],
-	["stock", "Store"],
-	["delivery", "Store"],
-	["payment", "Finance"],
-	["expense", "Finance"],
-	["day-closed", "Finance"],
-	["cash", "Finance"],
-	["refund", "Finance"],
-	["pos", "Finance"],
-	["user", "Management"],
-	["role", "Management"],
-	["access", "Management"],
-	["approval", "Management"],
-	["change-by-platform", "H.M.S"],
-];
-
-function departmentOfTopic(
-	topic?: string | null,
-	actor?: string | null,
-): string {
-	if (actor?.startsWith("H.M.S")) return "H.M.S";
-	const t = (topic ?? "").replace(/^hospio-/, "");
-	return TOPIC_DEPARTMENT.find(([p]) => t.startsWith(p))?.[1] ?? "Other";
-}
-
-/** Words the summaries keep in capitals. */
-const KEEP = new Set([
-	"POS",
-	"VAT",
-	"ID",
-	"SMS",
-	"PDF",
-	"CSV",
-	"NGN",
-	"OK",
-	"ADR",
-	"QA",
-]);
-
-/** Codes inside an event summary (REPAIRS, FRONT_OFFICE) read as words (Repairs, Front office). */
-function readable(summary: string): string {
-	return summary.replace(/\b[A-Z]{2,}(?:_[A-Z]+)*\b/g, (code) =>
-		KEEP.has(code) ? code : humanize(code),
-	);
-}
-
-/** "BookingCreatedEvent" or "booking-created" → "Booking created". */
-function actionOf(eventType: string): string {
-	const words = eventType
-		.replace(/Event$/, "")
-		.replace(/([a-z])([A-Z])/g, "$1 $2")
-		.replace(/[-_]/g, " ")
-		.toLowerCase()
-		.trim();
-	return words ? words[0].toUpperCase() + words.slice(1) : "Activity";
-}
+const readable = readableSummary;
 
 const toThreadRow = (
 	t: {

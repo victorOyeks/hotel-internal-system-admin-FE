@@ -45,6 +45,8 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { useNotConnectedAction } from "@hospio/api/demo/actions";
+import type { BillRow, BudgetView, ExpenseCategoryRow } from "@hospio/api/data/ml-types";
+import { BillPanel, BillsCard, BudgetList } from "../shared-staff/budgets-bills";
 import type {
 	ApprovalRow,
 	AtHotel,
@@ -122,6 +124,11 @@ export type FinancialsProps = {
 	approvals: ApprovalRow[];
 	/** What the restaurant and bar sold today; sales, not money received. */
 	outletSales?: OutletSalesDayRow | null;
+	/** Budget against actual this month for the active hotel (finance-service). */
+	budget?: BudgetView | null;
+	/** The active hotel's next unpaid bills. */
+	dueBills?: BillRow[];
+	categories?: ExpenseCategoryRow[];
 };
 
 export function OwnerFinancials(props: FinancialsProps) {
@@ -241,9 +248,10 @@ export function OwnerFinancials(props: FinancialsProps) {
 							))}
 						</div>
 					) : (
-						<NotConnected
-							title="Bank, bills and payroll"
-							what="Cash in the bank, bills to pay and payroll"
+						<OwnerBills
+							hotelName={props.hotelName}
+							bills={props.dueBills ?? []}
+							categories={props.categories ?? []}
 						/>
 					)}
 					<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -408,10 +416,17 @@ export function OwnerFinancials(props: FinancialsProps) {
 						</div>
 					) : (
 						<div className="grid gap-4 xl:grid-cols-2">
-							<NotConnected
+							<SectionCard
 								title="Where the money went"
-								what="Budgets by category"
-							/>
+								subtitle={`This month against budget · ${props.hotelName}`}
+								action={{
+									label: "Expenses",
+									href: "/dashboard/financials?tab=expenses",
+								}}
+								bodyClassName="gap-3 pt-2"
+							>
+								<BudgetList budget={props.budget ?? null} />
+							</SectionCard>
 							<SectionCard
 								title="Where the money came from"
 								subtitle={`This month · ${props.hotelName}`}
@@ -457,6 +472,7 @@ export function OwnerFinancials(props: FinancialsProps) {
 				<ExpensesTab
 					expenses={props.expenses}
 					budgets={props.budgets}
+					budget={props.budget ?? null}
 					approvals={props.approvals}
 					hotels={hotels}
 					demo={demo}
@@ -769,6 +785,7 @@ function TransactionsTab({
 function ExpensesTab({
 	expenses,
 	budgets,
+	budget,
 	approvals,
 	hotels,
 	demo,
@@ -777,6 +794,7 @@ function ExpensesTab({
 }: {
 	expenses: ExpenseRow[];
 	budgets: typeof ownerBudgets;
+	budget: BudgetView | null;
 	approvals: ApprovalRow[];
 	hotels: OwnerHotelFinance[];
 	demo: boolean;
@@ -909,7 +927,13 @@ function ExpensesTab({
 			)}
 			{view === "all" && <DataTable columns={cols} data={rows} />}
 			{view === "budgets" && !demo && (
-				<NotConnected title="Budgets" what="Budgets by category" />
+				<SectionCard
+					title="Budgets this month"
+					subtitle={`${hotelName} · the manager sets them in Financials → Categories & budgets`}
+					bodyClassName="gap-3 pt-3"
+				>
+					<BudgetList budget={budget} />
+				</SectionCard>
 			)}
 			{view === "budgets" && demo && (
 				<SectionCard
@@ -960,6 +984,30 @@ function ExpensesTab({
 				onClose={() => setOpen(null)}
 			/>
 		</>
+	);
+}
+
+/** The active hotel's unpaid bills (the manager keeps them in Financials → Bills); the owner can pay one too. */
+function OwnerBills({
+	hotelName,
+	bills,
+	categories,
+}: {
+	hotelName: string;
+	bills: BillRow[];
+	categories: ExpenseCategoryRow[];
+}) {
+	const [open, setOpen] = useState<BillRow | null>(null);
+	const total = bills.reduce((s, b) => s + b.amount, 0);
+	return (
+		<SectionCard
+			title="Bills to pay"
+			subtitle={`${hotelName} · ${bills.length ? `${naira(total)} in the next bills` : "nothing waiting"} · bank balance and payroll are not connected`}
+			bodyClassName="pt-1"
+		>
+			<BillsCard bills={bills} onOpen={setOpen} onAdd={() => undefined} />
+			<BillPanel bill={open} adding={false} categories={categories} canWrite onClose={() => setOpen(null)} />
+		</SectionCard>
 	);
 }
 

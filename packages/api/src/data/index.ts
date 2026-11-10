@@ -49,6 +49,7 @@ import { lagosDate, lagosDay } from "./mappers/finance";
 import { fnbData } from "./fnb";
 import { inventoryData } from "./inventory";
 import { lmData } from "./lm";
+import { mlData } from "./ml";
 import { opsData } from "./ops";
 import { ownerData } from "./owner";
 import { toAreaRow, toRoomRow, toRoomTypeRow } from "./mappers/property";
@@ -621,6 +622,8 @@ export const data = {
 						fallback.limits.discountPct,
 					),
 					refundsNeedOwner: value("approvals", "refundsNeedOwner") === true,
+					rateChangesNeedOwner: value("approvals", "rateChangesNeedOwner") !== false,
+					rateChangeOwnerPct: n(value("approvals", "rateChangeOwnerPct"), 0),
 				},
 				tillFloat: n(value("money", "tillFloat"), 0),
 			};
@@ -1422,7 +1425,7 @@ export const data = {
 				.sort((a, b) => a.fullName.localeCompare(b.fullName));
 		},
 	},
-	finance: opsData.finance,
+	finance: { ...opsData.finance, ...mlData.finance },
 	inventory: {
 		// Stores, stock and team requests (./fnb, also what the kitchen and bar read) plus the store's own
 		// screens (./inventory): orders, deliveries, counts, suppliers, transfers, value and usage.
@@ -1431,9 +1434,10 @@ export const data = {
 	},
 	/** Work orders, assets, preventive schedules and maintenance money (./lm, maintenance-service). */
 	maintenance: lmData.maintenance,
-	activity: {
-		list: () => give(ops.demoActivity),
-	},
+	/** The activity log, a page at a time (platform-service; ./ml). */
+	activity: mlData.activity,
+	/** Receipts to print and email (payment-service; ./ml). */
+	receipts: mlData.receipts,
 	approvals: opsData.approvals,
 	notifications: {
 		/**
@@ -1525,7 +1529,7 @@ export const data = {
 			};
 		},
 	},
-	housekeeping: opsData.housekeeping,
+	housekeeping: { ...opsData.housekeeping, ...mlData.housekeeping },
 	/** Guest laundry, the price list, linen batches and laundry money (./lm, housekeeping-service). */
 	laundry: lmData.laundry,
 	platform: {
@@ -1846,6 +1850,7 @@ const ROLE_SCREENS: Record<string, string[]> = {
 		"folios",
 		"guests",
 		"laundry",
+		"lost-found",
 		"messages",
 		"payments",
 		"repairs",
@@ -1879,7 +1884,7 @@ const SCREEN_ALIASES: Record<string, Record<string, string>> = {
 	FINANCE: { financials: "", "night-audit": "night-audit" },
 	MANAGER: { repairs: "tasks", inventory: "inventory", messages: "messaging" },
 	FRONT_OFFICE: { orders: "", menu: "" },
-	HOUSEKEEPING: { rooms: "", inventory: "store", laundry: "linen" },
+	HOUSEKEEPING: { rooms: "", "my-rooms": "", inventory: "store", laundry: "linen" },
 	MAINTENANCE: { repairs: "", inventory: "store" },
 	LAUNDRY: { inventory: "store", laundry: "linen" },
 	INVENTORY: { inventory: "requests" },
