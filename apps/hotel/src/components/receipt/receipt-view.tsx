@@ -12,6 +12,8 @@ import {
 	methodLabel,
 	type ReceiptDoc,
 	receiptText,
+	shownSubtotal,
+	taxIncluded,
 } from "@hospio/api/data/receipt-types";
 import { cn } from "@hospio/ui/utils";
 
@@ -273,7 +275,7 @@ export function ReceiptView({
 								)}
 							>
 								<dt>Subtotal</dt>
-								<dd className="text-right">{money(doc.subtotal)}</dd>
+								<dd className="text-right">{money(shownSubtotal(doc))}</dd>
 								{doc.discount > 0 && (
 									<>
 										<dt>Discount</dt>
@@ -282,7 +284,7 @@ export function ReceiptView({
 								)}
 								{doc.tax > 0 && (
 									<>
-										<dt>Tax</dt>
+										<dt>{taxIncluded(doc) ? "Tax included" : "Tax"}</dt>
 										<dd className="text-right">{money(doc.tax)}</dd>
 									</>
 								)}

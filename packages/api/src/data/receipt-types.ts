@@ -40,6 +40,26 @@ export type ReceiptDoc = {
 	empty?: string;
 };
 
+/**
+ * Whether the item prices already include the tax (Hotel setup → Taxes "prices include tax"): the lines then add up to the
+ * total, and the tax is shown as included rather than added on top.
+ */
+export function taxIncluded(
+	d: Pick<ReceiptDoc, "lines" | "discount" | "tax" | "total">,
+): boolean {
+	const lines = d.lines.reduce((s, l) => s + l.amount, 0);
+	return d.tax > 0 && Math.abs(lines - d.discount - d.total) < 0.011;
+}
+
+/** The subtotal as the receipt shows it: the lines' sum when prices include tax, else the service's (before tax). */
+export function shownSubtotal(
+	d: Pick<ReceiptDoc, "lines" | "discount" | "tax" | "total" | "subtotal">,
+): number {
+	return taxIncluded(d)
+		? d.lines.reduce((s, l) => s + l.amount, 0)
+		: d.subtotal;
+}
+
 export const METHOD_LABEL: Record<string, string> = {
 	CASH: "Cash",
 	CARD: "Card",
@@ -80,7 +100,10 @@ export function receiptText(d: ReceiptDoc): string {
 		out.push(`${l.qty ? `${l.qty} x ` : ""}${l.label}: ${ngn(l.amount)}`);
 	out.push("");
 	if (d.discount) out.push(`Discount: -${ngn(d.discount)}`);
-	if (d.tax) out.push(`Tax: ${ngn(d.tax)}`);
+	if (d.tax)
+		out.push(
+			taxIncluded(d) ? `Tax included: ${ngn(d.tax)}` : `Tax: ${ngn(d.tax)}`,
+		);
 	out.push(`Total: ${ngn(d.total)}`);
 	for (const p of d.payments)
 		out.push(
