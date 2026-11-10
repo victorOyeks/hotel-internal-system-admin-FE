@@ -9,6 +9,7 @@ import type {
 	StockItemRow,
 	WorkOrderRow,
 } from "@hospio/api/data/types";
+import type { PageResult } from "@hospio/api/data/paging";
 import { LaundryPricesScreen } from "../../laundry/prices";
 import { PreventiveScreen } from "../../maintenance/preventive";
 import { type Person, WorkOrdersScreen } from "../../maintenance/work-orders";
@@ -16,6 +17,7 @@ import { type Person, WorkOrdersScreen } from "../../maintenance/work-orders";
 /** Manager · Tasks & maintenance: work orders, preventive schedules and assets, and the laundry price list. */
 export function ManagerTasks({
 	rows,
+	done,
 	me,
 	technicians,
 	rooms,
@@ -27,6 +29,7 @@ export function ManagerTasks({
 	canEdit,
 }: {
 	rows: WorkOrderRow[];
+	done: PageResult<WorkOrderRow>;
 	me: Person;
 	technicians: Person[];
 	rooms: { id: string; number: string }[];
@@ -61,6 +64,7 @@ export function ManagerTasks({
 			{v === "work" && (
 				<WorkOrdersScreen
 					rows={rows}
+					done={done}
 					mode="manager"
 					me={me}
 					supervisor={canEdit}

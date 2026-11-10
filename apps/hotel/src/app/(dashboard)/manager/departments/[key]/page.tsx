@@ -63,7 +63,7 @@ async function openItemsFor(
 			};
 		}
 		case "LAUNDRY": {
-			const o = await data.laundry.orders("open");
+			const o = await data.laundry.orders();
 			return {
 				title: "Guest orders in progress",
 				items: o.map((x) => ({
@@ -133,7 +133,7 @@ async function openItemsFor(
 			};
 		}
 		case "INVENTORY": {
-			const r = await data.inventory.requests();
+			const r = await data.inventory.openRequests();
 			return {
 				title: "Requests waiting",
 				items: r

@@ -638,15 +638,40 @@ export const opsData = {
 				return failed("housekeeping-service to inspect", error, []);
 			return res.data.map(toCleaningTaskRow);
 		},
-		lostFound: async (): Promise<LostFoundRow[]> => {
-			if (!live("housekeeping")) return give(ops.demoLostFound);
-			const { data: res, error } = await api(
-				"@get/housekeeping/lost-found",
-				await withSession(),
-			);
-			if (error || !res)
-				return failed("housekeeping-service lost and found", error, []);
-			return res.data.map(toLostFoundRow);
+		/** Lost & found, newest found first, one page: `status` FOUND, RETURNED or DISPOSED, `q`, `from`/`to`; `counts` per status. */
+		lostFound: async (q: ListQuery = {}): Promise<PageResult<LostFoundRow>> => {
+			if (!live("housekeeping")) {
+				const rows = ops.demoLostFound.filter(
+					(r) =>
+						!q.q ||
+						`${r.description} ${r.foundWhere}`
+							.toLowerCase()
+							.includes(q.q.toLowerCase()),
+				);
+				const counts: Record<string, number> = { all: rows.length };
+				for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+				return give({
+					ok: true,
+					data: slicePage(
+						rows.filter((r) => !q.status || r.status === q.status),
+						q.page ?? 0,
+						q.size ?? PAGE_SIZE,
+						{ counts },
+					),
+				});
+			}
+			const { data: res, error } = await api("@get/housekeeping/lost-found", {
+				...(await withSession()),
+				query: pageQuery(q),
+			});
+			if (error || !res) {
+				console.error("housekeeping-service lost and found:", error);
+				return failedPage(
+					errorMessage(error, "Couldn't load lost & found"),
+					q.size,
+				);
+			}
+			return { ok: true, data: toPaged(res.data, toLostFoundRow) };
 		},
 	},
 };

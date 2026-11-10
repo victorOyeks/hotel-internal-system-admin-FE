@@ -587,7 +587,11 @@ export const opsRoutes = {
 		}),
 		output: envelope(z.unknown()),
 	},
-	"@get/housekeeping/lost-found": { output: envelope(z.array(LostFoundItem)) },
+	/** Paged: status (FOUND, RETURNED, DISPOSED), q, from, to (on when it was found); counts per status. */
+	"@get/housekeeping/lost-found": {
+		query: pageParams,
+		output: envelope(pagedOf(LostFoundItem)),
+	},
 	"@post/housekeeping/lost-found": {
 		input: z.object({
 			description: z.string(),

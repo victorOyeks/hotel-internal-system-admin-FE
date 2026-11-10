@@ -1,12 +1,22 @@
 import { LinenScreen } from "@/components/roles/housekeeping/linen";
 import { data } from "@hospio/api/data";
+import {
+	listQueryFrom,
+	type SearchParamsRecord,
+} from "@hospio/api/data/paging";
 
 export const dynamic = "force-dynamic";
 
 /** Housekeeping · Linen: clean linen on hand, batches sent to the laundry. */
-export default async function LinenPage() {
-	const [batches, stores, items] = await Promise.all([
-		data.laundry.batches("all"),
+export default async function LinenPage({
+	searchParams,
+}: {
+	searchParams: Promise<SearchParamsRecord>;
+}) {
+	const query = listQueryFrom(await searchParams);
+	const [batches, all, stores, items] = await Promise.all([
+		data.laundry.batches(),
+		data.laundry.batchesPage({ page: query.page }),
 		data.inventory.stores(),
 		data.inventory.items(),
 	]);
@@ -26,6 +36,7 @@ export default async function LinenPage() {
 					: []
 			}
 			batches={batches}
+			all={all}
 			hasStore={!!hk}
 		/>
 	);

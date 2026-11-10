@@ -12,6 +12,7 @@ import {
 	WashingMachineIcon,
 	ZapIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -26,6 +27,7 @@ import { fmtTime, fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
+import { useListParams } from "@hospio/ui/shared/list-params";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import {
 	PanelSection,
@@ -43,6 +45,7 @@ import {
 	takeLaundryOrder,
 } from "@hospio/api/actions/laundry";
 import { useAction } from "@hospio/api/actions/use-action";
+import type { PageResult } from "@hospio/api/data/paging";
 import type {
 	BookingRow,
 	GuestLaundryRow,
@@ -93,12 +96,16 @@ type Sub = "new" | "pocket" | "cancel" | "pay" | null;
  */
 export function LaundryJobsScreen({
 	orders,
+	all,
 	prices,
 	inHouse,
 	terminals = [],
 	desk,
 }: {
+	/** The board: every open order and the last 14 days' (bounded). */
 	orders: GuestLaundryRow[];
+	/** "All orders": one page from housekeeping-service (`?q=&page=` in the URL). */
+	all: PageResult<GuestLaundryRow>;
 	prices: LaundryPriceRow[];
 	inHouse: BookingRow[];
 	terminals?: TerminalRow[];
@@ -109,12 +116,17 @@ export function LaundryJobsScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [view, setView] = useQueryState("view");
 	const [sub, setSub] = useState<Sub>(null);
-	const [search, setSearch] = useState("");
+	const router = useRouter();
+	const list$ = useListParams();
+	const allPage = all.data;
 	const [pendingPayment, setPendingPayment] = useState<Record<string, string>>(
 		{},
 	);
 	const { run, pending } = useAction();
-	const current = rows.find((o) => o.id === openId) ?? null;
+	const current =
+		rows.find((o) => o.id === openId) ??
+		allPage.content.find((o) => o.id === openId) ??
+		null;
 	const patch = (o: GuestLaundryRow) =>
 		setRows((rs) =>
 			rs.some((r) => r.id === o.id)
@@ -137,16 +149,11 @@ export function LaundryJobsScreen({
 			new Date(o.promisedAt).getTime() - Date.now() < 2 * 3600_000,
 	);
 	const columns: Status[] = ["RECEIVED", "IN_PROGRESS", "READY", "DELIVERED"];
-	const history = useMemo(() => {
-		const q = search.trim().toLowerCase();
-		return q
-			? rows.filter((o) =>
-					`${o.number} ${o.guestName} ${o.roomNumber ?? ""}`
-						.toLowerCase()
-						.includes(q),
-				)
-			: rows;
-	}, [rows, search]);
+	// A row changed here shows its new state on the "All orders" page before the page is read again.
+	const history = useMemo(
+		() => allPage.content.map((o) => rows.find((r) => r.id === o.id) ?? o),
+		[allPage, rows],
+	);
 
 	const advance = (o: GuestLaundryRow) => {
 		const n = NEXT[o.status];
@@ -238,7 +245,11 @@ export function LaundryJobsScreen({
 			<PillTabs
 				tabs={[
 					{ key: "board", label: "Board", count: open.length },
-					{ key: "all", label: "All orders", count: rows.length },
+					{
+						key: "all",
+						label: "All orders",
+						count: allPage.counts?.all ?? allPage.total,
+					},
 				]}
 				value={view === "all" ? "all" : "board"}
 				onChange={(k) => void setView(k === "board" ? null : k)}
@@ -248,8 +259,8 @@ export function LaundryJobsScreen({
 					<Toolbar
 						left={
 							<SearchBox
-								value={search}
-								onChange={setSearch}
+								value={list$.search}
+								onChange={list$.setSearch}
 								placeholder="Search order, guest or room"
 							/>
 						}
@@ -257,6 +268,11 @@ export function LaundryJobsScreen({
 					<DataTable
 						columns={histCols}
 						data={history}
+						server={{ page: allPage, onPage: list$.goTo }}
+						filtered={list$.filtered}
+						onClearFilters={list$.clear}
+						error={all.ok ? null : all.error}
+						onRetry={() => router.refresh()}
 						onRowClick={(o) => void setOpenId(o.id)}
 						emptyTitle="No laundry orders yet"
 					/>
