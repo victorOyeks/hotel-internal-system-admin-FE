@@ -46,8 +46,9 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 ## Before you start
 
 - Reload the page (Ctrl/Cmd + R) whenever you are told a new version was deployed.
-- Email, SMS and WhatsApp are not connected on staging. Whenever something would have gone out (an invite, a
-  temporary password, a WhatsApp to a guest or a manager, a report email), a yellow message card appears top-centre with the channel, the recipient and the full text. Close it with **Close**. If it does not
+- Emails are sent for real, to the address on the record; SMS and WhatsApp are "coming soon". Whenever something goes
+  out (an invite, a temporary password, a message to a guest or a manager, a report email), a yellow message card appears
+  top-centre with the channel, the recipient and the full text, marked "Email sent to …" or "Not sent · … coming soon". Close it with **Close**. If it does not
   appear after a step marked **(delivery)**, that is a bug.
 - The **API** button at the bottom left lists every call the screen made.
 - Lists are newest first by time. Money is in naira.
