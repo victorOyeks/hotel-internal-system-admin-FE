@@ -151,11 +151,12 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 2. **Departments**: each department's actions in the last hour and staff on shift; All hotels adds the hotels up.
 3. **Activity log**: the business's log, newest first, with hotel and department; filter by hotel and department;
    **Export** downloads what you see. Summaries never show codes like REPAIRS.
-4. **Do:** as Amoria (admin portal) record a change for Royal Suites (Business → Changes). As Godwin → **Changes by
-   H.M.S**. **Expect:** the change with **Ask support to undo**. Click it → note → **Send to support**. **Expect:**
+4. **Do:** as Amoria (admin portal) → Businesses → Royal Suites Ltd → edit a detail (for example the business phone)
+   with a reason → save: that records a change by H.M.S. As Godwin → **Operations** → **Changes by H.M.S**. **Expect:** the change with **Ask support to undo**. Click it → note → **Send to support**. **Expect:**
    "Hospio support has your request…"; the row shows "Undo asked · support is on it". Asking again is not possible.
-5. **Do:** as Amoria, open Support: a HIGH ticket "Undo a change by H.M.S: …". Undo the change (Changes → Undo).
-   **Expect:** the ticket is resolved **(delivery)** to Godwin; Godwin's row shows **Undone**.
+5. **Do:** as Amoria, open Support: a HIGH ticket "Undo a change by H.M.S: …". Put the detail back by hand, then
+   Changes → **Undo** on that change. **Expect:** the ticket is resolved **(delivery)** to Godwin; Godwin's row shows
+   **Undone**. (Undo marks it; support restores the value themselves.)
 
 ## 8 · Reports (owner B)
 
@@ -211,7 +212,9 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
   notice and an email link (echoed on staging), not as an attachment.
 - A change by H.M.S is put back by support; the owner asks for it (a ticket). Ownership transfers are made by support
   from the ticket; there is no accept-by-email flow yet.
-- Staff who are not managers read and reply in Inbox only; WhatsApp replies do not come back into the thread.
+- Staff who are not managers read and reply in Inbox only (opened from the notification or `/dashboard/inbox`; no
+  menu item yet); WhatsApp replies do not come back into the thread.
+- Payments the owner takes from Bookings show "Taken by <owner> · Owner".
 - Financials: payroll, bills and budgets are not connected (no payroll service); transactions and expenses are the
   sidebar's hotel. Settlements are per business and provider, so they are the same whichever hotel you pick.
 - Settings → Taxes and Approval limits edit the hotel picked in the sidebar.
