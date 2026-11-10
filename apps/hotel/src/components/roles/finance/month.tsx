@@ -153,21 +153,24 @@ export function MonthScreen({
 				subtitle="Hover a bar for the day"
 			>
 				{days.length === 0 && <EmptyState title="No money recorded yet" />}
-				<div className="flex h-[220px] items-end gap-[6px] pt-4">
+				<div className="flex h-[220px] items-end gap-[6px] overflow-hidden pt-4">
 					{days.map((d) => (
 						<div
 							key={d.date.toISOString()}
-							className="group relative flex flex-1 flex-col items-center justify-end gap-[2px]"
+							className="group relative flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
 							title={`${format(d.date, "EEE d MMM")} · ${naira(d.revenue)} in · ${naira(d.expenses)} out`}
 						>
-							<div
-								className="w-full rounded-t-[3px] bg-brand transition-opacity group-hover:opacity-80"
-								style={{ height: `${(d.revenue / max) * 180}px` }}
-							/>
-							<div
-								className="w-full rounded-b-[3px] bg-[#dbab00]"
-								style={{ height: `${(d.expenses / max) * 180}px` }}
-							/>
+							{/* Revenue and expenses side by side, both on the same scale (the day's taller one fills 180px at most). */}
+							<div className="flex h-[180px] w-full items-end justify-center gap-[2px] transition-opacity group-hover:opacity-80">
+								<div
+									className="w-1/2 max-w-[24px] rounded-t-[3px] bg-brand"
+									style={{ height: `${(d.revenue / max) * 100}%` }}
+								/>
+								<div
+									className="w-1/2 max-w-[24px] rounded-t-[3px] bg-[#dbab00]"
+									style={{ height: `${(d.expenses / max) * 100}%` }}
+								/>
+							</div>
 							<span className="text-[10px] text-ink-3">
 								{format(d.date, "d")}
 							</span>
