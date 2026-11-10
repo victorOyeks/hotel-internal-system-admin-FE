@@ -23,6 +23,21 @@ export type Paged<T> = {
 	totals?: Record<string, number>;
 };
 
+/** A page as a screen receives it: the rows, or why they didn't load (the table shows Try again). */
+export type PageResult<T> =
+	| { ok: true; data: Paged<T> }
+	| { ok: false; error: string; data: Paged<T> };
+
+/** A failed page: empty rows plus the message for the table's error state. */
+export const failedPage = <T>(
+	error: string,
+	size = PAGE_SIZE,
+): PageResult<T> => ({
+	ok: false,
+	error,
+	data: emptyPage<T>(size),
+});
+
 /** What a screen asks a list for: the page, the sort and its filters (blank ones are left out). */
 export type ListQuery = {
 	page?: number;
