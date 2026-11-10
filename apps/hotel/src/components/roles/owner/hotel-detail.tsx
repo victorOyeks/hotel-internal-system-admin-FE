@@ -380,7 +380,7 @@ function TabBody({
 		);
 	}
 	return (
-		<div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+		<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
 			<SectionCard
 				title="Rooms tonight"
 				subtitle={`${hotel.rooms} rooms`}

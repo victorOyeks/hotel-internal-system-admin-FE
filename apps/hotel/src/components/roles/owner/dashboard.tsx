@@ -182,7 +182,7 @@ export function OwnerDashboard({
 				/>
 			</div>
 
-			<div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+			<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
 				<SectionCard
 					title="Worth a look"
 					subtitle="Things across your hotels that need your eye today"
@@ -334,7 +334,7 @@ export function OwnerDashboard({
 				</div>
 			</SectionCard>
 
-			<div className="grid gap-4 xl:grid-cols-[1fr_420px]">
+			<div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
 				<SectionCard
 					title="Revenue · last 30 days"
 					subtitle={`${dailyScope} · ${nairaShort(daily.reduce((s, d) => s + d.revenue, 0))} in total`}
