@@ -207,7 +207,11 @@ export const opsData = {
 			if (error || !res) return failed("finance-service expenses", error, []);
 			return res.data
 				.map(toExpenseRow)
-				.sort((a, b) => b.date.localeCompare(a.date));
+				.sort(
+					(a, b) =>
+						b.date.localeCompare(a.date) ||
+						(b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
+				);
 		},
 		tills: async (): Promise<TillRow[]> => {
 			if (!live("finance")) return give(ops.demoTills);
