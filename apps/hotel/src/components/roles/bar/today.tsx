@@ -412,6 +412,15 @@ export function BarTodayScreen({
 				desk="BAR"
 				terminals={terminals}
 				inHouse={inHouse}
+				onChanged={(id) =>
+					void readOrder(id, outletName).then((r) => {
+						if (!r.ok || !r.data) return;
+						const fresh = r.data;
+						// The board keeps orders that left it; put the settled one in place so Recent sales shows where it stands.
+						put(fresh);
+						setClosedRows((c) => c.map((x) => (x.id === fresh.id ? fresh : x)));
+					})
+				}
 			/>
 
 			{/* New sale */}
