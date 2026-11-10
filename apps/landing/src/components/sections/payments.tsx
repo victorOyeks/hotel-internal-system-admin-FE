@@ -27,7 +27,7 @@ const steps = [
 	},
 	{
 		title: "Approved, declined or no answer",
-		text: "Every outcome has a next step. Pending ones are verified from My payments.",
+		text: "Every outcome has a next step. Pending ones are checked again from My payments.",
 	},
 ];
 
@@ -46,7 +46,7 @@ export function Payments() {
 			tone="brand"
 			eyebrow="Payments at the POS"
 			title="Card, transfer or cash — straight from the screen to the till."
-			intro="Each role sends the payment to its own POS terminal. Staff keep working while it processes, and the result lands on the folio by itself. Only the receipt reaches the guest."
+			intro="Each role sends card and transfer payments to its own POS terminal, connected through your POS provider; cash is counted into the role’s till. Staff keep working while it processes, and the result lands on the folio by itself."
 			titleClassName="max-w-[860px]"
 		>
 			<div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_480px]">

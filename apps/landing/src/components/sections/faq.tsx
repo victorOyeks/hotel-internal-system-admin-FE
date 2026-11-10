@@ -7,7 +7,12 @@ import {
 } from "@hospio/ui/primitives/accordion";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
-import { btnLg, container, SectionHeader } from "@/components/site";
+import {
+	btnLg,
+	container,
+	DEMO_MAILTO,
+	SectionHeader,
+} from "@/components/site";
 
 const faqs = [
 	{
@@ -16,7 +21,7 @@ const faqs = [
 	},
 	{
 		q: "Do we need new hardware?",
-		a: "Staff use tablets for their role. Card and transfer payments go through your POS provider’s terminals, assigned to each role in Hotel setup.",
+		a: "No special hardware. H.M.S runs in the browser on a computer or tablet, and a shared tablet can be used by several staff, each signing in with their own PIN. Card terminals come from your POS provider and are assigned to each role in Hotel setup.",
 	},
 	{
 		q: "What happens if the POS goes offline?",
@@ -24,7 +29,7 @@ const faqs = [
 	},
 	{
 		q: "Who sets everything up?",
-		a: "The H.M.S team does — business details, hotels, rooms, staff and connections — then hands it over to you with a go-live checklist.",
+		a: "You can: sign up and follow the four setup steps. Or the H.M.S team sets up your business, hotels, rooms and staff with you, then hands it over with your logins.",
 	},
 	{
 		q: "Can we change our rules ourselves?",
@@ -51,7 +56,7 @@ export function Faq() {
 						Something else? Our team will walk you through it on a demo.
 					</p>
 					<a
-						href="/#contact"
+						href={DEMO_MAILTO}
 						className={cn(
 							btn.primary,
 							btnLg,

@@ -1,5 +1,6 @@
 import {
 	ArrowRightIcon,
+	CalendarDaysIcon,
 	Building2Icon,
 	ClockIcon,
 	CoinsIcon,
@@ -7,7 +8,6 @@ import {
 	DownloadIcon,
 	LockIcon,
 	type LucideIcon,
-	PlayIcon,
 	ReceiptIcon,
 	ShieldIcon,
 	TriangleAlertIcon,
@@ -15,13 +15,13 @@ import {
 import Image from "next/image";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
-import { btnLg, container } from "@/components/site";
+import { btnLg, container, DEMO_MAILTO, SIGN_UP_URL } from "@/components/site";
 import { type PillTone, shotShadow, softTileTones, StatusPill } from "./shared";
 
 const trust: { icon: LucideIcon; text: string }[] = [
 	{ icon: ShieldIcon, text: "Each hotel’s data kept separate" },
-	{ icon: LockIcon, text: "2-step sign-in for owners" },
-	{ icon: CreditCardIcon, text: "Card, transfer and cash at the POS" },
+	{ icon: LockIcon, text: "2-step sign-in with an authenticator app" },
+	{ icon: CreditCardIcon, text: "Cash, card and transfer on every folio" },
 ];
 
 const sidebar = [
@@ -110,7 +110,7 @@ export function Hero() {
 			>
 				<p className="inline-flex items-center gap-2 rounded-pill bg-brand-soft px-[14px] py-2 text-center text-sm font-medium text-brand">
 					<span className="size-2 shrink-0 rounded-full bg-status-ok" />
-					Hotel management for multi-branch hotel businesses
+					Hotel management for Nigerian hotels, one branch or many
 				</p>
 				<h1 className="max-w-[980px] text-center text-[40px] font-bold leading-[1.06] tracking-[-0.025em] text-ink sm:text-[52px] md:text-[68px]">
 					Every room, every till, every branch — on one screen.
@@ -123,7 +123,7 @@ export function Hero() {
 				</p>
 				<div className="flex flex-wrap items-center justify-center gap-3">
 					<a
-						href="/#contact"
+						href={SIGN_UP_URL}
 						className={cn(
 							btn.primary,
 							btnLg,
@@ -131,18 +131,18 @@ export function Hero() {
 						)}
 					>
 						<ArrowRightIcon className="size-[15px]" strokeWidth={2.5} />
-						Book a demo
+						Get started
 					</a>
 					<a
-						href="/#product"
+						href={DEMO_MAILTO}
 						className={cn(
 							btn.secondary,
 							btnLg,
 							"inline-flex items-center gap-[6px]",
 						)}
 					>
-						<PlayIcon className="size-[15px]" strokeWidth={2.5} />
-						See how it works
+						<CalendarDaysIcon className="size-[15px]" strokeWidth={2.5} />
+						Book a demo
 					</a>
 				</div>
 				<ul className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
@@ -159,7 +159,12 @@ export function Hero() {
 						);
 					})}
 				</ul>
-				<OwnerDashboardShot />
+				<figure className="flex w-full flex-col items-center gap-3">
+					<OwnerDashboardShot />
+					<figcaption className="text-[13px] text-ink-3">
+						The owner’s morning view, shown with sample data.
+					</figcaption>
+				</figure>
 			</div>
 		</section>
 	);
@@ -236,7 +241,7 @@ function OwnerDashboardShot() {
 						</div>
 					))}
 				</div>
-				<div className="grid gap-[14px] xl:grid-cols-[minmax(0,1fr)_380px]">
+				<div className="grid grid-cols-1 gap-[14px] xl:grid-cols-[minmax(0,1fr)_380px]">
 					<div className="flex flex-col gap-1 rounded-[14px] border border-line bg-card p-5">
 						<div className="flex items-center justify-between pb-2">
 							<p className="text-base font-bold text-ink">Worth a look</p>

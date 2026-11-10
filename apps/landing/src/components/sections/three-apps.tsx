@@ -19,7 +19,7 @@ const apps = [
 		text: "All your hotels in one morning view: revenue, profit, occupancy and what needs your eye today.",
 		points: [
 			"Approvals over each manager’s limit",
-			"Branch-by-branch P&L and payouts",
+			"Revenue, expenses and profit for each hotel",
 			"Change taxes, currency and approval limits",
 		],
 		preview: <OwnerPreview />,
@@ -54,7 +54,7 @@ export function ThreeApps() {
 			title="The right view for the owner, the manager and the shift."
 			intro="Owners see every hotel at a glance. Managers run their branch. Staff get a tablet app that shows only their own work — nothing more, nothing less."
 		>
-			<div className="grid gap-6 md:grid-cols-3">
+			<div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 				{apps.map((app) => (
 					<article
 						key={app.title}

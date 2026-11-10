@@ -41,7 +41,11 @@ const log = [
 		who: "Tunde Bakare",
 		what: "Approved discount · folio F-7015",
 	},
-	{ time: "9:05am", who: "H.M.S Support", what: "Edited room prices · Undo" },
+	{
+		time: "9:05am",
+		who: "H.M.S Support",
+		what: "Edited room prices · Ask to undo",
+	},
 ];
 
 const card =
@@ -104,8 +108,8 @@ export function Control() {
 						Every action on the record
 					</h3>
 					<p className="text-[15px] leading-[1.5] text-ink-2">
-						Every change by anyone is logged. Changes made on your behalf by
-						H.M.S support can be undone for 7 days.
+						Every change by anyone is logged. If H.M.S support changes something
+						for you, you can ask for it to be undone within 7 days.
 					</p>
 					<ul className="flex flex-col gap-[10px] pt-2">
 						{log.map((e) => (

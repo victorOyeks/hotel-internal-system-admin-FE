@@ -1,11 +1,12 @@
-import { CalendarDaysIcon, PhoneIcon } from "lucide-react";
+import { ArrowRightIcon, CalendarDaysIcon, MailIcon } from "lucide-react";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import {
 	btnLg,
 	CONTACT_EMAIL,
 	container,
-	WHATSAPP_URL,
+	DEMO_MAILTO,
+	SIGN_UP_URL,
 } from "@/components/site";
 
 export function ClosingCta() {
@@ -17,29 +18,36 @@ export function ClosingCta() {
 						Bring every branch onto one screen.
 					</h2>
 					<p className="max-w-[620px] text-[17px] leading-[1.55] text-nav-foreground md:text-[18px]">
-						See H.M.S running on a hotel like yours — from the front desk to the
-						owner’s morning view.
+						Create your account and set up your first hotel today, or ask us for
+						a demo on a hotel like yours.
 					</p>
 					<div className="flex flex-wrap items-center justify-center gap-3">
 						<a
-							href={WHATSAPP_URL}
+							href={SIGN_UP_URL}
 							className={cn(
 								btn.secondary,
 								btnLg,
 								"inline-flex items-center gap-[6px]",
 							)}
 						>
-							<CalendarDaysIcon className="size-[15px]" />
-							Book a demo
+							<ArrowRightIcon className="size-[15px]" strokeWidth={2.5} />
+							Get started
 						</a>
 						<a
-							href={`mailto:${CONTACT_EMAIL}`}
+							href={DEMO_MAILTO}
 							className="inline-flex items-center gap-2 rounded-control border border-white/80 px-5 py-[14px] text-base font-semibold text-white hover:bg-white/10"
 						>
-							<PhoneIcon className="size-[18px]" />
-							Talk to sales
+							<CalendarDaysIcon className="size-[18px]" />
+							Book a demo
 						</a>
 					</div>
+					<a
+						href={`mailto:${CONTACT_EMAIL}`}
+						className="inline-flex items-center gap-2 text-sm text-nav-foreground hover:text-white"
+					>
+						<MailIcon className="size-4" />
+						{CONTACT_EMAIL}
+					</a>
 				</div>
 			</div>
 		</section>

@@ -12,23 +12,23 @@ import { IconTile } from "./shared";
 const steps: { icon: LucideIcon; title: string; text: string }[] = [
 	{
 		icon: StoreIcon,
-		title: "Business and owner",
-		text: "Legal details, owner account and your fee agreement.",
+		title: "Create your account",
+		text: "Sign up as the owner and confirm your phone number.",
 	},
 	{
 		icon: BedDoubleIcon,
-		title: "Hotels and rooms",
-		text: "Every branch, room type and price — import your room list.",
+		title: "Your business and first hotel",
+		text: "Business details, then your hotel’s address and contacts.",
 	},
 	{
 		icon: UserPlusIcon,
-		title: "People and connections",
-		text: "Import staff, assign roles, connect POS terminals and WhatsApp.",
+		title: "Rooms and prices",
+		text: "Room types, prices and room numbers, added in a few minutes.",
 	},
 	{
 		icon: CheckIcon,
-		title: "Go-live and handover",
-		text: "Checklist, a test booking, then your handover pack and logins.",
+		title: "Your first manager",
+		text: "Invite the manager who runs the hotel day to day, then you’re live.",
 	},
 ];
 
@@ -38,8 +38,8 @@ export function Onboarding() {
 			id="onboarding"
 			tone="card"
 			eyebrow="Onboarding"
-			title="We set it up. You take the keys."
-			intro="The H.M.S team builds your business into the system with you, tests it with a real booking, then hands it over."
+			title="Set up your hotel in four steps."
+			intro="Sign up and walk through a short setup, saving as you go. Prefer to hand it over? The H.M.S team can set up your business, hotels, rooms and staff for you, then hand you the keys."
 		>
 			<ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 				{steps.map((s, i) => (
@@ -61,8 +61,8 @@ export function Onboarding() {
 			<p className="mx-auto flex max-w-full items-center gap-3 rounded-[24px] bg-status-note-soft px-5 py-[14px] text-sm text-status-note">
 				<ShieldIcon className="size-[18px] shrink-0" />
 				<span>
-					Temporary passwords are shown once, expire after 72 hours, and owners
-					must turn on 2-step sign-in.
+					Staff get their own logins and a role, and anyone can turn on 2-step
+					sign-in with an authenticator app.
 				</span>
 			</p>
 		</Section>
