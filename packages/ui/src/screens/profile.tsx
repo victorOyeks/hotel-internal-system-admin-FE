@@ -13,6 +13,7 @@ import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { SectionCard } from "@hospio/ui/shared/section-card";
+import { PinSection } from "@hospio/ui/shared/shared-device";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { changePassword } from "@hospio/api/actions";
@@ -103,6 +104,11 @@ export function ProfileScreen({ user, role, sessions, prefs }: { user: Me; role:
 						<p className="text-[13px] text-ink-2">Use at least 8 characters. We sign out your other devices when you change it.</p>
 						<Button variant="outline" className={`${btn.secondary} w-fit`} onClick={() => setPwOpen(true)}><KeyRoundIcon className="size-4" /> Change password</Button>
 					</SectionCard>
+					{user.businessId && !user.roles.includes("OWNER") && (
+						<SectionCard title="PIN for shared devices" subtitle={user.hasPin ? "Set" : "Not set yet"} bodyClassName="gap-3 pt-3">
+							<PinSection hasPin={!!user.hasPin} />
+						</SectionCard>
+					)}
 					<SectionCard title="2-step sign-in" subtitle={twoStep ? `On · code by ${method === "APP" ? "authenticator app" : method === "SMS" ? "SMS" : "WhatsApp"}` : "Off · recommended for managers and finance"} bodyClassName="gap-3 pt-3">
 						<div className="flex items-center gap-3 rounded-control border border-line px-4 py-3">
 							<ShieldCheckIcon className="size-5 text-brand" />

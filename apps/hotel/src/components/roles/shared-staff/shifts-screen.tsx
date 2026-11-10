@@ -106,7 +106,7 @@ export function ShiftsScreen({
 		why: "Annual leave",
 		note: "",
 	});
-	const [pin, setPin] = useState({ next: "", again: "" });
+	const [pin, setPin] = useState({ next: "", again: "", password: "" });
 	const { run, pending } = useAction();
 
 	useEffect(() => {
@@ -222,7 +222,7 @@ export function ShiftsScreen({
 							tone="secondary"
 							className="h-11"
 							onClick={() => {
-								setPin({ next: "", again: "" });
+								setPin({ next: "", again: "", password: "" });
 								setPanel({ kind: "pin" });
 							}}
 						>
@@ -658,7 +658,7 @@ export function ShiftsScreen({
 				open={panel?.kind === "pin"}
 				onOpenChange={(o) => !o && close()}
 				title="Change PIN"
-				subtitle="The 4 digits you sign in with on the tablet"
+				subtitle="The 4 to 6 digits you switch in with on a shared tablet"
 				icon={KeyRoundIcon}
 				size="confirm"
 				footer={
@@ -668,9 +668,9 @@ export function ShiftsScreen({
 						</BigButton>
 						<BigButton
 							pending={pending}
-							disabled={pin.next.length !== 4 || pin.next !== pin.again}
+							disabled={pin.next.length < 4 || pin.next !== pin.again || !pin.password}
 							onClick={() =>
-								run(() => setMyPin(pin.next), "PIN changed", close)
+								run(() => setMyPin(pin.next, pin.password), "PIN saved", close)
 							}
 						>
 							Change PIN
@@ -685,7 +685,7 @@ export function ShiftsScreen({
 							type="password"
 							value={pin.next}
 							onChange={(v) =>
-								setPin({ ...pin, next: v.replace(/\D/g, "").slice(0, 4) })
+								setPin({ ...pin, next: v.replace(/\D/g, "").slice(0, 6) })
 							}
 						/>
 						<TextField
@@ -693,7 +693,7 @@ export function ShiftsScreen({
 							type="password"
 							value={pin.again}
 							onChange={(v) =>
-								setPin({ ...pin, again: v.replace(/\D/g, "").slice(0, 4) })
+								setPin({ ...pin, again: v.replace(/\D/g, "").slice(0, 6) })
 							}
 							error={
 								pin.again && pin.again !== pin.next
@@ -702,8 +702,14 @@ export function ShiftsScreen({
 							}
 						/>
 					</div>
+					<TextField
+						label="Your password"
+						type="password"
+						value={pin.password}
+						onChange={(v) => setPin({ ...pin, password: v })}
+					/>
 					<Note tone="info">
-						Use it to sign in on a shared tablet. Pick 4 digits only you know.
+						Use it to switch in on a shared tablet. Not 1111, 1234 or the end of your phone number.
 					</Note>
 				</div>
 			</Modal>

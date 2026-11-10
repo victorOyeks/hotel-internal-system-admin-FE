@@ -26,13 +26,14 @@ const schema = z.object({
 	password: z.string().min(1, "Enter your password"),
 });
 
-export function AuthForm({ from }: { from?: string }) {
+/** `email` fills the field (a "No PIN yet" tile on a shared device's lock screen opens sign-in with it). */
+export function AuthForm({ from, email = "" }: { from?: string; email?: string }) {
 	const router = useRouter();
 	const [show, setShow] = useState(false);
 	const [pending, startTransition] = useTransition();
 	const form = useForm({
 		resolver: zodResolver(schema),
-		defaultValues: { email: "", password: "" },
+		defaultValues: { email, password: "" },
 	});
 
 	function onSubmit(values: z.infer<typeof schema>) {

@@ -63,6 +63,8 @@ export async function refreshSessionRoute(request: NextRequest) {
 	const back = safeBack(from);
 	const toSignIn = async (reason: string) => {
 		await deleteSession();
+		// A shared device goes back to its lock screen, where the next person unlocks (docs/shared-devices.md).
+		if (jar.get("hms.device")?.value) return go(`/lock?reason=${encodeURIComponent(reason)}`);
 		return go(`/auth?reason=${encodeURIComponent(reason)}`);
 	};
 	const refreshToken = jar.get(COOKIES.refresh)?.value;

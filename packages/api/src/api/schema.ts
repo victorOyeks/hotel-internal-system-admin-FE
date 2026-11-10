@@ -1,6 +1,7 @@
 import { createSchema } from "@better-fetch/fetch";
 import { z } from "zod";
 import { adminRoutes, Deliveries } from "./routes-admin";
+import { deviceRoutes } from "./routes-devices";
 import { fnbRoutes } from "./routes-fnb";
 import { inventoryRoutes } from "./routes-inventory";
 import { lmRoutes } from "./routes-lm";
@@ -95,6 +96,8 @@ export const Me = z.object({
 	twoStepEnabled: z.boolean(),
 	hotelIds: z.array(z.string()),
 	createdAt: z.string(),
+	/** A PIN is set for shared devices (docs/shared-devices.md). */
+	hasPin: z.boolean().nullable().optional(),
 });
 
 export const InviteStatus = z.enum(["PENDING", "ACCEPTED", "EXPIRED", "NONE"]);
@@ -130,6 +133,8 @@ export const UserSummary = z.object({
 	statusChangedBy: z.string().nullable().optional(),
 	statusChangedAt: z.string().nullable().optional(),
 	jobTitle: z.string().nullable().optional(),
+	/** A PIN is set for shared devices; a manager can reset it. */
+	hasPin: z.boolean().nullable().optional(),
 });
 
 /** The temporary password and invite token are shown once; the invite link opens /accept-invite?token=. */
@@ -977,13 +982,10 @@ export const schema = createSchema({
 	...fnbRoutes,
 	...inventoryRoutes,
 	...lmRoutes,
+	...deviceRoutes,
 	// identity
 	"@post/identity/auth/sign-in": {
 		input: z.object({ email: z.string(), password: z.string() }),
-		output: envelope(AuthResponse),
-	},
-	"@post/identity/auth/pin-sign-in": {
-		input: z.object({ identifier: z.string(), pin: z.string() }),
 		output: envelope(AuthResponse),
 	},
 	"@post/identity/auth/refresh": {
@@ -1055,10 +1057,6 @@ export const schema = createSchema({
 	"@post/identity/users/:id/resend-invite": {
 		params: z.object({ id: z.string() }),
 		output: envelope(UserCreated),
-	},
-	"@post/identity/auth/set-pin": {
-		input: z.object({ pin: z.string() }),
-		output: envelope(z.null().optional()),
 	},
 	"@post/identity/users/:id/reset-password": {
 		params: z.object({ id: z.string() }),

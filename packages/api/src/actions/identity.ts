@@ -12,6 +12,7 @@ import type {
 } from "@hospio/api/api/schema";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
+import { clearPinPrompt } from "@hospio/api/device";
 import { BUSINESS_ID } from "@hospio/api/demo/fixtures/hotel";
 import { demoDelay } from "@hospio/api/demo/mode";
 
@@ -255,20 +256,25 @@ export async function resendInvite(
 	return { ok: true, data: data.data };
 }
 
-/** POST /identity/auth/set-pin: the signed-in person's own tablet PIN (4–6 digits). */
-export async function setMyPin(pin: string): Promise<ActionResult<null>> {
+/**
+ * POST /identity/auth/set-pin: the signed-in person's own PIN for shared devices (4–6 digits, not trivial). The password may
+ * be left out only for a first PIN just after signing in (the PIN prompt); changing a PIN needs it.
+ */
+export async function setMyPin(pin: string, password?: string): Promise<ActionResult<null>> {
 	if (!live("identity")) {
 		await demoDelay(400);
 		return { ok: true, data: null };
 	}
 	const { error } = await api("@post/identity/auth/set-pin", {
 		...(await withSession()),
-		body: { pin },
+		body: { pin, password: password ?? "" },
 	});
 	if (error)
 		return {
 			ok: false,
-			error: errorMessage(error, "The PIN could not be changed"),
+			error: errorMessage(error, "The PIN could not be saved"),
 		};
+	await clearPinPrompt();
+	revalidatePath("/shared/profile");
 	return { ok: true, data: null };
 }
