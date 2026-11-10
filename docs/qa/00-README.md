@@ -2,6 +2,11 @@
 
 Staging: https://web-staging.hospio360.com · admin: the admin portal on staging · password for every test account: `Hospio123!`
 
+**Scope.** The scripts set the order and the main flows; they are not the limit of the testing. Each area should
+also be covered beyond them: positive and negative scenarios and any edge cases you find, such as boundary
+values, empty or invalid input, wrong roles, another hotel's data, repeated or cancelled actions, and
+refreshing or going back in the middle of a flow.
+
 | # | Script | What it covers | Status |
 |---|---|---|---|
 | 01 | `01-onboarding.md` | Sign-up, phone code, the 4 setup steps, invite acceptance | Tested (29 defects closed) |
