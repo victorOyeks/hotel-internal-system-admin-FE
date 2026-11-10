@@ -12,6 +12,8 @@ import {
 	methodLabel,
 	type ReceiptDoc,
 	receiptText,
+	shownSubtotal,
+	taxIncluded,
 } from "@hospio/api/data/receipt-types";
 import { cn } from "@hospio/ui/utils";
 
