@@ -1,15 +1,10 @@
 import { OwnerBookings } from "@/components/roles/owner/bookings";
 import { data } from "@hospio/api/data";
-import { ownerHotels } from "@hospio/api/demo/fixtures/owner";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 04 Bookings, every hotel. Fixtures are Ikeja; a few are spread to other branches. */
+/** Hotel Owner · 04 Bookings: every hotel's bookings, each acted on at its own hotel (docs/owner-portal.md). */
 export default async function Page() {
-	const bookings = await data.bookings.list();
-	const spread = bookings.map((b, i) => {
-		const h = ownerHotels[i % 5 === 3 ? 1 : i % 7 === 5 ? 2 : i % 11 === 9 ? 3 : 0];
-		return { ...b, hotelId: h.hotelId, hotelName: h.name };
-	});
-	return <OwnerBookings bookings={spread} hotels={ownerHotels} />;
+	const { bookings, contexts } = await data.owner.bookings();
+	return <OwnerBookings bookings={bookings} contexts={contexts} />;
 }

@@ -9,10 +9,18 @@ import { updateMyBusiness } from "@hospio/api/actions/tenant";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { Business } from "@hospio/api/api/schema";
 import type { HotelSetupSection } from "@hospio/api/data/types";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
+import { requestOwnershipTransfer } from "@hospio/api/actions/owner";
+import type { TransferRequestRow } from "@hospio/api/data/types";
+import { StatusPill } from "@hospio/ui/shared/status-pill";
+import { fmtWhen } from "@hospio/ui/shared/format";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note } from "@hospio/ui/shared/detail-list";
-import { FieldRow, SelectField, TextField } from "@hospio/ui/shared/field";
+import {
+	FieldRow,
+	SelectField,
+	TextareaField,
+	TextField,
+} from "@hospio/ui/shared/field";
 import { ConfirmModal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs, useTabParam } from "@hospio/ui/shared/pill-tabs";
@@ -46,18 +54,21 @@ export function OwnerSettings({
 	hotelId,
 	taxes,
 	approvals,
+	transfer,
 }: {
 	business: Business | null;
 	hotelName: string;
 	hotelId?: string;
 	taxes?: HotelSetupSection;
 	approvals?: HotelSetupSection;
+	/** The latest ownership transfer request to H.M.S support, if any. */
+	transfer: TransferRequestRow | null;
 }) {
 	const [tab] = useTabParam<Tab>("company");
-	const [transfer, setTransfer] = useState(false);
-	const [confirm, setConfirm] = useState(false);
-	const [newOwner, setNewOwner] = useState("");
-	const demo = useNotConnectedAction();
+	const [panel, setPanel] = useState(false);
+	const waiting =
+		!!transfer &&
+		(transfer.status === "OPEN" || transfer.status === "IN_PROGRESS");
 
 	return (
 		<>
@@ -102,43 +113,103 @@ export function OwnerSettings({
 					className="border-danger/40"
 					bodyClassName="max-w-2xl gap-4 pt-3"
 				>
+					{transfer && (
+						<div className="flex flex-col gap-2 rounded-xl border border-line px-4 py-3">
+							<div className="flex items-center justify-between gap-3">
+								<p className="text-[13px] font-semibold text-ink">
+									{transfer.subject}
+								</p>
+								<StatusPill tone={waiting ? "info" : "grey"}>
+									{transfer.status === "OPEN"
+										? "With H.M.S support"
+										: transfer.status === "IN_PROGRESS"
+											? "Support is on it"
+											: "Closed"}
+								</StatusPill>
+							</div>
+							<p className="text-xs text-ink-3">
+								Sent {fmtWhen(transfer.createdAt)}
+								{transfer.resolvedAt
+									? ` · closed ${fmtWhen(transfer.resolvedAt)}`
+									: ""}
+							</p>
+							{transfer.resolution && (
+								<p className="text-[13px] text-ink-2">{transfer.resolution}</p>
+							)}
+						</div>
+					)}
 					<Note tone="danger">
-						You will lose owner access the moment they accept. Managers and
-						staff are not affected.
+						The new owner gets full control of every hotel. Managers and staff
+						are not affected.
 					</Note>
 					<Note tone="info">
-						Ownership transfers are handled by H.M.S support for now; this sends
-						them the request.
+						H.M.S support makes the transfer: this sends them your request, they
+						confirm with you and the new owner, then change the owner.
 					</Note>
 					<Button
 						variant="outline"
 						className={`${btn.dangerSoft} w-fit`}
-						onClick={() => setTransfer(true)}
+						onClick={() => setPanel(true)}
+						disabled={waiting}
+						title={waiting ? "A request is already with support" : undefined}
 					>
-						<ArrowRightLeftIcon className="size-4" /> Start a transfer
+						<ArrowRightLeftIcon className="size-4" />{" "}
+						{waiting ? "Request sent" : "Start a transfer"}
 					</Button>
 				</SectionCard>
 			)}
 
+			<TransferPanel
+				open={panel}
+				business={business}
+				onClose={() => setPanel(false)}
+			/>
+		</>
+	);
+}
+
+function TransferPanel({
+	open,
+	business,
+	onClose,
+}: {
+	open: boolean;
+	business: Business | null;
+	onClose: () => void;
+}) {
+	const router = useRouter();
+	const { run, pending } = useAction();
+	const [confirm, setConfirm] = useState(false);
+	const [form, setForm] = useState({
+		name: "",
+		email: "",
+		phone: "",
+		note: "",
+	});
+	const set = (k: keyof typeof form, v: string) =>
+		setForm((f) => ({ ...f, [k]: v }));
+	const emailOk = /^\S+@\S+\.\S+$/.test(form.email.trim());
+	const close = () => {
+		setConfirm(false);
+		onClose();
+	};
+	return (
+		<>
 			<SidePanel
-				open={transfer}
-				onOpenChange={setTransfer}
+				open={open}
+				onOpenChange={(o) => !o && close()}
 				title="Transfer ownership"
 				subtitle={`${business?.name ?? "Your business"} · ${business?.hotelCount ?? business?.hotels?.length ?? 0} hotels`}
 				icon={AlertTriangleIcon}
 				tone="danger"
 				footer={
 					<>
-						<Button
-							variant="outline"
-							className={btn.secondary}
-							onClick={() => setTransfer(false)}
-						>
+						<Button variant="outline" className={btn.secondary} onClick={close}>
 							Cancel
 						</Button>
 						<Button
 							className={btn.danger}
-							disabled={!newOwner}
+							disabled={!form.name.trim() || !emailOk}
 							onClick={() => setConfirm(true)}
 						>
 							Continue
@@ -148,18 +219,40 @@ export function OwnerSettings({
 			>
 				<div className="flex flex-col gap-4">
 					<TextField
-						label="New owner's email"
-						value={newOwner}
-						onChange={setNewOwner}
-						type="email"
-						placeholder="name@company.com"
+						label="New owner's full name"
+						value={form.name}
+						onChange={(v) => set("name", v)}
+						required
+					/>
+					<FieldRow>
+						<TextField
+							label="New owner's email"
+							value={form.email}
+							onChange={(v) => set("email", v)}
+							type="email"
+							placeholder="name@company.com"
+							required
+						/>
+						<TextField
+							label="Their phone"
+							value={form.phone}
+							onChange={(v) => set("phone", v)}
+							placeholder="+234 …"
+						/>
+					</FieldRow>
+					<TextareaField
+						label="Note for support"
+						value={form.note}
+						onChange={(v) => set("note", v)}
+						rows={3}
+						placeholder="Optional · e.g. the business was sold on 1 December"
 					/>
 					<WhatHappens
 						tone="danger"
 						items={[
-							"They get an email and must accept within 7 days",
-							"When they accept you become a view-only user",
-							"Hospio support is told and can reverse it within 24 hours",
+							"H.M.S support gets an urgent ticket with these details",
+							"They confirm with you and the new owner before changing anything",
+							"When the transfer is made, the new owner signs in and you lose owner access",
 						]}
 					/>
 				</div>
@@ -167,16 +260,27 @@ export function OwnerSettings({
 			<ConfirmModal
 				open={confirm}
 				onOpenChange={setConfirm}
-				title="Send the transfer?"
-				subtitle={newOwner}
+				title="Send the transfer request?"
+				subtitle={`${form.name.trim()} · ${form.email.trim()}`}
 				tone="danger"
-				confirmLabel="Send transfer request"
-				pending={demo.pending}
+				confirmLabel="Send to H.M.S support"
+				pending={pending}
 				onConfirm={() =>
-					demo.run("Transfer request sent to H.M.S support", () => {
-						setConfirm(false);
-						setTransfer(false);
-					})
+					run(
+						() =>
+							requestOwnershipTransfer({
+								newOwnerName: form.name,
+								newOwnerEmail: form.email,
+								newOwnerPhone: form.phone,
+								note: form.note,
+							}),
+						"Transfer request sent to H.M.S support",
+						() => {
+							setForm({ name: "", email: "", phone: "", note: "" });
+							close();
+							router.refresh();
+						},
+					)
 				}
 			/>
 		</>

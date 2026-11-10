@@ -2,11 +2,10 @@
 
 import { DownloadIcon, FileTextIcon } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
-import { ChoiceCards, SelectField, ToggleField } from "@hospio/ui/shared/field";
 import { nairaShort } from "@hospio/ui/shared/format";
 import { Modal } from "@hospio/ui/shared/modal";
+import { type CsvCell, csvName, downloadCsv } from "@hospio/ui/shared/csv";
 import { FilterSelect } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { toast } from "sonner";
@@ -111,24 +110,25 @@ export function MiniBars({
 	);
 }
 
-/** "Download report" modal shared by every owner screen: pick a format, a period, and send. */
+/**
+ * "Export" on every owner screen: what is on screen (the tab, the hotel filter and the search) as a CSV file the browser
+ * saves. Money is in naira without the sign so a spreadsheet can add it up. PDF and Excel files are not made.
+ */
 export function DownloadModal({
 	open,
 	onOpenChange,
-	title = "Download report",
+	title = "Download",
 	what,
-	periods = ["This month", "Last month", "This quarter", "Year to date"],
+	rows,
 }: {
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	title?: string;
 	what: string;
-	periods?: string[];
+	/** Header first, then one array per row. Called when the person downloads. */
+	rows: () => CsvCell[][];
 }) {
-	const [format, setFormat] = useState<"PDF" | "EXCEL" | "CSV">("PDF");
-	const [period, setPeriod] = useState(periods[0]);
-	const [email, setEmail] = useState(false);
-	const pending = false;
+	const count = open ? Math.max(0, rows().length - 1) : 0;
 	return (
 		<Modal
 			open={open}
@@ -137,7 +137,7 @@ export function DownloadModal({
 			subtitle={what}
 			icon={FileTextIcon}
 			size="confirm"
-			footerInfo="Not connected yet · nothing is downloaded or emailed"
+			footerInfo="A CSV file opens in Excel, Numbers or Google Sheets"
 			footer={
 				<>
 					<Button
@@ -149,45 +149,23 @@ export function DownloadModal({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={pending}
+						disabled={count === 0}
 						onClick={() => {
-							toast.info(
-								`Downloading ${what} is not connected yet · nothing was downloaded`,
-							);
+							downloadCsv(csvName(what), rows());
+							toast.success(`${what} downloaded`);
 							onOpenChange(false);
 						}}
 					>
-						<DownloadIcon className="size-4" /> Download{" "}
-						{format === "EXCEL" ? "Excel" : format}
+						<DownloadIcon className="size-4" /> Download CSV
 					</Button>
 				</>
 			}
 		>
-			<div className="flex flex-col gap-4">
-				<ChoiceCards
-					label="Format"
-					value={format}
-					onChange={setFormat}
-					columns={3}
-					options={[
-						{ value: "PDF", label: "PDF", hint: "To read or print" },
-						{ value: "EXCEL", label: "Excel", hint: "To work with" },
-						{ value: "CSV", label: "CSV", hint: "For other tools" },
-					]}
-				/>
-				<SelectField
-					label="Period"
-					value={period}
-					onChange={setPeriod}
-					options={periods}
-				/>
-				<ToggleField
-					label="Email me a copy"
-					hint="godwin@royalsuites.ng"
-					checked={email}
-					onChange={setEmail}
-				/>
-			</div>
+			<p className="text-[13px] text-ink-2">
+				{count === 0
+					? "There is nothing to download with these filters."
+					: `${count === 1 ? "1 row" : `${count.toLocaleString("en-NG")} rows`}, as you see them on screen (tab, hotel and search).`}
+			</p>
 		</Modal>
 	);
 }

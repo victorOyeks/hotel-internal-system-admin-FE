@@ -11,7 +11,13 @@ import {
 	WalletIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { decideAsOwner } from "@hospio/api/actions/owner";
+import { useAction } from "@hospio/api/actions/use-action";
+import { billingCycleLabel } from "@hospio/api/data/mappers/organizations";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
+import { TextareaField } from "@hospio/ui/shared/field";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -41,6 +47,8 @@ import { btn } from "@hospio/ui/shared/ui";
 import { useNotConnectedAction } from "@hospio/api/demo/actions";
 import type {
 	ApprovalRow,
+	AtHotel,
+	CreditRequestRow,
 	ExpenseRow,
 	OrganizationRow,
 	OwnerHotelRow,
@@ -108,7 +116,9 @@ export type FinancialsProps = {
 	transactions: TransactionRow[];
 	expenses: ExpenseRow[];
 	payroll: PayrollRow[];
-	organizations: OrganizationRow[];
+	organizations: (OrganizationRow & AtHotel)[];
+	/** Credit limits managers asked for above the owner's threshold (approvals of kind CREDIT_LIMIT). */
+	creditRequests: CreditRequestRow[];
 	approvals: ApprovalRow[];
 	/** What the restaurant and bar sold today; sales, not money received. */
 	outletSales?: OutletSalesDayRow | null;
@@ -118,7 +128,6 @@ export function OwnerFinancials(props: FinancialsProps) {
 	const { hotels, trend, demo } = props;
 	const [tab] = useTabParam<Tab>("overview");
 	const [download, setDownload] = useState(false);
-	const [period, setPeriod] = useState("month");
 	const revenue = hotels.reduce((s, h) => s + h.revenueMonth, 0);
 	const expenses = hotels.reduce((s, h) => s + h.expensesMonth, 0);
 	const last = hotels.reduce((s, h) => s + h.revenueLastMonth, 0);
@@ -146,18 +155,6 @@ export function OwnerFinancials(props: FinancialsProps) {
 							{ key: "expenses", label: "Expenses & budgets" },
 							{ key: "payroll", label: "Payroll" },
 							{ key: "organizations", label: "Organizations" },
-						]}
-					/>
-				}
-				right={
-					<FilterSelect
-						value={period}
-						onChange={setPeriod}
-						all="This month"
-						options={[
-							{ value: "last", label: "Last month" },
-							{ value: "quarter", label: "Quarter" },
-							{ value: "ytd", label: "Year to date" },
 						]}
 					/>
 				}
@@ -447,15 +444,7 @@ export function OwnerFinancials(props: FinancialsProps) {
 					)}
 				</>
 			)}
-			{tab === "pnl" &&
-				(demo ? (
-					<PnlTable hotels={hotels} />
-				) : (
-					<NotConnected
-						title="Branch P&L"
-						what="The full branch P&L with payroll"
-					/>
-				))}
+			{tab === "pnl" && <PnlTable hotels={hotels} payroll={demo} />}
 			{tab === "transactions" && (
 				<TransactionsTab
 					transactions={props.transactions}
@@ -481,20 +470,37 @@ export function OwnerFinancials(props: FinancialsProps) {
 				) : (
 					<NotConnected title="Payroll" what="Payroll runs and payslips" />
 				))}
-			{tab === "organizations" &&
-				(demo ? (
-					<OrganizationsTab organizations={props.organizations} />
-				) : (
-					<NotConnected
-						title="Organizations"
-						what="Organization credit and invoices"
-					/>
-				))}
+			{tab === "organizations" && (
+				<OrganizationsTab
+					organizations={props.organizations}
+					requests={props.creditRequests}
+					hotels={hotels.map((h) => ({ hotelId: h.hotelId, name: h.name }))}
+				/>
+			)}
 
 			<DownloadModal
 				open={download}
 				onOpenChange={setDownload}
-				what={`Financials · ${humanize(tab)}`}
+				what="Financials · every hotel, month to date"
+				rows={() => [
+					[
+						"Hotel",
+						"Revenue this month (NGN)",
+						"Expenses this month (NGN)",
+						"Net (NGN)",
+						"Revenue last month (NGN)",
+						"Occupancy %",
+					],
+					...hotels.map((h) => [
+						h.name,
+						h.revenueMonth,
+						h.expensesMonth,
+						h.revenueMonth - h.expensesMonth,
+						h.revenueLastMonth,
+						h.occupancy,
+					]),
+					["All hotels", revenue, expenses, revenue - expenses, last, ""],
+				]}
 			/>
 		</>
 	);
@@ -503,9 +509,12 @@ export function OwnerFinancials(props: FinancialsProps) {
 function PnlTable({
 	hotels,
 	compact = false,
+	payroll = true,
 }: {
 	hotels: OwnerHotelFinance[];
 	compact?: boolean;
+	/** Payroll is not connected live: the column is left out rather than shown as 0. */
+	payroll?: boolean;
 }) {
 	const sorted = [...hotels].sort(
 		(a, b) =>
@@ -516,7 +525,7 @@ function PnlTable({
 	return (
 		<SectionCard
 			title={compact ? "Profit by branch" : "Branch P&L"}
-			subtitle="This month · sorted by net profit · click a branch for its full P&L"
+			subtitle={`This month · sorted by net profit${payroll ? "" : " · payroll is not connected yet"} · click a branch for its details`}
 			flush
 			action={
 				compact
@@ -530,7 +539,7 @@ function PnlTable({
 						<th className="px-5 py-[10px]">Branch</th>
 						<th className="py-[10px]">Revenue</th>
 						<th className="py-[10px]">Expenses</th>
-						{!compact && <th className="py-[10px]">Payroll</th>}
+						{!compact && payroll && <th className="py-[10px]">Payroll</th>}
 						<th className="py-[10px]">Net profit</th>
 						<th className="py-[10px]">Margin</th>
 						<th className="py-[10px]">vs last month</th>
@@ -575,7 +584,7 @@ function PnlTable({
 								</td>
 								<td className="text-ink">{nairaShort(h.revenueMonth)}</td>
 								<td className="text-ink-2">{nairaShort(h.expensesMonth)}</td>
-								{!compact && (
+								{!compact && payroll && (
 									<td className="text-ink-2">{nairaShort(h.payrollMonth)}</td>
 								)}
 								<td
@@ -610,7 +619,7 @@ function PnlTable({
 						<td className="px-5">All branches</td>
 						<td>{nairaShort(tot("revenueMonth"))}</td>
 						<td>{nairaShort(tot("expensesMonth"))}</td>
-						{!compact && <td>{nairaShort(tot("payrollMonth"))}</td>}
+						{!compact && payroll && <td>{nairaShort(tot("payrollMonth"))}</td>}
 						<td>{nairaShort(tot("revenueMonth") - tot("expensesMonth"))}</td>
 						<td>
 							{tot("revenueMonth") > 0
@@ -1086,28 +1095,79 @@ function PayrollTab({
 	);
 }
 
+/**
+ * Organizations at every hotel, and the credit limits managers asked for above the owner's threshold: the owner
+ * approves (the new limit applies) or declines (the old one stays) through approvals (docs/owner-portal.md).
+ */
 function OrganizationsTab({
 	organizations,
+	requests,
+	hotels,
 }: {
-	organizations: OrganizationRow[];
+	organizations: (OrganizationRow & AtHotel)[];
+	requests: CreditRequestRow[];
+	hotels: { hotelId: string; name: string }[];
 }) {
-	const [approve, setApprove] = useState<OrganizationRow | null>(null);
-	const { run, pending } = useNotConnectedAction();
-	const cols: ColumnDef<OrganizationRow, unknown>[] = [
+	const router = useRouter();
+	const [hotel, setHotel] = useState("");
+	const [review, setReview] = useState<CreditRequestRow | null>(null);
+	const [decline, setDecline] = useState(false);
+	const [note, setNote] = useState("");
+	const { run, pending } = useAction();
+	const waiting = requests.filter(
+		(r) => r.status === "PENDING" && (!hotel || r.hotelId === hotel),
+	);
+	const answered = requests
+		.filter((r) => r.status !== "PENDING" && (!hotel || r.hotelId === hotel))
+		.slice(0, 5);
+	const rows = organizations.filter((o) => !hotel || o.hotelId === hotel);
+	const close = () => {
+		setReview(null);
+		setDecline(false);
+		setNote("");
+	};
+	const decide = (r: CreditRequestRow, decision: "APPROVED" | "DECLINED") =>
+		run(
+			() =>
+				withDeliveries(
+					decideAsOwner(r.approvalId, decision, note.trim() || undefined),
+					`Credit limit · ${r.organizationName}`,
+				),
+			decision === "APPROVED"
+				? `${r.organizationName}'s credit limit is now ${naira(r.requestedLimit)}`
+				: `Declined · ${r.organizationName} keeps ${naira(r.currentLimit ?? 0)}`,
+			() => {
+				close();
+				router.refresh();
+			},
+		);
+	const cols: ColumnDef<OrganizationRow & AtHotel, unknown>[] = [
 		{
 			accessorKey: "name",
 			header: "Organization",
 			cell: ({ row }) => (
 				<TwoLine
 					primary={row.original.name}
-					secondary={`${row.original.contactName} · ${row.original.staffCount} staff`}
+					secondary={`${row.original.contactName || "No contact"} · ${plural(row.original.staffCount, "staff member")}`}
 				/>
 			),
 		},
+		{ accessorKey: "hotelName", header: "Hotel" },
 		{
 			accessorKey: "creditLimit",
 			header: "Credit limit",
-			cell: ({ row }) => naira(row.original.creditLimit),
+			cell: ({ row }) => (
+				<TwoLine
+					primary={naira(row.original.creditLimit)}
+					secondary={
+						row.original.requestedCreditLimit != null ? (
+							<span className="text-warning">
+								{naira(row.original.requestedCreditLimit)} waiting for you
+							</span>
+						) : undefined
+					}
+				/>
+			),
 		},
 		{
 			accessorKey: "outstanding",
@@ -1116,7 +1176,8 @@ function OrganizationsTab({
 				<span
 					className={cn(
 						"font-semibold",
-						row.original.outstanding > row.original.creditLimit * 0.8
+						row.original.creditLimit > 0 &&
+							row.original.outstanding > row.original.creditLimit * 0.8
 							? "text-danger"
 							: "text-ink",
 					)}
@@ -1130,7 +1191,7 @@ function OrganizationsTab({
 			accessorKey: "termsDays",
 			header: "Terms",
 			cell: ({ row }) =>
-				`${row.original.billingCycle} · ${row.original.termsDays} days`,
+				`${billingCycleLabel(row.original.billingCycle)} · ${row.original.termsDays} days`,
 		},
 		{
 			accessorKey: "status",
@@ -1139,67 +1200,150 @@ function OrganizationsTab({
 				<StatusPill
 					tone={row.original.status === "ACTIVE" ? "success" : "warning"}
 				>
-					{humanize(row.original.status)}
+					{row.original.status === "ACTIVE" ? "Active" : "On hold"}
 				</StatusPill>
 			),
 		},
 	];
 	return (
 		<>
+			<Toolbar
+				left={<HotelFilter hotels={hotels} value={hotel} onChange={setHotel} />}
+			/>
 			<SectionCard
 				title="Needs your approval"
-				subtitle="New credit agreements and limit changes"
-				count={1}
-				bodyClassName="pt-2"
+				subtitle="Credit limits a manager asked for above what they can set"
+				count={waiting.length}
+				bodyClassName="gap-2 pt-2"
 			>
-				<div className="flex items-center gap-4 rounded-xl border border-line px-4 py-3">
-					<HandshakeIcon className="size-5 text-brand" />
-					<div className="min-w-0 flex-1">
-						<p className="text-[13px] font-semibold text-ink">
-							Shell Nigeria · raise credit limit to ₦15,000,000
-						</p>
-						<p className="text-xs text-ink-3">
-							Asked by Tunde Bakare · Simpas Ikeja · outstanding ₦3.2M
-						</p>
+				{waiting.length === 0 ? (
+					<p className="text-[13px] text-ink-3">Nothing is waiting.</p>
+				) : (
+					waiting.map((r) => (
+						<div
+							key={r.approvalId}
+							className="flex flex-wrap items-center gap-4 rounded-xl border border-line px-4 py-3"
+						>
+							<HandshakeIcon className="size-5 text-brand" />
+							<div className="min-w-0 flex-1">
+								<p className="text-[13px] font-semibold text-ink">
+									{r.organizationName} · credit limit{" "}
+									{r.currentLimit != null
+										? `${naira(r.currentLimit)} → `
+										: "to "}
+									{naira(r.requestedLimit)}
+								</p>
+								<p className="text-xs text-ink-3">
+									Asked by {r.requesterName} · {r.hotelName} ·{" "}
+									{fmtWhen(r.createdAt)}
+									{r.outstanding != null
+										? ` · outstanding ${naira(r.outstanding)}`
+										: ""}
+								</p>
+							</div>
+							<Button className={btn.primary} onClick={() => setReview(r)}>
+								Review
+							</Button>
+						</div>
+					))
+				)}
+				{answered.length > 0 && (
+					<div className="mt-2 flex flex-col gap-1 border-t border-line pt-3">
+						{answered.map((r) => (
+							<p key={r.approvalId} className="text-xs text-ink-3">
+								{r.organizationName} · {naira(r.requestedLimit)} ·{" "}
+								{r.status === "APPROVED"
+									? "approved"
+									: r.status === "DECLINED"
+										? "declined"
+										: "question asked"}
+								{r.decidedBy ? ` by ${r.decidedBy}` : ""}
+							</p>
+						))}
 					</div>
-					<Button
-						className={btn.primary}
-						onClick={() => setApprove(organizations[1])}
-					>
-						Review
-					</Button>
-				</div>
+				)}
 			</SectionCard>
-			<DataTable columns={cols} data={organizations} />
+			<DataTable
+				columns={cols}
+				data={rows}
+				emptyTitle="No organizations here"
+				emptyHint="Managers add company accounts on their Organizations screen."
+			/>
 			<ConfirmModal
-				open={!!approve}
-				onOpenChange={(o) => !o && setApprove(null)}
-				title="Approve new credit limit?"
-				subtitle={`${approve?.name} · ₦12,000,000 → ₦15,000,000`}
-				confirmLabel="Approve limit"
+				open={!!review && !decline}
+				onOpenChange={(o) => !o && close()}
+				title="Approve the new credit limit?"
+				subtitle={
+					review
+						? `${review.organizationName} · ${review.hotelName}`
+						: undefined
+				}
+				confirmLabel={
+					review ? `Approve ${naira(review.requestedLimit)}` : "Approve"
+				}
 				pending={pending}
-				onConfirm={() => run("Credit limit approved", () => setApprove(null))}
+				onConfirm={() => review && decide(review, "APPROVED")}
 				alternative={{
-					label: "Decline and keep ₦12,000,000",
-					onClick: () => run("Request declined", () => setApprove(null)),
+					label:
+						review?.currentLimit != null
+							? `Decline and keep ${naira(review.currentLimit)}`
+							: "Decline",
+					onClick: () => setDecline(true),
 				}}
 			>
-				<div className="flex flex-col gap-3">
-					<TotalsList
-						rows={[
-							{ label: "Paid on time · last 6 months", value: "5 of 6" },
-							{ label: "Average monthly bill", value: naira(3100000) },
-							{
-								label: "Outstanding now",
-								value: naira(approve?.outstanding ?? 0),
-								strong: true,
-							},
-						]}
-					/>
-					<Note tone="info">
-						Organization stays over the daily cap still need the manager's OK.
-					</Note>
-				</div>
+				{review && (
+					<div className="flex flex-col gap-3">
+						<TotalsList
+							rows={[
+								{
+									label: "Limit now",
+									value:
+										review.currentLimit != null
+											? naira(review.currentLimit)
+											: "—",
+								},
+								{
+									label: "Asked for",
+									value: naira(review.requestedLimit),
+									strong: true,
+								},
+								{
+									label: "Outstanding now",
+									value:
+										review.outstanding != null
+											? naira(review.outstanding)
+											: "—",
+								},
+							]}
+						/>
+						<Note tone="info">
+							Approved, the new limit applies in a moment and{" "}
+							{review.requesterName} is told.
+						</Note>
+					</div>
+				)}
+			</ConfirmModal>
+			<ConfirmModal
+				open={!!review && decline}
+				onOpenChange={(o) => !o && close()}
+				tone="danger"
+				title="Decline the new credit limit?"
+				subtitle={
+					review
+						? `${review.organizationName} keeps ${naira(review.currentLimit ?? 0)}`
+						: undefined
+				}
+				confirmLabel="Decline"
+				pending={pending}
+				onConfirm={() => review && decide(review, "DECLINED")}
+			>
+				<TextareaField
+					label="Why (they see this)"
+					value={note}
+					onChange={setNote}
+					rows={3}
+					placeholder="Optional"
+				/>
 			</ConfirmModal>
 		</>
 	);

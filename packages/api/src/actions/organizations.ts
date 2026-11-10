@@ -63,7 +63,7 @@ function organizationBody(input: OrganizationInput) {
 	};
 }
 
-/** Manager. A credit limit above the owner's threshold is refused for a manager ("… is set by the owner"). */
+/** Manager. A credit limit above the owner's threshold is saved as a request to the owner (requestedCreditLimit). */
 export async function createOrganization(
 	input: OrganizationInput,
 	fallback: OrganizationRow,

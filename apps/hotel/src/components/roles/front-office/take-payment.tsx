@@ -23,7 +23,7 @@ import { Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { recordPayment } from "@hospio/api/actions/payment";
+import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import type {
 	FolioRow,
 	PaymentMethod,
@@ -126,6 +126,7 @@ export function usePaymentSteps(
 	}: PaymentStepsOptions,
 	autoStart = true,
 ) {
+	const { recordPayment } = useHotelActions();
 	const [tgt, setTgt] = useState<PaymentTarget | null>(target ?? null);
 	const [step, setStep] = useState<Step>(
 		autoStart ? (target ? "method" : "who") : "idle",

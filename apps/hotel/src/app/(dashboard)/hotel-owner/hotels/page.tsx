@@ -4,10 +4,13 @@ import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 02 Hotels: live on tenant-service when it is on; finance figures wait for finance-service. */
+/**
+ * Hotel Owner · 02 Hotels: tenant-service's hotels with this month's money (finance), staff on shift (workforce),
+ * open repairs (maintenance) and the last action (activity), per hotel.
+ */
 export default async function Page() {
 	const [hotels, business, user] = await Promise.all([
-		data.hotels.list(),
+		data.owner.hotels(),
 		data.business.mine(),
 		getUser(),
 	]);

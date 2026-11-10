@@ -1,163 +1,804 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { CalendarIcon, IdCardIcon, KeyRoundIcon, MessageSquareIcon, PauseCircleIcon, PencilIcon, PlusIcon, Trash2Icon, UserRoundIcon, UsersIcon } from "lucide-react";
+import {
+	KeyRoundIcon,
+	MailIcon,
+	MessageSquareIcon,
+	PauseCircleIcon,
+	PencilIcon,
+	PlayCircleIcon,
+	PlusIcon,
+	ShieldCheckIcon,
+	Trash2Icon,
+	UserPlusIcon,
+	UserRoundIcon,
+	UsersIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { parseAsString, useQueryState } from "nuqs";
 import { useMemo, useState } from "react";
+import { createUser } from "@hospio/api/actions/identity";
+import { removeFromHotel, updateStaffDetails } from "@hospio/api/actions/owner";
+import { useAction } from "@hospio/api/actions/use-action";
+import type { UserCreated } from "@hospio/api/api/schema";
+import type { OwnerStaffRow } from "@hospio/api/data/types";
+import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable } from "@hospio/ui/shared/data-table";
+import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { AvatarName, DetailList, Note } from "@hospio/ui/shared/detail-list";
-import { FieldRow, SelectField, TextField, TextareaField, ToggleField } from "@hospio/ui/shared/field";
-import { fmtLongDate, fmtWhen, humanize, plural } from "@hospio/ui/shared/format";
+import {
+	ChoiceCards,
+	FieldRow,
+	SelectField,
+	TextField,
+} from "@hospio/ui/shared/field";
+import { fmtLongDate, fmtWhen, plural } from "@hospio/ui/shared/format";
+import { InviteCard } from "@hospio/ui/shared/invite-card";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
-import { ConfirmModal, Modal } from "@hospio/ui/shared/modal";
+import { ConfirmModal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { RowActions } from "@hospio/ui/shared/row-actions";
-import { PanelSection, SidePanel, WhatHappens } from "@hospio/ui/shared/side-panel";
+import {
+	PanelSection,
+	SidePanel,
+	WhatHappens,
+} from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import { useNotConnectedAction } from "@hospio/api/demo/actions";
-import type { StaffRow } from "@hospio/api/data/types";
-import type { OwnerHotelFinance } from "@hospio/api/demo/fixtures/owner";
-import { roleLabels, isHotelRole } from "@hospio/api/roles";
-import { DownloadModal, HotelFilter, useParam } from "./common";
+import { ResetPasswordModal, ROLE_OPTIONS } from "../manager/staff/panels";
+import {
+	EditDetailsModal,
+	MessageStaffModal,
+	PauseModal,
+	pauseLastDay,
+	ReinstateModal,
+	SuspendStaffModal,
+} from "../shared-staff/staff-account";
+import { DownloadModal, HotelFilter } from "./common";
 
-export type OwnerStaff = StaffRow & { hotelName: string };
+type Hotel = { hotelId: string; name: string };
+type Tab = "all" | "active" | "held" | "invited";
+type ModalKind =
+	| "edit"
+	| "pause"
+	| "suspend"
+	| "reinstate"
+	| "remove"
+	| "reset"
+	| "message";
 
-const statusPill: Record<StaffRow["status"], { label: string; tone: "success" | "warning" | "danger" | "info" }> = {
-	ACTIVE: { label: "Active", tone: "success" },
-	PAUSED: { label: "Paused", tone: "warning" },
-	SUSPENDED: { label: "Suspended", tone: "danger" },
-	ON_LEAVE: { label: "On leave", tone: "info" },
-};
+const roleName = (role: string) =>
+	isHotelRole(role) ? roleLabels[role] : role.replace(/_/g, " ").toLowerCase();
+const levelName = {
+	FULL: "Full",
+	EDIT: "Can edit",
+	VIEW: "View only",
+} as const;
+const invited = (s: OwnerStaffRow) =>
+	s.inviteStatus === "PENDING" || s.inviteStatus === "EXPIRED";
 
-export function OwnerStaffScreen({ staff, hotels }: { staff: OwnerStaff[]; hotels: OwnerHotelFinance[] }) {
-	const [hotel, setHotel] = useParam("hotel");
-	const [open, setOpen] = useParam("open");
-	const [newOpen, setNewOpen] = useParam("new");
-	const [tab, setTab] = useState<"all" | "active" | "leave" | "paused">("all");
+/** One status for the row: invited, suspended, paused (until a day), or active. */
+function statusOf(s: OwnerStaffRow): {
+	label: string;
+	tone: "success" | "warning" | "danger" | "info" | "grey";
+} {
+	if (s.status === "SUSPENDED") return { label: "Suspended", tone: "danger" };
+	if (s.status === "PAUSED") {
+		const last = pauseLastDay(s.pausedUntil);
+		return {
+			label: last ? `Paused until ${fmtLongDate(last)}` : "Paused",
+			tone: "warning",
+		};
+	}
+	if (invited(s))
+		return {
+			label: s.inviteStatus === "EXPIRED" ? "Invite expired" : "Invited",
+			tone: "info",
+		};
+	return { label: "Active", tone: "success" };
+}
+
+/**
+ * Hotel Owner · Staff: everyone with a role at each hotel, one row per person and hotel, live from identity. Add with an
+ * invite, edit details, pause for some days, suspend and reinstate, a new temporary password (email and SMS), remove
+ * from the hotel and message them. Roles and levels are changed on Roles & permissions.
+ */
+export function OwnerStaffScreen({
+	staff,
+	hotels,
+	businessName,
+	ownerName,
+}: {
+	staff: OwnerStaffRow[];
+	hotels: Hotel[];
+	businessName: string;
+	ownerName: string;
+}) {
+	const [hotel, setHotel] = useQueryState("hotel", parseAsString);
+	const [open, setOpen] = useQueryState("open", parseAsString);
+	const [isNew, setIsNew] = useQueryState("new", parseAsString);
+	const [tab, setTab] = useState<Tab>("all");
 	const [search, setSearch] = useState("");
 	const [exportOpen, setExportOpen] = useState(false);
-	const [modal, setModal] = useState<{ kind: "suspend" | "remove" | "reset" | "shift" | "message" | "edit"; s: OwnerStaff } | null>(null);
-	const { run, pending } = useNotConnectedAction();
+	const [modal, setModal] = useState<{
+		kind: ModalKind;
+		s: OwnerStaffRow;
+	} | null>(null);
 
-	const scoped = useMemo(() => staff.filter((s) => !hotel || s.hotelId === hotel), [staff, hotel]);
-	const rows = scoped.filter((s) => tab === "all" || (tab === "active" && s.status === "ACTIVE") || (tab === "leave" && s.status === "ON_LEAVE") || (tab === "paused" && (s.status === "PAUSED" || s.status === "SUSPENDED")));
-	const selected = staff.find((s) => s.id === open) ?? null;
+	const scoped = useMemo(
+		() => staff.filter((s) => !hotel || s.hotelId === hotel),
+		[staff, hotel],
+	);
+	const held = (s: OwnerStaffRow) =>
+		s.status === "PAUSED" || s.status === "SUSPENDED";
+	const inTab = (s: OwnerStaffRow, t: Tab) =>
+		t === "all" ||
+		(t === "active" && !held(s) && !invited(s)) ||
+		(t === "held" && held(s)) ||
+		(t === "invited" && invited(s) && !held(s));
+	const rows = scoped.filter((s) => inTab(s, tab));
+	const selected = staff.find((s) => s.key === open) ?? null;
+	const people = new Set(scoped.map((s) => s.userId ?? s.id)).size;
+	const hotelName = hotel
+		? (hotels.find((h) => h.hotelId === hotel)?.name ?? "this hotel")
+		: null;
+	const show = (kind: ModalKind, s: OwnerStaffRow) => setModal({ kind, s });
 
-	const actions = (s: OwnerStaff) => [
-		{ label: "View profile", icon: UserRoundIcon, onClick: () => setOpen(s.id) },
-		{ label: "Edit", icon: PencilIcon, onClick: () => setModal({ kind: "edit", s }) },
-		{ label: "Change shift", icon: CalendarIcon, onClick: () => setModal({ kind: "shift", s }) },
-		{ label: "Message", icon: MessageSquareIcon, onClick: () => setModal({ kind: "message", s }) },
-		{ label: "Reset password", icon: KeyRoundIcon, onClick: () => setModal({ kind: "reset", s }) },
-		{ label: s.status === "SUSPENDED" ? "Lift suspension" : "Suspend", icon: PauseCircleIcon, tone: "danger" as const, separatorBefore: true, onClick: () => (s.status === "SUSPENDED" ? run(`${s.fullName} reinstated`) : setModal({ kind: "suspend", s })) },
-		{ label: "Remove from hotel", icon: Trash2Icon, tone: "danger" as const, onClick: () => setModal({ kind: "remove", s }) },
+	const actions = (s: OwnerStaffRow) => [
+		{
+			label: "View profile",
+			icon: UserRoundIcon,
+			onClick: () => void setOpen(s.key),
+		},
+		{ label: "Edit details", icon: PencilIcon, onClick: () => show("edit", s) },
+		{
+			label: "Message",
+			icon: MessageSquareIcon,
+			onClick: () => show("message", s),
+		},
+		{
+			label: "New temporary password",
+			icon: KeyRoundIcon,
+			onClick: () => show("reset", s),
+		},
+		...(held(s)
+			? [
+					{
+						label: s.status === "SUSPENDED" ? "Reinstate" : "End the pause",
+						icon: PlayCircleIcon,
+						onClick: () => show("reinstate", s),
+					},
+				]
+			: [
+					{
+						label: "Pause for 7 days",
+						icon: PauseCircleIcon,
+						separatorBefore: true,
+						onClick: () => show("pause", s),
+					},
+					{
+						label: "Suspend",
+						icon: PauseCircleIcon,
+						tone: "danger" as const,
+						onClick: () => show("suspend", s),
+					},
+				]),
+		{
+			label: `Remove from ${s.hotelName}`,
+			icon: Trash2Icon,
+			tone: "danger" as const,
+			separatorBefore: held(s),
+			onClick: () => show("remove", s),
+		},
 	];
 
-	const columns: ColumnDef<OwnerStaff, unknown>[] = [
-		{ accessorKey: "fullName", header: "Name", cell: ({ row }) => <AvatarName name={row.original.fullName} secondary={row.original.jobTitle} size="sm" /> },
+	const columns: ColumnDef<OwnerStaffRow, unknown>[] = [
+		{
+			accessorKey: "fullName",
+			header: "Name",
+			cell: ({ row }) => (
+				<AvatarName
+					name={row.original.fullName}
+					secondary={row.original.jobTitle}
+					size="sm"
+				/>
+			),
+		},
 		{ accessorKey: "hotelName", header: "Hotel" },
 		{ accessorKey: "department", header: "Department" },
-		{ accessorKey: "role", header: "Role", cell: ({ row }) => (isHotelRole(row.original.role) ? roleLabels[row.original.role] : row.original.role) },
-		{ accessorKey: "shift", header: "Shift" },
-		{ accessorKey: "status", header: "Status", cell: ({ row }) => <StatusPill tone={statusPill[row.original.status].tone}>{statusPill[row.original.status].label}</StatusPill> },
-		{ accessorKey: "lastSignIn", header: "Last sign-in", cell: ({ row }) => fmtWhen(row.original.lastSignIn) },
-		{ id: "actions", header: "", cell: ({ row }) => <RowActions actions={actions(row.original)} /> },
+		{
+			accessorKey: "role",
+			header: "Role",
+			cell: ({ row }) =>
+				`${roleName(row.original.role)} · ${levelName[row.original.level]}`,
+		},
+		{
+			id: "status",
+			header: "Status",
+			accessorFn: (s) => statusOf(s).label,
+			cell: ({ row }) => {
+				const st = statusOf(row.original);
+				return <StatusPill tone={st.tone}>{st.label}</StatusPill>;
+			},
+		},
+		{
+			accessorKey: "lastSignIn",
+			header: "Last sign-in",
+			cell: ({ row }) =>
+				row.original.lastSignIn ? fmtWhen(row.original.lastSignIn) : "Never",
+		},
+		{
+			id: "actions",
+			header: "",
+			enableSorting: false,
+			cell: ({ row }) => <RowActions actions={actions(row.original)} />,
+		},
 	];
 
 	return (
 		<>
-			<PageHeader title="Staff" subtitle={`${plural(scoped.length, "person", "people")} across ${hotel ? hotels.find((h) => h.hotelId === hotel)?.name : plural(hotels.length, "hotel")}`}>
+			<PageHeader
+				title="Staff"
+				subtitle={`${plural(people, "person", "people")} across ${hotelName ?? plural(hotels.length, "hotel")}`}
+			>
 				<ExportButton onClick={() => setExportOpen(true)} />
-				<Button className={btn.primary} onClick={() => setNewOpen("1")}><PlusIcon className="size-4" /> Add staff</Button>
+				<Button
+					className={btn.primary}
+					onClick={() => void setIsNew("1")}
+					disabled={hotels.length === 0}
+				>
+					<PlusIcon className="size-4" /> Add staff
+				</Button>
 			</PageHeader>
 			<div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-				<KpiCard label="Total staff" value={scoped.length} icon={UsersIcon} hint={`${scoped.filter((s) => s.status === "ACTIVE").length} active`} />
-				<KpiCard label="On shift now" value={hotels.filter((h) => !hotel || h.hotelId === hotel).reduce((s, h) => s + h.onShift, 0)} icon={IdCardIcon} hint={`of ${hotels.filter((h) => !hotel || h.hotelId === hotel).reduce((s, h) => s + h.scheduled, 0)} scheduled`} />
-				<KpiCard label="On leave" value={scoped.filter((s) => s.status === "ON_LEAVE").length} icon={CalendarIcon} hint="1 request waiting" />
-				<KpiCard label="Paused or suspended" value={scoped.filter((s) => s.status === "PAUSED" || s.status === "SUSPENDED").length} icon={PauseCircleIcon} />
+				<KpiCard
+					label="Total staff"
+					value={people}
+					icon={UsersIcon}
+					hint={`${plural(scoped.length, "role")} at ${hotelName ?? "your hotels"}`}
+				/>
+				<KpiCard
+					label="Active"
+					value={scoped.filter((s) => !held(s) && !invited(s)).length}
+					icon={ShieldCheckIcon}
+					hint="Signed in at least once"
+				/>
+				<KpiCard
+					label="Invite not accepted"
+					value={scoped.filter((s) => invited(s) && !held(s)).length}
+					icon={MailIcon}
+					hint="Resend from their profile"
+				/>
+				<KpiCard
+					label="Paused or suspended"
+					value={scoped.filter(held).length}
+					icon={PauseCircleIcon}
+					hint="Can't sign in"
+				/>
 			</div>
 			<Toolbar
-				left={<PillTabs tabs={[{ key: "all", label: "All", count: scoped.length }, { key: "active", label: "Active", count: scoped.filter((s) => s.status === "ACTIVE").length }, { key: "leave", label: "On leave", count: scoped.filter((s) => s.status === "ON_LEAVE").length }, { key: "paused", label: "Paused", count: scoped.filter((s) => s.status === "PAUSED" || s.status === "SUSPENDED").length }]} value={tab} onChange={setTab} />}
-				right={<><HotelFilter hotels={hotels} value={hotel ?? ""} onChange={(v) => setHotel(v || null)} /><SearchBox value={search} onChange={setSearch} placeholder="Name, email, role" /></>}
+				left={
+					<PillTabs
+						tabs={[
+							{ key: "all", label: "All", count: scoped.length },
+							{
+								key: "active",
+								label: "Active",
+								count: scoped.filter((s) => inTab(s, "active")).length,
+							},
+							{
+								key: "invited",
+								label: "Invited",
+								count: scoped.filter((s) => inTab(s, "invited")).length,
+							},
+							{
+								key: "held",
+								label: "Paused or suspended",
+								count: scoped.filter(held).length,
+							},
+						]}
+						value={tab}
+						onChange={setTab}
+					/>
+				}
+				right={
+					<>
+						<HotelFilter
+							hotels={hotels}
+							value={hotel ?? ""}
+							onChange={(v) => void setHotel(v || null)}
+						/>
+						<SearchBox
+							value={search}
+							onChange={setSearch}
+							placeholder="Name, hotel, role"
+						/>
+					</>
+				}
 			/>
-			<DataTable columns={columns} data={rows} search={search} onRowClick={(s) => setOpen(s.id)} />
+			<DataTable
+				columns={columns}
+				data={rows}
+				search={search}
+				onRowClick={(s) => void setOpen(s.key)}
+				emptyTitle="No staff here"
+				emptyHint="Try another tab or hotel, or add someone."
+			/>
 
-			<SidePanel open={!!selected} onOpenChange={(o) => !o && setOpen(null)} title={selected?.fullName ?? ""} subtitle={selected ? `${selected.jobTitle} · ${selected.hotelName}` : undefined} icon={UserRoundIcon} footer={selected && <><Button variant="outline" className={btn.secondary} onClick={() => setModal({ kind: "message", s: selected })}><MessageSquareIcon className="size-4" /> Message</Button><Button className={btn.primary} onClick={() => setModal({ kind: "edit", s: selected })}>Edit</Button></>}>
+			<SidePanel
+				open={!!selected}
+				onOpenChange={(o) => !o && void setOpen(null)}
+				title={selected?.fullName ?? ""}
+				subtitle={
+					selected ? `${selected.jobTitle} · ${selected.hotelName}` : undefined
+				}
+				icon={UserRoundIcon}
+				footer={
+					selected && (
+						<>
+							<Button
+								variant="outline"
+								className={btn.secondary}
+								onClick={() => show("message", selected)}
+							>
+								<MessageSquareIcon className="size-4" /> Message
+							</Button>
+							<Button
+								variant="outline"
+								className={btn.secondary}
+								onClick={() => show("reset", selected)}
+							>
+								<KeyRoundIcon className="size-4" /> New password
+							</Button>
+							{held(selected) ? (
+								<Button
+									className={btn.primary}
+									onClick={() => show("reinstate", selected)}
+								>
+									<PlayCircleIcon className="size-4" />{" "}
+									{selected.status === "SUSPENDED"
+										? "Reinstate"
+										: "End the pause"}
+								</Button>
+							) : (
+								<Button
+									className={btn.primary}
+									onClick={() => show("edit", selected)}
+								>
+									<PencilIcon className="size-4" /> Edit
+								</Button>
+							)}
+						</>
+					)
+				}
+			>
 				{selected && (
 					<div className="flex flex-col gap-6">
-						<div className="flex items-center justify-between"><StatusPill tone={statusPill[selected.status].tone}>{statusPill[selected.status].label}</StatusPill><span className="text-xs text-ink-3">Started {fmtLongDate(selected.startedOn)}</span></div>
-						<PanelSection title="Contact"><DetailList columns={2} items={[{ label: "Phone", value: selected.phone }, { label: "Email", value: selected.email }]} /></PanelSection>
-						<PanelSection title="Work"><DetailList columns={2} items={[{ label: "Hotel", value: selected.hotelName }, { label: "Department", value: selected.department }, { label: "Role", value: `${isHotelRole(selected.role) ? roleLabels[selected.role] : selected.role} · ${humanize(selected.level)}` }, { label: "Shift", value: selected.shift }, { label: "Last sign-in", value: fmtWhen(selected.lastSignIn) }]} /></PanelSection>
-						<PanelSection title="This month"><DetailList columns={2} items={[{ label: "Shifts worked", value: "22 of 24" }, { label: "Late", value: "1" }, { label: "Leave days", value: selected.status === "ON_LEAVE" ? "4" : "0" }, { label: "Actions logged", value: "318" }]} /></PanelSection>
+						<div className="flex items-center justify-between gap-3">
+							<StatusPill tone={statusOf(selected).tone}>
+								{statusOf(selected).label}
+							</StatusPill>
+							<span className="text-xs text-ink-3">
+								Added {fmtLongDate(selected.startedOn)}
+							</span>
+						</div>
+						{held(selected) && (
+							<Note
+								tone={selected.status === "SUSPENDED" ? "danger" : "warning"}
+							>
+								{selected.status === "SUSPENDED" ? "Suspended" : "Paused"}
+								{selected.statusChangedBy
+									? ` by ${selected.statusChangedBy}`
+									: ""}
+								{selected.statusChangedAt
+									? ` on ${fmtLongDate(selected.statusChangedAt)}`
+									: ""}
+								{selected.statusReason ? `: ${selected.statusReason}` : ""}
+							</Note>
+						)}
+						<PanelSection title="Contact">
+							<DetailList
+								columns={2}
+								items={[
+									{ label: "Phone", value: selected.phone || "—" },
+									{ label: "Email", value: selected.email },
+								]}
+							/>
+						</PanelSection>
+						<PanelSection title="Work">
+							<DetailList
+								columns={2}
+								items={[
+									{ label: "Hotel", value: selected.hotelName },
+									{ label: "Department", value: selected.department },
+									{
+										label: "Role",
+										value: `${roleName(selected.role)} · ${levelName[selected.level]}`,
+									},
+									{ label: "Job title", value: selected.jobTitle },
+									{
+										label: "Last sign-in",
+										value: selected.lastSignIn
+											? fmtWhen(selected.lastSignIn)
+											: "Never",
+									},
+									{
+										label: "Invite",
+										value:
+											selected.inviteStatus === "PENDING"
+												? "Waiting to be accepted"
+												: selected.inviteStatus === "EXPIRED"
+													? "Expired · send a new password"
+													: "Accepted",
+									},
+								]}
+							/>
+						</PanelSection>
+						<PanelSection title="Access">
+							<p className="text-[13px] text-ink-2">
+								Roles and levels are changed on{" "}
+								<Link
+									href="/dashboard/roles"
+									className="font-semibold text-brand hover:underline"
+								>
+									Roles & permissions
+								</Link>{" "}
+								for the hotel picked in the sidebar.
+							</p>
+							<Button
+								variant="outline"
+								className={`${btn.dangerSoft} ${btn.small} mt-3 w-fit`}
+								onClick={() => show("remove", selected)}
+							>
+								<Trash2Icon className="size-3" /> Remove from{" "}
+								{selected.hotelName}
+							</Button>
+						</PanelSection>
 					</div>
 				)}
 			</SidePanel>
 
-			<AddStaffPanel open={newOpen === "1"} hotels={hotels} onClose={() => setNewOpen(null)} />
-			<StaffModals modal={modal} onClose={() => setModal(null)} />
-			<ConfirmModal open={modal?.kind === "suspend"} onOpenChange={(o) => !o && setModal(null)} title={`Suspend ${modal?.s.fullName}?`} subtitle="They lose access immediately" tone="danger" confirmLabel="Suspend" pending={pending} onConfirm={() => run(`${modal?.s.fullName} suspended`, () => setModal(null))} alternative={{ label: "Pause access for a few days instead", onClick: () => run(`${modal?.s.fullName} paused for 7 days`, () => setModal(null)) }}>
-				<WhatHappens tone="danger" items={["They are signed out of every device", "Their shifts stay on the rota until the manager reassigns them", "The manager is told"]} />
-			</ConfirmModal>
-			<ConfirmModal open={modal?.kind === "remove"} onOpenChange={(o) => !o && setModal(null)} title={`Remove ${modal?.s.fullName} from ${modal?.s.hotelName}?`} tone="danger" confirmLabel="Remove" pending={pending} onConfirm={() => run(`${modal?.s.fullName} removed`, () => setModal(null))}>
-				<WhatHappens tone="danger" items={["Their login stops working", "Past actions stay in the activity log", "Payroll for this month is still due"]} />
-			</ConfirmModal>
-			<ConfirmModal open={modal?.kind === "reset"} onOpenChange={(o) => !o && setModal(null)} title="Reset password?" subtitle={modal?.s.email} confirmLabel="Send temporary password" pending={pending} onConfirm={() => run("Temporary password sent by SMS", () => setModal(null))}>
-				<WhatHappens items={["A one-time password goes to their phone", "They must choose a new one at next sign-in"]} />
-			</ConfirmModal>
-			<DownloadModal open={exportOpen} onOpenChange={setExportOpen} title="Export staff" what="Staff list" />
+			<AddStaffPanel
+				open={isNew === "1"}
+				hotels={hotels}
+				defaultHotel={hotel ?? hotels[0]?.hotelId ?? ""}
+				businessName={businessName}
+				ownerName={ownerName}
+				onClose={() => void setIsNew(null)}
+			/>
+			<EditDetailsModal
+				staff={modal?.kind === "edit" ? modal.s : null}
+				onClose={() => setModal(null)}
+			/>
+			<MessageStaffModal
+				staff={modal?.kind === "message" ? modal.s : null}
+				onClose={() => setModal(null)}
+			/>
+			<PauseModal
+				staff={modal?.kind === "pause" ? modal.s : null}
+				onClose={() => setModal(null)}
+			/>
+			<SuspendStaffModal
+				staff={modal?.kind === "suspend" ? modal.s : null}
+				onClose={() => setModal(null)}
+				onPauseInstead={() => modal && setModal({ kind: "pause", s: modal.s })}
+			/>
+			<ReinstateModal
+				staff={modal?.kind === "reinstate" ? modal.s : null}
+				until={
+					modal?.kind === "reinstate" ? pauseLastDay(modal.s.pausedUntil) : null
+				}
+				onClose={() => setModal(null)}
+			/>
+			<ResetPasswordModal
+				staff={modal?.kind === "reset" ? modal.s : null}
+				onClose={() => setModal(null)}
+				hotelName={modal?.s.hotelName}
+				businessName={businessName}
+				inviterName={ownerName}
+			/>
+			<RemoveModal
+				staff={modal?.kind === "remove" ? modal.s : null}
+				onClose={() => setModal(null)}
+			/>
+			<DownloadModal
+				open={exportOpen}
+				onOpenChange={setExportOpen}
+				title="Export staff"
+				what={`Staff · ${hotelName ?? "All hotels"}`}
+				rows={() => [
+					[
+						"Name",
+						"Email",
+						"Phone",
+						"Hotel",
+						"Department",
+						"Role",
+						"Level",
+						"Job title",
+						"Status",
+						"Last sign-in",
+					],
+					...rows
+						.filter(
+							(s) =>
+								!search ||
+								`${s.fullName} ${s.hotelName} ${roleName(s.role)} ${s.department}`
+									.toLowerCase()
+									.includes(search.toLowerCase()),
+						)
+						.map((s) => [
+							s.fullName,
+							s.email,
+							s.phone,
+							s.hotelName,
+							s.department,
+							roleName(s.role),
+							levelName[s.level],
+							s.jobTitle,
+							statusOf(s).label,
+							s.lastSignIn ?? "",
+						]),
+				]}
+			/>
 		</>
 	);
 }
 
-function StaffModals({ modal, onClose }: { modal: { kind: string; s: OwnerStaff } | null; onClose: () => void }) {
-	const [shift, setShift] = useState("Morning");
-	const [msg, setMsg] = useState("");
-	const { run, pending } = useNotConnectedAction();
-	const s = modal?.s;
+function RemoveModal({
+	staff,
+	onClose,
+}: {
+	staff: OwnerStaffRow | null;
+	onClose: () => void;
+}) {
+	const router = useRouter();
+	const { run, pending } = useAction();
 	return (
-		<>
-			<Modal open={modal?.kind === "shift"} onOpenChange={(o) => !o && onClose()} title="Change shift" subtitle={`${s?.fullName} · now ${s?.shift}`} icon={CalendarIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run(`${s?.fullName} moved to ${shift} shift`, onClose)}>Change shift</Button></>}>
-				<div className="flex flex-col gap-4">
-					<SelectField label="New shift" value={shift} onChange={setShift} options={["Morning", "Afternoon", "Night"]} setupLink="shifts" />
-					<TextField label="From" value={new Date().toISOString().slice(0, 10)} onChange={() => undefined} type="date" disabled hint="From today" />
-					<Note tone="info">The manager and the staff member are told. The rota updates from that date.</Note>
-				</div>
-			</Modal>
-			<Modal open={modal?.kind === "message"} onOpenChange={(o) => !o && onClose()} title={`Message ${s?.fullName}`} subtitle={s?.phone} icon={MessageSquareIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !msg} onClick={() => run("Message sent", () => { setMsg(""); onClose(); })}>Send</Button></>}>
-				<TextareaField label="Message" value={msg} onChange={setMsg} rows={4} />
-			</Modal>
-			<Modal open={modal?.kind === "edit"} onOpenChange={(o) => !o && onClose()} title="Edit staff" subtitle={s?.fullName} icon={PencilIcon} size="form" footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending} onClick={() => run("Staff updated", onClose)}>Save changes</Button></>}>
-				<div className="flex flex-col gap-4">
-					<FieldRow><TextField label="Full name" value={s?.fullName ?? ""} onChange={() => undefined} disabled /><TextField label="Phone" value={s?.phone ?? ""} onChange={() => undefined} disabled /></FieldRow>
-					<FieldRow><TextField label="Job title" value={s?.jobTitle ?? ""} onChange={() => undefined} disabled /><SelectField label="Department" value={s?.department ?? ""} onChange={() => undefined} disabled options={["Front office", "Housekeeping", "Laundry", "Maintenance", "Kitchen", "Bar", "Store", "Finance", "Management"]} setupLink="departments" /></FieldRow>
-				</div>
-			</Modal>
-		</>
+		<ConfirmModal
+			open={!!staff}
+			onOpenChange={(o) => !o && onClose()}
+			tone="danger"
+			title={`Remove ${staff?.fullName} from ${staff?.hotelName}?`}
+			subtitle={
+				staff ? `${plural(staff.grantIdsHere.length, "role")} there` : undefined
+			}
+			confirmLabel="Remove from hotel"
+			pending={pending}
+			onConfirm={() =>
+				staff &&
+				run(
+					() =>
+						removeFromHotel(
+							staff.userId ?? staff.id,
+							staff.grantIdsHere,
+							staff.hotelName,
+						),
+					`${staff.fullName} removed from ${staff.hotelName}`,
+					() => {
+						onClose();
+						router.refresh();
+					},
+				)
+			}
+		>
+			<WhatHappens
+				tone="danger"
+				items={[
+					`Every role they hold at ${staff?.hotelName ?? "this hotel"} ends now`,
+					"Roles at your other hotels stay",
+					"Their history (shifts, payments they took) is kept",
+				]}
+			/>
+		</ConfirmModal>
 	);
 }
 
-function AddStaffPanel({ open, hotels, onClose }: { open: boolean; hotels: OwnerHotelFinance[]; onClose: () => void }) {
-	const [name, setName] = useState("");
-	const [phone, setPhone] = useState("");
-	const [hotel, setHotel] = useState(hotels[0]?.hotelId ?? "");
-	const [role, setRole] = useState("FRONT_OFFICE");
-	const [level, setLevel] = useState("EDIT");
-	const [invite, setInvite] = useState(true);
-	const { run, pending } = useNotConnectedAction();
+/** Add staff → POST /identity/users at the chosen hotel; the temporary password and invite link are shown once. */
+function AddStaffPanel({
+	open,
+	hotels,
+	defaultHotel,
+	businessName,
+	ownerName,
+	onClose,
+}: {
+	open: boolean;
+	hotels: Hotel[];
+	defaultHotel: string;
+	businessName: string;
+	ownerName: string;
+	onClose: () => void;
+}) {
+	const router = useRouter();
+	const { run, pending } = useAction();
+	const [created, setCreated] = useState<UserCreated | null>(null);
+	const blank = {
+		fullName: "",
+		email: "",
+		phone: "",
+		hotelId: defaultHotel,
+		role: "",
+		level: "EDIT",
+		jobTitle: "",
+	};
+	const [form, setForm] = useState(blank);
+	const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+		setForm((f) => ({ ...f, [k]: v }));
+	const emailOk = /^\S+@\S+\.\S+$/.test(form.email.trim());
+	const hotelId = form.hotelId || defaultHotel;
+	const hotelName = hotels.find((h) => h.hotelId === hotelId)?.name;
+	const close = () => {
+		const refresh = !!created;
+		setCreated(null);
+		setForm({ ...blank, hotelId: defaultHotel });
+		onClose();
+		if (refresh) router.refresh();
+	};
+	const add = () =>
+		run(
+			async () => {
+				const r = await withDeliveries(
+					createUser({
+						fullName: form.fullName.trim(),
+						email: form.email.trim(),
+						phone: form.phone.trim() || null,
+						role: form.role,
+						level: form.level,
+						hotelId,
+					}),
+					`Invite for ${form.fullName.trim()}`,
+				);
+				if (r.ok && form.jobTitle.trim()) {
+					const t = await updateStaffDetails(r.data.userId, {
+						jobTitle: form.jobTitle.trim(),
+					});
+					if (!t.ok)
+						return {
+							ok: false as const,
+							error: `${form.fullName.trim()} was added, but the job title was not saved: ${t.error}`,
+						};
+				}
+				return r;
+			},
+			`${form.fullName.trim()} added at ${hotelName ?? "the hotel"}`,
+			setCreated,
+		);
 	return (
-		<SidePanel open={open} onOpenChange={(o) => !o && onClose()} title="Add staff" subtitle="They sign in on the staff tablet with a PIN" icon={PlusIcon} footer={<><Button variant="outline" className={btn.secondary} onClick={onClose}>Cancel</Button><Button className={btn.primary} disabled={pending || !name} onClick={() => run(`${name} added${invite ? " · invite sent" : ""}`, onClose)}>Add staff</Button></>}>
-			<div className="flex flex-col gap-4">
-				<FieldRow><TextField label="Full name" value={name} onChange={setName} required /><TextField label="Phone" value={phone} onChange={setPhone} placeholder="+234…" /></FieldRow>
-				<SelectField label="Hotel" value={hotel} onChange={setHotel} options={hotels.map((h) => ({ value: h.hotelId, label: h.name }))} />
-				<FieldRow>
-					<SelectField label="Role" value={role} onChange={setRole} options={["FRONT_OFFICE", "HOUSEKEEPING", "LAUNDRY", "MAINTENANCE", "KITCHEN", "BAR", "INVENTORY", "FINANCE", "MANAGER"].map((r) => ({ value: r, label: isHotelRole(r) ? roleLabels[r] : r }))} />
-					<SelectField label="Access level" value={level} onChange={setLevel} options={[{ value: "FULL", label: "Full" }, { value: "EDIT", label: "Can edit" }, { value: "VIEW", label: "View only" }]} />
-				</FieldRow>
-				<ToggleField label="Send invite now" hint="SMS with a one-time PIN" checked={invite} onChange={setInvite} />
-			</div>
+		<SidePanel
+			open={open}
+			onOpenChange={(o) => !o && close()}
+			icon={UserPlusIcon}
+			title={created ? `${form.fullName} is added` : "Add staff"}
+			subtitle={
+				created
+					? "Send them the link or read out the temporary password"
+					: "They get a temporary password and an invite link"
+			}
+			footer={
+				created ? (
+					<Button className={btn.primary} onClick={close}>
+						Done
+					</Button>
+				) : (
+					<>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							onClick={close}
+							disabled={pending}
+						>
+							Cancel
+						</Button>
+						<Button
+							className={btn.primary}
+							disabled={
+								pending ||
+								!form.fullName.trim() ||
+								!form.role ||
+								!emailOk ||
+								!hotelId
+							}
+							onClick={add}
+						>
+							Add staff
+						</Button>
+					</>
+				)
+			}
+		>
+			{created ? (
+				<InviteCard
+					fullName={form.fullName.trim()}
+					email={form.email.trim()}
+					phone={form.phone}
+					roleLabel={roleName(form.role)}
+					hotelName={hotelName}
+					businessName={businessName}
+					inviterName={ownerName}
+					temporaryPassword={created.temporaryPassword}
+					inviteToken={created.inviteToken}
+					inviteExpiresAt={created.inviteExpiresAt}
+					temporaryPasswordExpiresAt={created.temporaryPasswordExpiresAt}
+				/>
+			) : (
+				<div className="flex flex-col gap-4">
+					<TextField
+						label="Full name"
+						value={form.fullName}
+						onChange={(v) => set("fullName", v)}
+						placeholder="e.g. Ada Okeke"
+						required
+					/>
+					<FieldRow>
+						<TextField
+							label="Email"
+							type="email"
+							value={form.email}
+							onChange={(v) => set("email", v)}
+							placeholder="name@hotel.com"
+							hint="They sign in with this"
+							required
+						/>
+						<TextField
+							label="Phone"
+							value={form.phone}
+							onChange={(v) => set("phone", v)}
+							placeholder="+234 …"
+							hint="For the SMS invite"
+						/>
+					</FieldRow>
+					<SelectField
+						label="Hotel"
+						value={hotelId}
+						onChange={(v) => set("hotelId", v)}
+						options={hotels.map((h) => ({ value: h.hotelId, label: h.name }))}
+					/>
+					<FieldRow>
+						<SelectField
+							label="Role"
+							value={form.role}
+							onChange={(v) => set("role", v)}
+							options={ROLE_OPTIONS}
+							required
+						/>
+						<TextField
+							label="Job title"
+							value={form.jobTitle}
+							onChange={(v) => set("jobTitle", v)}
+							placeholder="e.g. Room attendant"
+						/>
+					</FieldRow>
+					<ChoiceCards
+						label="Access level"
+						value={form.level}
+						onChange={(v) => set("level", v)}
+						columns={3}
+						options={[
+							{
+								value: "FULL",
+								label: "Full",
+								hint: "Everything in the module",
+							},
+							{ value: "EDIT", label: "Can edit", hint: "Day-to-day work" },
+							{
+								value: "VIEW",
+								label: "View only",
+								hint: "Looks, can't change",
+							},
+						]}
+					/>
+					<Note tone="info">
+						The invite email and SMS are not connected on staging: what would
+						have been sent is shown at the top.
+					</Note>
+				</div>
+			)}
 		</SidePanel>
 	);
 }

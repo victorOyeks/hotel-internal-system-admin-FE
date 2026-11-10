@@ -5,6 +5,7 @@ import { fnbRoutes } from "./routes-fnb";
 import { inventoryRoutes } from "./routes-inventory";
 import { lmRoutes } from "./routes-lm";
 import { opsRoutes } from "./routes-ops";
+import { ownerRoutes } from "./routes-owner";
 import { paymentRoutes } from "./routes-payments";
 
 /**
@@ -122,6 +123,12 @@ export const UserSummary = z.object({
 	lastSignInAt: z.string().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
 	inviteStatus: InviteStatus.nullable().optional(),
+	/** A timed pause ends by itself at this instant; null while it lasts until someone resumes it (docs/owner-portal.md). */
+	pausedUntil: z.string().nullable().optional(),
+	statusReason: z.string().nullable().optional(),
+	statusChangedBy: z.string().nullable().optional(),
+	statusChangedAt: z.string().nullable().optional(),
+	jobTitle: z.string().nullable().optional(),
 });
 
 /** The temporary password and invite token are shown once; the invite link opens /accept-invite?token=. */
@@ -524,6 +531,8 @@ export const Booking = z.object({
 	cancelledAt: z.string().nullable(),
 	cancellationReason: z.string().nullable(),
 	createdAt: z.string().nullable(),
+	/** What the guest was sent about a change of dates (echoed on staging). */
+	deliveries: Deliveries,
 });
 
 export const Guest = z.object({
@@ -715,6 +724,8 @@ export const Approval = z.object({
 	decidedByName: z.string().nullable().optional(),
 	note: z.string().nullable().optional(),
 	deliveries: Deliveries,
+	hotelId: z.string().nullable().optional(),
+	decidedAt: z.string().nullable().optional(),
 });
 
 export const ActivityEntry = z.object({
@@ -723,6 +734,9 @@ export const ActivityEntry = z.object({
 	actorName: z.string().nullable(),
 	summary: z.string(),
 	occurredAt: z.string(),
+	hotelId: z.string().nullable().optional(),
+	actorId: z.string().nullable().optional(),
+	topic: z.string().nullable().optional(),
 });
 
 export const Repair = z.object({
@@ -782,6 +796,13 @@ export const Organization = z.object({
 	status: z.string().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
 	address: z.string().nullable().optional(),
+	hotelId: z.string().nullable().optional(),
+	/** A limit above the owner's threshold a manager asked for, waiting for the owner (docs/owner-portal.md). */
+	requestedCreditLimit: z.number().nullable().optional(),
+	creditApprovalId: z.string().nullable().optional(),
+	creditRequestedByName: z.string().nullable().optional(),
+	creditRequestedAt: z.string().nullable().optional(),
+	creditSentToOwner: z.boolean().nullable().optional(),
 });
 
 /** POST /folio/organizations and PUT /folio/organizations/:id (manager). PUT replaces every field. */
@@ -907,6 +928,7 @@ export const Notification = z.object({
 });
 
 export const schema = createSchema({
+	...ownerRoutes,
 	...adminRoutes,
 	...opsRoutes,
 	...paymentRoutes,

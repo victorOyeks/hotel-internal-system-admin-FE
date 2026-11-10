@@ -19,7 +19,7 @@ import {
 } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import { decideApproval } from "@hospio/api/actions/approvals";
+import { decideAsOwner } from "@hospio/api/actions/owner";
 import { useAction } from "@hospio/api/actions/use-action";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type { ApprovalRow } from "@hospio/api/data/types";
@@ -49,7 +49,7 @@ export function ApprovalPanel({
 		run(
 			() =>
 				withDeliveries(
-					decideApproval(a.id, decision, note),
+					decideAsOwner(a.id, decision, note),
 					`Approval for ${a.requesterName}`,
 				),
 			message,

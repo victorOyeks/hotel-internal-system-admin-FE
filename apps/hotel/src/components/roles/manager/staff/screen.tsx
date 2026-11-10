@@ -41,14 +41,17 @@ import type {
 } from "@hospio/api/data/types";
 import { LeaveTable, RequestsTable } from "./leave";
 import {
+	EditDetailsModal,
+	MessageStaffModal,
+	ReinstateModal,
+	SuspendStaffModal,
+} from "../../shared-staff/staff-account";
+import {
 	ChangeShiftModal,
-	MessageModal,
 	RemoveModal,
 	ResetPasswordModal,
-	ResumeModal,
 	StaffFormPanel,
 	StaffProfilePanel,
-	SuspendModal,
 	staffStatusPill,
 } from "./panels";
 import {
@@ -445,13 +448,15 @@ export function StaffScreen({
 				onClose={() => setOpenId(null)}
 				onAction={onAction}
 			/>
-			{(isNew || editing) && (
+			<EditDetailsModal
+				staff={editing ? { ...editing, hotelName } : null}
+				onClose={() => setEditing(null)}
+			/>
+			{isNew && (
 				<StaffFormPanel
 					open
-					staff={editing}
 					onClose={() => {
 						setIsNew(null);
-						setEditing(null);
 					}}
 					hotelId={hotelId}
 					hotelName={hotelName}
@@ -463,8 +468,8 @@ export function StaffScreen({
 				staff={modal?.kind === "shift" ? modal.staff : null}
 				onClose={() => setModal(null)}
 			/>
-			<MessageModal
-				staff={modal?.kind === "message" ? modal.staff : null}
+			<MessageStaffModal
+				staff={modal?.kind === "message" ? { ...modal.staff, hotelName } : null}
 				onClose={() => setModal(null)}
 			/>
 			<ResetPasswordModal
@@ -474,11 +479,11 @@ export function StaffScreen({
 				businessName={businessName}
 				inviterName={inviterName}
 			/>
-			<SuspendModal
+			<SuspendStaffModal
 				staff={modal?.kind === "suspend" ? modal.staff : null}
 				onClose={() => setModal(null)}
 			/>
-			<ResumeModal
+			<ReinstateModal
 				staff={modal?.kind === "resume" ? modal.staff : null}
 				onClose={() => setModal(null)}
 			/>

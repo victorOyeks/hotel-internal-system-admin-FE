@@ -14,7 +14,7 @@ const PUBLIC_WHEN_SIGNED_IN = ["/auth/support", "/reset-password", "/sign-up", "
 /** Need a session but no role cookie: the role picker, phone check, the owner's wizard and handover. */
 const ROLE_FREE = ["/select-role", "/verify-phone", "/onboarding", "/handover"];
 /** Screens every role shares (Figma "Everywhere" / Staff · Shared): served from /shared/* for any role. */
-const SHARED = ["/notifications", "/profile", "/help", "/shifts"];
+const SHARED = ["/notifications", "/profile", "/help", "/shifts", "/inbox"];
 
 function startsWithAny(pathname: string, paths: string[]) {
 	return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));

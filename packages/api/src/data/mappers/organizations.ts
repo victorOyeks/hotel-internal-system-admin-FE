@@ -76,6 +76,12 @@ export function toOrganizationRow(
 			: 0,
 		agreementNotes: o.agreementNotes ?? undefined,
 		since: o.createdAt ?? "",
+		requestedCreditLimit:
+			o.requestedCreditLimit != null
+				? Number(o.requestedCreditLimit)
+				: undefined,
+		creditRequestedBy: o.creditRequestedByName ?? undefined,
+		creditApprovalId: o.creditApprovalId ?? undefined,
 	};
 }
 

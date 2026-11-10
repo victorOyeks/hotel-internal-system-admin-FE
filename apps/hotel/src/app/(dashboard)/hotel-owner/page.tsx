@@ -21,9 +21,9 @@ export default async function OwnerHomePage() {
 		active,
 		outletSales,
 	] = await Promise.all([
-		data.hotels.withMoney(),
-		data.approvals.list(),
-		data.activity.list(),
+		data.owner.hotels(),
+		data.owner.approvals(),
+		data.owner.activity(),
 		data.finance.series(lagosDay(-29), lagosDay(0)),
 		data.business.mine(),
 		data.hotels.limits(),

@@ -13,6 +13,7 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useHotelScope } from "@hospio/api/actions/hotel-scope";
 import { useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, Timeline, TotalsList } from "@hospio/ui/shared/detail-list";
@@ -45,6 +46,8 @@ export function BookingDetailsPanel({
 	onPos?: number;
 }) {
 	const [tab, setTab] = useState<"stay" | "payments" | "notes">("stay");
+	// The owner opens a booking at its own hotel; folios are the hotel's screen, not the owner's.
+	const scopedHotel = useHotelScope().hotelId;
 	if (!b) return null;
 	const status = bookingStatus(b);
 	const pay = paymentStatus(b);
@@ -329,12 +332,14 @@ export function BookingDetailsPanel({
 										},
 									]}
 								/>
-								<Link
-									href={`/dashboard/folios?open=${folio.id}`}
-									className="text-[13px] font-semibold text-brand hover:underline"
-								>
-									Open full folio →
-								</Link>
+								{!scopedHotel && (
+									<Link
+										href={`/dashboard/folios?open=${folio.id}`}
+										className="text-[13px] font-semibold text-brand hover:underline"
+									>
+										Open full folio →
+									</Link>
+								)}
 							</>
 						) : (
 							<Note tone="info">

@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
+import { HotelScope } from "@hospio/api/actions/hotel-scope";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
@@ -319,7 +320,7 @@ export function BookingsScreen({
 	];
 
 	return (
-		<>
+		<HotelScope hotelName={hotelName}>
 			<PageHeader
 				title="Bookings"
 				subtitle={`${hotelName} · ${arrivals.length} arrivals and ${departures.length} departures today · ${fmtDay(today())}`}
@@ -449,6 +450,6 @@ export function BookingsScreen({
 					setOpenId(id);
 				}}
 			/>
-		</>
+		</HotelScope>
 	);
 }
