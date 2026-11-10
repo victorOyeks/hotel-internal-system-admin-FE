@@ -21,7 +21,7 @@ import {
 	TextField,
 	TextareaField,
 } from "@hospio/ui/shared/field";
-import { fmtTime, naira, plural } from "@hospio/ui/shared/format";
+import { naira, plural } from "@hospio/ui/shared/format";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import {
@@ -29,7 +29,6 @@ import {
 	SidePanel,
 	WhatHappens,
 } from "@hospio/ui/shared/side-panel";
-import { StatusPill } from "@hospio/ui/shared/status-pill";
 import {
 	chargeOrderToRoom,
 	readOrder,
@@ -66,6 +65,8 @@ import {
 	useOrderRows,
 } from "../shared-staff/outlet-shared";
 import { OrderPaymentPanel } from "../shared-staff/pos-payment";
+import { RecentSales } from "../shared-staff/recent-sales";
+import { SalePanel } from "../shared-staff/sale-panel";
 import {
 	ActionTile,
 	BigButton,
@@ -112,6 +113,7 @@ export function BarTodayScreen({
 	const [closedRows, setClosedRows] = useState(closed);
 	useEffect(() => setClosedRows(closed), [closed]);
 	const [isNew, setIsNew] = useQueryState("new", parseAsString);
+	const [saleId, setSaleId] = useQueryState("sale", parseAsString);
 	const [panel, setPanel] = useState<Panel>(null);
 	const [lines, setLines] = useState<CartLine[]>([]);
 	const [tableId, setTableId] = useState("");
@@ -165,6 +167,10 @@ export function BarTodayScreen({
 	]
 		.sort((a, b) => b.openedAt.localeCompare(a.openedAt))
 		.slice(0, 8);
+	// Opening a sale closes any other panel: only one is open at a time.
+	useEffect(() => {
+		if (saleId) setPanel(null);
+	}, [saleId]);
 	const current =
 		panel && "id" in panel
 			? (rows.find((o) => o.id === panel.id) ?? null)
@@ -398,45 +404,15 @@ export function BarTodayScreen({
 					)}
 				</div>
 			</div>
-			<SectionCard title="Recent sales" flush>
-				{recent.length === 0 ? (
-					<p className="px-5 py-6 text-[13px] text-ink-3">
-						No sales yet today.
-					</p>
-				) : (
-					<ul className="divide-y divide-line">
-						{recent.map((o) => (
-							<li key={o.id} className="flex items-center gap-3 px-5 py-3">
-								<span className="w-16 text-[15px] font-bold text-ink">
-									{o.number}
-								</span>
-								<span className="min-w-0 flex-1 text-[15px] text-ink">
-									{liveLines(o)
-										.map((l) => `${l.qty} ${l.name}`)
-										.join(", ")}
-									<span className="block text-xs text-ink-3">
-										{o.tableNo ?? "—"}
-										{o.guestName ? ` · ${o.guestName}` : ""} ·{" "}
-										{fmtTime(o.openedAt)}
-									</span>
-								</span>
-								<span className="text-[15px] font-semibold text-ink">
-									{naira(o.total)}
-								</span>
-								{o.status === "CANCELLED" ? (
-									<StatusPill tone="danger">Cancelled</StatusPill>
-								) : o.chargedToRoom ? (
-									<StatusPill tone="info">Room {o.roomNumber}</StatusPill>
-								) : o.paid ? (
-									<StatusPill tone="success">Paid</StatusPill>
-								) : (
-									<StatusPill tone="warning">To pay</StatusPill>
-								)}
-							</li>
-						))}
-					</ul>
-				)}
-			</SectionCard>
+			<RecentSales orders={recent} bar onOpen={(id) => void setSaleId(id)} />
+
+			<SalePanel
+				saleId={panel ? null : saleId}
+				onClose={() => void setSaleId(null)}
+				desk="BAR"
+				terminals={terminals}
+				inHouse={inHouse}
+			/>
 
 			{/* New sale */}
 			<SidePanel

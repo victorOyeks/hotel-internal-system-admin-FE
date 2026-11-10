@@ -51,7 +51,13 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		if (business?.stage === "HANDED_OVER") redirect("/handover");
 	}
 
-	const unread = await data.notifications.unreadCount().catch(() => 0);
+	const [unread, unpaidSales] = await Promise.all([
+		data.notifications.unreadCount().catch(() => 0),
+		// The bar and kitchen see how many sales still owe money next to Sales.
+		role === "BAR" || role === "KITCHEN"
+			? data.outlets.unpaidSales(role).catch(() => null)
+			: Promise.resolve(null),
+	]);
 
 	return (
 		<NuqsAdapter>
@@ -68,6 +74,7 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						role={role}
 						hotels={hotels}
 						activeHotel={activeHotel}
+						badges={unpaidSales ? { unpaidSales } : undefined}
 					/>
 					<SidebarInset className="bg-page">
 						<Header

@@ -22,7 +22,10 @@ import {
 	toMenuItemRow,
 	toOrderRow,
 	toOutletRow,
+	salesQuery,
+	toSaleRow,
 	toSalesDay,
+	toSalesHistory,
 	toStockItemRows,
 	toStockRequestRow,
 	toStoreRows,
@@ -34,6 +37,9 @@ import type {
 	OrderRow,
 	OutletRow,
 	OutletSalesDayRow,
+	SaleFilters,
+	SaleRow,
+	SalesHistoryView,
 	StockItemRow,
 	StockRequestRow,
 	StoreRow,
@@ -95,6 +101,133 @@ const loadStock = cache(async () => {
 	);
 	return { stores: stores.data.data, items: items.data.data, rows };
 });
+
+/** Where a demo order stands, by the same rule as fnb-service's SaleBucket. */
+function demoBucket(o: OrderRow, outletKind: string): SaleRow["status"] {
+	if (o.status === "CANCELLED") return "CANCELLED";
+	if (o.chargedToRoom) return "ON_ROOM";
+	if (o.paid || o.settledBy === "COMPLIMENTARY") return "PAID";
+	const working = ["OPEN", "SENT", "READY"].includes(o.status);
+	if (o.total <= 0 || o.kind === "TAB" || (outletKind !== "BAR" && working))
+		return "IN_PROGRESS";
+	return "TO_PAY";
+}
+
+/** The demo's sales history: the demo orders, filtered on the page (the live list is filtered by fnb-service). */
+function demoSalesHistory(
+	f: SaleFilters,
+	outlets: OutletRow[],
+): SalesHistoryView {
+	const kindOf = new Map(outlets.map((o) => [o.id, o.kind as string]));
+	const visible = outlets.filter(
+		(o) => !f.desk || (f.desk === "BAR") === (o.kind === "BAR"),
+	);
+	const all: SaleRow[] = ops.demoOrders
+		.filter((o) => visible.some((v) => v.id === o.outletId))
+		.map((o) => {
+			const status = demoBucket(o, kindOf.get(o.outletId ?? "") ?? "KITCHEN");
+			const live = o.lines.filter((l) => l.status !== "CANCELLED");
+			return toSaleRow({
+				id: o.id,
+				number: o.number,
+				outletId: o.outletId ?? "",
+				outletName: o.outlet,
+				outletKind: kindOf.get(o.outletId ?? ""),
+				kind: o.kind,
+				tableNo: o.tableNo,
+				roomNumber: o.roomNumber,
+				guestName: o.guestName,
+				createdAt: o.openedAt,
+				openedBy: o.openedBy,
+				openedByName: o.openedBy,
+				items: live.map((l) => `${l.qty} ${l.name}`).join(", "),
+				itemCount: live.reduce((n, l) => n + l.qty, 0),
+				total: o.total,
+				paidAmount: o.paid ? o.total : 0,
+				balance:
+					status === "CANCELLED" || status === "PAID" || status === "ON_ROOM"
+						? 0
+						: o.total,
+				status,
+				methods: o.chargedToRoom ? ["ROOM"] : o.paid ? ["CASH"] : [],
+			});
+		});
+	const q = f.q?.trim().toLowerCase();
+	const rows = all
+		.filter(
+			(r) =>
+				(!f.outletId || r.outletId === f.outletId) &&
+				(!f.status ||
+					(f.status === "UNPAID"
+						? r.status === "TO_PAY" || r.status === "PART_PAID"
+						: r.status === f.status)) &&
+				(!f.method || r.methods.includes(f.method)) &&
+				(!f.attendant || r.openedBy === f.attendant) &&
+				(!q ||
+					`${r.number} ${r.guestName ?? ""} ${r.items}`
+						.toLowerCase()
+						.includes(q)),
+		)
+		.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+	const money = (list: SaleRow[]) => {
+		const live = list.filter((r) => r.status !== "CANCELLED");
+		return {
+			sales: live.length,
+			sold: live.reduce((n, r) => n + r.total, 0),
+			paid: live.reduce(
+				(n, r) => n + (r.status === "PAID" ? r.total : r.paidAmount),
+				0,
+			),
+			unpaid: live.reduce((n, r) => n + r.balance, 0),
+			onRooms: live.reduce(
+				(n, r) => n + (r.status === "ON_ROOM" ? r.total : 0),
+				0,
+			),
+			cancelled: list.length - live.length,
+		};
+	};
+	const today = lagosDate();
+	const names = [...new Set(rows.map((r) => r.openedByName))];
+	return {
+		from: f.from ?? today,
+		to: f.to ?? f.from ?? today,
+		page: 0,
+		size: 50,
+		matching: rows.length,
+		rows: rows.slice(0, 50),
+		totals: {
+			...money(rows),
+			cancelledAmount: rows
+				.filter((r) => r.status === "CANCELLED")
+				.reduce((n, r) => n + r.total, 0),
+		},
+		outlets: visible.map((o) => ({
+			...money(rows.filter((r) => r.outletId === o.id)),
+			outletId: o.id,
+			name: o.name,
+			kind: o.kind,
+		})),
+		attendants: names.map((n) => ({
+			...money(rows.filter((r) => r.openedByName === n)),
+			userId: n,
+			name: n,
+		})),
+		earlierUnpaid: { count: 0, amount: 0 },
+		viewer: {
+			userId: "demo",
+			management: !f.desk,
+			mine: false,
+			mineByDefault: false,
+			canExport: true,
+			actsOnOthers: true,
+		},
+		outletChoices: visible.map((o) => ({
+			id: o.id,
+			name: o.name,
+			kind: o.kind,
+		})),
+	};
+}
 
 export const fnbData = {
 	outlets: {
@@ -221,6 +354,48 @@ export const fnbData = {
 			});
 			if (error || !res) return failed("fnb-service sales", error, null);
 			return toSalesDay(res.data);
+		},
+		/**
+		 * The sales history (`/fnb/sales/history`): one page of sales over Lagos days with the money and the
+		 * breakdowns. A failure is answered as an error, never as an empty list, so the screen can say so.
+		 */
+		salesHistory: async (
+			f: SaleFilters,
+		): Promise<
+			{ ok: true; data: SalesHistoryView } | { ok: false; error: string }
+		> => {
+			if (!live("fnb"))
+				return {
+					ok: true,
+					data: await give(demoSalesHistory(f, await loadOutlets())),
+				};
+			const { data: res, error } = await api("@get/fnb/sales/history", {
+				...(await withSession()),
+				query: salesQuery(f),
+			});
+			if (error || !res) {
+				console.error("fnb-service sales history:", error);
+				const status = (error as { status?: number } | null)?.status;
+				return {
+					ok: false,
+					error:
+						status === 400 || status === 403
+							? ((error as { message?: string }).message ??
+								"Sales could not be loaded")
+							: "Sales could not be loaded",
+				};
+			}
+			return { ok: true, data: toSalesHistory(res.data) };
+		},
+		/** Sales still owing money (any day) for the sidebar; null when it can't be read. */
+		unpaidSales: async (desk: "BAR" | "KITCHEN"): Promise<number | null> => {
+			if (!live("fnb")) return null;
+			const { data: res, error } = await api("@get/fnb/sales/history/unpaid", {
+				...(await withSession()),
+				query: { desk },
+			});
+			if (error || !res) return failed("fnb-service unpaid sales", error, null);
+			return res.data.count;
 		},
 		/** Outlet sales for the manager and owner screens (`/finance/sales`); sales, not money received. */
 		managementSales: async (

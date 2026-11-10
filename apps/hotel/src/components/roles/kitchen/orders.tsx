@@ -64,6 +64,8 @@ import {
 	useOrderRows,
 } from "../shared-staff/outlet-shared";
 import { OrderPaymentPanel } from "../shared-staff/pos-payment";
+import { RecentSales } from "../shared-staff/recent-sales";
+import { SalePanel } from "../shared-staff/sale-panel";
 import {
 	BigButton,
 	BoardCard,
@@ -116,8 +118,11 @@ export function KitchenOrdersScreen({
 	inHouse,
 	settings,
 	terminals,
+	closed = [],
 }: {
 	orders: OrderRow[];
+	/** Today's closed orders, for Recent sales. */
+	closed?: OrderRow[];
 	menu: MenuItemRow[];
 	categories: CategoryRow[];
 	outlet: OutletRow | null;
@@ -129,6 +134,7 @@ export function KitchenOrdersScreen({
 	const [open, setOpen] = useQueryState("open", parseAsString);
 	const [orderParam, setOrderParam] = useQueryState("order", parseAsString);
 	const [isNew, setIsNew] = useQueryState("new", parseAsString);
+	const [saleId, setSaleId] = useQueryState("sale", parseAsString);
 	const [panel, setPanel] = useState<Panel>(null);
 	const [cancel, setCancel] = useState<Cancel>(null);
 	const [chargeError, setChargeError] = useState<string | null>(null);
@@ -550,6 +556,26 @@ export function KitchenOrdersScreen({
 					);
 				})}
 			</div>
+
+			<RecentSales
+				orders={[
+					...rows.filter((o) => o.kind !== "TAB"),
+					...closed.filter((c) => !rows.some((r) => r.id === c.id)),
+				]}
+				bar={false}
+				onOpen={(id) => {
+					setPanel(null);
+					void setOpen(null);
+					void setSaleId(id);
+				}}
+			/>
+			<SalePanel
+				saleId={panel ? null : saleId}
+				onClose={() => void setSaleId(null)}
+				desk="KITCHEN"
+				terminals={terminals}
+				inHouse={inHouse}
+			/>
 
 			{/* Ticket */}
 			<SidePanel

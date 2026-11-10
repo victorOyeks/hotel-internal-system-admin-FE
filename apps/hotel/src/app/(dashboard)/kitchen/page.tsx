@@ -6,9 +6,12 @@ export const dynamic = "force-dynamic";
 /** Kitchen · Orders: the board of the kitchen's outlet (the first KITCHEN or RESTAURANT one), its menu, tables and the settings that rule room charging. */
 export default async function KitchenHome() {
 	const outlet = await data.outlets.forRole("KITCHEN");
-	const [orders, menu, categories, buckets, settings, terminals] =
+	const [orders, closed, menu, categories, buckets, settings, terminals] =
 		await Promise.all([
 			outlet ? data.outlets.orders(outlet.id) : Promise.resolve([]),
+			outlet
+				? data.outlets.orders(outlet.id, { status: "CLOSED" })
+				: Promise.resolve([]),
 			outlet ? data.outlets.menu(outlet.id) : Promise.resolve([]),
 			outlet ? data.outlets.categories(outlet.id) : Promise.resolve([]),
 			data.bookings.buckets(),
@@ -18,6 +21,7 @@ export default async function KitchenHome() {
 	return (
 		<KitchenOrdersScreen
 			orders={orders}
+			closed={closed}
 			menu={menu}
 			categories={categories}
 			outlet={outlet}

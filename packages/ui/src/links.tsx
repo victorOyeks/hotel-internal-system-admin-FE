@@ -40,7 +40,13 @@ import {
 } from "lucide-react";
 import type { HotelRole } from "@hospio/api/roles";
 
-export type NavLink = { title: string; url: string; icon: LucideIcon };
+export type NavLink = {
+	title: string;
+	url: string;
+	icon: LucideIcon;
+	/** A count shown on the link (the shell fills it): unpaid sales for the bar and kitchen. */
+	badge?: "unpaidSales";
+};
 
 /** Manager portal, in the order of the Figma sidebar. */
 export const managerLinks: NavLink[] = [
@@ -143,6 +149,12 @@ export const maintenanceLinks: NavLink[] = [
 
 export const kitchenLinks: NavLink[] = [
 	{ title: "Orders", url: "/dashboard", icon: ChefHatIcon },
+	{
+		title: "Sales",
+		url: "/dashboard/sales",
+		icon: CoinsIcon,
+		badge: "unpaidSales",
+	},
 	{ title: "Menu", url: "/dashboard/menu", icon: BookOpenIcon },
 	{ title: "Kitchen store", url: "/dashboard/store", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
@@ -154,6 +166,12 @@ export const kitchenLinks: NavLink[] = [
 export const barLinks: NavLink[] = [
 	{ title: "Bar today", url: "/dashboard", icon: WineIcon },
 	{ title: "Tabs", url: "/dashboard/tabs", icon: ReceiptIcon },
+	{
+		title: "Sales",
+		url: "/dashboard/sales",
+		icon: CoinsIcon,
+		badge: "unpaidSales",
+	},
 	{ title: "Menu", url: "/dashboard/menu", icon: BookOpenIcon },
 	{ title: "Bar stock", url: "/dashboard/stock", icon: PackageIcon },
 	{ title: "My payments", url: "/dashboard/payments", icon: CreditCardIcon },
@@ -176,6 +194,7 @@ export const financeLinks: NavLink[] = [
 	{ title: "Today's money", url: "/dashboard", icon: CoinsIcon },
 	{ title: "Month", url: "/dashboard/month", icon: BarChart3Icon },
 	{ title: "Expenses", url: "/dashboard/expenses", icon: ReceiptIcon },
+	{ title: "Outlet sales", url: "/dashboard/sales", icon: WineIcon },
 	{ title: "Tills", url: "/dashboard/tills", icon: WalletIcon },
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
 	{

@@ -5,12 +5,14 @@ import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
 import { live } from "@hospio/api/data/live";
 import {
+	salesQuery,
 	serializeOptionGroups,
 	toCategoryRow,
 	toHappyHourRow,
 	toMenuItemRow,
 	toOrderRow,
 	toOutletRow,
+	toSaleDetail,
 	toTableRow,
 } from "@hospio/api/data/mappers/fnb";
 import type {
@@ -20,6 +22,8 @@ import type {
 	OptionGroup,
 	OrderRow,
 	OutletRow,
+	SaleDetailView,
+	SaleFilters,
 	TableRow,
 } from "@hospio/api/data/types";
 import { demoDelay } from "@hospio/api/demo/mode";
@@ -395,6 +399,83 @@ export async function readOrder(
 			error: errorMessage(error, "The order could not be read"),
 		};
 	return { ok: true, data: toOrderRow(data.data, outletName) };
+}
+
+// ---- sales history ------------------------------------------------------------------------------------
+
+/**
+ * One sale for the sale panel (`/fnb/sales/history/{id}`). A payment fnb-service holds without a reference or
+ * the name of who took it is looked up in payment-service by its id.
+ */
+export async function readSale(
+	id: string,
+): Promise<ActionResult<SaleDetailView | null>> {
+	if (!fnbLive()) return { ok: true, data: null };
+	const s = await withSession();
+	const { data, error } = await api("@get/fnb/sales/history/:id", {
+		...s,
+		params: { id },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The sale could not be read"),
+		};
+	const sale = toSaleDetail(data.data);
+	const missing = sale.payments.filter((p) => !p.takenByName || !p.reference);
+	if (missing.length) {
+		const found = await Promise.all(
+			missing.map((p) =>
+				api("@get/payment/payments/:id", { ...s, params: { id: p.paymentId } })
+					.then((r) => r.data?.data ?? null)
+					.catch(() => null),
+			),
+		);
+		sale.payments = sale.payments.map((p) => {
+			const f = found[missing.indexOf(p)];
+			return f
+				? {
+						...p,
+						takenByName: p.takenByName ?? f.requestedByName ?? undefined,
+						reference: p.reference ?? f.providerRef ?? undefined,
+					}
+				: p;
+		});
+	}
+	return { ok: true, data: sale };
+}
+
+/** The sales matching the filters as CSV (Full access, managers, owners and finance; fnb-service refuses anyone else). */
+export async function exportSales(f: SaleFilters): Promise<
+	ActionResult<{
+		filename: string;
+		csv: string;
+		rows: number;
+		truncated: boolean;
+	}>
+> {
+	if (!fnbLive()) {
+		await demoDelay(300);
+		return {
+			ok: true,
+			data: {
+				filename: "sales-demo.csv",
+				csv: "Number,Date\n",
+				rows: 0,
+				truncated: false,
+			},
+		};
+	}
+	const { data, error } = await api("@get/fnb/sales/history/export", {
+		...(await withSession()),
+		query: salesQuery({ ...f, page: undefined }),
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The sales could not be exported"),
+		};
+	return { ok: true, data: data.data };
 }
 
 // ---- menu and prices ----------------------------------------------------------------------------------

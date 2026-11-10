@@ -116,6 +116,9 @@ export const OrderLineItem = z.object({
 	options: str,
 	notes: str,
 	status: z.string(),
+	/** Why and by whom a cancelled line was cancelled. */
+	cancelReason: str,
+	cancelledByName: str,
 });
 
 export const OrderItem = z.object({
@@ -146,8 +149,165 @@ export const OrderItem = z.object({
 	closedBy: str,
 	closedByName: str,
 	settledBy: str,
+	settledAt: str,
+	settledByName: str,
+	cancelReason: str,
+	/** Approved payments so far; part paid while under the total. */
+	paidAmount: num,
 	lines: z.array(OrderLineItem).nullable().optional(),
 });
+
+// ---- sales history --------------------------------------------------------------------------------
+
+const money = z.number();
+const SaleTotalsItem = z.object({
+	sales: z.number(),
+	sold: money,
+	paid: money,
+	unpaid: money,
+	onRooms: money,
+	cancelled: z.number(),
+	cancelledAmount: num,
+});
+
+export const SaleRowItem = z.object({
+	id: z.string(),
+	number: z.string(),
+	outletId: z.string(),
+	outletName: str,
+	outletKind: str,
+	kind: z.string(),
+	tableNo: str,
+	roomNumber: str,
+	guestName: str,
+	createdAt: z.string(),
+	openedBy: str,
+	openedByName: str,
+	items: str,
+	itemCount: num,
+	total: money,
+	paidAmount: num,
+	balance: num,
+	/** PAID, TO_PAY, PART_PAID, ON_ROOM, CANCELLED or IN_PROGRESS. */
+	status: z.string(),
+	orderStatus: str,
+	methods: z.array(z.string()).nullable().optional(),
+	settledAt: str,
+	settledBy: str,
+	settledByName: str,
+	cancelReason: str,
+});
+
+export const SalesHistoryItem = z.object({
+	from: z.string(),
+	to: z.string(),
+	page: z.number(),
+	size: z.number(),
+	matching: z.number(),
+	rows: z.array(SaleRowItem),
+	totals: SaleTotalsItem,
+	outlets: z.array(
+		SaleTotalsItem.omit({ cancelledAmount: true }).extend({
+			outletId: z.string(),
+			name: z.string(),
+			kind: str,
+		}),
+	),
+	attendants: z.array(
+		SaleTotalsItem.omit({ cancelledAmount: true }).extend({
+			userId: z.string(),
+			name: z.string(),
+		}),
+	),
+	earlierUnpaid: z.object({ count: z.number(), amount: money, oldest: str }),
+	viewer: z.object({
+		userId: z.string(),
+		management: z.boolean(),
+		mine: z.boolean(),
+		mineByDefault: z.boolean(),
+		canExport: z.boolean(),
+		actsOnOthers: z.boolean(),
+	}),
+	outletChoices: z.array(
+		z.object({ id: z.string(), name: z.string(), kind: z.string() }),
+	),
+});
+
+export const SaleDetailItem = z.object({
+	sale: SaleRowItem,
+	roomId: str,
+	bookingId: str,
+	tableId: str,
+	notes: str,
+	subtotal: money,
+	discount: money,
+	tax: money,
+	total: money,
+	paidAmount: money,
+	balance: money,
+	lines: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			quantity: z.number(),
+			unitPrice: money,
+			options: str,
+			choices: z
+				.array(z.object({ name: z.string(), extra: money }))
+				.nullable()
+				.optional(),
+			notes: str,
+			discount: num,
+			amount: money,
+			status: z.string(),
+			cancelReason: str,
+			cancelledByName: str,
+		}),
+	),
+	payments: z.array(
+		z.object({
+			paymentId: z.string(),
+			method: z.string(),
+			amount: money,
+			at: str,
+			reference: str,
+			takenByName: str,
+		}),
+	),
+	timeline: z.object({
+		openedAt: str,
+		openedByName: str,
+		sentAt: str,
+		settledAt: str,
+		settledBy: str,
+		settledByName: str,
+		closedAt: str,
+		closedByName: str,
+	}),
+	can: z.object({
+		pay: z.boolean(),
+		chargeToRoom: z.boolean(),
+		cancel: z.boolean(),
+		note: str,
+	}),
+});
+
+const salesQuery = z
+	.object({
+		from: z.string(),
+		to: z.string(),
+		outletId: z.string(),
+		desk: z.string(),
+		status: z.string(),
+		method: z.string(),
+		attendant: z.string(),
+		mine: z.boolean(),
+		q: z.string(),
+		page: z.number(),
+		size: z.number(),
+	})
+	.partial()
+	.optional();
 
 const OrderBody = z.object({
 	outletId: z.string(),
@@ -400,6 +560,27 @@ export const fnbRoutes = {
 			.optional(),
 		output: envelope(SalesDay),
 	},
+
+	"@get/fnb/sales/history": {
+		query: salesQuery,
+		output: envelope(SalesHistoryItem),
+	},
+	"@get/fnb/sales/history/export": {
+		query: salesQuery,
+		output: envelope(
+			z.object({
+				filename: z.string(),
+				csv: z.string(),
+				rows: z.number(),
+				truncated: z.boolean(),
+			}),
+		),
+	},
+	"@get/fnb/sales/history/unpaid": {
+		query: z.object({ desk: z.string() }).partial().optional(),
+		output: envelope(z.object({ count: z.number(), amount: z.number() })),
+	},
+	"@get/fnb/sales/history/:id": { output: envelope(SaleDetailItem) },
 
 	// finance · outlet sales for the manager and owner screens
 	"@get/finance/sales": {

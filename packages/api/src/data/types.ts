@@ -1018,6 +1018,141 @@ export type OrderRow = {
 	/** PAYMENT, ROOM, COMPLIMENTARY or CANCELLED once the order is settled or closed. */
 	settledBy?: string;
 	notes?: string;
+	/** Approved payments so far: part paid while under the total. */
+	paidAmount?: number;
+};
+
+/** Where a sale stands in the sales history (fnb-service SaleBucket). */
+export type SaleStatus =
+	| "PAID"
+	| "TO_PAY"
+	| "PART_PAID"
+	| "ON_ROOM"
+	| "CANCELLED"
+	| "IN_PROGRESS";
+
+/** One bar or kitchen sale in the sales history. */
+export type SaleRow = {
+	id: Id;
+	number: string;
+	outletId: Id;
+	outletName: string;
+	outletKind?: string;
+	kind: OrderRow["kind"];
+	tableNo?: string;
+	roomNumber?: string;
+	guestName?: string;
+	createdAt: string;
+	openedBy?: Id;
+	openedByName: string;
+	/** "3 Coca-Cola, 2 Orange juice" */
+	items: string;
+	itemCount: number;
+	total: number;
+	paidAmount: number;
+	/** Still due (0 once paid, on a room or cancelled). */
+	balance: number;
+	status: SaleStatus;
+	orderStatus?: string;
+	/** CASH, CARD, TRANSFER and ROOM as they were used. */
+	methods: string[];
+	settledAt?: string;
+	settledBy?: string;
+	settledByName?: string;
+	cancelReason?: string;
+};
+
+export type SaleMoney = {
+	sales: number;
+	sold: number;
+	paid: number;
+	unpaid: number;
+	onRooms: number;
+	cancelled: number;
+};
+
+export type SalesHistoryView = {
+	from: string;
+	to: string;
+	page: number;
+	size: number;
+	/** Rows matching the filters (all pages). */
+	matching: number;
+	rows: SaleRow[];
+	totals: SaleMoney & { cancelledAmount: number };
+	outlets: (SaleMoney & { outletId: Id; name: string; kind?: string })[];
+	attendants: (SaleMoney & { userId: string; name: string })[];
+	earlierUnpaid: { count: number; amount: number; oldest?: string };
+	viewer: {
+		userId: Id;
+		management: boolean;
+		mine: boolean;
+		mineByDefault: boolean;
+		canExport: boolean;
+		actsOnOthers: boolean;
+	};
+	outletChoices: { id: Id; name: string; kind: string }[];
+};
+
+/** The sales list's filters, as the URL carries them. */
+export type SaleFilters = {
+	from?: string;
+	to?: string;
+	outletId?: string;
+	desk?: "BAR" | "KITCHEN";
+	status?: string;
+	method?: string;
+	attendant?: string;
+	mine?: boolean;
+	q?: string;
+	page?: number;
+};
+
+export type SaleDetailView = {
+	sale: SaleRow;
+	roomId?: Id;
+	bookingId?: Id;
+	tableId?: Id;
+	notes?: string;
+	subtotal: number;
+	discount: number;
+	tax: number;
+	total: number;
+	paidAmount: number;
+	balance: number;
+	lines: {
+		id: Id;
+		name: string;
+		quantity: number;
+		unitPrice: number;
+		options?: string;
+		choices: { name: string; extra: number }[];
+		notes?: string;
+		discount: number;
+		amount: number;
+		status: string;
+		cancelReason?: string;
+		cancelledByName?: string;
+	}[];
+	payments: {
+		paymentId: Id;
+		method: string;
+		amount: number;
+		at?: string;
+		reference?: string;
+		takenByName?: string;
+	}[];
+	timeline: {
+		openedAt?: string;
+		openedByName?: string;
+		sentAt?: string;
+		settledAt?: string;
+		settledBy?: string;
+		settledByName?: string;
+		closedAt?: string;
+		closedByName?: string;
+	};
+	can: { pay: boolean; chargeToRoom: boolean; cancel: boolean; note?: string };
 };
 
 export type CleaningTaskRow = {
