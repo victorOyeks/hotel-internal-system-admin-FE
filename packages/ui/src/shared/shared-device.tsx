@@ -22,28 +22,9 @@ import { cn } from "@hospio/ui/utils";
  * account menu, the Lock button, the idle lock with its 30-second warning, and the prompt to set a PIN after signing in.
  */
 
-/** The roles a device can be for: every hotel role but the owner. */
-export const DEVICE_ROLES: HotelRole[] = [
-	"FRONT_OFFICE",
-	"BAR",
-	"KITCHEN",
-	"HOUSEKEEPING",
-	"LAUNDRY",
-	"MAINTENANCE",
-	"INVENTORY",
-	"FINANCE",
-	"MANAGER",
-];
-/** The desks that are usually a shared tablet: new staff in these are asked for a PIN at their first sign-in. */
-export const SHARED_DESK_ROLES = [
-	"FRONT_OFFICE",
-	"BAR",
-	"KITCHEN",
-	"HOUSEKEEPING",
-	"LAUNDRY",
-	"MAINTENANCE",
-	"INVENTORY",
-];
+import { DEVICE_ROLES, SHARED_DESK_ROLES } from "./shared-device-roles";
+
+export { DEVICE_ROLES, SHARED_DESK_ROLES };
 
 export type DeviceSetupHotel = { id: string; name: string; roles: string[] };
 

@@ -23,7 +23,8 @@ import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-
 import { cn } from "@hospio/ui/utils";
 import { getSharedDevice, pinPromptAsked } from "@hospio/api/device";
 import type { Hotel, Me } from "@hospio/api/api/schema";
-import { DEVICE_ROLES, type DeviceSetupHotel, IdleLock, PinPrompt, SHARED_DESK_ROLES } from "@hospio/ui/shared/shared-device";
+import { type DeviceSetupHotel, IdleLock, PinPrompt } from "@hospio/ui/shared/shared-device";
+import { DEVICE_ROLES, SHARED_DESK_ROLES } from "@hospio/ui/shared/shared-device-roles";
 
 /** The hotels where this person may set up a shared device, with the roles they may pick there (docs/shared-devices.md). */
 function deviceSetupHotels(user: Me, hotels: Hotel[]): DeviceSetupHotel[] {
