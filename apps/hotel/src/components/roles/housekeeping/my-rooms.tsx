@@ -180,8 +180,8 @@ export function MyRoomsScreen({
 				<ShiftPill until="2pm" />
 			</PageHeader>
 
-			<div className="flex items-center gap-5 rounded-card border border-line bg-card px-5 py-4">
-				<div className="flex min-w-0 flex-1 flex-col gap-2">
+			<div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-card px-5 py-4 sm:gap-5">
+				<div className="flex min-w-[200px] flex-1 flex-col gap-2">
 					<p className="text-[17px] font-bold text-ink">
 						{done} of {list.length} rooms done
 					</p>
@@ -222,7 +222,7 @@ export function MyRoomsScreen({
 						<li
 							key={t.id}
 							className={cn(
-								"flex items-center gap-4 rounded-card border bg-card px-4 py-3",
+								"flex flex-wrap items-center gap-3 rounded-card border bg-card px-4 py-3 sm:flex-nowrap sm:gap-4",
 								active ? "border-brand bg-brand-soft/20" : "border-line",
 								(t.status === "INSPECTED" || t.status === "DONE") &&
 									"opacity-70",
