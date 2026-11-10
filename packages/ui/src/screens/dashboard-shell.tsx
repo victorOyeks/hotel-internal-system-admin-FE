@@ -76,7 +76,8 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						activeHotel={activeHotel}
 						badges={unpaidSales ? { unpaidSales } : undefined}
 					/>
-					<SidebarInset className="bg-page">
+					{/* min-w-0: wide tables scroll inside their card instead of pushing the page sideways. */}
+					<SidebarInset className="min-w-0 bg-page">
 						<Header
 							user={user}
 							role={role}

@@ -47,6 +47,8 @@ import { btn } from "@hospio/ui/shared/ui";
 import { HotelFilter } from "./common";
 
 type Hotel = { hotelId: string; name: string };
+/** The "All hotels" choice in a select (an empty value is not allowed there). */
+const ALL = "all";
 
 /** The reports the owner portal builds from live data (platform-service's schedule catalogue has the same kinds). */
 export const REPORTS: {
@@ -551,10 +553,10 @@ function ReportPanel({
 							</FieldRow>
 							<SelectField
 								label="Hotel"
-								value={hotel ?? ""}
-								onChange={(v) => onChange({ hotel: v || null })}
+								value={hotel ?? ALL}
+								onChange={(v) => onChange({ hotel: v === ALL ? null : v })}
 								options={[
-									{ value: "", label: "All hotels" },
+									{ value: ALL, label: "All hotels" },
 									...hotels.map((h) => ({ value: h.hotelId, label: h.name })),
 								]}
 							/>
@@ -710,10 +712,10 @@ function ScheduleModal({
 					/>
 					<SelectField
 						label="Hotel"
-						value={scope}
-						onChange={(v) => setHotel(v)}
+						value={scope || ALL}
+						onChange={(v) => setHotel(v === ALL ? "" : v)}
 						options={[
-							{ value: "", label: "All hotels" },
+							{ value: ALL, label: "All hotels" },
 							...hotels.map((h) => ({ value: h.hotelId, label: h.name })),
 						]}
 					/>

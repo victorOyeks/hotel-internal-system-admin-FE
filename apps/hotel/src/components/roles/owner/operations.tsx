@@ -235,7 +235,9 @@ export function OwnerOperations({
 									{h.lastAt ? (
 										<>
 											{h.lastAction}{" "}
-											<span className="text-ink-3">· {fmtAgo(h.lastAt)}</span>
+											<span className="text-ink-3" suppressHydrationWarning>
+												· {fmtAgo(h.lastAt)}
+											</span>
 										</>
 									) : (
 										<span className="text-ink-3">nothing logged yet</span>
@@ -270,7 +272,7 @@ export function OwnerOperations({
 								>
 									{d.lastAction || "Nothing yet"}
 								</p>
-								<p className="text-[11px] text-ink-3">
+								<p className="text-[11px] text-ink-3" suppressHydrationWarning>
 									{d.lastAt ? fmtAgo(d.lastAt) : "—"} ·{" "}
 									{hotelName ?? `${plural(d.hotels, "hotel")}`}
 								</p>

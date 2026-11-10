@@ -141,7 +141,10 @@ export function ThreadsView({
 												<span className="truncate text-[13px] font-semibold text-ink">
 													{t.withName}
 												</span>
-												<span className="shrink-0 text-[10px] text-ink-3">
+												<span
+													className="shrink-0 text-[10px] text-ink-3"
+													suppressHydrationWarning
+												>
 													{fmtAgo(t.lastAt)}
 												</span>
 											</div>
