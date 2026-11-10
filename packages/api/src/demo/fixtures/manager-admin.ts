@@ -109,20 +109,3 @@ export const demoSetupExtras: HotelSetupSection[] = [
 	] },
 ];
 
-export const demoHelpTopics = [
-	{ key: "bookings", title: "Bookings & check-in", body: "New bookings, deposits, no-shows, moving guests and late check-outs.", articles: 12 },
-	{ key: "money", title: "Payments & money", body: "POS terminals, transfers, refunds, tills and the night audit.", articles: 15 },
-	{ key: "staff", title: "Staff & roles", body: "Adding people, shifts, leave and what each level can do.", articles: 9 },
-	{ key: "setup", title: "Hotel setup", body: "Room types, prices, lists and the rules your hotel runs on.", articles: 18 },
-	{ key: "stock", title: "Inventory", body: "Stores, requests, purchase orders, deliveries and counts.", articles: 8 },
-	{ key: "messaging", title: "Guest messaging", body: "WhatsApp, SMS and email templates and the shared inbox.", articles: 6 },
-];
-
-export const demoFaq = [
-	{ q: "A guest paid by transfer but it is not showing. What do I do?", a: "Open Payments → the payment will be in Processing. Transfers can take a few minutes. If it is still missing after 30 minutes, record it as a manual transfer with the bank reference; Finance matches it against the bank statement." },
-	{ q: "Can I refund a card payment from the front desk?", a: "You can request it. A manager approves refunds in Approvals, then the POS provider sends the money back to the card within 5–10 working days." },
-	{ q: "Why can't I change a room price?", a: "Room prices and special prices are manager-only and, above the approval limit, go to the owner. Ask your manager or raise it from Rooms → Types & prices." },
-	{ q: "How do I give someone a second role?", a: "Roles & Permissions → Staff access → the person's row → Give a role. Pick the role and level; temporary access can end on a date." },
-	{ q: "What does the night audit check?", a: "That every arrival is checked in or marked no-show, every departure has checked out, tills are counted, folios have no unposted charges and the room board matches housekeeping." },
-];
-

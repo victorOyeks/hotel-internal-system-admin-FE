@@ -1,8 +1,13 @@
+import { getActiveRole, getSession } from "@hospio/api/dal";
+import { helpFor } from "@hospio/ui/help";
 import { HelpScreen } from "@hospio/ui/screens/help";
-import { demoFaq, demoHelpTopics } from "@hospio/api/demo/fixtures/manager-admin";
 
 export const dynamic = "force-dynamic";
 
-export default function HelpPage() {
-	return <HelpScreen topics={demoHelpTopics} faq={demoFaq} />;
+/** Everywhere · Help at /dashboard/help: the guides for the roles this person holds (content in packages/ui/src/help). */
+export default async function HelpPage() {
+	const [session, role] = await Promise.all([getSession(), getActiveRole()]);
+	return (
+		<HelpScreen app="hotel" content={helpFor("hotel", session.roleSet, role)} />
+	);
 }
