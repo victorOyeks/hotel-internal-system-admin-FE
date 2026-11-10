@@ -34,11 +34,12 @@ export async function login(input: { email: string; password: string }): Promise
 	return { ok: true, data: { mustChangePassword: data.data.mustChangePassword, roles: data.data.roles } };
 }
 
-export async function logout() {
+/** Signs out. `notice: "saved"` (onboarding's "Save and finish later") tells the sign-in page to say the setup was kept. */
+export async function logout(notice?: unknown) {
 	const { auth } = await withSession();
 	if (auth && !DEMO_AUTH) await api("@post/identity/auth/logout", { auth }).catch(() => undefined);
 	await deleteSession();
-	redirect("/auth");
+	redirect(notice === "saved" ? "/auth?saved=1" : "/auth");
 }
 
 export async function selectRole(role: string) {
