@@ -19,6 +19,7 @@ import { plural } from "@hospio/ui/shared/format";
 import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 import { SideCard, StepCard, StepPage } from "./common";
+import { useInviteAccepted } from "./invite-status";
 import { forgetAllSteps } from "./persist";
 import { stepHref } from "./steps";
 
@@ -35,6 +36,7 @@ export function DoneStep({
 	ownerId?: string;
 }) {
 	const router = useRouter();
+	const accepted = useInviteAccepted(draft.manager?.userId);
 	const { run, pending } = useAction();
 	// What the hotel really has (the board), not what was typed: retries and skipped numbers don't inflate it.
 	const hotelRow = business?.hotels?.find((h) => h.id === draft.hotel?.hotelId);
@@ -76,14 +78,18 @@ export function DoneStep({
 		},
 		{
 			label: draft.manager
-				? `${draft.manager.fullName} hasn't accepted yet`
+				? accepted
+					? `${draft.manager.fullName} accepted the invite`
+					: `${draft.manager.fullName} hasn't accepted yet`
 				: "Invite a manager",
 			detail: draft.manager
-				? `Invite sent to ${draft.manager.email} · waiting for them to accept · the link works for 7 days`
+				? accepted
+					? `${draft.manager.email} can sign in and run the hotel`
+					: `Invite sent to ${draft.manager.email} · waiting for them to accept · the link works for 7 days`
 				: "Skipped · invite one from Users whenever you like",
-			// An invite is only done once it is accepted; until then it stays open.
-			done: false,
-			pending: !!draft.manager,
+			// An invite is only done once it is accepted; this page checks every 10 seconds (DEF-028).
+			done: accepted,
+			pending: !!draft.manager && !accepted,
 			href: stepHref("manager"),
 			action: draft.manager ? "See invite" : "Invite",
 		},

@@ -29,18 +29,18 @@ type Row = {
 };
 
 const DEFAULTS: Omit<Row, "key">[] = [
-	{ name: "Regular", guests: "2", count: "", price: "", start: "101" },
-	{ name: "Deluxe", guests: "3", count: "", price: "", start: "201" },
+	{ name: "Regular", guests: "", count: "", price: "", start: "" },
+	{ name: "Deluxe", guests: "", count: "", price: "", start: "" },
 ];
 
 let seq = 0;
-const newRow = (i: number, patch: Partial<Row> = {}): Row => ({
+const newRow = (_i: number, patch: Partial<Row> = {}): Row => ({
 	key: `r${++seq}`,
 	name: "",
-	guests: "2",
+	guests: "",
 	count: "",
 	price: "",
-	start: `${(i + 1) * 100 + 1}`,
+	start: "",
 	...patch,
 });
 
@@ -217,6 +217,7 @@ export function RoomsStep({
 			if (names.has(name.toLowerCase()))
 				return `There is already a room type called ${name}`;
 			names.add(name.toLowerCase());
+			if (!r.guests.trim()) return `Enter how many guests a ${name} room takes`;
 			const guests = Number.parseInt(r.guests, 10);
 			if (!(guests >= 1 && guests <= 20))
 				return `Guests for ${name} must be between 1 and 20`;
@@ -410,7 +411,7 @@ export function RoomsStep({
 						<span />
 					</div>
 					<div className="flex flex-col gap-2 p-3">
-						{rows.map((r) => {
+						{rows.map((r, idx) => {
 							const locked = !!r.roomTypeId;
 							return (
 								<div
@@ -435,6 +436,7 @@ export function RoomsStep({
 										}
 										disabled={locked}
 										inputMode="numeric"
+										placeholder="e.g. 2"
 										className={cn(inputCls, "py-2")}
 									/>
 									<input
@@ -477,7 +479,7 @@ export function RoomsStep({
 										value={r.start}
 										onChange={(e) => update(r.key, { start: e.target.value })}
 										disabled={locked || !numberForMe}
-										placeholder="101"
+										placeholder={`e.g. ${(idx + 1) * 100 + 1}`}
 										className={cn(inputCls, "py-2")}
 									/>
 									<button

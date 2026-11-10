@@ -2,6 +2,7 @@ import { ClockIcon, MailXIcon } from "lucide-react";
 import Link from "next/link";
 import { AcceptInviteForm } from "@/components/auth/accept-invite-form";
 import { getInvite } from "@hospio/api/actions/onboarding";
+import { getUser } from "@hospio/api/dal";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,24 @@ export default async function AcceptInvitePage({
 				expired
 			/>
 		);
-	return <AcceptInviteForm token={token} invite={result.data} />;
+	// Accepting signs the invited person in on this browser, replacing whoever is signed in here.
+	const current = await getUser().catch(() => null);
+	const other =
+		current && current.email.toLowerCase() !== result.data.email.toLowerCase()
+			? current
+			: null;
+	return (
+		<>
+			{other && (
+				<p className="mb-4 rounded-[10px] bg-warning-soft px-4 py-3 text-[13px] text-warning">
+					You're signed in on this browser as {other.fullName} ({other.email}).
+					Accepting signs them out here and signs in {result.data.fullName}. To
+					keep both, open this link in a private window or another browser.
+				</p>
+			)}
+			<AcceptInviteForm token={token} invite={result.data} />
+		</>
+	);
 }
 
 function InviteProblem({
