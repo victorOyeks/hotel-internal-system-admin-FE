@@ -1,5 +1,5 @@
 import { OwnerBookings } from "@/components/roles/owner/bookings";
-import { BOOKING_TABS } from "@/components/roles/manager/bookings/bookings-screen";
+import { BOOKING_TABS } from "@/components/roles/manager/bookings/tabs";
 import { data } from "@hospio/api/data";
 import {
 	listQueryFrom,

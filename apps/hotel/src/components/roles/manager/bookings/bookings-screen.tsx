@@ -20,6 +20,7 @@ import { useListParams } from "@hospio/ui/shared/list-params";
 import { HotelScope } from "@hospio/api/actions/hotel-scope";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
+import { BOOKING_TABS } from "./tabs";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
 import { fmtDay, naira, nairaShort, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
@@ -50,14 +51,7 @@ import {
 import { type BookingAction, BookingModals } from "./booking-modals";
 import { NewBookingPanel } from "./new-booking";
 
-export const BOOKING_TABS = [
-	"arrivals",
-	"departures",
-	"in-house",
-	"upcoming",
-	"past",
-	"all",
-] as const;
+export { BOOKING_TABS };
 type Tab = (typeof BOOKING_TABS)[number];
 export const TAB_LABEL: Record<Tab, string> = {
 	arrivals: "Arrivals",

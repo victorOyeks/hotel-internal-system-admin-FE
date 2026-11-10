@@ -78,15 +78,9 @@ import {
 	usePaymentSteps,
 } from "./take-payment";
 
-type Tab = "arrivals" | "departures" | "in-house" | "upcoming" | "all";
-/** The front desk's tabs: reservation-service's views of the same names. */
-export const FO_TABS: Tab[] = [
-	"arrivals",
-	"departures",
-	"in-house",
-	"upcoming",
-	"all",
-];
+import { FO_TABS, type FoTab as Tab } from "./tabs";
+
+export { FO_TABS };
 
 export function statusPill(b: BookingRow) {
 	switch (b.status) {

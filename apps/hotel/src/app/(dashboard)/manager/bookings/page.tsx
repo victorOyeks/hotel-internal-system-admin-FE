@@ -1,7 +1,5 @@
-import {
-	BOOKING_TABS,
-	BookingsScreen,
-} from "@/components/roles/manager/bookings/bookings-screen";
+import { BookingsScreen } from "@/components/roles/manager/bookings/bookings-screen";
+import { BOOKING_TABS } from "@/components/roles/manager/bookings/tabs";
 import { getActiveHotel } from "@hospio/api/dal";
 import { data } from "@hospio/api/data";
 import {
