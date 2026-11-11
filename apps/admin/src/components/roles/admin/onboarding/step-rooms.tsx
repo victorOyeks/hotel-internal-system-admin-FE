@@ -7,7 +7,7 @@ import {
 	PlusIcon,
 	Trash2Icon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	createRoomsBulk,
@@ -232,7 +232,9 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 	const { pending, call, busy } = useWizardSave();
 	const hotel = hotels.find((h) => h.id === hotelId) ?? hotels[0];
 	const snap = snaps[hotelId];
-	const rows = rowsByHotel[hotelId] ?? [blankRow()];
+	// One stable empty row until the hotel's rows are restored, so a keystroke in it is never lost to a new key.
+	const emptyRow = useRef(blankRow());
+	const rows = rowsByHotel[hotelId] ?? [emptyRow.current];
 	const totalMade = Object.values(snaps).reduce(
 		(s, h) => s + h.rooms.length,
 		0,
@@ -272,7 +274,7 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 	/** Updates this hotel's rows from the latest state (so typing during a save is never lost) and keeps them. */
 	const setRows = (next: Row[] | ((prev: Row[]) => Row[])) =>
 		setRowsByHotel((all) => {
-			const prev = all[hotelId] ?? [blankRow()];
+			const prev = all[hotelId] ?? [emptyRow.current];
 			let rows = typeof next === "function" ? next(prev) : next;
 			if (rows.length === 0) rows = [blankRow()];
 			keepRows(business.id, hotelId, rows);
