@@ -27,7 +27,7 @@ export const STEP_META: Record<
 > = {
 	business: {
 		label: "Business & legal",
-		subtitle: "The company that will pay H.M.S and own the hotels",
+		subtitle: "The company that will pay Hospio360 and own the hotels",
 	},
 	owner: {
 		label: "Owner & contacts",
@@ -35,7 +35,7 @@ export const STEP_META: Record<
 	},
 	fee: {
 		label: "Fee & contract",
-		subtitle: "How H.M.S is paid and when the agreement starts",
+		subtitle: "How Hospio360 is paid and when the agreement starts",
 	},
 	hotels: {
 		label: "Hotels",

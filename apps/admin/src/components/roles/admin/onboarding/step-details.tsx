@@ -440,7 +440,7 @@ const FEE_MODELS = [
 	{
 		value: "PERCENT_OF_PAYMENTS",
 		label: feeModelLabels.PERCENT_OF_PAYMENTS,
-		hint: "A share of every guest payment taken through H.M.S",
+		hint: "A share of every guest payment taken through Hospio360",
 	},
 	{
 		value: "PER_ROOM_NIGHT",
@@ -533,7 +533,7 @@ export function FeeStep({ ctx }: { ctx: WizardCtx }) {
 		>
 			<StepCard
 				title="Fee model"
-				subtitle="How H.M.S is paid. Statements are produced monthly from this."
+				subtitle="How Hospio360 is paid. Statements are produced monthly from this."
 			>
 				<ChoiceCards
 					value={feeModel}

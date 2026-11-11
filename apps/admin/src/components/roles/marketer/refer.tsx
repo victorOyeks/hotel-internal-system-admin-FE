@@ -155,7 +155,7 @@ export function MarketerRefer({
 						<Share2Icon className="size-4" /> Share on WhatsApp
 					</a>
 					<p className="text-xs text-ink-3">
-						You earn {p.sharePct}% of the H.M.S share for {p.months} months on
+						You earn {p.sharePct}% of the Hospio360 share for {p.months} months on
 						every business that goes live.
 						{p.referralCode ? ` Your code: ${p.referralCode}.` : ""}
 					</p>

@@ -6,7 +6,7 @@ Surveyed 2026-11-07 from node metadata. Node ids are given as `page:node`; open 
 
 ## How the file is organised
 
-- Four products: **Owner portal** (page Hotel Owner), **Manager portal** (page Manager portal), **Staff apps** (one tablet page per role plus Staff · Shared), **Platform admin** (page Platform admin (H.M.S), with a marketer portal).
+- Four products: **Owner portal** (page Hotel Owner), **Manager portal** (page Manager portal), **Staff apps** (one tablet page per role plus Staff · Shared), **Platform admin** (page Platform admin (Hospio360), with a marketer portal).
 - Every redesigned area is a `✦` section. Inside a section, each screen has a title text, a `__leads <screen>` note listing every button and where it goes, and `__flow` headings grouping screens into numbered flows. Each role page carries one `__page note`.
 - Overlays (side panels, modals) are drawn over their parent screen; they are not separate screens.
 - The **Build tracker** on the Manager page says "408 designed · 0 to design".
@@ -30,7 +30,7 @@ Colour variables (Light/Dark, plus a "Hotel brand" mode): brand/primary, brand/p
 
 ## Developer handoff (3318:3841)
 
-One board, 12 cards: products and where they are; how to read a screen; prototypes (start frames "Manager", "Owner", "Admin", "Marketer"); who can do what (3 levels Full / Can edit / View only; manager-only and owner-only lists); what each hotel configures; components and variables; layout rules; money model (H.M.S share per business, marketers 20% of share for 24 months, 5% WHT) and example data (Royal Suites Ltd, Simpas Hotels, Simpas Ikeja 120 rooms, owner Godwin Kwin, GM Tunde Bakare); platform admin; POS payment model (Moniepoint/OPay); backend architecture (modular monolith, 14 modules, Postgres schema per module, outbox events); the 14 modules and their events.
+One board, 12 cards: products and where they are; how to read a screen; prototypes (start frames "Manager", "Owner", "Admin", "Marketer"); who can do what (3 levels Full / Can edit / View only; manager-only and owner-only lists); what each hotel configures; components and variables; layout rules; money model (Hospio360 share per business, marketers 20% of share for 24 months, 5% WHT) and example data (Royal Suites Ltd, Simpas Hotels, Simpas Ikeja 120 rooms, owner Godwin Kwin, GM Tunde Bakare); platform admin; POS payment model (Moniepoint/OPay); backend architecture (modular monolith, 14 modules, Postgres schema per module, outbox events); the 14 modules and their events.
 
 ## Hotel Owner (9:2) — 124 screens
 
@@ -53,7 +53,7 @@ Wrapper section `✦ REDESIGN — Hotel Owner (new screens)` (3025:14708) with 1
 | 13 | Messaging | 3301:11035 | Messages (3301:11037); New (3301:11350); Message all managers (3301:11596) |
 | 14 | Inventory | 3301:11847 | Stock across hotels (3301:11849); One hotel (3301:12192); Download (3301:12452) |
 | 15 | Notifications | 3301:12733 | All (3301:12735); Bell (3301:13028) |
-| 16 | Changes by H.M.S | 3336:5419 | Notification (3336:5421); Activity log (3336:6155); Undo (3336:6539) |
+| 16 | Changes by Hospio360 | 3336:5419 | Notification (3336:5421); Activity log (3336:6155); Undo (3336:6539) |
 | 17 | Payments | 3345:3951 | Payments & payouts (3345:3953) |
 
 ## Manager portal (11:3) — 227 screens
@@ -100,9 +100,9 @@ Legacy loose frames (old design, ignore): Desktop - 17/18/26/31/138/139/168. Not
 
 **Finance (3373:3090)**, 21 desktop screens, section 3201:19976: today's money (3275:8827); match payment (3275:9285); month at a glance (3274:8267); expenses (3276:8266); record expense (3274:8759); over limit (3275:9485); request status (3278:8266); answer question (3278:8585); tills (3275:9913); cash close (3275:8267); bank cash (3275:10381); night audit checklist (3274:9321); close day (3274:9625); audit report (3274:9973); past audits (3274:10265); organizations (3274:10606); org account (3274:11046); statement (3274:11423); invoice (3274:11791); record org payment (3275:10605); notifications (3275:10936).
 
-## Platform admin (H.M.S) (3304:3841) — 77 screens
+## Platform admin (Hospio360) (3304:3841) — 77 screens
 
-Sections: Sign in / Dashboard / Hotel businesses (3304:3908); Fees & billing, Marketers (3305:3841); Marketer portal, Support, Admin team, Settings (3306:3841); Phase 1 Businesses & hotels (3321:327); Phase 2 Back-office onboarding & handover (3328:661); Phase 3 Edit as H.M.S & governance (3334:1454); Payments (3345:7509). Base template frame `__admin base` (3304:3842).
+Sections: Sign in / Dashboard / Hotel businesses (3304:3908); Fees & billing, Marketers (3305:3841); Marketer portal, Support, Admin team, Settings (3306:3841); Phase 1 Businesses & hotels (3321:327); Phase 2 Back-office onboarding & handover (3328:661); Phase 3 Edit as Hospio360 & governance (3334:1454); Payments (3345:7509). Base template frame `__admin base` (3304:3842).
 
 ## Style Guide (0:1)
 

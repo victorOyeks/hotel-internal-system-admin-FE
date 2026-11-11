@@ -43,7 +43,7 @@ const log = [
 	},
 	{
 		time: "9:05am",
-		who: "H.M.S Support",
+		who: "Hospio360 Support",
 		what: "Edited room prices · Ask to undo",
 	},
 ];
@@ -108,7 +108,7 @@ export function Control() {
 						Every action on the record
 					</h3>
 					<p className="text-[15px] leading-[1.5] text-ink-2">
-						Every change by anyone is logged. If H.M.S support changes something
+						Every change by anyone is logged. If Hospio360 support changes something
 						for you, you can ask for it to be undone within 7 days.
 					</p>
 					<ul className="flex flex-col gap-[10px] pt-2">

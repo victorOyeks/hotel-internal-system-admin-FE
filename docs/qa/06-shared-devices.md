@@ -181,7 +181,7 @@ unlocked.
 | QA Cook (Edit) | Set up a device (API `POST /identity/devices`) | 403 "Only someone with Full access, a manager or the owner …" |
 | Segun | Set up a Kitchen device | 403 "You can set up a device for the roles you have Full access to …" |
 | Anyone | A device for Owner | 400 "A shared device can't be for Owner …" |
-| Godwin | Set a PIN | 403 "Owners and H.M.S staff sign in with email and password …" |
+| Godwin | Set a PIN | 403 "Owners and Hospio360 staff sign in with email and password …" |
 | Segun | Change PIN without the password | 400 "Enter your password to change your PIN" |
 | Mariam | Unlock the Bar tablet | 403 "Mariam Bello doesn't work on QA Bar tablet …" |
 | QA Owner B | Set up a device at Simpas Ikeja, or list/remove its devices | 403 / 404 |

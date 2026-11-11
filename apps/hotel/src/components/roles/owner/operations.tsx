@@ -52,7 +52,7 @@ function undoState(
 }
 
 /**
- * Hotel Owner · 12 Operations and 16 Changes by H.M.S: each hotel now (staff clocked in against today's rota, open
+ * Hotel Owner · 12 Operations and 16 Changes by Hospio360: each hotel now (staff clocked in against today's rota, open
  * repairs, occupancy, the last action), each department's last hour, the business's activity log, and what Hospio
  * support changed in the business. An owner asks support to undo a change within 7 days; support puts it back and the
  * request (a support ticket) is resolved.
@@ -140,7 +140,7 @@ export function OwnerOperations({
 			cell: ({ row }) =>
 				row.original.byPlatform ? (
 					<StatusPill tone="info" dot={false}>
-						H.M.S
+						Hospio360
 					</StatusPill>
 				) : (
 					row.original.department
@@ -168,7 +168,7 @@ export function OwnerOperations({
 							{ key: "activity", label: "Activity log", count: rows.length },
 							{
 								key: "changes",
-								label: "Changes by H.M.S",
+								label: "Changes by Hospio360",
 								count: changeRows.filter((c) => undoState(c) === "open").length,
 							},
 						]}
@@ -323,12 +323,12 @@ export function OwnerOperations({
 			{tab === "changes" && (
 				<SectionCard
 					title="Changes made by Hospio support"
-					subtitle="Anything H.M.S changed in your business. Within 7 days you can ask support to put it back."
+					subtitle="Anything Hospio360 changed in your business. Within 7 days you can ask support to put it back."
 					flush
 				>
 					{changeRows.length === 0 ? (
 						<EmptyState
-							title="No changes by H.M.S"
+							title="No changes by Hospio360"
 							hint="When Hospio support changes a setting for you, it is listed here"
 							className="mx-5 mb-5"
 						/>

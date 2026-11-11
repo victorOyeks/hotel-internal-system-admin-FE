@@ -26,7 +26,7 @@ import { BusinessTabHeader } from "./nav";
 
 /**
  * Business · Contract & activity: the contract fields, GET /platform/activity?businessId=, the changes
- * H.M.S made here (with undo while the window is open) and who viewed it as the owner.
+ * Hospio360 made here (with undo while the window is open) and who viewed it as the owner.
  */
 export function ActivityTab({
 	business,
@@ -51,7 +51,7 @@ export function ActivityTab({
 				businessId={business.id}
 				businessName={business.name}
 				active="activity"
-				subtitle="The agreement, everything that happened in the account, and every time H.M.S changed or viewed it"
+				subtitle="The agreement, everything that happened in the account, and every time Hospio360 changed or viewed it"
 			>
 				<SupportAccessButton
 					businessId={business.id}
@@ -118,7 +118,7 @@ export function ActivityTab({
 				</SectionCard>
 				<div className="flex flex-col gap-4">
 					<SectionCard
-						title="Changes by H.M.S"
+						title="Changes by Hospio360"
 						subtitle="The owner can ask support to undo one within 7 days"
 						count={changes.length}
 						action={{
@@ -129,7 +129,7 @@ export function ActivityTab({
 					>
 						{changes.length === 0 ? (
 							<EmptyState
-								title="H.M.S has not changed anything here"
+								title="Hospio360 has not changed anything here"
 								className="mx-5 mb-5"
 							/>
 						) : (
@@ -247,8 +247,8 @@ export function ActivityTab({
 				<WhatHappens
 					tone="warning"
 					items={[
-						"Put the previous value back first (for example with Edit as H.M.S): Undo doesn't change the setting itself",
-						"The change is marked undone; the owner sees 'undone by H.M.S' in their activity log",
+						"Put the previous value back first (for example with Edit as Hospio360): Undo doesn't change the setting itself",
+						"The change is marked undone; the owner sees 'undone by Hospio360' in their activity log",
 					]}
 				/>
 			</ConfirmModal>

@@ -258,7 +258,7 @@ export function HandoverStep({ ctx }: { ctx: WizardCtx }) {
 			) : (
 				<Note tone="warning">
 					Temporary passwords are shown once. They go in the handover pack and
-					H.M.S cannot see them again. They expire in 72 hours; invite links in
+					Hospio360 cannot see them again. They expire in 72 hours; invite links in
 					7 days.
 				</Note>
 			)}
@@ -576,9 +576,9 @@ function HandoverPackModal({
 			<style>{`@media print { body * { visibility: hidden !important; } #handover-pack, #handover-pack * { visibility: visible !important; } #handover-pack { position: fixed; inset: 0; padding: 32px; background: #fff; overflow: visible; } }`}</style>
 			<article id="handover-pack" className="flex flex-col gap-5 text-ink">
 				<header>
-					<p className="text-sm font-bold tracking-[0.2em] text-brand">H.M.S</p>
+					<p className="text-sm font-bold tracking-[-0.01em] text-brand">Hospio360</p>
 					<h2 className="mt-2 text-2xl font-bold leading-tight">
-						Welcome to H.M.S, {business.name}
+						Welcome to Hospio360, {business.name}
 					</h2>
 					<p className="mt-1 text-[13px] text-ink-2">
 						Your {hotels.length}{" "}
@@ -663,7 +663,7 @@ function HandoverPackModal({
 						</li>
 						<li>Choose your own password.</li>
 						<li>
-							Review what H.M.S set up and accept the handover. Your hotels go
+							Review what Hospio360 set up and accept the handover. Your hotels go
 							live.
 						</li>
 						<li>

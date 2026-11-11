@@ -29,7 +29,7 @@ export function SupportBar({ endsAt }: { endsAt: number }) {
 	return (
 		<div className="fixed inset-x-0 top-0 z-[60] flex h-10 items-center justify-center gap-3 bg-warning px-4 text-[13px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
 			<EyeIcon className="size-4" />
-			<span>Viewing as H.M.S support · read only · ends at {ends ?? "…"}</span>
+			<span>Viewing as Hospio360 support · read only · ends at {ends ?? "…"}</span>
 			<button
 				type="button"
 				disabled={pending}

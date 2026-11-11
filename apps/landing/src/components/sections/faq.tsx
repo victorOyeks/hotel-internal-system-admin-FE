@@ -21,7 +21,7 @@ const faqs = [
 	},
 	{
 		q: "Do we need new hardware?",
-		a: "No special hardware. H.M.S runs in the browser on a computer or tablet, and a shared tablet can be used by several staff, each signing in with their own PIN. Card terminals come from your POS provider and are assigned to each role in Hotel setup.",
+		a: "No special hardware. Hospio360 runs in the browser on a computer or tablet, and a shared tablet can be used by several staff, each signing in with their own PIN. Card terminals come from your POS provider and are assigned to each role in Hotel setup.",
 	},
 	{
 		q: "What happens if the POS goes offline?",
@@ -29,7 +29,7 @@ const faqs = [
 	},
 	{
 		q: "Who sets everything up?",
-		a: "You can: sign up and follow the four setup steps. Or the H.M.S team sets up your business, hotels, rooms and staff with you, then hands it over with your logins.",
+		a: "You can: sign up and follow the four setup steps. Or the Hospio360 team sets up your business, hotels, rooms and staff with you, then hands it over with your logins.",
 	},
 	{
 		q: "Can we change our rules ourselves?",

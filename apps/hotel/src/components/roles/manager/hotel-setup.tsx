@@ -88,7 +88,7 @@ const why: Record<string, string> = {
 	night:
 		"The day cannot close until these are done, so the numbers are trustworthy.",
 	brand:
-		"Your colours replace the H.M.S maroon on every screen your staff and guests see.",
+		"Your colours replace the Hospio360 maroon on every screen your staff and guests see.",
 	pos: "Terminals are matched to roles so a bar sale never lands in the front desk till.",
 	reasons:
 		"Staff pick from these lists so reports group cleanly; items in use are hidden, never deleted.",
@@ -257,7 +257,7 @@ function SectionForm({
 							className="flex size-14 items-center justify-center rounded-xl text-sm font-bold text-white"
 							style={{ background: String(values.primary ?? "#4c091e") }}
 						>
-							{String(values.logoText ?? "H.M.S")}
+							{String(values.logoText ?? "Hospio360")}
 						</span>
 						<div className="flex-1">
 							<p className="text-[13px] font-semibold text-ink">Preview</p>

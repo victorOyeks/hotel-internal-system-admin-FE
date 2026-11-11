@@ -98,7 +98,7 @@ import { SupportAccessButton } from "./support-access-button";
 /**
  * Admin — C2 · one business: overview, Hotels and People from tenant and identity; fee statements,
  * tickets and changes from platform-service. Change stage (C11), Change account manager (C10) and Edit
- * business write to tenant; Edit as H.M.S does the same edit and records the change with its reason
+ * business write to tenant; Edit as Hospio360 does the same edit and records the change with its reason
  * (POST /platform/admin/changes); View as owner opens the hotel app read only.
  */
 
@@ -217,7 +217,7 @@ export function BusinessPage({
 								onClick: () => setAction("manager"),
 							},
 							{
-								label: "Edit as H.M.S",
+								label: "Edit as Hospio360",
 								icon: ShieldAlertIcon,
 								separatorBefore: true,
 								onClick: () => setAction("hms"),
@@ -312,7 +312,7 @@ export function BusinessPage({
 										value:
 											business.source === "SELF_SERVE"
 												? "Signed up themselves"
-												: "Set up by H.M.S",
+												: "Set up by Hospio360",
 									},
 									{
 										label: "Referred by",
@@ -695,12 +695,12 @@ export function BusinessPage({
 						/>
 					</SectionCard>
 					<SectionCard
-						title="Changes by H.M.S"
+						title="Changes by Hospio360"
 						subtitle="Each one carries the reason given and who made it"
 					>
 						{changes.length === 0 ? (
 							<p className="py-4 text-sm text-ink-3">
-								Nothing changed by H.M.S.
+								Nothing changed by Hospio360.
 							</p>
 						) : (
 							<Timeline
@@ -853,7 +853,7 @@ function EditBusinessPanel({
 	);
 }
 
-/** What Edit as H.M.S writes into the change log for each field it can touch. */
+/** What Edit as Hospio360 writes into the change log for each field it can touch. */
 const FIELD_LABELS: Partial<Record<keyof BusinessRequest, string>> = {
 	name: "Trading name",
 	legalName: "Registered name",
@@ -905,7 +905,7 @@ function EditBusinessForm({
 	business: BusinessRow;
 	onCancel: () => void;
 	onSaved: (b: BusinessRow, change?: AdminChangeRow) => void;
-	/** Edit as H.M.S: a reason is required and the change is recorded with before/after values. */
+	/** Edit as Hospio360: a reason is required and the change is recorded with before/after values. */
 	asHms?: boolean;
 }) {
 	const { run, pending } = useAction();
@@ -1014,7 +1014,7 @@ function EditBusinessForm({
 				<PanelSection title="Why">
 					<Note tone="info">
 						Use this for support fixes the hotel can't do itself. The owner sees
-						the change in their activity log, marked "by H.M.S", with this reason.
+						the change in their activity log, marked "by Hospio360", with this reason.
 					</Note>
 					<TextareaField
 						label="Reason"
@@ -1190,12 +1190,12 @@ const STAGES: BusinessStage[] = [
 ];
 const stageHint: Record<BusinessStage, string> = {
 	LEAD: "Talking, nothing set up yet",
-	ONBOARDING: "H.M.S or the owner is setting it up",
+	ONBOARDING: "Hospio360 or the owner is setting it up",
 	HANDED_OVER: "Waiting for the owner to accept",
 	LIVE: "Hotels in daily use",
 	AT_RISK: "Fees overdue or usage dropping",
 	SUSPENDED: "Nobody can sign in until reactivated",
-	CHURNED: "Left H.M.S",
+	CHURNED: "Left Hospio360",
 };
 
 /** C11 · Change stage (PUT /tenant/businesses/{id}/stage). Suspending needs a reason of 8+ characters. */
@@ -1393,9 +1393,9 @@ function ChangeManagerModal({
 }
 
 /**
- * Phase 3 · Edit as H.M.S: the same business form with a required reason; the edit goes to tenant and
+ * Phase 3 · Edit as Hospio360: the same business form with a required reason; the edit goes to tenant and
  * is then recorded (POST /platform/admin/changes, area BUSINESS, before/after of the fields that changed)
- * so it shows under "Changes by H.M.S" and in the owner's activity log; the owner can ask support to undo it within 7 days.
+ * so it shows under "Changes by Hospio360" and in the owner's activity log; the owner can ask support to undo it within 7 days.
  */
 export function EditAsHmsPanel({
 	open,
@@ -1412,12 +1412,12 @@ export function EditAsHmsPanel({
 		<SidePanel
 			open={open}
 			onOpenChange={onOpenChange}
-			title="Edit as H.M.S"
+			title="Edit as Hospio360"
 			subtitle={`${business.name} · logged in the hotel's activity log; the owner can ask support to undo it within 7 days`}
 			icon={ShieldAlertIcon}
 			width="md"
 			tone="danger"
-			footerInfo="The owner and managers see this change in their activity log, marked 'by H.M.S'."
+			footerInfo="The owner and managers see this change in their activity log, marked 'by Hospio360'."
 		>
 			{open && (
 				<EditBusinessForm

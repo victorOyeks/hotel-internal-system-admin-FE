@@ -2,14 +2,14 @@ import type { HelpModule } from "./types";
 
 export const platformHelp: HelpModule = {
 	audience: "PLATFORM",
-	label: "H.M.S platform",
+	label: "Hospio360 platform",
 	intro:
-		"Businesses, onboarding, support, money, marketers and the H.M.S team.",
+		"Businesses, onboarding, support, money, marketers and the Hospio360 team.",
 	guides: [
 		{
 			id: "adm-set-up-business",
 			title: "Set up a business for a hotel owner",
-			when: "A hotel business has agreed to join and H.M.S will set it up for them.",
+			when: "A hotel business has agreed to join and Hospio360 will set it up for them.",
 			topic: "Businesses",
 			steps: [
 				"Open “Businesses” and tap “Set up a business for them”.",
@@ -30,7 +30,7 @@ export const platformHelp: HelpModule = {
 		{
 			id: "adm-onboarding",
 			title: "Walk a business through onboarding",
-			when: "A business set up by H.M.S still has steps to finish before handover.",
+			when: "A business set up by Hospio360 still has steps to finish before handover.",
 			topic: "Onboarding",
 			steps: [
 				"Open “Onboarding”. Businesses are grouped under “In progress”, “Ready for handover” and “Handed over”.",
@@ -95,12 +95,12 @@ export const platformHelp: HelpModule = {
 		},
 		{
 			id: "adm-edit-as-hms",
-			title: "Change a business's details as H.M.S",
-			when: "An owner asked H.M.S to change something on their account, such as a phone number.",
+			title: "Change a business's details as Hospio360",
+			when: "An owner asked Hospio360 to change something on their account, such as a phone number.",
 			topic: "Businesses",
 			steps: [
 				"Open “Businesses” and open the business.",
-				"Tap the row menu (⋯) next to the buttons at the top and pick “Edit as H.M.S”.",
+				"Tap the row menu (⋯) next to the buttons at the top and pick “Edit as Hospio360”.",
 				"Under “Why”, type the “Reason”. A ticket number is best.",
 				"Change the details that need changing.",
 				"Tap “Save change”.",
@@ -108,7 +108,7 @@ export const platformHelp: HelpModule = {
 			goodToKnow: [
 				"Only Support or a Super admin can edit a business.",
 				"The reason must be at least 8 characters, and something must have changed.",
-				"Every change is logged under “Changes by H.M.S” with your name and reason. The owner sees it and can ask support to undo it within 7 days.",
+				"Every change is logged under “Changes by Hospio360” with your name and reason. The owner sees it and can ask support to undo it within 7 days.",
 				"Changing the owner email doesn't change the owner's sign-in.",
 			],
 			route: "/dashboard/businesses",
@@ -145,7 +145,7 @@ export const platformHelp: HelpModule = {
 				"Open “Support”. New tickets are under “Waiting on us”.",
 				"Open the ticket.",
 				"Pick a person under “Assigned to” and set the “Priority”. Assigning moves it to “In progress”.",
-				"Type your message and tap “Send reply”. Turn on “Internal note” to write a note only H.M.S sees, then tap “Add note”.",
+				"Type your message and tap “Send reply”. Turn on “Internal note” to write a note only Hospio360 sees, then tap “Add note”.",
 				"Once it is fixed, write “What fixed it” and tap “Resolve”.",
 				"If the problem comes back, open the ticket and tap “Reopen”.",
 			],
@@ -160,13 +160,13 @@ export const platformHelp: HelpModule = {
 		},
 		{
 			id: "adm-undo-change",
-			title: "Undo a change by H.M.S",
-			when: "An owner has asked support to undo a change H.M.S made to their account.",
+			title: "Undo a change by Hospio360",
+			when: "An owner has asked support to undo a change Hospio360 made to their account.",
 			topic: "Support",
 			steps: [
-				"The request arrives in “Support” as a high-priority ticket starting “Undo a change by H.M.S”.",
-				"Put the old value back yourself, for example with “Edit as H.M.S” on the business page.",
-				"Open “Changes by H.M.S” and find the change.",
+				"The request arrives in “Support” as a high-priority ticket starting “Undo a change by Hospio360”.",
+				"Put the old value back yourself, for example with “Edit as Hospio360” on the business page.",
+				"Open “Changes by Hospio360” and find the change.",
 				"Tap “Undo” on its row (it shows how many days are left).",
 				"Tap “Mark undone” to confirm. The owner's ticket is resolved and the owner sees the change as undone.",
 			],
@@ -174,10 +174,10 @@ export const platformHelp: HelpModule = {
 				"Only Support or a Super admin can undo. Finance admin sees the days left but no button.",
 				"A change can be undone for 7 days. After that the row says “window closed”.",
 				"Undo marks the change as undone. It does not put the old value back by itself, so do that first.",
-				"The “Admin activity” tab lists what the H.M.S team has done.",
+				"The “Admin activity” tab lists what the Hospio360 team has done.",
 			],
 			route: "/dashboard/changes",
-			screen: "Changes by H.M.S",
+			screen: "Changes by Hospio360",
 		},
 		{
 			id: "adm-ownership-transfer",
@@ -187,7 +187,7 @@ export const platformHelp: HelpModule = {
 			steps: [
 				"Open “Support”. The request is a high-priority ticket starting “Ownership transfer”, with the business and the new owner's email.",
 				"Assign it to yourself and check the request with the current owner.",
-				"Make the change the business needs. For owner details, use “Edit as H.M.S” on the business page with the ticket number as the reason.",
+				"Make the change the business needs. For owner details, use “Edit as Hospio360” on the business page with the ticket number as the reason.",
 				"Write what was done under “What fixed it” and tap “Resolve”.",
 			],
 			goodToKnow: [
@@ -245,7 +245,7 @@ export const platformHelp: HelpModule = {
 			topic: "Money",
 			steps: [
 				"Open “Payments” and tap “Run settlements for yesterday”.",
-				"On the “Settlements” tab, tap a row to see the gross, provider fee, H.M.S share and what goes to the hotel.",
+				"On the “Settlements” tab, tap a row to see the gross, provider fee, Hospio360 share and what goes to the hotel.",
 				"Tap “Create payout batch”, pick “All pending settlements” (or choose some) and tap “Create batch”.",
 				"Make the bank transfer.",
 				"In the batch, tap “Mark paid”, enter the “Bank reference” and “Paid on”, then tap “Mark paid”.",
@@ -263,12 +263,12 @@ export const platformHelp: HelpModule = {
 		{
 			id: "adm-marketers",
 			title: "Invite and approve a marketer",
-			when: "Someone will bring hotels to H.M.S for a share of the fee.",
+			when: "Someone will bring hotels to Hospio360 for a share of the fee.",
 			topic: "Marketers",
 			steps: [
 				"Open “Marketers” and tap “Invite a marketer”.",
 				"Fill in the “Full name”, “Email” and “Phone”.",
-				"Pick the “Share of H.M.S fee” and “For how long”.",
+				"Pick the “Share of Hospio360 fee” and “For how long”.",
 				"Tap “Send invite” and copy the login details shown.",
 				"To approve a pending marketer, tap the row menu and pick “Approve marketer”.",
 			],
@@ -296,15 +296,15 @@ export const platformHelp: HelpModule = {
 			goodToKnow: [
 				"Only a Finance admin or a Super admin sees the “Commissions” tab.",
 				"5% withholding tax is taken off every payout.",
-				"A commission line only appears once the referred business has paid H.M.S its monthly fee.",
+				"A commission line only appears once the referred business has paid Hospio360 its monthly fee.",
 			],
 			route: "/dashboard/marketers",
 			screen: "Marketers",
 		},
 		{
 			id: "adm-team",
-			title: "Add someone to the H.M.S admin team",
-			when: "A new H.M.S staff member needs to use the admin portal.",
+			title: "Add someone to the Hospio360 admin team",
+			when: "A new Hospio360 staff member needs to use the admin portal.",
 			topic: "Team",
 			steps: [
 				"Open “Admin team” and tap “Add an admin”.",
@@ -325,7 +325,7 @@ export const platformHelp: HelpModule = {
 		{
 			id: "adm-settings",
 			title: "Change platform settings",
-			when: "H.M.S company details, default fees or security rules need changing.",
+			when: "Hospio360 company details, default fees or security rules need changing.",
 			topic: "Team",
 			steps: [
 				"Open “Settings”.",

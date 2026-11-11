@@ -97,12 +97,12 @@ export const whatsNew: WhatsNewItem[] = [
 	},
 	{
 		title: "Help is real",
-		body: "These guides now match the screens you use, and “Contact support” opens a real ticket with H.M.S.",
+		body: "These guides now match the screens you use, and “Contact support” opens a real ticket with Hospio360.",
 		audience: ["EVERYONE", "PLATFORM", "MARKETER"],
 	},
 	{
 		title: "Support queue and change undo",
-		body: "Owners can ask support to undo a change H.M.S made, and ask to hand the business to a new owner. Both arrive as high-priority tickets in Support.",
+		body: "Owners can ask support to undo a change Hospio360 made, and ask to hand the business to a new owner. Both arrive as high-priority tickets in Support.",
 		audience: ["PLATFORM"],
 	},
 ];

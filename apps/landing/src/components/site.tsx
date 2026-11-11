@@ -14,7 +14,7 @@ export const SIGN_IN_URL = `${HOTEL_APP_URL}/auth`;
 /** Where demo requests, sales and support questions go. Set NEXT_PUBLIC_CONTACT_EMAIL to the real inbox. */
 export const CONTACT_EMAIL =
 	process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello@hospio360.com";
-export const DEMO_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("H.M.S demo request")}&body=${encodeURIComponent("Hotel name:\nCity:\nNumber of rooms:\nBest phone number:\n")}`;
+export const DEMO_MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Hospio360 demo request")}&body=${encodeURIComponent("Hotel name:\nCity:\nNumber of rooms:\nBest phone number:\n")}`;
 /** The public site's own address (canonical links, Open Graph, robots). */
 export const SITE_URL = (
 	process.env.NEXT_PUBLIC_SITE_URL ?? "https://hospio360.com"
@@ -45,7 +45,7 @@ export function Wordmark({
 	return (
 		<Link
 			href="/"
-			aria-label="H.M.S home"
+			aria-label="Hospio360 home"
 			className={cn("flex shrink-0 items-center gap-[10px]", className)}
 		>
 			<span
@@ -58,11 +58,11 @@ export function Wordmark({
 			</span>
 			<span
 				className={cn(
-					"text-[20px] font-bold leading-none tracking-[0.16em]",
+					"text-[20px] font-bold leading-none tracking-[-0.01em]",
 					dark ? "text-white" : "text-brand",
 				)}
 			>
-				H.M.S
+				Hospio360
 			</span>
 		</Link>
 	);
@@ -203,7 +203,7 @@ export function SiteFooter() {
 					))}
 				</div>
 				<div className="flex flex-col gap-2 text-[13px] text-ink-2 sm:flex-row sm:items-center sm:justify-between">
-					<p>© {new Date().getFullYear()} H.M.S · Hotel Management System</p>
+					<p>© {new Date().getFullYear()} Hospio360</p>
 					<a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-ink">
 						{CONTACT_EMAIL}
 					</a>

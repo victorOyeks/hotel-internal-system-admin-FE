@@ -36,8 +36,8 @@ export function OnboardingShell({ children }: PropsWithChildren) {
 					<span className="flex size-8 items-center justify-center rounded-lg bg-brand text-white [&_svg]:size-4">
 						<HomeIcon />
 					</span>
-					<span className="text-sm font-bold tracking-[0.2em] text-brand">
-						H.M.S
+					<span className="text-sm font-bold tracking-[-0.01em] text-brand">
+						Hospio360
 					</span>
 				</Link>
 				{bar && (

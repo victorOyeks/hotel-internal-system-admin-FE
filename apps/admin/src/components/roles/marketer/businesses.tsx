@@ -91,7 +91,7 @@ export function MarketerBusinesses({
 		<>
 			<PageHeader
 				title="My businesses"
-				subtitle={`${businesses.length} businesses you brought to H.M.S · you earn ${p.sharePct}% of our share for ${p.months} months each`}
+				subtitle={`${businesses.length} businesses you brought to Hospio360 · you earn ${p.sharePct}% of our share for ${p.months} months each`}
 			/>
 			<DataTable
 				columns={columns}
@@ -147,7 +147,7 @@ export function MarketerBusinesses({
 							<TotalsList
 								rows={[
 									{
-										label: `Your ${selected.sharePct}% of the H.M.S share`,
+										label: `Your ${selected.sharePct}% of the Hospio360 share`,
 										value: naira(selected.lastMonthShare),
 									},
 									{
@@ -168,7 +168,7 @@ export function MarketerBusinesses({
 							(c) => c.businessId === selected.id && c.status === "WAITING",
 						) && (
 							<Note tone="warning">
-								This business hasn't paid its H.M.S fee yet. Your commission for
+								This business hasn't paid its Hospio360 fee yet. Your commission for
 								the month is paid once they do.
 							</Note>
 						)}

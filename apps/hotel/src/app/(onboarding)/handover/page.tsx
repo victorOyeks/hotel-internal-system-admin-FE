@@ -4,7 +4,7 @@ import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
-/** K3 · an owner onboarded by H.M.S reviews the hotels, logins and setup, then accepts (stage → LIVE). */
+/** K3 · an owner onboarded by Hospio360 reviews the hotels, logins and setup, then accepts (stage → LIVE). */
 export default async function HandoverPage() {
 	const [user, business, hotels, users, setup] = await Promise.all([
 		getUser(),

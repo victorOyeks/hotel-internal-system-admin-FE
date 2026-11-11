@@ -14,7 +14,7 @@ const dmSans = DM_Sans({
 
 const title = "Hospio360 · Hotel management for Nigerian hotels";
 const description =
-	"H.M.S by Hospio360 runs a Nigerian hotel from one place: bookings and front desk, folios and payments, housekeeping, laundry, maintenance, restaurant and bar, inventory, reports and night audit, with the owner's view across every hotel.";
+	"Hospio360 runs a Nigerian hotel from one place: bookings and front desk, folios and payments, housekeeping, laundry, maintenance, restaurant and bar, inventory, reports and night audit, with the owner's view across every hotel.";
 
 export const metadata: Metadata = {
 	title: { default: title, template: "%s · Hospio360" },

@@ -22,7 +22,7 @@ const themes: Theme[] = [
 		railText: "text-nav-foreground",
 		page: "bg-page",
 		button: "bg-brand",
-		caption: "H.M.S default · Maroon",
+		caption: "Hospio360 default · Maroon",
 	},
 	{
 		nav: "bg-teal-nav",

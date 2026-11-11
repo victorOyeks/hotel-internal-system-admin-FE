@@ -82,7 +82,7 @@ export const accountHelp: HelpModule = {
 		},
 		{
 			id: "all-contact-support",
-			title: "Contact H.M.S support",
+			title: "Contact Hospio360 support",
 			when: "Something isn't working and you need a person to look at it.",
 			topic: "Getting help",
 			steps: [
@@ -94,7 +94,7 @@ export const accountHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"Your hotel and your name go with the ticket.",
-				"H.M.S replies by email to the address you sign in with.",
+				"Hospio360 replies by email to the address you sign in with.",
 				"Choose “Urgent” only when guests or money are affected right now.",
 			],
 		},

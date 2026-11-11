@@ -1,7 +1,7 @@
 /**
  * Extra sample data for the platform admin and marketer portals: settlements and payouts, the
  * marketer commission ledger, onboarding checklists, business users, integrations and settings.
- * Money model (developer handoff): H.M.S takes its share per business; marketers earn 20% of that
+ * Money model (developer handoff): Hospio360 takes its share per business; marketers earn 20% of that
  * share for 24 months; 5% WHT is deducted from what the marketer is paid.
  */
 import type { SetupTemplateRow } from "@hospio/api/data/types";
@@ -135,7 +135,7 @@ export const demoIntegrations: IntegrationRow[] = [
 ];
 
 export const demoPlatformSettings = {
-	general: { company: "H.M.S Technologies Ltd", supportEmail: "support@hospio360.com", supportWhatsApp: "+234 700 467 7460", website: "https://hospio360.com", timezone: "Africa/Lagos" },
+	general: { company: "Hospio360 Technologies Ltd", supportEmail: "support@hospio360.com", supportWhatsApp: "+234 700 467 7460", website: "https://hospio360.com", timezone: "Africa/Lagos" },
 	fees: { model: "Per room / month", perRoom: 1500, revenuePct: 2, trialDays: 30, dueDay: 5, graceDays: 10, marketerSharePct: 20, marketerMonths: 24, whtPct: 5 },
 	security: { require2Step: true, sessionHours: 12, adminIpAllowlist: false, auditRetentionDays: 365 },
 };

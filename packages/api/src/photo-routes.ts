@@ -19,7 +19,7 @@ async function bearer() {
 	};
 }
 
-/** GET: someone's photo, for an <img>. Who may see it is decided by identity (the person, their business, H.M.S). */
+/** GET: someone's photo, for an <img>. Who may see it is decided by identity (the person, their business, Hospio360). */
 export async function personPhoto(
 	_req: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },

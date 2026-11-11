@@ -34,7 +34,7 @@ const LEVEL_OPTIONS: { value: Level; label: string; hint: string }[] = [
 	{ value: "VIEW", label: "View only", hint: "Can look, cannot change" },
 ];
 
-/** The roles a manager or the owner can give at a hotel (the owner role and H.M.S roles are not given here). */
+/** The roles a manager or the owner can give at a hotel (the owner role and Hospio360 roles are not given here). */
 const GIVABLE: HotelRole[] = ["MANAGER", "FRONT_OFFICE", "HOUSEKEEPING", "LAUNDRY", "MAINTENANCE", "KITCHEN", "BAR", "INVENTORY", "FINANCE"];
 
 const label = (role: string) => roleLabels[role as HotelRole] ?? role;
@@ -254,7 +254,7 @@ export function RolesScreen({
 
 			{/* What a role allows */}
 			<SidePanel open={!!currentRole} onOpenChange={(o) => !o && void setOpenRole(null)} title={currentRole ? roleLabels[currentRole] : ""} subtitle={currentRole ? roleDescriptions[currentRole] : undefined} icon={currentRole ? roleIcons[currentRole] : undefined} width="lg"
-				footerInfo="Levels are fixed by H.M.S · each level includes the one before it"
+				footerInfo="Levels are fixed by Hospio360 · each level includes the one before it"
 				footer={currentRole && <Button className={btn.primary} onClick={() => { void setOpenRole(null); void setTab("access"); list.set({ holds: currentRole }); }}>Who holds it ({holders(currentRole)})</Button>}>
 				{currentRole && (
 					<div className="flex flex-col gap-5">

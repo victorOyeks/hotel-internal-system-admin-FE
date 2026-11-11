@@ -130,7 +130,7 @@ export function LinkTerminalPanel({ open, onClose, onLinked }: { open: boolean; 
 				<SelectField label="Provider" value={provider} onChange={setProvider} options={PROVIDERS} required />
 				<TextField label="Terminal or serial ref" value={ref} onChange={setRef} placeholder="Printed on the back of the device" required />
 				<SelectField label="Desk" value={role} onChange={(v) => setRole(v as TerminalRole)} options={TERMINAL_ROLES.map((r) => ({ value: r, label: humanize(r) }))} required />
-				<button type="button" disabled={ticket.pending} onClick={() => ticket.run(() => requestProviderAccount(provider, `Hotel needs a ${provider} account to link ${name || "a POS terminal"}.`), "Ticket opened with H.M.S", (r) => toast.info(`Ticket ${r.reference} opened. H.M.S will be in touch`))} className="self-start text-[13px] font-semibold text-brand hover:underline">Need a provider account? Ask H.M.S</button>
+				<button type="button" disabled={ticket.pending} onClick={() => ticket.run(() => requestProviderAccount(provider, `Hotel needs a ${provider} account to link ${name || "a POS terminal"}.`), "Ticket opened with Hospio360", (r) => toast.info(`Ticket ${r.reference} opened. Hospio360 will be in touch`))} className="self-start text-[13px] font-semibold text-brand hover:underline">Need a provider account? Ask Hospio360</button>
 			</div>
 		</SidePanel>
 	);

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@hospio/ui/primitives/button";
 
-/** Passwords are reset by a manager (or by H.M.S for an owner): a temporary one is issued and shown once. */
+/** Passwords are reset by a manager (or by Hospio360 for an owner): a temporary one is issued and shown once. */
 export default function ForgotPasswordPage() {
 	return (
 		<div className="flex flex-col gap-4">

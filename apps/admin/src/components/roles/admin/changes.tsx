@@ -27,7 +27,7 @@ import { ServerPager, useFilterParam, usePageParam } from "./live";
 import { can } from "./shared";
 
 /**
- * Admin — Changes by H.M.S (Figma 3334:1454): GET /platform/admin/changes paged and filtered on the
+ * Admin — Changes by Hospio360 (Figma 3334:1454): GET /platform/admin/changes paged and filtered on the
  * server, undo while the window is open; the Activity tab is GET /platform/activity?byPlatform=true.
  */
 export function ChangesScreen({
@@ -123,7 +123,7 @@ export function ChangesScreen({
 	return (
 		<>
 			<PageHeader
-				title="Changes by H.M.S"
+				title="Changes by Hospio360"
 				subtitle="Everything our team changed inside a hotel's account, with the reason given; marked undone within 7 days once support puts it back"
 			/>
 			<Toolbar
@@ -179,13 +179,13 @@ export function ChangesScreen({
 					search={search}
 					pageSize={initial.size}
 					emptyTitle="No changes"
-					emptyHint="Edits made as H.M.S appear here."
+					emptyHint="Edits made as Hospio360 appear here."
 					footer={<ServerPager bare page={initial} onPage={setPage} />}
 				/>
 			) : (
 				<SectionCard
 					title="Admin activity"
-					subtitle="Sign-ins, approvals and actions by the H.M.S team"
+					subtitle="Sign-ins, approvals and actions by the Hospio360 team"
 					flush
 				>
 					{activity.content.length === 0 ? (
@@ -241,9 +241,9 @@ export function ChangesScreen({
 				<WhatHappens
 					tone="warning"
 					items={[
-						"Put the previous value back first (for example with Edit as H.M.S): Undo doesn't change the setting itself",
+						"Put the previous value back first (for example with Edit as Hospio360): Undo doesn't change the setting itself",
 						"The change is marked undone and the owner's undo request ticket is resolved",
-						"The owner and managers see 'undone by H.M.S' in their activity log",
+						"The owner and managers see 'undone by Hospio360' in their activity log",
 					]}
 				/>
 			</ConfirmModal>

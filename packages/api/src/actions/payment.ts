@@ -407,7 +407,7 @@ export async function reassignTerminal(
 	return { ok: true, data: { id, role: data.data.role } };
 }
 
-/** Ask H.M.S for a provider account: opens a real support ticket for the hotel's business. */
+/** Ask Hospio360 for a provider account: opens a real support ticket for the hotel's business. */
 export async function requestProviderAccount(
 	provider: string,
 	note: string,
@@ -436,7 +436,7 @@ export async function requestProviderAccount(
 	};
 }
 
-/** Help · Contact support: opens a real H.M.S support ticket for the hotel's business. */
+/** Help · Contact support: opens a real Hospio360 support ticket for the hotel's business. */
 export async function openSupportTicket(input: {
 	subject: string;
 	body: string;

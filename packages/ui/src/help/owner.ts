@@ -282,11 +282,11 @@ export const ownerHelp: HelpModule = {
 		},
 		{
 			id: "own-undo-hms-change",
-			title: "Ask support to undo a change by H.M.S",
+			title: "Ask support to undo a change by Hospio360",
 			when: "Hospio support changed something in your business and you want it put back.",
 			topic: "Business",
 			steps: [
-				"Open “Operations” and the “Changes by H.M.S” tab.",
+				"Open “Operations” and the “Changes by Hospio360” tab.",
 				"Find the change. Each shows what changed, the hotel, who made it, when and why.",
 				"Tap “Ask support to undo”.",
 				"Add a “Note for support” if you like, then tap “Send to support”.",
@@ -309,11 +309,11 @@ export const ownerHelp: HelpModule = {
 				"Open “Settings” and the “Transfer ownership” tab.",
 				"Tap “Start a transfer”.",
 				"Fill “New owner's full name”, “New owner's email”, “Their phone” and an optional “Note for support”.",
-				"Tap “Continue”, check the details, then tap “Send to H.M.S support”.",
-				"The tab shows your request as “With H.M.S support”, then “Support is on it”, then “Closed” with support's note.",
+				"Tap “Continue”, check the details, then tap “Send to Hospio360 support”.",
+				"The tab shows your request as “With Hospio360 support”, then “Support is on it”, then “Closed” with support's note.",
 			],
 			goodToKnow: [
-				"H.M.S support makes the transfer: they confirm with you and the new owner first.",
+				"Hospio360 support makes the transfer: they confirm with you and the new owner first.",
 				"When it is made, the new owner gets full control of every hotel and you lose owner access. Managers and staff are not affected.",
 				"Only one request at a time: the button reads “Request sent” while one is open.",
 				"You can't send it to your own email.",

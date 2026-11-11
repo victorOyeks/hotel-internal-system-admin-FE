@@ -36,7 +36,7 @@ import {
 
 /**
  * Self-serve onboarding (apps/hotel): sign-up, phone check, invites, the owner's four-step wizard and
- * the handover an owner onboarded by H.M.S accepts. Sign-up and accept-invite create the session the
+ * the handover an owner onboarded by Hospio360 accepts. Sign-up and accept-invite create the session the
  * same way `login` does.
  */
 
@@ -333,7 +333,7 @@ export async function completeMyOnboarding(): Promise<ActionResult<Business>> {
 	return { ok: true, data: data.data };
 }
 
-/** POST /tenant/handover/accept: an owner onboarded by H.M.S accepts the handover; the business goes LIVE. */
+/** POST /tenant/handover/accept: an owner onboarded by Hospio360 accepts the handover; the business goes LIVE. */
 export async function acceptHandover(): Promise<ActionResult<Business>> {
 	if (!live("tenant")) {
 		await demoDelay(500);

@@ -20,7 +20,7 @@ const FEE: Record<string, (v: number) => string> = {
 	PER_ROOM_NIGHT: (v) => `₦${v.toLocaleString("en-NG")} per room-night`,
 };
 
-/** K3 · Review and accept the handover (Figma 3331:2380): what H.M.S set up, a tick, and POST /tenant/handover/accept. */
+/** K3 · Review and accept the handover (Figma 3331:2380): what Hospio360 set up, a tick, and POST /tenant/handover/accept. */
 export function HandoverReview({
 	business,
 	hotels,
@@ -48,7 +48,7 @@ export function HandoverReview({
 					FEE[business.feeModel] ??
 					((v: number) => `${business.feeModel} · ${v}`)
 				)(business.feeValue)
-			: "As agreed with H.M.S";
+			: "As agreed with Hospio360";
 
 	const rows: { label: string; value: string }[] = [
 		{
@@ -80,7 +80,7 @@ export function HandoverReview({
 			<aside className="flex flex-col justify-end gap-2 rounded-card bg-brand px-7 py-8 text-white">
 				<p className="text-2xl font-bold">Welcome, {firstName}</p>
 				<p className="text-sm text-white/80">
-					H.M.S set up {business?.name ?? "your business"} for you. Check it,
+					Hospio360 set up {business?.name ?? "your business"} for you. Check it,
 					accept, and it's yours.
 				</p>
 			</aside>
@@ -107,7 +107,7 @@ export function HandoverReview({
 				{people.length > 0 && (
 					<div className="rounded-xl bg-subtle/70 px-4 py-3">
 						<p className="text-xs font-semibold uppercase tracking-[0.04em] text-ink-3">
-							Logins H.M.S created
+							Logins Hospio360 created
 						</p>
 						<ul className="mt-2 grid gap-1 text-xs text-ink-2 sm:grid-cols-2">
 							{people.slice(0, 8).map((u) => (
@@ -134,7 +134,7 @@ export function HandoverReview({
 					</label>
 				</div>
 				<p className="text-xs text-ink-3">
-					H.M.S support can still help and make changes when needed. Every
+					Hospio360 support can still help and make changes when needed. Every
 					change is shown in your Activity log with a reason, and you can undo
 					it within 7 days.
 				</p>

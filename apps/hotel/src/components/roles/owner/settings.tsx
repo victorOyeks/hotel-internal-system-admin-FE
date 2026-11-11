@@ -61,7 +61,7 @@ export function OwnerSettings({
 	hotelId?: string;
 	taxes?: HotelSetupSection;
 	approvals?: HotelSetupSection;
-	/** The latest ownership transfer request to H.M.S support, if any. */
+	/** The latest ownership transfer request to Hospio360 support, if any. */
 	transfer: TransferRequestRow | null;
 }) {
 	const [tab] = useTabParam<Tab>("company");
@@ -121,7 +121,7 @@ export function OwnerSettings({
 								</p>
 								<StatusPill tone={waiting ? "info" : "grey"}>
 									{transfer.status === "OPEN"
-										? "With H.M.S support"
+										? "With Hospio360 support"
 										: transfer.status === "IN_PROGRESS"
 											? "Support is on it"
 											: "Closed"}
@@ -143,7 +143,7 @@ export function OwnerSettings({
 						are not affected.
 					</Note>
 					<Note tone="info">
-						H.M.S support makes the transfer: this sends them your request, they
+						Hospio360 support makes the transfer: this sends them your request, they
 						confirm with you and the new owner, then change the owner.
 					</Note>
 					<Button
@@ -250,7 +250,7 @@ function TransferPanel({
 					<WhatHappens
 						tone="danger"
 						items={[
-							"H.M.S support gets an urgent ticket with these details",
+							"Hospio360 support gets an urgent ticket with these details",
 							"They confirm with you and the new owner before changing anything",
 							"When the transfer is made, the new owner signs in and you lose owner access",
 						]}
@@ -263,7 +263,7 @@ function TransferPanel({
 				title="Send the transfer request?"
 				subtitle={`${form.name.trim()} · ${form.email.trim()}`}
 				tone="danger"
-				confirmLabel="Send to H.M.S support"
+				confirmLabel="Send to Hospio360 support"
 				pending={pending}
 				onConfirm={() =>
 					run(
@@ -274,7 +274,7 @@ function TransferPanel({
 								newOwnerPhone: form.phone,
 								note: form.note,
 							}),
-						"Transfer request sent to H.M.S support",
+						"Transfer request sent to Hospio360 support",
 						() => {
 							setForm({ name: "", email: "", phone: "", note: "" });
 							close();

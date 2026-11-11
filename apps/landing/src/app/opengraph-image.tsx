@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "H.M.S by Hospio360 · Hotel management for Nigerian hotels";
+export const alt = "Hospio360 · Hotel management for Nigerian hotels";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -20,7 +20,7 @@ export default function OpengraphImage() {
 			}}
 		>
 			<div style={{ fontSize: 40, fontWeight: 700, letterSpacing: "0.16em" }}>
-				H.M.S · Hospio360
+				Hospio360
 			</div>
 			<div
 				style={{

@@ -15,7 +15,7 @@ import { SiteFooter, SiteHeader } from "@/components/site";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
-/** The public landing page (Figma "H.M.S — Landing page (1440)", node 3396:3), one component per section. */
+/** The public landing page (Figma "Hospio360 — Landing page (1440)", node 3396:3), one component per section. */
 export default function HomePage() {
 	return (
 		<>

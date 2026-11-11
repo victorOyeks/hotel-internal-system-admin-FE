@@ -41,7 +41,7 @@ export function Pricing() {
 			id="pricing"
 			eyebrow="Pricing"
 			title="Pay as your hotels earn."
-			intro="No big licence up front. H.M.S takes an agreed share, set per business to fit how you operate."
+			intro="No big licence up front. Hospio360 takes an agreed share, set per business to fit how you operate."
 		>
 			<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
 				<div className="flex flex-col gap-4 rounded-[16px] border border-line bg-card p-6 md:p-8">
@@ -78,7 +78,7 @@ export function Pricing() {
 						</div>
 					))}
 					<a
-						href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("H.M.S pricing")}`}
+						href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Hospio360 pricing")}`}
 						className={cn(
 							btn.secondary,
 							btnLg,
@@ -97,16 +97,16 @@ export function Pricing() {
 				<IconTile icon={MegaphoneIcon} tone="brand" size="lg" />
 				<div className="flex flex-1 flex-col gap-[6px]">
 					<h3 className="text-[22px] font-bold text-ink">
-						Know hotel owners? Become an H.M.S partner.
+						Know hotel owners? Become a Hospio360 partner.
 					</h3>
 					<p className="text-[15px] leading-[1.5] text-ink-2">
-						Earn 20% of H.M.S’s share from every hotel you bring on, for 24
-						months — paid monthly on what H.M.S actually receives (5% WHT
+						Earn 20% of Hospio360’s share from every hotel you bring on, for 24
+						months — paid monthly on what Hospio360 actually receives (5% WHT
 						applies).
 					</p>
 				</div>
 				<a
-					href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("H.M.S partner program")}`}
+					href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Hospio360 partner program")}`}
 					className={cn(
 						btn.primary,
 						btnLg,

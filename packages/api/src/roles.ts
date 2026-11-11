@@ -16,7 +16,7 @@ import {
 	WrenchIcon,
 } from "lucide-react";
 
-/** The roles the backend issues. Owner and manager are hotel-wide; the rest are the modules; the last four are H.M.S. */
+/** The roles the backend issues. Owner and manager are hotel-wide; the rest are the modules; the last four are Hospio360. */
 export const HOTEL_ROLES = [
 	"OWNER",
 	"MANAGER",

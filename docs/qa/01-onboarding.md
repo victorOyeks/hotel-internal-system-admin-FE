@@ -7,7 +7,7 @@ there and show up for every role, so name them after yourself (e.g. "QA Ada Hote
 - Web: https://web-staging.hospio360.com (hotel app) · https://admin-staging.hospio360.com (platform
   admin) · API: https://api-staging.hospio360.com
 - Seed accounts (password `Hospio123!`): owner `godwin@royalsuites.ng` (Royal Suites Ltd, 4 hotels,
-  onboarded by H.M.S and already live), manager `tunde@royalsuites.ng`, super admin
+  onboarded by Hospio360 and already live), manager `tunde@royalsuites.ng`, super admin
   `amoria@hospio360.com`, support `kola@hospio360.com`.
 - Phone code on staging: `123456` (no SMS is sent; the real code is in the identity-service log).
 - Live: sign-up, phone check, invites, the owner wizard (tenant, identity, hotel-config, property),
@@ -121,12 +121,12 @@ step and the manager sub-step of Add new hotel. If it does not appear, that is a
    kept. Reasons & lists → add a cancellation reason → Save → it stays; remove it → Save → gone. The
    owner-only sections are visible but greyed with "Only the owner can change this section".
 
-## Back-office path (H.M.S onboards the hotel)
+## Back-office path (Hospio360 onboards the hotel)
 
 See the admin section: the platform admin's 10-step wizard, the handover and the owner's first sign-in
 (`/reset-password` → `/handover` → dashboard) are scripted there. The hotel app's part is `/handover`:
 after the handed-over owner changes the temporary password and signs in, "Your hotels are ready" lists
-the hotels, people and setup H.M.S created; tick "I've checked the setup" → "Accept and go to my
+the hotels, people and setup Hospio360 created; tick "I've checked the setup" → "Accept and go to my
 dashboard" → the business goes live and the owner dashboard opens. Until they accept, every `/dashboard`
 visit returns them to `/handover`.
 
@@ -153,7 +153,7 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
    lands on `/dashboard/onboarding/<businessId>` with a full page load, at **Step 1 of 10 · Business
    & legal**. The header reads "Set up QA Palms <date>" with the Onboarding pill; the left rail shows
    10 steps, none done. After each step is saved its subtitle reads "saved just now".
-5. Sidebar → Onboarding → the board shows the new business under "In progress" as "H.M.S · <you> ·
+5. Sidebar → Onboarding → the board shows the new business under "In progress" as "Hospio360 · <you> ·
    Step 1 of 10 · Business & legal". Click the card → back in the wizard.
 
 ### B. Walk the 10 steps (J2–J12)
@@ -234,7 +234,7 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
     temporary password" is available. Do not reset yet.
 21. Sidebar → Onboarding → the card sits under "Handed over" with 10 / 10. Hotel businesses → the
     row shows the stage Handed over → open it → the overview shows the owner, source "Set up by
-    H.M.S", the fee and two hotels; the Hotels tab lists both with their rooms; the People tab lists
+    Hospio360", the fee and two hotels; the Hotels tab lists both with their rooms; the People tab lists
     the owner, QA Manager and QA Reception as "invited".
 
 ### D. The owner signs in (hotel app)
@@ -242,7 +242,7 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
 22. In a private window open https://web-staging.hospio360.com, sign in as
     `qa-owner+<date>@example.com` with the temporary password from step 19 → the app asks for a new
     password (must change on first sign-in). Set `QaOwner-2026!` → the handover screen opens
-    ("/handover"): it lists the two hotels, the logins H.M.S made and the settings.
+    ("/handover"): it lists the two hotels, the logins Hospio360 made and the settings.
 23. "Accept and continue" → the owner dashboard opens; the branch switcher lists both hotels. Back in
     the admin wizard, "Send handover" is now refused with "The owner has already accepted the
     handover; reset their password from People instead".
@@ -266,7 +266,7 @@ The steps below run in the admin portal as `amoria@hospio360.com` / `Hospio123!`
 
 ### Not covered on purpose
 
-- Fee statements, support tickets and the "Changes by H.M.S" timeline stay on sample data until
+- Fee statements, support tickets and the "Changes by Hospio360" timeline stay on sample data until
   platform-service lands.
 - Invites and passwords are emailed for real; SMS and WhatsApp are "coming soon" (shown on screen, not sent).
 - Phone verification is the self-serve path (hotel app); see the owner section of `onboarding.md`.

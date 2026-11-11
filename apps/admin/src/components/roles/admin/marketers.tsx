@@ -239,7 +239,7 @@ export function MarketersScreen({
 		{ accessorKey: "month", header: "Month" },
 		{
 			accessorKey: "baseAmount",
-			header: "H.M.S share",
+			header: "Hospio360 share",
 			cell: ({ row }) => (
 				<span className="text-ink-2">{naira(row.original.baseAmount)}</span>
 			),
@@ -295,7 +295,7 @@ export function MarketersScreen({
 		<>
 			<PageHeader
 				title="Marketers"
-				subtitle="People who bring hotels onto H.M.S · a share of our fee for a number of months, 5% WHT deducted"
+				subtitle="People who bring hotels onto Hospio360 · a share of our fee for a number of months, 5% WHT deducted"
 			>
 				{editable && (
 					<button
@@ -472,7 +472,7 @@ export function MarketersScreen({
 			>
 				<WhatHappens
 					items={[
-						`${confirm?.m.sharePct}% of the H.M.S share for ${confirm?.m.months} months per business they bring`,
+						`${confirm?.m.sharePct}% of the Hospio360 share for ${confirm?.m.months} months per business they bring`,
 						"5% withholding tax is deducted from every payout",
 						"They see only businesses they referred",
 					]}
@@ -593,7 +593,7 @@ export function CommissionTable({
 					<tr className="border-b border-line bg-[#fafafa] text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-3">
 						<th className="px-3 py-2">Month</th>
 						<th className="px-3 py-2">Business</th>
-						<th className="px-3 py-2 text-right">H.M.S share</th>
+						<th className="px-3 py-2 text-right">Hospio360 share</th>
 						<th className="px-3 py-2 text-right">
 							{sharePct ? `${sharePct}%` : "Commission"}
 						</th>
@@ -690,7 +690,7 @@ function MarketerPanel({
 			width="lg"
 			footerInfo={
 				m
-					? `${m.sharePct}% of the H.M.S share for ${m.months} months per business · joined ${fmtLongDate(m.joined)}`
+					? `${m.sharePct}% of the Hospio360 share for ${m.months} months per business · joined ${fmtLongDate(m.joined)}`
 					: undefined
 			}
 			footer={
@@ -1000,7 +1000,7 @@ function ShareModal({
 		>
 			<FieldRow>
 				<TextField
-					label="Share of H.M.S fee (%)"
+					label="Share of Hospio360 fee (%)"
 					value={share}
 					onChange={setShare}
 				/>
@@ -1199,7 +1199,7 @@ function InviteMarketerPanel({
 						email={created.profile.email}
 						phone={created.profile.phone}
 						roleLabel="Marketer"
-						businessName="H.M.S"
+						businessName="Hospio360"
 						inviterName={inviterName}
 						temporaryPassword={created.login?.temporaryPassword}
 						inviteToken={created.login?.inviteToken}
@@ -1240,7 +1240,7 @@ function InviteMarketerPanel({
 					<PanelSection title="Agreement">
 						<FieldRow>
 							<SelectField
-								label="Share of H.M.S fee"
+								label="Share of Hospio360 fee"
 								value={share}
 								onChange={setShare}
 								options={[
