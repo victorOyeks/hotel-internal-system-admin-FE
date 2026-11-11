@@ -269,12 +269,20 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 		);
 	}, [hotelId, business.id, load]);
 
-	const setRows = (next: Row[]) => {
-		setRowsByHotel((r) => ({ ...r, [hotelId]: next }));
-		keepRows(business.id, hotelId, next);
-	};
+	/** Updates this hotel's rows from the latest state (so typing during a save is never lost) and keeps them. */
+	const setRows = (next: Row[] | ((prev: Row[]) => Row[])) =>
+		setRowsByHotel((all) => {
+			const prev = all[hotelId] ?? [blankRow()];
+			let rows = typeof next === "function" ? next(prev) : next;
+			if (rows.length === 0) rows = [blankRow()];
+			keepRows(business.id, hotelId, rows);
+			return { ...all, [hotelId]: rows };
+		});
+	/** Takes a made row off the list, keeping whatever else is typed. */
+	const dropRow = (rowKey: string) =>
+		setRows((prev) => prev.filter((r) => r.key !== rowKey));
 	const patch = (rowKey: string, p: Partial<Row>) =>
-		setRows(rows.map((r) => (r.key === rowKey ? { ...r, ...p } : r)));
+		setRows((prev) => prev.map((r) => (r.key === rowKey ? { ...r, ...p } : r)));
 
 	/** Writes the server's view of every loaded hotel to the draft, so the board and a reload agree. */
 	const persist = async (latest: Record<string, Snapshot>) => {
@@ -352,8 +360,7 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 			if (!snap || !check(row)) return;
 			const after = await makeRow(row, snap);
 			if (!after) return;
-			const rest = rows.filter((r) => r.key !== row.key);
-			setRows(rest.length ? rest : [blankRow()]);
+			dropRow(row.key);
 			await persist({ ...snaps, [hotelId]: after });
 			toast.success(`${row.name.trim()}: ${row.count.trim()} rooms made`);
 		});
@@ -370,13 +377,11 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 					);
 					return;
 				}
-				let left = rows;
 				for (const r of typed) {
 					const after = await makeRow(r, current);
 					if (!after) return;
 					current = after;
-					left = left.filter((x) => x.key !== r.key);
-					setRows(left.length ? left : [blankRow()]);
+					dropRow(r.key);
 				}
 			}
 			const row = await persist(
