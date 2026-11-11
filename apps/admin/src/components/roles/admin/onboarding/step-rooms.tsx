@@ -197,6 +197,14 @@ function rowErrors(
 	) as RowErrors;
 }
 
+/** An action that answers no data on success, as true, so `call` can tell success from failure. */
+async function done(
+	work: Promise<{ ok: true; data: null } | { ok: false; error: string }>,
+): Promise<{ ok: true; data: true } | { ok: false; error: string }> {
+	const r = await work;
+	return r.ok ? { ok: true, data: true } : r;
+}
+
 /** The draft's summary for a hotel, from what the server holds. */
 function summary(snap: Snapshot): ByHotel[string] {
 	const roomTypes = snap.types
@@ -517,10 +525,10 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 										onDeleteType={() =>
 											busy(async () => {
 												const ok = await call(
-													() => deleteRoomType(t.id, hotelId),
+													() => done(deleteRoomType(t.id, hotelId)),
 													`${t.name} removed`,
 												);
-												if (ok === null) return;
+												if (!ok) return;
 												await reloadAndPersist();
 											})
 										}
@@ -751,10 +759,10 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 					onSave={(input) =>
 						busy(async () => {
 							const ok = await call(
-								() => updateHotelRoom(editRoom.id, input, hotelId),
+								() => done(updateHotelRoom(editRoom.id, input, hotelId)),
 								`Room ${input.number} saved`,
 							);
-							if (ok === null) return;
+							if (!ok) return;
 							setEditRoom(null);
 							await reloadAndPersist();
 						})
@@ -774,11 +782,11 @@ export function RoomsStep({ ctx }: { ctx: WizardCtx }) {
 					busy(async () => {
 						if (!removeRoom) return;
 						const ok = await call(
-							() => deleteRoom(removeRoom.id, hotelId),
+							() => done(deleteRoom(removeRoom.id, hotelId)),
 							`Room ${removeRoom.number} deleted`,
 						);
 						setRemoveRoom(null);
-						if (ok === null) return;
+						if (!ok) return;
 						await reloadAndPersist();
 					})
 				}
