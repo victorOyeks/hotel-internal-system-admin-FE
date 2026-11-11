@@ -1287,7 +1287,12 @@ export type LinenRequestRow = {
 	sentBy?: string;
 };
 /** One minibar price from Hotel setup (price list MINIBAR). */
-export type MinibarPrice = { id: Id; name: string; price: number; active: boolean };
+export type MinibarPrice = {
+	id: Id;
+	name: string;
+	price: number;
+	active: boolean;
+};
 export type LaundryOrderRow = {
 	id: Id;
 	guestName: string;
@@ -1893,9 +1898,16 @@ export type TransferRequestRow = {
 
 // ---- who is in a room (hospio-backend docs/occupancy.md) ------------------------------------------
 
+// The hotel's business day is Lagos's (reservation-service Occupancy.today()), wherever the page renders.
 const isoToday = () => {
-	const d = new Date();
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+	const parts = new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Africa/Lagos",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(new Date());
+	const part = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+	return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
 /** A guest still checked in after their departure date: they keep the room until they are checked out. */

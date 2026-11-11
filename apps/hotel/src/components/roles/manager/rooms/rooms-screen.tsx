@@ -18,12 +18,13 @@ import { RowActions } from "@hospio/ui/shared/row-actions";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { SearchBox } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import type {
-	AreaRow,
-	RoomRow,
-	RoomState,
-	RoomTypeRow,
-	StaffRow,
+import {
+	type AreaRow,
+	occupancyLabel,
+	type RoomRow,
+	type RoomState,
+	type RoomTypeRow,
+	type StaffRow,
 } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 import { roomStateMeta, roomStateOrder } from "./room-state";
@@ -368,7 +369,7 @@ export function RoomsScreen({
 													const meta = roomStateMeta[r.state];
 													const sub =
 														r.state === "occupied"
-															? `${r.guestName?.split(" ").pop()} · out ${fmtDay(r.checkOut)}`
+															? `${r.guestName?.split(" ").pop()} · ${occupancyLabel(r) === "Past departure" ? "past departure" : occupancyLabel(r) === "Due out" ? "due out today" : `out ${fmtDay(r.checkOut)}`}`
 															: r.state === "held"
 																? (r.note ?? "Arriving today")
 																: r.state === "out_of_order"

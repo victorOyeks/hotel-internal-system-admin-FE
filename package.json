@@ -87,5 +87,8 @@
 	},
 	"trustedDependencies": [
 		"@tailwindcss/oxide"
-	]
+	],
+	"overrides": {
+		"@radix-ui/react-dismissable-layer": "1.1.11"
+	}
 }
