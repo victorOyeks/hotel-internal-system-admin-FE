@@ -97,7 +97,7 @@ Negative checks
 - A shift that starts and ends at the same time (only possible through the API) → "The shift has to end at a
   different time than it starts".
 - Staff cannot decide leave: front office has no Staff screen; through the API the answer is "Access Denied".
-- My shifts: Change PIN saves a new 4-digit PIN ("PIN changed"); Language says it is not connected yet.
+- My shifts: Change PIN saves a new 6-digit PIN ("PIN changed"); Language says it is not connected yet.
 
 ## 2 · Tills
 

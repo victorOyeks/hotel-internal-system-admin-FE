@@ -257,7 +257,7 @@ export async function resendInvite(
 }
 
 /**
- * POST /identity/auth/set-pin: the signed-in person's own PIN for shared devices (4–6 digits, not trivial). The password may
+ * POST /identity/auth/set-pin: the signed-in person's own PIN for shared devices (6 digits, not trivial). The password may
  * be left out only for a first PIN just after signing in (the PIN prompt); changing a PIN needs it.
  */
 export async function setMyPin(pin: string, password?: string): Promise<ActionResult<null>> {

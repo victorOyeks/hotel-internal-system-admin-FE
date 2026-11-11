@@ -24,8 +24,8 @@ Password for every account: `Hospio123!`
 | Finance | `femi@royalsuites.ng` |
 | Front office | `victor@royalsuites.ng` |
 | Housekeeping | `grace@royalsuites.ng` |
-| Bar (PIN 2580) | `segun@royalsuites.ng` |
-| Kitchen (PIN 3691) | `mariam@royalsuites.ng` |
+| Bar (PIN 258013) | `segun@royalsuites.ng` |
+| Kitchen (PIN 369150) | `mariam@royalsuites.ng` |
 | Owner B | `qa.ownerb.fcekd@hospio-qa.test` |
 
 Don't change the shared accounts. For PIN and Inbox tests add your own staff with an `@hospio-qa.test` email

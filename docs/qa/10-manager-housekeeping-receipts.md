@@ -10,7 +10,7 @@ https://api-staging.hospio360.com). Password for every account: `Hospio123!`. Na
 | Finance | femi@royalsuites.ng |
 | Front office | victor@royalsuites.ng |
 | Housekeeping (supervisor) | grace@royalsuites.ng |
-| Bar (PIN 2580) | segun@royalsuites.ng |
+| Bar (PIN 258013) | segun@royalsuites.ng |
 
 Check every screen at 1512 and 1280 wide (housekeeping also at 390). No console errors, no raw codes (FUEL_AND_POWER,
 ROOM_PRICE, SENT_BACK), lists newest first.
