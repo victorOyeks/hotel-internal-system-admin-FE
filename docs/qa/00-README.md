@@ -25,6 +25,7 @@ refreshing or going back in the middle of a flow.
 | 14 | `14-pagination.md` | Paged lists, search and filters on every growing list | Ready (Staff and Roles lists: see 16) |
 | 15 | `15-admin-portal.md` | H.M.S admin and marketer portals | Ready |
 | 16 | `16-small-fixes-1.md` | Bar/kitchen income by outlet, organizations, delivery-log search, owner PIN actions, Inbox for every role, paged Staff and Roles lists | Ready |
+| 17 | `17-admin-onboarding.md` | Admin back-office onboarding: Set up a business, steps 1–7 field rules and duplicates, rooms (overlaps, one price per type, paste, edit and delete), data kept on Back, the manager's Choose your password | Ready |
 
 ## Before you start
 
