@@ -130,6 +130,8 @@ export function OnboardingWizard({
 		router.refresh();
 	}, [router]);
 	const [seed, setSeed] = useState(0);
+	// Set by the first keystroke in the open step; a new step starts clean.
+	const typed = useRef(false);
 	const serverVersion = `${initialDraft?.updatedAt ?? ""}|${initialHotels.map((h) => `${h.id}:${h.rooms}`).join(",")}`;
 	const seenVersion = useRef(serverVersion);
 	useEffect(() => {
@@ -141,16 +143,25 @@ export function OnboardingWizard({
 		const newHotels = initialHotels.some(
 			(h) => !hotels.some((x) => x.id === h.id),
 		);
-		if (newerDraft && initialDraft) {
-			draftRef.current = initialDraft;
-			setDraft(initialDraft);
-		}
+
 		if (newHotels)
 			setHotelsState((prev) => [
 				...prev,
 				...initialHotels.filter((h) => !prev.some((x) => x.id === h.id)),
 			]);
-		if (newerDraft || newHotels) {
+		// Steps are re-read (remounted) only when the server holds different step data or a hotel this page lacks, so
+		// a refresh that brings nothing new never wipes what is being typed.
+		const changedData =
+			newerDraft &&
+			JSON.stringify(stepsOf(initialDraft?.data)) !==
+				JSON.stringify(stepsOf(draftRef.current.data));
+		if (newerDraft && initialDraft) {
+			draftRef.current = initialDraft;
+			setDraft(initialDraft);
+		}
+		// The open step is re-read only while nothing has been typed in it; otherwise the newer copy is used when the next
+		// step opens (every step reads the draft when it opens).
+		if ((changedData || newHotels) && !typed.current) {
 			setBusiness(initialBusiness);
 			setSeed((n) => n + 1);
 		}
@@ -179,6 +190,7 @@ export function OnboardingWizard({
 	// Each step is its own history entry, so the browser's Back returns to the step before instead of leaving.
 	const goTo = useCallback(
 		(s: AdminOnboardingStep) => {
+			typed.current = false;
 			void setStepParam(s, { history: "push" });
 			if (typeof window !== "undefined") window.scrollTo({ top: 0 });
 		},
@@ -293,7 +305,13 @@ export function OnboardingWizard({
 					done={handedOver}
 					onPick={goTo}
 				/>
-				<div className="min-w-0" key={`${step}:${seed}`}>
+				<div
+					className="min-w-0"
+					key={`${step}:${seed}`}
+					onInputCapture={() => {
+						typed.current = true;
+					}}
+				>
 					{steps[step]}
 				</div>
 			</div>
