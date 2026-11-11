@@ -613,6 +613,8 @@ export const Availability = z.object({
 	available: z.number(),
 	nightlyRate: z.number().nullable(),
 	freeRoomIds: z.array(z.string()),
+	/** A guest due out today is still checked in: the room can go to an arrival, who checks in once that guest is checked out. */
+	turnoverRoomIds: z.array(z.string()).optional(),
 });
 
 export const Today = z.object({
@@ -1304,6 +1306,7 @@ export const schema = createSchema({
 			organizationId: z.string().nullable().optional(),
 			source: z.string().nullable().optional(),
 			notes: z.string().nullable().optional(),
+			walkIn: z.boolean().nullable().optional(),
 		}),
 		output: envelope(Booking),
 	},

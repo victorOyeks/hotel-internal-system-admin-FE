@@ -5,6 +5,11 @@ export const whatsNewWeek = "Week of 10 November 2026";
 
 export const whatsNew: WhatsNewItem[] = [
 	{
+		title: "A room stays the guest's until check-out",
+		body: "A guest keeps the room until you check them out, even after their check-out date. Rooms show “Due out” or “Past departure”, and “Today” lists guests past departure under “Leaving today”. Checking someone else into a room with a guest still in it is refused: check that guest out first, or choose another room.",
+		audience: ["FRONT_OFFICE", "MANAGER", "OWNER"],
+	},
+	{
 		title: "Housekeeping reports, notes and linen requests are real",
 		body: "“Report a problem → Now” makes an urgent work order, can take the room out of order and tells the front office, with an optional photo. Your note for the supervisor and “Try again at” are saved and shown on Inspect. Minibar prices come from Hotel setup, and linen you ask for shows on the laundry's Linen screen with “Mark sent”.",
 		audience: ["HOUSEKEEPING", "LAUNDRY", "MANAGER", "FRONT_OFFICE"],

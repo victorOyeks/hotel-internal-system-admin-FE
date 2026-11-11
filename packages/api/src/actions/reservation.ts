@@ -32,6 +32,8 @@ export type CreateBookingInput = {
 	organizationId?: string;
 	source?: string;
 	notes?: string;
+	/** A walk-in checked in straight after: the room is checked now, so one somebody is still in is refused before any payment. */
+	walkInRoomId?: string;
 };
 
 /** New booking (reservation-service). The guest is created in the same call when not an existing one. */
@@ -56,6 +58,8 @@ export async function createBooking(input: CreateBookingInput, fallback: Booking
 			organizationId: input.organizationId ?? null,
 			source: input.source ?? "Front desk",
 			notes: input.notes ?? null,
+			roomId: input.walkInRoomId ?? null,
+			walkIn: input.walkInRoomId ? true : null,
 		},
 	});
 	if (error || !data) return { ok: false, error: errorMessage(error, "The booking could not be saved") };

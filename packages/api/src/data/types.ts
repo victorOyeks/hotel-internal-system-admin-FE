@@ -1890,3 +1890,49 @@ export type TransferRequestRow = {
 	resolvedAt?: string;
 	resolution?: string;
 };
+
+// ---- who is in a room (hospio-backend docs/occupancy.md) ------------------------------------------
+
+const isoToday = () => {
+	const d = new Date();
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** A guest still checked in after their departure date: they keep the room until they are checked out. */
+export function pastDeparture(
+	b: Pick<BookingRow, "status" | "checkOutDate">,
+	today = isoToday(),
+): boolean {
+	return b.status === "CHECKED_IN" && b.checkOutDate < today;
+}
+
+/** An occupied room: "due out" when its guest leaves today (a same-day turnover), "past departure" when they stayed on. */
+export function occupancyLabel(
+	r: Pick<RoomRow, "state" | "checkOut">,
+	today = isoToday(),
+): "Due out" | "Past departure" | null {
+	if (r.state !== "occupied" || !r.checkOut) return null;
+	if (r.checkOut < today) return "Past departure";
+	return r.checkOut === today ? "Due out" : null;
+}
+
+/** The hint for an occupied room in a room picker. */
+export function occupantHint(
+	r: Pick<RoomRow, "state" | "checkOut" | "guestName">,
+	today = isoToday(),
+): string {
+	const who = r.guestName ?? "a guest";
+	const label = occupancyLabel(r, today);
+	return label === "Due out"
+		? `Due out today · ${who} still checked in`
+		: label === "Past departure"
+			? `Past departure · ${who} still checked in`
+			: `Occupied · ${who}`;
+}
+
+/** The refusal while somebody is still checked in to the room; the API answers the same. */
+export function stillInHouseMessage(
+	r: Pick<RoomRow, "number" | "guestName">,
+): string {
+	return `Room ${r.number} still has a guest checked in (${r.guestName ?? "another guest"}). Check them out first, or choose another room.`;
+}
