@@ -1632,6 +1632,11 @@ export function NewBookingPanel({
 							organizationId: orgId || undefined,
 							source: "Front desk",
 							notes: notes || undefined,
+							// A walk-in sends its room so one somebody is still checked in to is refused before anything is saved.
+							walkInRoomId:
+								!later && checkingInNow && chosenRoom
+									? chosenRoom.id
+									: undefined,
 						},
 						row,
 					),
