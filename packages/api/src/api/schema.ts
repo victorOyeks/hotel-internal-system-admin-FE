@@ -704,6 +704,8 @@ export const RoomsBulkRequest = z.object({
 			areaId: z.string().nullable().optional(),
 		}),
 	),
+	/** Refuse the whole request (409 naming them) when a number exists or repeats, instead of skipping it. */
+	refuseExisting: z.boolean().optional(),
 });
 
 export const RoomsBulkResult = z.object({
@@ -1407,6 +1409,10 @@ export const schema = createSchema({
 		output: envelope(RoomsBulkResult),
 	},
 	"@put/property/rooms/:id": { input: RoomRequest, output: envelope(Room) },
+	"@delete/property/rooms/:id": {
+		params: z.object({ id: z.string() }),
+		output: envelope(Room),
+	},
 	"@post/property/rooms/:id/out-of-order": {
 		input: z.object({
 			reason: z.string(),
