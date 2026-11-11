@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2Icon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -36,6 +36,8 @@ const input =
 export function ResetPasswordForm() {
 	const router = useRouter();
 	const [pending, startTransition] = useTransition();
+	// Each password field has its own eye, as on the invite screen.
+	const [shown, setShown] = useState<Record<string, boolean>>({});
 	const form = useForm({
 		resolver: zodResolver(schema),
 		defaultValues: { currentPassword: "", newPassword: "", confirm: "" },
@@ -89,16 +91,32 @@ export function ResetPasswordForm() {
 									{label}
 								</FormLabel>
 								<FormControl>
-									<Input
-										{...field}
-										type="password"
-										className={input}
-										autoComplete={
-											name === "currentPassword"
-												? "current-password"
-												: "new-password"
-										}
-									/>
+									<div className="relative">
+										<Input
+											{...field}
+											type={shown[name] ? "text" : "password"}
+											className={`${input} pr-11`}
+											autoComplete={
+												name === "currentPassword"
+													? "current-password"
+													: "new-password"
+											}
+										/>
+										<button
+											type="button"
+											onClick={() =>
+												setShown((s) => ({ ...s, [name]: !s[name] }))
+											}
+											className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+											aria-label={`${shown[name] ? "Hide" : "Show"} ${label.toLowerCase()}`}
+										>
+											{shown[name] ? (
+												<EyeOffIcon className="size-4" />
+											) : (
+												<EyeIcon className="size-4" />
+											)}
+										</button>
+									</div>
 								</FormControl>
 								<FormMessage />
 							</FormItem>

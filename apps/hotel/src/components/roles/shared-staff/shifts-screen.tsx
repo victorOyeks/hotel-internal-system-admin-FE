@@ -658,7 +658,7 @@ export function ShiftsScreen({
 				open={panel?.kind === "pin"}
 				onOpenChange={(o) => !o && close()}
 				title="Change PIN"
-				subtitle="The 4 to 6 digits you switch in with on a shared tablet"
+				subtitle="The 6 digits you switch in with on a shared tablet"
 				icon={KeyRoundIcon}
 				size="confirm"
 				footer={
@@ -668,7 +668,9 @@ export function ShiftsScreen({
 						</BigButton>
 						<BigButton
 							pending={pending}
-							disabled={pin.next.length < 4 || pin.next !== pin.again || !pin.password}
+							disabled={
+								pin.next.length !== 6 || pin.next !== pin.again || !pin.password
+							}
 							onClick={() =>
 								run(() => setMyPin(pin.next, pin.password), "PIN saved", close)
 							}
@@ -709,7 +711,8 @@ export function ShiftsScreen({
 						onChange={(v) => setPin({ ...pin, password: v })}
 					/>
 					<Note tone="info">
-						Use it to switch in on a shared tablet. Not 1111, 1234 or the end of your phone number.
+						Use it to switch in on a shared tablet. Not 111111, 123456 or the
+						end of your phone number.
 					</Note>
 				</div>
 			</Modal>

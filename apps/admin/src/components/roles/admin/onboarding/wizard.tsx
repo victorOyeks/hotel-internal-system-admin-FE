@@ -2,6 +2,7 @@
 
 import { ArrowLeftIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -119,6 +120,52 @@ export function OnboardingWizard({
 	const [hotels, setHotelsState] = useState<WizardHotel[]>(initialHotels);
 	const [users, setUsersState] = useState(initialUsers);
 	const [terminals, setTerminalsState] = useState(initialTerminals);
+	// The page can come from the router cache (the browser's Back, the sidebar): ask the server for a fresh copy once
+	// on open, and take any draft or hotel list newer than what this page holds. Steps re-read it through `seed`.
+	const router = useRouter();
+	const refreshed = useRef(false);
+	useEffect(() => {
+		if (refreshed.current) return;
+		refreshed.current = true;
+		router.refresh();
+	}, [router]);
+	const [seed, setSeed] = useState(0);
+	// Set by the first keystroke in the open step; a new step starts clean.
+	const typed = useRef(false);
+	const serverVersion = `${initialDraft?.updatedAt ?? ""}|${initialHotels.map((h) => `${h.id}:${h.rooms}`).join(",")}`;
+	const seenVersion = useRef(serverVersion);
+	useEffect(() => {
+		if (seenVersion.current === serverVersion) return;
+		seenVersion.current = serverVersion;
+		const held = draftRef.current.updatedAt ?? "";
+		const fresh = initialDraft?.updatedAt ?? "";
+		const newerDraft = !!initialDraft && fresh > held;
+		const newHotels = initialHotels.some(
+			(h) => !hotels.some((x) => x.id === h.id),
+		);
+
+		if (newHotels)
+			setHotelsState((prev) => [
+				...prev,
+				...initialHotels.filter((h) => !prev.some((x) => x.id === h.id)),
+			]);
+		// Steps are re-read (remounted) only when the server holds different step data or a hotel this page lacks, so
+		// a refresh that brings nothing new never wipes what is being typed.
+		const changedData =
+			newerDraft &&
+			JSON.stringify(stepsOf(initialDraft?.data)) !==
+				JSON.stringify(stepsOf(draftRef.current.data));
+		if (newerDraft && initialDraft) {
+			draftRef.current = initialDraft;
+			setDraft(initialDraft);
+		}
+		// The open step is re-read only while nothing has been typed in it; otherwise the newer copy is used when the next
+		// step opens (every step reads the draft when it opens).
+		if ((changedData || newHotels) && !typed.current) {
+			setBusiness(initialBusiness);
+			setSeed((n) => n + 1);
+		}
+	}, [serverVersion, initialDraft, initialHotels, initialBusiness, hotels]);
 	const handedOver =
 		business.stage === "HANDED_OVER" ||
 		business.stage === "LIVE" ||
@@ -140,9 +187,11 @@ export function OnboardingWizard({
 	const step: AdminOnboardingStep = isAdminStep(stepParam)
 		? stepParam
 		: defaultStep;
+	// Each step is its own history entry, so the browser's Back returns to the step before instead of leaving.
 	const goTo = useCallback(
 		(s: AdminOnboardingStep) => {
-			void setStepParam(s);
+			typed.current = false;
+			void setStepParam(s, { history: "push" });
 			if (typeof window !== "undefined") window.scrollTo({ top: 0 });
 		},
 		[setStepParam],
@@ -256,7 +305,15 @@ export function OnboardingWizard({
 					done={handedOver}
 					onPick={goTo}
 				/>
-				<div className="min-w-0">{steps[step]}</div>
+				<div
+					className="min-w-0"
+					key={`${step}:${seed}`}
+					onInputCapture={() => {
+						typed.current = true;
+					}}
+				>
+					{steps[step]}
+				</div>
 			</div>
 		</>
 	);

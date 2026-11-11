@@ -200,7 +200,7 @@ function PinPad({
 
 	const submit = useCallback(
 		(value: string) => {
-			if (value.length < 4) return setError("Your PIN is 4 to 6 digits");
+			if (value.length !== 6) return setError("Your PIN is 6 digits");
 			start(async () => {
 				const result = await unlockWithPin({
 					userId: person.userId,
@@ -222,9 +222,14 @@ function PinPad({
 			setError(null);
 			if (key === "back") setPin((p) => p.slice(0, -1));
 			else if (key === "clear") setPin("");
-			else setPin((p) => (p.length < 6 ? p + key : p));
+			else if (pin.length < 6) {
+				const next = pin + key;
+				setPin(next);
+				// The sixth digit unlocks: no need to reach for the button.
+				if (next.length === 6) submit(next);
+			}
 		},
-		[pending],
+		[pending, pin, submit],
 	);
 
 	useEffect(() => {
@@ -277,7 +282,6 @@ function PinPad({
 							className={cn(
 								"size-4 rounded-full border-2",
 								i < pin.length ? "border-brand bg-brand" : "border-line-strong",
-								i >= 4 && i >= pin.length && "opacity-40",
 							)}
 						/>
 					))}
@@ -329,7 +333,7 @@ function PinPad({
 				</div>
 				<BigButton
 					pending={pending}
-					disabled={pin.length < 4}
+					disabled={pin.length !== 6}
 					onClick={() => submit(pin)}
 				>
 					Unlock

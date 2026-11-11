@@ -30,7 +30,7 @@ export type DeviceSetupHotel = { id: string; name: string; roles: string[] };
 
 const label = (r: string) => (isHotelRole(r) ? roleLabels[r] : r);
 
-/** A 4-6 digit PIN field: only digits are kept. */
+/** A 6-digit PIN field: only digits are kept. */
 function PinInput({
 	label: text,
 	value,
@@ -74,7 +74,7 @@ function usePinPair() {
 	const [again, setAgain] = useState("");
 	const [error, setError] = useState<string | undefined>();
 	const check = () => {
-		if (!/^\d{4,6}$/.test(next)) return "A PIN is 4 to 6 digits";
+		if (!/^\d{6}$/.test(next)) return "A PIN is 6 digits";
 		if (next !== again) return "The two PINs don't match";
 		return undefined;
 	};
@@ -114,7 +114,9 @@ export function SetupDeviceModal({
 	const allowed = hotels.find((h) => h.id === hotelId)?.roles ?? [];
 	const [roles, setRoles] = useState<string[]>(
 		// The desk the person works at is the likely one; a manager picks the desk themselves.
-		activeRole && activeRole !== "MANAGER" && first?.roles.includes(activeRole) ? [activeRole] : [],
+		activeRole && activeRole !== "MANAGER" && first?.roles.includes(activeRole)
+			? [activeRole]
+			: [],
 	);
 	const [minutes, setMinutes] = useState("5");
 	const [error, setError] = useState<string | undefined>();
@@ -357,7 +359,7 @@ export function PinPrompt({ onDevice }: { onDevice: boolean }) {
 					? "Set a PIN so you can switch in quickly on this device"
 					: "Set a PIN for the shared tablets"
 			}
-			subtitle="4 to 6 digits. Not 1111, 1234 or the end of your phone number"
+			subtitle="6 digits. Not 111111, 123456 or the end of your phone number"
 			icon={KeyRoundIcon}
 			size="form"
 			footer={
@@ -423,8 +425,8 @@ export function PinSection({ hasPin }: { hasPin: boolean }) {
 		<>
 			<p className="text-[13px] text-ink-2">
 				{set ? "Your PIN is set. " : "No PIN yet. "}Use it to switch in on the
-				hotel's shared tablets. 4 to 6 digits; your manager can reset it but
-				never sees it.
+				hotel's shared tablets. 6 digits; your manager can reset it but never
+				sees it.
 			</p>
 			<Button
 				variant="outline"
@@ -437,7 +439,7 @@ export function PinSection({ hasPin }: { hasPin: boolean }) {
 				open={open}
 				onOpenChange={setOpen}
 				title={set ? "Change your PIN" : "Set your PIN"}
-				subtitle="Not 1111, 1234, your old PIN or the end of your phone number"
+				subtitle="6 digits. Not 111111, 123456, your old PIN or the end of your phone number"
 				icon={KeyRoundIcon}
 				size="form"
 				footer={

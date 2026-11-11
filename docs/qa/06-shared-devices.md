@@ -23,8 +23,8 @@ Password for every account: `Hospio123!`
 |---|---|---|---|
 | Manager | Tunde Bakare | `tunde@royalsuites.ng` | (has one; not needed) |
 | Owner | Godwin Kwin | `godwin@royalsuites.ng` | none: owners never have a PIN |
-| Bar (Full access) | Segun Ajayi | `segun@royalsuites.ng` | **2580** |
-| Kitchen (Full access) | Mariam Bello | `mariam@royalsuites.ng` | **3691** |
+| Bar (Full access) | Segun Ajayi | `segun@royalsuites.ng` | **258013** |
+| Kitchen (Full access) | Mariam Bello | `mariam@royalsuites.ng` | **369150** |
 | Kitchen (Edit) | QA Cook | `qa.cook@royalsuites.ng` | none |
 | Front office | Victor | `victor@royalsuites.ng` | none |
 | Housekeeping | Grace | `grace@royalsuites.ng` | none |
@@ -34,8 +34,8 @@ Bar staff left by the automated runs (bar role at Simpas Ikeja, password `Hospio
 
 | Name | Email | PIN |
 |---|---|---|
-| QA PIN Ada l184h | `qa.pin.ada.l184h@hospio-qa.test` | **5137** |
-| QA PIN Kemi l184h | `qa.pin.kemi.l184h@hospio-qa.test` | **6194** |
+| QA PIN Ada l184h | `qa.pin.ada.l184h@hospio-qa.test` | **513794** |
+| QA PIN Kemi l184h | `qa.pin.kemi.l184h@hospio-qa.test` | **619428** |
 | QA PIN Newbie l184h | `qa.pin.newbie.l184h@hospio-qa.test` | none (a "No PIN yet" tile) |
 
 Other "QA PIN …" people from earlier runs were taken off the hotel. For lockout, pause and suspend tests make fresh
@@ -71,15 +71,15 @@ tablet, the other is the manager's desk.
 
 ## 2 · Switch people (Segun, QA PIN Ada)
 
-1. **Do:** tap Segun → type **9999** on the keyboard → Enter. **Expect:** "Wrong PIN. 4 tries left before your PIN
+1. **Do:** tap Segun → type **999999** on the keyboard. **Expect:** "Wrong PIN. 4 tries left before your PIN
    is locked for 15 minutes". Escape closes the pad.
-2. **Do:** tap Segun → tap **2**, **5**, **8**, **0** on the pad → **Unlock**. **Expect:** Bar today as Segun;
+2. **Do:** tap Segun → tap **2**, **5**, **8**, **0**, **1**, **3** on the pad. **Expect:** the sixth digit unlocks without pressing Unlock: Bar today as Segun;
    the header has **Lock** (wide screens: "Lock · Switch person"); the branch is Simpas Ikeja only.
 3. **Do:** **New sale** → Star lager → **Open a tab** → **Open a tab**. **Expect:** the tab opens; on Tabs (or via
    the API `GET /fnb/orders?outletId=…`) it shows **Opened by Segun Ajayi**.
-4. **Do:** **Lock**. **Expect:** the lock screen. Tap "QA PIN Ada …" → PIN 5137 → Unlock → make a sale the same way.
+4. **Do:** **Lock**. **Expect:** the lock screen. Tap "QA PIN Ada …" → PIN 513794 → make a sale the same way.
    **Expect:** that sale is opened by QA PIN Ada, not Segun.
-5. **Do:** Lock → Segun → 2580. **Expect:** back as Segun. The account menu's last item now reads **Lock**, not
+5. **Do:** Lock → Segun → 258013. **Expect:** back as Segun. The account menu's last item now reads **Lock**, not
    Sign out (signing out on a shared device locks it).
 
 ## 3 · No PIN yet and the PIN prompt (a fresh "QA PIN" bar person)
@@ -91,8 +91,8 @@ tablet, the other is the manager's desk.
    on this device" (New PIN, New PIN again; **Not now**, **Set PIN**). No password is asked.
 4. **Do:** **Not now**. **Expect:** the prompt closes; you work as normal; reloading doesn't bring it back.
 5. **Do:** Lock → tap the tile again → sign in. **Expect:** the prompt comes back.
-6. **Do:** enter 1234 twice → Set PIN. **Expect:** "Don't use digits in a row, like 1234 …". Try 1111 (repeated),
-   the last 4 digits of their phone (if they have one), then a good PIN like 6194. **Expect:** "PIN set".
+6. **Do:** enter 1234 twice → Set PIN. **Expect:** "A PIN is 6 digits". Then 123456 twice. **Expect:** "Don't use digits in a row, like 123456 …". Try 111111 (repeated),
+   the last 6 digits of their phone (if they have one), then a good PIN like 619428. **Expect:** "PIN set".
 7. **Do:** Lock. **Expect:** their tile no longer says No PIN yet. Tap it → the new PIN → in.
 
 ## 4 · First sign-in prompt (new staff, any device)
@@ -106,9 +106,9 @@ tablet, the other is the manager's desk.
 
 1. **Do:** My profile & security → **Security**. **Expect:** a "PIN for shared devices" card ("Set") with
    **Change PIN**. Owners don't have this card.
-2. **Do:** Change PIN → new 2580, again 2580, password → Change PIN. **Expect:** "That's your current PIN. Pick a new
-   one". With a wrong password: "Your password is wrong". (Leave Segun on 2580.)
-3. My shifts → Change PIN does the same (4 to 6 digits, with the password).
+2. **Do:** Change PIN → new 258013, again 258013, password → Change PIN. **Expect:** "That's your current PIN. Pick a new
+   one". With a wrong password: "Your password is wrong". (Leave Segun on 258013.)
+3. My shifts → Change PIN does the same (exactly 6 digits, with the password).
 
 ## 6 · Wrong PINs lock the person, not the device (a fresh QA PIN person with a PIN)
 

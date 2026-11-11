@@ -172,8 +172,8 @@ export const staffHelp: HelpModule = {
 				"Save it.",
 			],
 			goodToKnow: [
-				"Use 4 to 6 digits.",
-				"Not 1111, 1234, your old PIN or the end of your phone number.",
+				"Use 6 digits.",
+				"Not 111111, 123456, your old PIN or the end of your phone number.",
 				"Keep your PIN to yourself. Everything done on the tablet is saved under your name.",
 			],
 			route: "/dashboard/profile",

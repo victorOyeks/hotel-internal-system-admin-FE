@@ -2,12 +2,22 @@
 
 import { BuildingIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { createHotel, updateHotel } from "@hospio/api/actions/tenant";
 import type { Hotel } from "@hospio/api/api/schema";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { FieldRow, TextField } from "@hospio/ui/shared/field";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { btn } from "@hospio/ui/shared/ui";
+import {
+	checkAddress,
+	checkCity,
+	checkEmail,
+	checkName,
+	checkPhone,
+	checkTime,
+	only,
+} from "@hospio/ui/shared/validate";
 import { cn } from "@hospio/ui/utils";
 import type { WizardCtx } from "./wizard";
 import {
@@ -19,7 +29,10 @@ import {
 	type WizardHotel,
 } from "./shared";
 
-/** J5 · step 4: the business's hotels, each created on tenant with `businessId`; the step saves `{hotelIds}`. */
+/**
+ * J5 · step 4: the business's hotels, each created on tenant with `businessId`; the step saves `{hotelIds}`. A hotel needs
+ * a name with letters (one name per business), a real city and both times; address, phone and email are checked when typed.
+ */
 
 const toWizardHotel = (h: Hotel, prev?: WizardHotel): WizardHotel => ({
 	id: h.id,
@@ -142,6 +155,7 @@ export function HotelsStep({ ctx }: { ctx: WizardCtx }) {
 				businessId={business.id}
 				hotel={panel === "new" ? null : panel}
 				defaultCity={business.city}
+				others={hotels.filter((h) => panel === "new" || h.id !== panel?.id)}
 				onSaved={(h, prev) => {
 					ctx.setHotels((list) =>
 						prev
@@ -162,6 +176,7 @@ export function HotelPanel({
 	businessId,
 	hotel,
 	defaultCity,
+	others = [],
 	onSaved,
 }: {
 	open: boolean;
@@ -169,6 +184,8 @@ export function HotelPanel({
 	businessId: string;
 	hotel: WizardHotel | null;
 	defaultCity?: string;
+	/** The business's other hotels: a name already used is refused (one name per business). */
+	others?: WizardHotel[];
 	onSaved: (saved: Hotel, prev: WizardHotel | null) => void;
 }) {
 	return (
@@ -190,6 +207,7 @@ export function HotelPanel({
 					businessId={businessId}
 					hotel={hotel}
 					defaultCity={defaultCity}
+					others={others}
 					onCancel={() => onOpenChange(false)}
 					onSaved={onSaved}
 				/>
@@ -198,16 +216,39 @@ export function HotelPanel({
 	);
 }
 
+type HotelField =
+	| "name"
+	| "city"
+	| "address"
+	| "phone"
+	| "email"
+	| "checkIn"
+	| "checkOut";
+
+/** Which field a refusal from tenant-service is about. */
+function hotelFieldOf(message: string): HotelField | null {
+	if (/hotel called|hotel name/i.test(message)) return "name";
+	if (/city/i.test(message)) return "city";
+	if (/address/i.test(message)) return "address";
+	if (/phone/i.test(message)) return "phone";
+	if (/email/i.test(message)) return "email";
+	if (/check-in/i.test(message)) return "checkIn";
+	if (/check-out/i.test(message)) return "checkOut";
+	return null;
+}
+
 function HotelForm({
 	businessId,
 	hotel,
 	defaultCity,
+	others,
 	onCancel,
 	onSaved,
 }: {
 	businessId: string;
 	hotel: WizardHotel | null;
 	defaultCity?: string;
+	others: WizardHotel[];
 	onCancel: () => void;
 	onSaved: (saved: Hotel, prev: WizardHotel | null) => void;
 }) {
@@ -218,52 +259,89 @@ function HotelForm({
 	const [email, setEmail] = useState(hotel?.email ?? "");
 	const [checkIn, setCheckIn] = useState(hotel?.checkInTime ?? "14:00");
 	const [checkOut, setCheckOut] = useState(hotel?.checkOutTime ?? "12:00");
-	const { pending, call, busy } = useWizardSave();
-	const valid = name.trim().length > 1 && city.trim().length > 0;
+	const [errors, setErrors] = useState<Partial<Record<HotelField, string>>>({});
+	const { pending, busy } = useWizardSave();
+	const edit = (set: (v: string) => void, field: HotelField) => (v: string) => {
+		set(v);
+		if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
+	};
 
 	const submit = () =>
 		busy(async () => {
+			const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+			const twin = others.find(
+				(h) => h.name.trim().replace(/\s+/g, " ").toLowerCase() === key,
+			);
+			const found = only({
+				name:
+					checkName(name, "the hotel name") ??
+					(twin
+						? `This business already has a hotel called ${twin.name}. Give this one a different name`
+						: undefined),
+				city: checkCity(city),
+				address: checkAddress(address, false),
+				phone: checkPhone(phone, false),
+				email: checkEmail(email, false),
+				checkIn: checkTime(checkIn, "check-in"),
+				checkOut: checkTime(checkOut, "check-out"),
+			});
+			setErrors(found);
+			if (Object.keys(found).length) return;
 			const input = {
 				name: name.trim(),
-				city: city.trim() || null,
+				city: city.trim(),
 				address: address.trim() || null,
 				phone: phone.trim() || null,
 				email: email.trim() || null,
 				timezone: hotel?.timezone ?? "Africa/Lagos",
-				checkInTime: checkIn || null,
-				checkOutTime: checkOut || null,
+				checkInTime: checkIn,
+				checkOutTime: checkOut,
 				businessId,
 			};
-			const saved = await call(
-				() => (hotel ? updateHotel(hotel.id, input) : createHotel(input)),
-				hotel ? "Hotel saved" : "Hotel added",
-			);
-			if (saved) onSaved(saved, hotel);
+			const result = hotel
+				? await updateHotel(hotel.id, input)
+				: await createHotel(input);
+			if (!result.ok) {
+				const field = hotelFieldOf(result.error);
+				if (field) setErrors({ [field]: result.error });
+				else toast.error(result.error, { duration: 8000 });
+				return;
+			}
+			toast.success(hotel ? "Hotel saved" : "Hotel added");
+			onSaved(result.data, hotel);
 		});
 
 	return (
 		<div className="flex h-full flex-col gap-5">
+			{Object.keys(errors).length > 0 && (
+				<p className="text-xs font-medium text-danger" role="alert">
+					Fix the fields marked in red to {hotel ? "save" : "add"} the hotel.
+				</p>
+			)}
 			<PanelSection title="Hotel">
 				<TextField
 					label="Hotel name"
 					value={name}
-					onChange={setName}
-					placeholder="Abuja Palms Wuse"
+					onChange={edit(setName, "name")}
+					placeholder="e.g. Abuja Palms Wuse"
 					required
+					error={errors.name}
 				/>
 				<FieldRow>
 					<TextField
 						label="City"
 						value={city}
-						onChange={setCity}
-						placeholder="Abuja"
+						onChange={edit(setCity, "city")}
+						placeholder="e.g. Abuja"
 						required
+						error={errors.city}
 					/>
 					<TextField
 						label="Address"
 						value={address}
-						onChange={setAddress}
-						placeholder="Plot 41 Aminu Kano Cres, Wuse 2"
+						onChange={edit(setAddress, "address")}
+						placeholder="e.g. Plot 41 Aminu Kano Cres, Wuse 2"
+						error={errors.address}
 					/>
 				</FieldRow>
 			</PanelSection>
@@ -272,15 +350,17 @@ function HotelForm({
 					<TextField
 						label="Phone"
 						value={phone}
-						onChange={setPhone}
-						placeholder="+234 …"
+						onChange={edit(setPhone, "phone")}
+						placeholder="e.g. +234 803 555 0192"
+						error={errors.phone}
 					/>
 					<TextField
 						label="Email"
 						type="email"
 						value={email}
-						onChange={setEmail}
-						placeholder="wuse@abujapalms.ng"
+						onChange={edit(setEmail, "email")}
+						placeholder="e.g. wuse@abujapalms.ng"
+						error={errors.email}
 					/>
 				</FieldRow>
 			</PanelSection>
@@ -290,13 +370,17 @@ function HotelForm({
 						label="Check-in"
 						type="time"
 						value={checkIn}
-						onChange={setCheckIn}
+						onChange={edit(setCheckIn, "checkIn")}
+						required
+						error={errors.checkIn}
 					/>
 					<TextField
 						label="Check-out"
 						type="time"
 						value={checkOut}
-						onChange={setCheckOut}
+						onChange={edit(setCheckOut, "checkOut")}
+						required
+						error={errors.checkOut}
 					/>
 				</FieldRow>
 			</PanelSection>
@@ -313,7 +397,7 @@ function HotelForm({
 					type="button"
 					className={btn.primary}
 					onClick={submit}
-					disabled={!valid || pending}
+					disabled={pending}
 				>
 					{hotel ? "Save hotel" : "Add hotel"}
 				</button>
