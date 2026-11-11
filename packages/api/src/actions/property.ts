@@ -109,17 +109,69 @@ export async function deleteRoomType(id: string, hotelId?: string): Promise<Acti
 
 export type BulkRoomInput = { number: string; roomTypeId: string; floor?: string; areaId?: string };
 
-/** POST /property/rooms/bulk: up to 500 rooms at once; numbers already present are skipped, not failed. */
-export async function createRoomsBulk(rooms: BulkRoomInput[], hotelId?: string): Promise<ActionResult<RoomsBulkResult>> {
+/**
+ * POST /property/rooms/bulk: up to 500 rooms at once. Numbers already present are skipped, not failed; with `strict`
+ * (the admin onboarding) the server refuses the whole list instead, naming the numbers, and makes nothing.
+ */
+export async function createRoomsBulk(rooms: BulkRoomInput[], hotelId?: string, strict = false): Promise<ActionResult<RoomsBulkResult>> {
 	if (rooms.length === 0) return { ok: false, error: "Add at least one room" };
 	if (rooms.length > 500) return { ok: false, error: "Up to 500 rooms at a time" };
 	if (!live("property")) {
 		await demoDelay(600);
 		return { ok: true, data: { created: rooms.length, skipped: [] } };
 	}
-	const body = { rooms: rooms.map((r) => ({ number: r.number, roomTypeId: r.roomTypeId, floor: r.floor ?? null, areaId: r.areaId ?? null })) };
+	const body = { rooms: rooms.map((r) => ({ number: r.number, roomTypeId: r.roomTypeId, floor: r.floor ?? null, areaId: r.areaId ?? null })), ...(strict ? { refuseExisting: true } : {}) };
 	const { data, error } = await api("@post/property/rooms/bulk", { ...(await withSession(hotelId ? { hotelId } : undefined)), body });
 	if (error || !data) return { ok: false, error: errorMessage(error, "The rooms could not be created") };
 	revalidateRooms();
 	return { ok: true, data: data.data };
+}
+
+/** One hotel's room types and rooms as the server has them now (the admin onboarding's Rooms step re-reads these on open). */
+export type HotelRoomsSnapshot = {
+	types: { id: string; name: string; basePrice: number; capacityAdults: number; active: boolean }[];
+	rooms: { id: string; number: string; floor: string | null; roomTypeId: string }[];
+};
+
+export async function hotelRooms(hotelId: string): Promise<ActionResult<HotelRoomsSnapshot>> {
+	if (!live("property")) return { ok: true, data: { types: [], rooms: [] } };
+	const s = await withSession({ hotelId });
+	const [types, rooms] = await Promise.all([api("@get/property/room-types", s), api("@get/property/rooms", { ...s, query: {} })]);
+	if (types.error || !types.data) return { ok: false, error: errorMessage(types.error, "The room types could not be read") };
+	if (rooms.error || !rooms.data) return { ok: false, error: errorMessage(rooms.error, "The rooms could not be read") };
+	return {
+		ok: true,
+		data: {
+			types: types.data.data.map((t) => ({ id: t.id, name: t.name, basePrice: t.basePrice, capacityAdults: t.capacityAdults, active: t.active })),
+			rooms: rooms.data.data.map((r) => ({ id: r.id, number: r.number, floor: r.floor, roomTypeId: r.roomTypeId })),
+		},
+	};
+}
+
+/** PUT /property/rooms/{id} for a named hotel (the admin onboarding edits rooms of a hotel it is not "in"). */
+export async function updateHotelRoom(id: string, input: { number: string; roomTypeId: string; floor?: string | null }, hotelId: string): Promise<ActionResult<null>> {
+	if (!live("property")) {
+		await demoDelay(300);
+		return { ok: true, data: null };
+	}
+	const { error } = await api("@put/property/rooms/:id", {
+		...(await withSession({ hotelId })),
+		params: { id },
+		body: { number: input.number, roomTypeId: input.roomTypeId, floor: input.floor ?? null, areaId: null, notes: null },
+	});
+	if (error) return { ok: false, error: errorMessage(error, "The room could not be saved") };
+	revalidateRooms();
+	return { ok: true, data: null };
+}
+
+/** DELETE /property/rooms/{id}: a room made by mistake. 409 when it has ever had a booking. */
+export async function deleteRoom(id: string, hotelId?: string): Promise<ActionResult<null>> {
+	if (!live("property")) {
+		await demoDelay(300);
+		return { ok: true, data: null };
+	}
+	const { error } = await api("@delete/property/rooms/:id", { ...(await withSession(hotelId ? { hotelId } : undefined)), params: { id } });
+	if (error) return { ok: false, error: errorMessage(error, "The room could not be deleted") };
+	revalidateRooms();
+	return { ok: true, data: null };
 }

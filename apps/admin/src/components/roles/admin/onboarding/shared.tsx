@@ -89,6 +89,11 @@ export type WizardData = AdminOnboardingData & {
 		whatsappByHotel?: Record<string, string>;
 	};
 	golive?: AdminOnboardingData["golive"] & { readyAt?: string };
+	/** `picked`: the hotels ticked when it was last saved; `appliedAt`: when the template reached each hotel. */
+	template?: AdminOnboardingData["template"] & {
+		picked?: string[];
+		appliedAt?: Record<string, string>;
+	};
 };
 
 /** A hotel in the wizard: the summary row plus the contact fields the forms edit. */

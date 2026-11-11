@@ -5,6 +5,7 @@ import { BuildingIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import {
 	ChoiceCards,
@@ -19,8 +20,16 @@ import { PillTabs } from "@hospio/ui/shared/pill-tabs";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
+import {
+	checkCity,
+	checkEmail,
+	checkName,
+	checkPercent,
+	checkPerNight,
+	checkPhone,
+	only,
+} from "@hospio/ui/shared/validate";
 import { createBusiness } from "@hospio/api/actions/tenant";
-import { useAction } from "@hospio/api/actions/use-action";
 import { feeModelLabels } from "@hospio/api/data/mappers/tenant";
 import type {
 	AdminUserRow,
@@ -266,7 +275,7 @@ export function NewBusinessPanel({
 	admins?: AdminUserRow[];
 }) {
 	const router = useRouter();
-	const { run, pending } = useAction();
+	const [pending, setPending] = useState(false);
 	const [name, setName] = useState("");
 	const [owner, setOwner] = useState("");
 	const [email, setEmail] = useState("");
@@ -275,24 +284,13 @@ export function NewBusinessPanel({
 	const [feeModel, setFeeModel] = useState<
 		"PERCENT_OF_PAYMENTS" | "PER_ROOM_NIGHT" | "PERCENT_OF_BOOKINGS"
 	>("PERCENT_OF_PAYMENTS");
-	const [perNight, setPerNight] = useState<number | "">(1500);
-	const [pct, setPct] = useState("1.5");
+	// Both start empty: the grey text is a hint, never a value (DEF-041).
+	const [perNight, setPerNight] = useState<number | "">("");
+	const [pct, setPct] = useState("");
 	const [marketer, setMarketer] = useState("");
 	const [manager, setManager] = useState("");
-	const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-	const feeValue =
-		feeModel === "PER_ROOM_NIGHT"
-			? perNight === ""
-				? 0
-				: perNight
-			: Number(pct.replace(",", "."));
-	const valid =
-		name.trim().length > 1 &&
-		owner.trim().length > 1 &&
-		emailOk &&
-		city.trim() &&
-		Number.isFinite(feeValue) &&
-		feeValue > 0;
+	const [errors, setErrors] = useState<NewBusinessErrors>({});
+	const perRoomNight = feeModel === "PER_ROOM_NIGHT";
 	const adminOptions = admins
 		.filter((a) => a.status === "ACTIVE" && a.role !== "FINANCE_ADMIN")
 		.map((a) => ({
@@ -301,32 +299,67 @@ export function NewBusinessPanel({
 			hint: a.role === "SUPER_ADMIN" ? "Super admin" : "Support",
 		}));
 
-	const create = () =>
-		run(
-			() =>
-				createBusiness({
-					name: name.trim(),
-					city: city.trim(),
-					ownerName: owner.trim(),
-					ownerEmail: email.trim().toLowerCase(),
-					ownerPhone: phone.trim() || null,
-					feeModel,
-					feeValue,
-					marketerId: marketer || null,
-					source: "BACK_OFFICE",
-				}),
-			`${name.trim()} created · onboarding started`,
-			(business) => {
-				// The panel must close before the page changes (an open Sheet leaves `pointer-events: none`
-				// on <body> when it unmounts mid-navigation, and nothing on the wizard can be clicked), but
-				// not through the URL: clearing `?new=1` with nuqs a moment later cancels the push.
-				if (onCreated) onCreated(business);
-				else {
-					onOpenChange(false);
-					router.push(`/dashboard/onboarding/${business.id}`);
-				}
-			},
-		);
+	/** Each field's problem, the same rules the API applies (tenant's Fields.java). */
+	const validate = (): NewBusinessErrors =>
+		only({
+			owner: checkName(owner, "the owner's full name"),
+			email: checkEmail(email),
+			phone: checkPhone(phone, false),
+			name: checkName(name, "the business name"),
+			city: checkCity(city),
+			fee: perRoomNight ? checkPerNight(perNight) : checkPercent(pct),
+		});
+	// A field fixed after a failed try loses its message as soon as it is right.
+	const edit =
+		<T,>(set: (v: T) => void, field: keyof NewBusinessErrors) =>
+		(v: T) => {
+			set(v);
+			if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
+		};
+
+	const create = async () => {
+		const found = validate();
+		setErrors(found);
+		if (Object.keys(found).length) return;
+		setPending(true);
+		try {
+			const result = await createBusiness({
+				name: name.trim(),
+				city: city.trim(),
+				ownerName: owner.trim(),
+				ownerEmail: email.trim().toLowerCase(),
+				ownerPhone: phone.trim() || null,
+				feeModel,
+				feeValue: perRoomNight
+					? (perNight as number)
+					: Number(pct.trim().replace(",", ".")),
+				marketerId: marketer || null,
+				source: "BACK_OFFICE",
+			});
+			if (!result.ok) {
+				// The server's sentence goes under the field it is about (a duplicate email, phone or name).
+				const field = fieldOfError(result.error);
+				if (field) setErrors({ [field]: result.error });
+				else toast.error(result.error, { duration: 8000 });
+				return;
+			}
+			toast.success(`${name.trim()} created · onboarding started`);
+			// The panel must close before the page changes (an open Sheet leaves `pointer-events: none`
+			// on <body> when it unmounts mid-navigation, and nothing on the wizard can be clicked), but
+			// not through the URL: clearing `?new=1` with nuqs a moment later cancels the push.
+			if (onCreated) onCreated(result.data);
+			else {
+				onOpenChange(false);
+				router.push(`/dashboard/onboarding/${result.data.id}`);
+			}
+		} catch (e) {
+			toast.error(
+				e instanceof Error ? e.message : "The business could not be created",
+			);
+		} finally {
+			setPending(false);
+		}
+	};
 
 	return (
 		<SidePanel
@@ -349,9 +382,9 @@ export function NewBusinessPanel({
 					</button>
 					<button
 						type="button"
-						disabled={!valid || pending}
+						disabled={pending}
 						className={btn.primary}
-						onClick={create}
+						onClick={() => void create()}
 					>
 						Create business
 					</button>
@@ -359,33 +392,37 @@ export function NewBusinessPanel({
 			}
 		>
 			<div className="flex flex-col gap-5">
+				{Object.keys(errors).length > 0 && (
+					<p className="text-xs font-medium text-danger" role="alert">
+						Fix the fields marked in red to create the business.
+					</p>
+				)}
 				<PanelSection title="Owner">
 					<TextField
 						label="Owner's full name"
 						value={owner}
-						onChange={setOwner}
-						placeholder="Musa Danladi"
+						onChange={edit(setOwner, "owner")}
+						placeholder="e.g. Musa Danladi"
 						required
+						error={errors.owner}
 					/>
 					<FieldRow>
 						<TextField
 							label="Email"
 							type="email"
 							value={email}
-							onChange={setEmail}
-							placeholder="owner@hotel.com"
+							onChange={edit(setEmail, "email")}
+							placeholder="e.g. owner@hotel.com"
 							required
-							error={
-								email && !emailOk
-									? "That does not look like an email"
-									: undefined
-							}
+							error={errors.email}
 						/>
 						<TextField
 							label="Phone"
 							value={phone}
-							onChange={setPhone}
-							placeholder="+234 …"
+							onChange={edit(setPhone, "phone")}
+							placeholder="e.g. +234 803 555 0192"
+							error={errors.phone}
+							hint="Optional · one business per phone number"
 						/>
 					</FieldRow>
 				</PanelSection>
@@ -393,17 +430,19 @@ export function NewBusinessPanel({
 					<TextField
 						label="Business name"
 						value={name}
-						onChange={setName}
-						placeholder="Abuja Palms Hotels Ltd"
+						onChange={edit(setName, "name")}
+						placeholder="e.g. Abuja Palms Hotels Ltd"
 						required
+						error={errors.name}
 					/>
 					<FieldRow>
 						<TextField
 							label="City"
 							value={city}
-							onChange={setCity}
-							placeholder="Abuja"
+							onChange={edit(setCity, "city")}
+							placeholder="e.g. Abuja"
 							required
+							error={errors.city}
 						/>
 						<SelectField
 							label="Account manager"
@@ -419,7 +458,7 @@ export function NewBusinessPanel({
 				<PanelSection title="Fee model">
 					<ChoiceCards
 						value={feeModel}
-						onChange={setFeeModel}
+						onChange={edit(setFeeModel, "fee")}
 						options={[
 							{
 								value: "PERCENT_OF_PAYMENTS",
@@ -438,18 +477,25 @@ export function NewBusinessPanel({
 							},
 						]}
 					/>
-					{feeModel === "PER_ROOM_NIGHT" ? (
+					{perRoomNight ? (
 						<MoneyField
 							label="Fee per room night"
 							value={perNight}
-							onChange={setPerNight}
+							onChange={edit(setPerNight, "fee")}
+							placeholder="e.g. 1,500"
+							required
+							error={errors.fee}
+							hint="₦0 to ₦1,000,000 for each room night sold"
 						/>
 					) : (
 						<TextField
 							label="Share (%)"
 							value={pct}
-							onChange={setPct}
-							placeholder="1.5"
+							onChange={edit(setPct, "fee")}
+							placeholder="e.g. 1.5"
+							required
+							error={errors.fee}
+							hint="0 to 100, up to two decimals"
 						/>
 					)}
 				</PanelSection>
@@ -472,4 +518,19 @@ export function NewBusinessPanel({
 			</div>
 		</SidePanel>
 	);
+}
+
+type NewBusinessErrors = Partial<
+	Record<"owner" | "email" | "phone" | "name" | "city" | "fee", string>
+>;
+
+/** Which field a refusal from tenant-service is about, so it shows under that field. */
+function fieldOfError(message: string): keyof NewBusinessErrors | null {
+	if (/already has an account|email/i.test(message)) return "email";
+	if (/phone/i.test(message)) return "phone";
+	if (/owner's full name/i.test(message)) return "owner";
+	if (/business called|business name/i.test(message)) return "name";
+	if (/city/i.test(message)) return "city";
+	if (/share|fee/i.test(message)) return "fee";
+	return null;
 }

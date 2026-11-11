@@ -16,6 +16,7 @@ import {
 	StepCard,
 	StepFrame,
 	useWizardSave,
+	type WizardData,
 } from "./shared";
 
 /** J8 · step 6: pick a setup template and the hotels to apply it to (POST /hotel-config/setup/apply-template per hotel). */
@@ -64,8 +65,17 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 	const [templateId, setTemplateId] = useState(
 		saved?.templateId ?? templates[0]?.id ?? "",
 	);
-	const [picked, setPicked] = useState<string[]>(hotels.map((h) => h.id));
+	// The ticks saved last time come back; on a first visit every hotel without the setup is ticked.
+	const [picked, setPicked] = useState<string[]>(() => {
+		const ids = hotels.map((h) => h.id);
+		if (saved?.picked) return saved.picked.filter((id) => ids.includes(id));
+		const notYet = ids.filter((id) => !(saved?.appliedTo ?? []).includes(id));
+		return saved?.appliedTo?.length ? notYet : ids;
+	});
 	const [appliedTo, setAppliedTo] = useState<string[]>(saved?.appliedTo ?? []);
+	const [appliedAt, setAppliedAt] = useState<Record<string, string>>(
+		saved?.appliedAt ?? {},
+	);
 	const { pending, busy } = useWizardSave();
 	const template = templates.find((t) => t.id === templateId);
 	const toggle = (id: string) =>
@@ -78,6 +88,7 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 				return;
 			}
 			const done: string[] = [...appliedTo];
+			const when = { ...appliedAt };
 			for (const hotelId of picked) {
 				// applyTemplate answers {ok: true, data: null} on success, so the result itself is checked, not its data.
 				const result = await applyTemplate({ templateId }, hotelId);
@@ -86,8 +97,10 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 					break;
 				}
 				if (!done.includes(hotelId)) done.push(hotelId);
+				when[hotelId] = new Date().toISOString();
 			}
 			setAppliedTo(done);
+			setAppliedAt(when);
 			const applied = picked.filter((id) => done.includes(id)).length;
 			if (applied > 0)
 				toast.success(
@@ -96,7 +109,9 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 			const row = await ctx.saveStep("template", {
 				templateId,
 				appliedTo: done,
-			});
+				picked,
+				appliedAt: when,
+			} as NonNullable<WizardData["template"]>);
 			if (row && applied === picked.length) ctx.goTo(nextStep("template"));
 		});
 
@@ -105,7 +120,9 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 			const row = await ctx.saveStep("template", {
 				templateId: saved?.templateId,
 				appliedTo,
-			});
+				picked,
+				appliedAt,
+			} as NonNullable<WizardData["template"]>);
 			if (row) ctx.goTo(nextStep("template"));
 		});
 
@@ -230,7 +247,13 @@ export function TemplateStep({ ctx }: { ctx: WizardCtx }) {
 											{h.city || "—"} · {h.rooms} rooms
 										</span>
 									</span>
-									{was && <StatusPill tone="success">applied</StatusPill>}
+									{was && (
+										<StatusPill tone="success">
+											{appliedAt[h.id]
+												? `applied ${new Date(appliedAt[h.id]).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+												: "applied"}
+										</StatusPill>
+									)}
 								</button>
 							</li>
 						);

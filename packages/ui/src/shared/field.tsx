@@ -130,6 +130,7 @@ export function MoneyField({
 	required,
 	className,
 	disabled,
+	placeholder = "0",
 }: {
 	label: string;
 	value: number | "";
@@ -139,6 +140,8 @@ export function MoneyField({
 	required?: boolean;
 	className?: string;
 	disabled?: boolean;
+	/** Grey hint shown while empty; never a value. */
+	placeholder?: string;
 }) {
 	return (
 		<Field
@@ -160,7 +163,7 @@ export function MoneyField({
 						onChange(digits === "" ? "" : Number(digits));
 					}}
 					disabled={disabled}
-					placeholder="0"
+					placeholder={placeholder}
 					className={cn(inputCls, "pl-8", error && "border-danger")}
 				/>
 			</div>
