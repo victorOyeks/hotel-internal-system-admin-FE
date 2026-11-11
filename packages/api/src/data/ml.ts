@@ -87,7 +87,7 @@ export const toActivityRow = (e: ActivityEntryWire): ActivityRow => ({
 	action: actionOf(e.eventType),
 	summary: readableSummary(e.summary),
 	eventType: e.eventType,
-	byPlatform: !!e.actorName?.startsWith("H.M.S"),
+	byPlatform: !!/^(H\.M\.S|Hospio360)( ·|$)/.test(e.actorName ?? ""),
 	payload: payloadOf(e.payload),
 });
 

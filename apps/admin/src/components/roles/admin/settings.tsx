@@ -103,7 +103,7 @@ export function SettingsScreen({
 		<>
 			<PageHeader
 				title="Platform settings"
-				subtitle="How H.M.S itself runs: company details, default fees, security and connected services"
+				subtitle="How Hospio360 itself runs: company details, default fees, security and connected services"
 			/>
 			{!editable && (
 				<ReadOnlyNote>
@@ -232,7 +232,7 @@ export function SettingsScreen({
 							/>
 						</FieldRow>
 						<TextField
-							label="H.M.S share of card and transfer (%)"
+							label="Hospio360 share of card and transfer (%)"
 							value={str(f.hmsSharePct)}
 							onChange={(v) => set("fees", "hmsSharePct", num(v))}
 							disabled={!editable}
@@ -246,7 +246,7 @@ export function SettingsScreen({
 					>
 						<FieldRow>
 							<TextField
-								label="Share of H.M.S fee (%)"
+								label="Share of Hospio360 fee (%)"
 								value={str(f.marketerSharePct)}
 								onChange={(v) => set("fees", "marketerSharePct", num(v))}
 								disabled={!editable}
@@ -273,7 +273,7 @@ export function SettingsScreen({
 			{active === "security" && (
 				<SectionCard
 					title="Security"
-					subtitle="For the H.M.S team; hotels set their own rules in Hotel setup"
+					subtitle="For the Hospio360 team; hotels set their own rules in Hotel setup"
 					bodyClassName="gap-3 pt-2"
 				>
 					<ToggleField

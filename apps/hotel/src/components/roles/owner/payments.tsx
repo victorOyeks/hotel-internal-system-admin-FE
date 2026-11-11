@@ -95,7 +95,7 @@ const settleLabel = {
 /**
  * Hotel Owner · 17 Payments & payouts: every hotel's payments (payment-service across the business, one page at a time;
  * the cards are this month's over the whole range, so "All hotels" is the sum of the hotels) and the business's
- * settlements (card and transfer money the providers collected, less their fee and H.M.S's share, and whether it was
+ * settlements (card and transfer money the providers collected, less their fee and Hospio360's share, and whether it was
  * paid out).
  */
 export function OwnerPayments({
@@ -214,7 +214,7 @@ export function OwnerPayments({
 		},
 		{
 			accessorKey: "hmsShare",
-			header: "H.M.S share",
+			header: "Hospio360 share",
 			cell: ({ row }) => (
 				<span className="text-danger">−{naira(row.original.hmsShare)}</span>
 			),
@@ -281,7 +281,7 @@ export function OwnerPayments({
 					label="Waiting to be paid out"
 					value={nairaShort(toPay)}
 					icon={LandmarkIcon}
-					hint="Settled to your account by H.M.S"
+					hint="Settled to your account by Hospio360"
 				/>
 			</div>
 			<Toolbar
@@ -452,7 +452,7 @@ export function OwnerPayments({
 									"Payments",
 									"Collected (NGN)",
 									"Provider fee (NGN)",
-									"H.M.S share (NGN)",
+									"Hospio360 share (NGN)",
 									"To you (NGN)",
 									"Status",
 									"Paid out",

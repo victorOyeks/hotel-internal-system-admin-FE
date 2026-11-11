@@ -9,7 +9,7 @@ export function NotAMarketer() {
 			<PageHeader title="Marketer portal" />
 			<EmptyState
 				title="No marketer profile on this account"
-				hint="Ask H.M.S to invite you as a marketer; the portal opens once the profile exists."
+				hint="Ask Hospio360 to invite you as a marketer; the portal opens once the profile exists."
 			>
 				<MegaphoneIcon className="mt-2 size-5 text-ink-3" />
 			</EmptyState>

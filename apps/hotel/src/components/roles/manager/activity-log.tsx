@@ -144,7 +144,7 @@ export function ActivityLogScreen({
 					"Action",
 					"What changed",
 					"Event",
-					"By H.M.S",
+					"By Hospio360",
 				],
 				...r.data.rows.map((a) => [
 					new Date(a.at).toLocaleString("en-GB", { timeZone: "Africa/Lagos" }),
@@ -206,7 +206,7 @@ export function ActivityLogScreen({
 			cell: ({ row }) =>
 				row.original.byPlatform ? (
 					<StatusPill tone="info" dot={false}>
-						by H.M.S
+						by Hospio360
 					</StatusPill>
 				) : null,
 			size: 90,
@@ -304,7 +304,7 @@ export function ActivityLogScreen({
 									{ label: "When", value: fmtWhen(entry.at) },
 									{
 										label: "Source",
-										value: entry.byPlatform ? "H.M.S support" : "This hotel",
+										value: entry.byPlatform ? "Hospio360 support" : "This hotel",
 									},
 								]}
 							/>

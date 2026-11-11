@@ -39,7 +39,7 @@ export default async function MarketersPage({
 			marketers={marketers}
 			commissions={commissions}
 			referrals={referrals}
-			inviterName={user?.fullName ?? "H.M.S"}
+			inviterName={user?.fullName ?? "Hospio360"}
 		/>
 	);
 }

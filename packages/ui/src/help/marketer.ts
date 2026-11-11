@@ -4,12 +4,12 @@ export const marketerHelp: HelpModule = {
 	audience: "MARKETER",
 	label: "Marketer",
 	intro:
-		"Refer hotels to H.M.S, follow your referrals and get paid your commission.",
+		"Refer hotels to Hospio360, follow your referrals and get paid your commission.",
 	guides: [
 		{
 			id: "mkt-refer-hotel",
 			title: "Refer a hotel",
-			when: "You know a hotel that should use H.M.S and want us to contact them.",
+			when: "You know a hotel that should use Hospio360 and want us to contact them.",
 			topic: "Referrals",
 			steps: [
 				"Open “Refer a hotel”.",
@@ -38,7 +38,7 @@ export const marketerHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"Anyone who signs up through your link is yours.",
-				"You earn your share of the H.M.S fee for the agreed months on every business that goes live.",
+				"You earn your share of the Hospio360 fee for the agreed months on every business that goes live.",
 				"Your link stops working if your agreement is ended.",
 			],
 			route: "/dashboard/refer",
@@ -74,7 +74,7 @@ export const marketerHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"Nothing is paid until your bank details are in.",
-				"Commissions are paid on the 5th, once the hotel has paid H.M.S.",
+				"Commissions are paid on the 5th, once the hotel has paid Hospio360.",
 				"5% withholding tax is taken off every payout.",
 			],
 			route: "/dashboard/commissions",
@@ -93,7 +93,7 @@ export const marketerHelp: HelpModule = {
 			],
 			goodToKnow: [
 				"The statement lists every line in the month, with the WHT deducted.",
-				"“Waiting” lines are for hotels that haven't paid H.M.S yet.",
+				"“Waiting” lines are for hotels that haven't paid Hospio360 yet.",
 			],
 			route: "/dashboard/commissions",
 			screen: "Commissions",

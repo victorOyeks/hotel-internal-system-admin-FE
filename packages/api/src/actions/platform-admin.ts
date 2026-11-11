@@ -268,8 +268,8 @@ export async function sendFeeStatement(
 				sentAt: new Date().toISOString(),
 				deliveries: demoDeliveries(
 					"owner@example.com",
-					`Your H.M.S statement for ${fallback?.month ?? "this month"}`,
-					`Hello,\n\nYour statement for ${fallback?.month ?? "this month"} is ready: ${fallback ? `₦${fallback.feeAmount.toLocaleString("en-NG")}` : ""} due on the 5th.\n\nH.M.S`,
+					`Your Hospio360 statement for ${fallback?.month ?? "this month"}`,
+					`Hello,\n\nYour statement for ${fallback?.month ?? "this month"} is ready: ${fallback ? `₦${fallback.feeAmount.toLocaleString("en-NG")}` : ""} due on the 5th.\n\nHospio360`,
 					"FEE_STATEMENT",
 				),
 			},
@@ -329,7 +329,7 @@ export async function openTicketForBusiness(
 				body: input.body ?? "",
 				priority: input.priority ?? "NORMAL",
 				status: "OPEN",
-				openedByName: "H.M.S (phone)",
+				openedByName: "Hospio360 (phone)",
 				openedAt: new Date().toISOString(),
 			},
 		};
@@ -586,8 +586,8 @@ export async function inviteMarketer(input: {
 				},
 				deliveries: demoDeliveries(
 					input.email,
-					"You are invited to H.M.S as a marketer",
-					`Hi ${input.fullName.split(" ")[0]},\n\nYour temporary password is ${temporaryPassword}. Sign in at the marketer portal and set your own.\n\nH.M.S`,
+					"You are invited to Hospio360 as a marketer",
+					`Hi ${input.fullName.split(" ")[0]},\n\nYour temporary password is ${temporaryPassword}. Sign in at the marketer portal and set your own.\n\nHospio360`,
 					"INVITE",
 				),
 			},
@@ -754,7 +754,7 @@ export async function payCommission(
 	};
 }
 
-// ---- changes by H.M.S ----------------------------------------------------------------------------
+// ---- changes by Hospio360 ----------------------------------------------------------------------------
 
 export type RecordChangeInput = {
 	businessId: string;
@@ -767,9 +767,9 @@ export type RecordChangeInput = {
 };
 
 /**
- * POST /platform/admin/changes: the web app records a change after each edit made as H.M.S (business,
+ * POST /platform/admin/changes: the web app records a change after each edit made as Hospio360 (business,
  * hotel, setup, users) with the reason and before/after snapshots; the owner can ask support to undo it within 7 days.
- * Exported for the business page's "Edit as H.M.S" flow.
+ * Exported for the business page's "Edit as Hospio360" flow.
  */
 export async function recordChange(
 	input: RecordChangeInput,

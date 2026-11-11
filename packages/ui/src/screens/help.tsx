@@ -35,14 +35,14 @@ const haystack = (g: Guide) =>
 		.join(" ")
 		.toLowerCase();
 
-/** Everywhere · Help: task guides for the roles the person holds, what's new, and a ticket to H.M.S support. */
+/** Everywhere · Help: task guides for the roles the person holds, what's new, and a ticket to Hospio360 support. */
 export function HelpScreen({
 	content,
 	app,
 }: {
 	/** From `helpFor` in @hospio/ui/help, worked out on the server for the signed-in person. */
 	content: HelpContent;
-	/** The admin app is H.M.S itself: no tickets, a link to the Support queue instead. */
+	/** The admin app is Hospio360 itself: no tickets, a link to the Support queue instead. */
 	app: "hotel" | "admin";
 }) {
 	const [search, setSearch] = useState("");
@@ -69,7 +69,7 @@ export function HelpScreen({
 		<>
 			<PageHeader
 				title="Help"
-				subtitle="Short guides for the work you do in Hospio360, and H.M.S support when you need a person"
+				subtitle="Short guides for the work you do in Hospio360, and our support team when you need a person"
 			>
 				{app === "hotel" ? (
 					<Button className={btn.primary} onClick={() => setContact(true)}>
@@ -166,13 +166,13 @@ export function HelpScreen({
 					)}
 					{app === "hotel" ? (
 						<SectionCard
-							title="Talk to H.M.S"
+							title="Talk to Hospio360"
 							subtitle="When a guide doesn't answer it"
 							bodyClassName="gap-3 pt-2"
 						>
 							<p className="text-[13px] text-ink-2">
 								Send a ticket and you get its number on screen straight away.
-								H.M.S replies by email to the address you sign in with.
+								Hospio360 replies by email to the address you sign in with.
 							</p>
 							<p className="flex items-center gap-2 text-[13px] text-ink-2">
 								<MailIcon className="size-4 shrink-0 text-ink-3" /> Choose
@@ -319,10 +319,10 @@ function ContactPanel({
 		<SidePanel
 			open={open}
 			onOpenChange={onOpenChange}
-			title="Contact H.M.S support"
+			title="Contact Hospio360 support"
 			subtitle="You get a ticket number on screen straight away"
 			icon={HeadsetIcon}
-			footerInfo="H.M.S replies by email to the address you sign in with"
+			footerInfo="Hospio360 replies by email to the address you sign in with"
 			footer={
 				<>
 					<Button
@@ -338,10 +338,10 @@ function ContactPanel({
 						onClick={() =>
 							ticket.run(
 								() => openSupportTicket({ subject, body, priority }),
-								"Ticket sent to H.M.S support",
+								"Ticket sent to Hospio360 support",
 								(r) => {
 									toast.info(
-										`Ticket ${r.reference} opened · H.M.S replies by email`,
+										`Ticket ${r.reference} opened · Hospio360 replies by email`,
 									);
 									onOpenChange(false);
 									setSubject("");

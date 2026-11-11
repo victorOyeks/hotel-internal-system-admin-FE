@@ -2,7 +2,7 @@ import { HOTEL_ROLES, PLATFORM_ROLES, type HotelRole } from "./roles";
 
 /**
  * The two web apps share this package and differ only here. NEXT_PUBLIC_APP is "hotel" (owners,
- * managers, hotel staff) or "admin" (H.M.S platform admin and the marketer portal). A sign-in that
+ * managers, hotel staff) or "admin" (Hospio360 platform admin and the marketer portal). A sign-in that
  * carries only the other app's roles is sent to that app.
  */
 export type AppKind = "hotel" | "admin";
@@ -24,4 +24,4 @@ export const OTHER_APP_URL = APP === "admin"
 	? (process.env.NEXT_PUBLIC_HOTEL_APP_URL ?? "https://web-staging.hospio360.com")
 	: (process.env.NEXT_PUBLIC_ADMIN_APP_URL ?? "https://admin-staging.hospio360.com");
 
-export const APP_NAME = APP === "admin" ? "Hospio360 · H.M.S" : "Hospio360";
+export const APP_NAME = APP === "admin" ? "Hospio360 Admin" : "Hospio360";

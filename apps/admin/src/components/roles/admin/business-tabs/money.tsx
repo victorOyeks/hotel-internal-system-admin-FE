@@ -59,7 +59,7 @@ export function MoneyTab({
 				businessId={businessId}
 				businessName={businessName}
 				active="money"
-				subtitle="What the business pays H.M.S, what its guests paid on POS, and what was settled back to it"
+				subtitle="What the business pays Hospio360, what its guests paid on POS, and what was settled back to it"
 			/>
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 				<KpiCard
@@ -90,7 +90,7 @@ export function MoneyTab({
 					hint={`${settlements.filter((s) => s.status === "PENDING").length} pending`}
 				/>
 				<KpiCard
-					label="H.M.S share"
+					label="Hospio360 share"
 					value={nairaShort(settlements.reduce((a, s) => a + s.hmsShare, 0))}
 					icon={ReceiptIcon}
 					hint="From the settlements shown"
@@ -170,7 +170,7 @@ export function MoneyTab({
 												{s.provider} · {fmtDay(s.periodDate)}
 											</p>
 											<p className="text-xs text-ink-3">
-												gross {naira(s.gross)} · H.M.S {naira(s.hmsShare)}
+												gross {naira(s.gross)} · Hospio360 {naira(s.hmsShare)}
 											</p>
 										</div>
 										<span className="text-[13px] font-semibold text-ink">

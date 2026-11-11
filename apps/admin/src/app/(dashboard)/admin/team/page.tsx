@@ -15,7 +15,7 @@ export default async function TeamPage() {
 		<TeamScreen
 			role={adminRole(role)}
 			users={users}
-			inviterName={user?.fullName ?? "H.M.S"}
+			inviterName={user?.fullName ?? "Hospio360"}
 		/>
 	);
 }

@@ -491,7 +491,7 @@ export const ownerData = {
 				action: actionOf(e.eventType),
 				summary: readable(e.summary),
 				eventType: e.eventType,
-				byPlatform: !!e.actorName?.startsWith("H.M.S"),
+				byPlatform: !!/^(H\.M\.S|Hospio360)( ·|$)/.test(e.actorName ?? ""),
 				hotelId: e.hotelId ?? undefined,
 				hotelName: e.hotelId ? names.get(e.hotelId) : undefined,
 			}))
@@ -547,7 +547,7 @@ export const ownerData = {
 		});
 	},
 
-	/** Changes H.M.S made in the business, newest first, with any undo request. */
+	/** Changes Hospio360 made in the business, newest first, with any undo request. */
 	changes: async (): Promise<OwnerChangeRow[]> => {
 		if (!live("platform")) return [];
 		const names = new Map((await hotelsOf()).map((h) => [h.id, h.name]));
@@ -565,7 +565,7 @@ export const ownerData = {
 				area: r.change.area,
 				description: r.change.description,
 				reason: r.change.reason ?? "",
-				madeBy: r.madeByName ?? r.change.madeByName ?? "H.M.S",
+				madeBy: r.madeByName ?? r.change.madeByName ?? "Hospio360",
 				at: r.change.createdAt,
 				undoUntil: r.change.undoUntil,
 				undone: r.undone,

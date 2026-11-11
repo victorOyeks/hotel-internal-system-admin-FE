@@ -39,7 +39,7 @@ const roleOptions = [
 	{
 		value: "SUPPORT" as const,
 		label: "Support",
-		hint: "Businesses, onboarding, tickets, edits as H.M.S",
+		hint: "Businesses, onboarding, tickets, edits as Hospio360",
 	},
 	{
 		value: "FINANCE_ADMIN" as const,
@@ -223,7 +223,7 @@ export function TeamScreen({
 		<>
 			<PageHeader
 				title="Admin team"
-				subtitle={`${users.filter((u) => u.status === "ACTIVE").length} active · H.M.S staff who can use this portal`}
+				subtitle={`${users.filter((u) => u.status === "ACTIVE").length} active · Hospio360 staff who can use this portal`}
 			>
 				{admin && (
 					<button
@@ -395,7 +395,7 @@ export function TeamScreen({
 								email={secret.user.email}
 								phone={secret.user.phone}
 								roleLabel={adminRoleLabel[secret.user.role]}
-								businessName="H.M.S"
+								businessName="Hospio360"
 								inviterName={inviterName}
 								temporaryPassword={secret.created.temporaryPassword}
 								inviteToken={secret.created.inviteToken}
@@ -519,7 +519,7 @@ function AddAdminPanel({
 					email={email}
 					phone={phone}
 					roleLabel={adminRoleLabel[role]}
-					businessName="H.M.S"
+					businessName="Hospio360"
 					inviterName={inviterName}
 					temporaryPassword={created.temporaryPassword}
 					inviteToken={created.inviteToken}

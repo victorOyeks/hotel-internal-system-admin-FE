@@ -39,7 +39,7 @@ export function Onboarding() {
 			tone="card"
 			eyebrow="Onboarding"
 			title="Set up your hotel in four steps."
-			intro="Sign up and walk through a short setup, saving as you go. Prefer to hand it over? The H.M.S team can set up your business, hotels, rooms and staff for you, then hand you the keys."
+			intro="Sign up and walk through a short setup, saving as you go. Prefer to hand it over? The Hospio360 team can set up your business, hotels, rooms and staff for you, then hand you the keys."
 		>
 			<ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 				{steps.map((s, i) => (

@@ -39,8 +39,8 @@ export function AppSidebar({
 								<span className="flex size-7 items-center justify-center text-white">
 									<HomeIcon />
 								</span>
-								<span className="text-sm font-bold tracking-[0.2em] text-white group-data-[collapsible=icon]:hidden">
-									H.M.S
+								<span className="text-sm font-bold tracking-[-0.01em] text-white group-data-[collapsible=icon]:hidden">
+									Hospio360
 								</span>
 							</Link>
 						</SidebarMenuButton>

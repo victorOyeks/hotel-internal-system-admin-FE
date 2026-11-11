@@ -59,7 +59,7 @@ export function UsageTab({
 				businessId={businessId}
 				businessName={businessName}
 				active="usage"
-				subtitle="How much the business uses H.M.S: people signing in, bookings, payments and messages"
+				subtitle="How much the business uses Hospio360: people signing in, bookings, payments and messages"
 			>
 				<button
 					type="button"

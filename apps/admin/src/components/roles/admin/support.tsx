@@ -382,7 +382,7 @@ function TicketPanel({
 			footerInfo={
 				ticket?.status === "RESOLVED"
 					? `Resolved${ticket.resolvedAt ? ` ${fmtWhen(ticket.resolvedAt)}` : ""}: ${ticket.resolution ?? ""}`
-					: "Replies go to the person who opened the ticket; internal notes stay inside H.M.S."
+					: "Replies go to the person who opened the ticket; internal notes stay inside Hospio360."
 			}
 			footer={
 				ticket ? (
@@ -571,7 +571,7 @@ function TicketPanel({
 								/>
 								<ToggleField
 									label="Internal note"
-									hint="Stays inside H.M.S; the hotel does not see it"
+									hint="Stays inside Hospio360; the hotel does not see it"
 									checked={internal}
 									onChange={setInternal}
 								/>

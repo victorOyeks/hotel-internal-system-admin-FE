@@ -122,7 +122,7 @@ export function OnboardingScreen({
 		<>
 			<PageHeader
 				title="Onboarding"
-				subtitle="Businesses H.M.S is setting up, and owners setting up themselves"
+				subtitle="Businesses Hospio360 is setting up, and owners setting up themselves"
 			>
 				{editable && (
 					<Link href="/dashboard/businesses?new=1" className={btn.primary}>
@@ -199,7 +199,7 @@ export function OnboardingScreen({
 												>
 													{r.source === "SELF_SERVE"
 														? "Owner"
-														: `H.M.S · ${r.assignedTo}`}{" "}
+														: `Hospio360 · ${r.assignedTo}`}{" "}
 													·{" "}
 													{r.updatedAt
 														? `saved ${fmtAgo(r.updatedAt)}`
@@ -239,7 +239,7 @@ export function OnboardingScreen({
 				})}
 			</div>
 			<p className="text-xs text-ink-3">
-				H.M.S can set a business up end to end, then hand it over. Owners who
+				Hospio360 can set a business up end to end, then hand it over. Owners who
 				prefer can still do it themselves after an invite.
 			</p>
 

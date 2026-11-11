@@ -281,7 +281,7 @@ export function AdminDashboard({
 
 			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<SectionCard
-					title="Changes by H.M.S"
+					title="Changes by Hospio360"
 					subtitle="Logged; the owner can ask support to undo within 7 days"
 					action={{ label: "All changes", href: "/dashboard/changes" }}
 					bodyClassName="pt-1"
@@ -310,7 +310,7 @@ export function AdminDashboard({
 
 				<SectionCard
 					title="Recent activity"
-					subtitle="By the H.M.S team"
+					subtitle="By the Hospio360 team"
 					action={{
 						label: "Activity log",
 						href: "/dashboard/changes?tab=activity",

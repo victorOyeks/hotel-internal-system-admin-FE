@@ -116,7 +116,7 @@ export function Hero() {
 					Every room, every till, every branch — on one screen.
 				</h1>
 				<p className="max-w-[760px] text-center text-[17px] leading-[1.5] text-ink-2 md:text-[20px]">
-					H.M.S connects owners, managers and every department — front desk,
+					Hospio360 connects owners, managers and every department — front desk,
 					housekeeping, kitchen, bar, laundry, maintenance, inventory and
 					finance — so bookings, charges and payments land in one place, in real
 					time.
@@ -183,8 +183,8 @@ function OwnerDashboardShot() {
 			<aside className="hidden w-[228px] shrink-0 flex-col gap-1 bg-brand px-4 py-6 lg:flex">
 				<div className="flex items-center gap-[10px] pb-5 pl-2">
 					<Image src="/landing/hms-mark.svg" alt="" width={20} height={20} />
-					<span className="text-[15px] font-bold leading-none tracking-[0.16em] text-white">
-						H.M.S
+					<span className="text-[15px] font-bold leading-none tracking-[-0.01em] text-white">
+						Hospio360
 					</span>
 				</div>
 				{sidebar.map((item, i) => (

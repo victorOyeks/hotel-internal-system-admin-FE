@@ -48,7 +48,7 @@ Use your own inbox (a gmail you read) wherever a step says "your address".
 
 1. As owner B, Staff → Add staff at **QA B Ikoyi** with your address, then at **QA B Abuja** with your address (or a
    `+abuja` alias).
-2. **Expect** one email from "QA B Ikoyi fcekd" and one from "QA B Abuja fcekd". Mail with no hotel (H.M.S staff) comes
+2. **Expect** one email from "QA B Ikoyi fcekd" and one from "QA B Abuja fcekd". Mail with no hotel (Hospio360 staff) comes
    from "Hospio360".
 
 ## 3. Guest messaging · Front office (Victor)

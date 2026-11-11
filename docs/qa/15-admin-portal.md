@@ -1,7 +1,7 @@
-# QA script · H.M.S admin portal and marketer portal (staging)
+# QA script · Hospio360 admin portal and marketer portal (staging)
 
 The platform admin side wired end to end: dashboard, admin team, fees and billing, payments, support, marketers,
-changes by H.M.S, settings, the business detail tabs, and the marketer portal. Everything in this script writes to
+changes by Hospio360, settings, the business detail tabs, and the marketer portal. Everything in this script writes to
 the real staging database and shows up for every admin, so name what you create after yourself ("QA Ada …").
 
 - Admin portal: https://admin-staging.hospio360.com · hotel app: https://web-staging.hospio360.com · API:
@@ -27,7 +27,7 @@ the real staging database and shows up for every admin, so name what you create 
 | Tickets: open, assign, priority, comment, resolve, reopen | yes | yes | yes |
 | Marketers: invite, approve, change share, end; referral stages | yes | yes | read only |
 | Pay commissions (Commissions tab) | yes | hidden | yes |
-| Undo a change by H.M.S | yes | yes | no |
+| Undo a change by Hospio360 | yes | yes | no |
 | Save platform settings | yes | read only | read only |
 | View as owner (support access) | yes | yes | yes |
 
@@ -40,11 +40,11 @@ Sign in as each account once and check the buttons match the table (the read-onl
 2. The Pipeline bars add up to the total number of businesses; clicking a stage opens Businesses filtered on it.
 3. System alerts: if any are open, **Dismiss** removes the row at once and it is gone after a refresh. "Open" goes to the
    business.
-4. "Changes by H.M.S" and "Recent activity" show the latest rows from the Changes screen; "All changes" opens it.
+4. "Changes by Hospio360" and "Recent activity" show the latest rows from the Changes screen; "All changes" opens it.
 
 ## 2 · Admin team (as super admin)
 
-1. Admin team → the H.M.S staff from identity (Amoria, Kola, Tobi …) with role, 2-step and last sign-in.
+1. Admin team → the Hospio360 staff from identity (Amoria, Kola, Tobi …) with role, 2-step and last sign-in.
 2. **Add an admin**: full name, a new `qa.admin.<you>@example.com`, role Support → "Add admin". The panel turns into the
    invite card with the temporary password and invite link (Copy buttons) **(delivery)**. Refresh → the person is listed
    as "invited".
@@ -76,7 +76,7 @@ Sign in as each account once and check the buttons match the table (the read-onl
 2. **Run settlements for yesterday** → a toast with created and skipped; the Settlements tab lists one row per business
    and provider for yesterday (0 created is right when no card or transfer payment was approved yesterday — make one
    in the hotel app first if you need rows).
-3. Click a settlement → the breakdown panel (gross, provider fee, H.M.S share, to the hotel).
+3. Click a settlement → the breakdown panel (gross, provider fee, Hospio360 share, to the hotel).
 4. **Create payout batch** → "All pending settlements" → Create → the batch opens: ref `PB-YYYY-NNN`, status
    processing, the settlements in it. (With no pending settlements the server answers that there is nothing to pay out.)
 5. In the batch: **Bank bounced it** on one settlement, a reason and a bank label → the settlement turns failed, the batch
@@ -113,7 +113,7 @@ Sign in as each account once and check the buttons match the table (the read-onl
    with the reference shown. (No lines yet means no referred business has paid a fee this month.)
 7. Row menu → **End agreement** → Ended; **Reactivate** → Active again.
 
-## 7 · Changes by H.M.S (any admin)
+## 7 · Changes by Hospio360 (any admin)
 
 1. Changes → the paged list with business filter; each row shows the reason and who made it. Rows inside the 7-day
    window show **Undo · Nd left** (Support and Super admin only).
@@ -137,9 +137,9 @@ Sign in as each account once and check the buttons match the table (the read-onl
 Open Businesses → Royal Suites Ltd. The business page carries the strip Usage · Money · Support · Contract &
 activity on the right of its own tabs, and each hotel row has "Today →" for the hotel page. The page's Fees,
 Support and Contract & activity tabs now read platform-service (statements, tickets and changes for this
-business); the header's "View as owner" is the real support access (section 11); **Edit as H.M.S** (row menu ⋯)
+business); the header's "View as owner" is the real support access (section 11); **Edit as Hospio360** (row menu ⋯)
 is the business form with a required reason: change the phone → "Save change" → toast "Change saved and logged"
-and the change appears at once under Contract & activity → Changes by H.M.S as "Phone changed" with the reason
+and the change appears at once under Contract & activity → Changes by Hospio360 as "Phone changed" with the reason
 and your name (and on `/activity` and on the Changes screen, with Undo). Saving without changing anything is
 refused with "Nothing has changed yet".
 
@@ -147,7 +147,7 @@ refused with "Nothing has changed yet".
    adoption and the health score with its factors. **Recompute health** updates the score now.
 2. `/money` → fee statements, settlements and guest payments for this business, each row linking to the full screen.
 3. `/support` → this business's tickets; a row opens it on the Support screen; **New ticket** is pre-filled.
-4. `/activity` → the contract fields, the activity log for the business, changes by H.M.S (undo), and "Viewed as owner".
+4. `/activity` → the contract fields, the activity log for the business, changes by Hospio360 (undo), and "Viewed as owner".
 5. `/hotels/<hotelId>` → today for one hotel: occupancy, arrivals, departures, open folios, payments today, manager.
 6. **View as owner** (on the activity tab and in the business page header): see section 11.
 
@@ -156,13 +156,13 @@ refused with "Nothing has changed yet".
 1. On a business page (or its Contract & activity tab) → **View as owner** → a reason of at least 8 characters and a
    time box (15, 30 or 60 minutes) → "Open as owner" → a new tab opens the hotel app at `/auth/support?token=…`,
    shows "Opening the hotel app as the owner…" for a moment and lands on the owner dashboard.
-2. An orange bar is fixed across the top: **"Viewing as H.M.S support · read only · ends at HH:MM"** (the end of the
+2. An orange bar is fixed across the top: **"Viewing as Hospio360 support · read only · ends at HH:MM"** (the end of the
    time box) with a **Leave** button. The sidebar and the page sit below it. Hotels, Users, Settings and the rest
    render as the owner sees them.
 3. Try to save something (Settings → Company → change the address → Save) → the toast reads **"Read-only support
    access cannot change anything"**; nothing changes.
 4. Back in the admin portal the grant appears under Contract & activity → "Viewed as owner" with your name, the reason
-   and the end time; the owner sees the visit in their activity log as "H.M.S · <your name>".
+   and the end time; the owner sees the visit in their activity log as "Hospio360 · <your name>".
 5. **Leave** signs the tab out and returns to the hotel app's sign-in. Opening the same link again after the time box
    (or any mangled token) shows "This support link has expired. Ask for a new one from the admin portal."
 6. If the browser already held an owner or manager session in that profile, the support link replaces it with the

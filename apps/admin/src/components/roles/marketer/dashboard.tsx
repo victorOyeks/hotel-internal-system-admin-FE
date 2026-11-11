@@ -64,7 +64,7 @@ export function MarketerDashboard({
 		<>
 			<PageHeader
 				title={`Hello ${firstName}`}
-				subtitle={`Marketer since ${fmtLongDate(p.joined)} · you earn ${p.sharePct}% of the H.M.S share for ${p.months} months on every business you bring${p.status === "PENDING" ? " · your account is waiting for approval" : ""}`}
+				subtitle={`Marketer since ${fmtLongDate(p.joined)} · you earn ${p.sharePct}% of the Hospio360 share for ${p.months} months on every business you bring${p.status === "PENDING" ? " · your account is waiting for approval" : ""}`}
 			>
 				<Link
 					href="/dashboard/refer"
@@ -96,7 +96,7 @@ export function MarketerDashboard({
 					label="Waiting on hotels"
 					value={nairaShort(waiting)}
 					icon={CalendarIcon}
-					hint={waiting > 0 ? "Paid once they pay H.M.S" : "Nothing waiting"}
+					hint={waiting > 0 ? "Paid once they pay Hospio360" : "Nothing waiting"}
 				/>
 				<KpiCard
 					label="Paid to you so far"

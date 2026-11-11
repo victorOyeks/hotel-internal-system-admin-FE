@@ -85,13 +85,13 @@ export const demoStaffAccess: StaffAccessRow[] = [
 export const demoSetupExtras: HotelSetupSection[] = [
 	{ key: "brand", title: "Brand & colours", description: "Your logo and colours on every screen your staff and guests see", icon: "palette", fields: [
 		{ key: "primary", label: "Brand colour", type: "text", value: "#4c091e", help: "Buttons, the sidebar and highlights" },
-		{ key: "logoText", label: "Short name on the sidebar", type: "text", value: "H.M.S" },
+		{ key: "logoText", label: "Short name on the sidebar", type: "text", value: "Hospio360" },
 		{ key: "receiptFooter", label: "Receipt footer", type: "text", value: "Thank you for staying with Simpas Hotels" },
 		{ key: "darkNav", label: "Dark sidebar", type: "toggle", value: true },
 	] },
 	{ key: "pos", title: "Payments & POS", description: "Card terminals, providers and what happens when a terminal is offline", icon: "credit-card", fields: [
 		{ key: "provider", label: "POS provider", type: "select", value: "Moniepoint", options: ["Moniepoint", "OPay", "Paystack"] },
-		{ key: "apiKey", label: "Provider key", type: "text", value: "mp_live_••••••••••••7f2a", help: "Only H.M.S support can replace this" },
+		{ key: "apiKey", label: "Provider key", type: "text", value: "mp_live_••••••••••••7f2a", help: "Only Hospio360 support can replace this" },
 		{ key: "terminals", label: "Terminals", type: "list", value: ["Front desk POS · MP-2201-FD", "Bar POS · MP-2202-BAR", "Laundry POS · OP-9931-LDY"] },
 		{ key: "offlineCash", label: "Allow cash when a terminal is offline", type: "toggle", value: true },
 		{ key: "receiptChannel", label: "Default receipt channel", type: "select", value: "WhatsApp", options: ["WhatsApp", "Email", "SMS", "None"] },

@@ -34,7 +34,7 @@ export const TOPIC_DEPARTMENT: [string, string][] = [
 	["shared-device", "Management"],
 	["setting", "Management"],
 	["notice", "Management"],
-	["change-by-platform", "H.M.S"],
+	["change-by-platform", "Hospio360"],
 ];
 
 /** The departments the log can be filtered by, in menu order (the service knows the same names). */
@@ -48,14 +48,14 @@ export const ACTIVITY_DEPARTMENTS = [
 	"Store",
 	"Finance",
 	"Management",
-	"H.M.S",
+	"Hospio360",
 ] as const;
 
 export function departmentOfTopic(
 	topic?: string | null,
 	actor?: string | null,
 ): string {
-	if (actor?.startsWith("H.M.S")) return "H.M.S";
+	if (actor && /^(H\.M\.S|Hospio360)( ·|$)/.test(actor)) return "Hospio360";
 	const t = (topic ?? "").replace(/^hospio-/, "");
 	return TOPIC_DEPARTMENT.find(([p]) => t.startsWith(p))?.[1] ?? "Other";
 }

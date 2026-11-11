@@ -60,7 +60,7 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 	if (!user.changedPassword) redirect("/reset-password");
 	if (!role) redirect("/select-role");
 	if (APP === "hotel" && role === "OWNER") {
-		// A self-serve owner still in the wizard goes back to it; one handed over by H.M.S reviews the
+		// A self-serve owner still in the wizard goes back to it; one handed over by Hospio360 reviews the
 		// handover first. getBusiness answers from the fixture (LIVE) in demo mode, so nothing changes there.
 		const business = await getBusiness();
 		if (business?.stage === "ONBOARDING" && business.source === "SELF_SERVE")

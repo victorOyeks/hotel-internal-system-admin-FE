@@ -92,7 +92,7 @@ export function MarketerCommissions({
 		<>
 			<PageHeader
 				title="Commissions"
-				subtitle={`${p.sharePct}% of the H.M.S share on each business, for ${p.months} months · 5% withholding tax deducted · paid once the hotel has paid`}
+				subtitle={`${p.sharePct}% of the Hospio360 share on each business, for ${p.months} months · 5% withholding tax deducted · paid once the hotel has paid`}
 			>
 				<button
 					type="button"
@@ -111,7 +111,7 @@ export function MarketerCommissions({
 			</PageHeader>
 			{!p.bankName && (
 				<Note tone="warning">
-					Add your bank details so H.M.S can pay you. Nothing is paid until they
+					Add your bank details so Hospio360 can pay you. Nothing is paid until they
 					are in.
 				</Note>
 			)}
@@ -131,7 +131,7 @@ export function MarketerCommissions({
 					label="Waiting on hotels"
 					value={nairaShort(totals.waiting ?? 0)}
 					icon={BanknoteIcon}
-					hint="They haven't paid H.M.S yet"
+					hint="They haven't paid Hospio360 yet"
 				/>
 				<KpiCard
 					label="Gross before WHT"
@@ -169,7 +169,7 @@ export function MarketerCommissions({
 				)}
 			</SectionCard>
 			<Note tone="info">
-				How it's worked out: the hotel pays H.M.S its monthly fee → you get{" "}
+				How it's worked out: the hotel pays Hospio360 its monthly fee → you get{" "}
 				{p.sharePct}% of that → 5% withholding tax comes off → the rest is
 				transferred to your bank.
 			</Note>

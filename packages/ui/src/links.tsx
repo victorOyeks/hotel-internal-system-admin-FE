@@ -248,7 +248,7 @@ export const adminLinks: NavLink[] = [
 	{ title: "Fees & billing", url: "/dashboard/fees", icon: CoinsIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Marketers", url: "/dashboard/marketers", icon: MegaphoneIcon },
-	{ title: "Changes by H.M.S", url: "/dashboard/changes", icon: BookOpenIcon },
+	{ title: "Changes by Hospio360", url: "/dashboard/changes", icon: BookOpenIcon },
 	{ title: "Admin team", url: "/dashboard/team", icon: UsersIcon },
 	{ title: "Settings", url: "/dashboard/settings", icon: SettingsIcon },
 ];

@@ -5,7 +5,7 @@ import { data } from "@hospio/api/data";
 
 export const dynamic = "force-dynamic";
 
-/** Hotel Owner · 10 Company (tenant), taxes & currency and approval limits (hotel-config, active hotel), transfer ownership (a request to H.M.S support). */
+/** Hotel Owner · 10 Company (tenant), taxes & currency and approval limits (hotel-config, active hotel), transfer ownership (a request to Hospio360 support). */
 export default async function Page() {
 	const [business, hotel, sections, transfer] = await Promise.all([
 		data.business.mine(),

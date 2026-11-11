@@ -17,7 +17,7 @@ import { decideApproval } from "./approvals";
 import { changeAccess } from "./identity";
 
 /**
- * Owner portal writes (docs/owner-portal.md in hospio-backend): staff accounts, staff threads, requests to H.M.S support,
+ * Owner portal writes (docs/owner-portal.md in hospio-backend): staff accounts, staff threads, requests to Hospio360 support,
  * report schedules. Each returns the service's sentence on refusal. Writes on one hotel's data go to that hotel
  * (`atHotel`), never to the sidebar's branch; business-wide ones send no hotel.
  */
@@ -397,7 +397,7 @@ export async function decideAsOwner(
 	return r;
 }
 
-// ---- requests to H.M.S support (platform) --------------------------------------------------------
+// ---- requests to Hospio360 support (platform) --------------------------------------------------------
 
 export async function requestUndo(
 	changeId: string,

@@ -4,7 +4,7 @@ import { pagedOf, pageParams } from "./paged";
 
 /**
  * Owner portal (docs/owner-portal.md in hospio-backend): staff accounts on identity-service, staff threads on
- * messaging-service, settlements on payment-service, requests to H.M.S support and report schedules on platform-service.
+ * messaging-service, settlements on payment-service, requests to Hospio360 support and report schedules on platform-service.
  * Spread into `createSchema` in ./schema.ts. New fields are `.nullable().optional()` and statuses plain strings, so a
  * service that is behind or ahead never breaks a screen.
  */
@@ -387,7 +387,7 @@ export const ownerRoutes = {
 		output: envelope(z.array(SettlementItem)),
 	},
 
-	// platform · changes by H.M.S, requests to support, reports, departments
+	// platform · changes by Hospio360, requests to support, reports, departments
 	"@get/platform/changes": { output: envelope(z.array(PlatformChangeItem)) },
 	"@post/platform/changes/:id/request-undo": {
 		params: id,

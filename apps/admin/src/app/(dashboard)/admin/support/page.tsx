@@ -38,7 +38,7 @@ export default async function SupportPage({
 			alerts={alerts}
 			businesses={businesses}
 			admins={admins}
-			currentUserName={user?.fullName ?? "H.M.S"}
+			currentUserName={user?.fullName ?? "Hospio360"}
 		/>
 	);
 }

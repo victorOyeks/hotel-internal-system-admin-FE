@@ -4,7 +4,7 @@
 
 This script tests the hotel owner's screens on real data: bookings at every hotel (acted on at the booking's own
 hotel), staff accounts (add, edit, pause, suspend, reinstate, new password, remove, message), messaging with managers
-and the Inbox everyone has, hotels and operations figures, changes by H.M.S (ask support to undo), credit limits a
+and the Inbox everyone has, hotels and operations figures, changes by Hospio360 (ask support to undo), credit limits a
 manager asks the owner for, payments and settlements, reports (build, download, schedule) and the ownership transfer
 request. It also checks that "All hotels" is the sum of the single hotels and that one owner never sees another's
 data. Everything you do writes to the shared staging database. Run the sections in order.
@@ -28,7 +28,7 @@ Password for every account: `Hospio123!`
 | Owner B (two hotels) | QA Owner B fcekd | `qa.ownerb.fcekd@hospio-qa.test` | QA Owner B Hotels fcekd (QA B Ikoyi fcekd, QA B Abuja fcekd) |
 | Manager, owner B hotel 1 | QA B Manager 1 fcekd | `qa.ownerb.mgr1.fcekd@hospio-qa.test` (temporary password `2Be2JEjdMm`, change it at first sign-in) | QA B Ikoyi |
 | Manager, owner B hotel 2 | QA B Manager 2 fcekd | `qa.ownerb.mgr2.fcekd@hospio-qa.test` (temporary password `tt2KsHjUZm`) | QA B Abuja |
-| Super admin | Amoria | `amoria@hospio360.com` | H.M.S |
+| Super admin | Amoria | `amoria@hospio360.com` | Hospio360 |
 
 **Do not pause, suspend or remove an existing account** (Tunde, Victor, Femi, Grace and the others): other QA scripts
 use them. Add your own "QA Owner …" staff in section 3 and work on those.
@@ -142,10 +142,10 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 1. **Expect:** tiles Taken this month, Cash this month, Card & transfer collected, Waiting to be paid out. With
    owner B's seed: All hotels taken = ₦30K (plus what you took in section 2), Ikoyi ₦10K (+5K), Abuja ₦20K.
 2. **Do:** filter by method and status. **Expect:** readable labels (Card, Cash, With the POS…), never codes.
-3. **Do:** tab **Settlements this month**. **Expect:** card and transfer days by provider with fee, H.M.S share and
+3. **Do:** tab **Settlements this month**. **Expect:** card and transfer days by provider with fee, Hospio360 share and
    what you get; cash never appears. (Owner B has only cash: the table is empty with the explanation.)
 
-## 7 · Operations and changes by H.M.S (Godwin, Amoria)
+## 7 · Operations and changes by Hospio360 (Godwin, Amoria)
 
 1. **Do:** **Operations** → **Hotels now**. **Expect:** per hotel: staff clocked in / on today's rota, open repairs,
    occupancy, the last action and when.
@@ -153,9 +153,9 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 3. **Activity log**: the business's log, newest first, with hotel and department; filter by hotel and department;
    **Export** downloads what you see. Summaries never show codes like REPAIRS.
 4. **Do:** as Amoria (admin portal) → Businesses → Royal Suites Ltd → edit a detail (for example the business phone)
-   with a reason → save: that records a change by H.M.S. As Godwin → **Operations** → **Changes by H.M.S**. **Expect:** the change with **Ask support to undo**. Click it → note → **Send to support**. **Expect:**
+   with a reason → save: that records a change by Hospio360. As Godwin → **Operations** → **Changes by Hospio360**. **Expect:** the change with **Ask support to undo**. Click it → note → **Send to support**. **Expect:**
    "Hospio support has your request…"; the row shows "Undo asked · support is on it". Asking again is not possible.
-5. **Do:** as Amoria, open Support: a HIGH ticket "Undo a change by H.M.S: …". Put the detail back by hand, then
+5. **Do:** as Amoria, open Support: a HIGH ticket "Undo a change by Hospio360: …". Put the detail back by hand, then
    Changes → **Undo** on that change. **Expect:** the ticket is resolved **(delivery)** to Godwin; Godwin's row shows
    **Undone**. (Undo marks it; support restores the value themselves.)
 
@@ -177,8 +177,8 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 ## 9 · Ownership transfer (owner B)
 
 1. **Do:** **Settings** → **Transfer ownership** → **Start a transfer** → name, email (try your own: "That is your own
-   email…") → **Continue** → **Send to H.M.S support**. **Expect:** "Transfer request sent to H.M.S support"; the tab
-   shows the request "With H.M.S support" and the button reads "Request sent".
+   email…") → **Continue** → **Send to Hospio360 support**. **Expect:** "Transfer request sent to Hospio360 support"; the tab
+   shows the request "With Hospio360 support" and the button reads "Request sent".
 2. As Amoria: Support has a HIGH ticket "Ownership transfer · <business> → <email>". Resolve it with a note:
    owner B's tab shows Closed with the note.
 
@@ -197,7 +197,7 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 | Who | Try | Expect |
 |---|---|---|
 | Tunde | Suspend or pause a manager (API `POST /identity/users/{id}/suspend`) | 403 "Only the owner can suspend a manager" |
-| Tunde | Pause the owner | 403 "Only H.M.S can change the owner's account" |
+| Tunde | Pause the owner | 403 "Only Hospio360 can change the owner's account" |
 | Godwin | Suspend himself | 403 "You can't suspend your own account here…" |
 | Victor | Suspend anyone, start a staff thread, schedule a report | 403 |
 | Tunde | Message a hotel's managers or every manager | 403 "Only the owner…" |
@@ -208,13 +208,13 @@ use them. Add your own "QA Owner …" staff in section 3 and work on those.
 | Owner B | Message Tunde | 403 "That person is not in your business" |
 | Owner B | Schedule a report for Simpas Ikeja | 403 "That hotel is not one of yours" |
 | Someone not in a thread | Open it | 403 "This conversation is between other people" |
-| Godwin | Mark an H.M.S change undone himself | 403 "Ask Hospio support to undo it…" |
+| Godwin | Mark a Hospio360 change undone himself | 403 "Ask Hospio support to undo it…" |
 
 ## Known limits
 
 - Reports are CSV built in the browser from live data; no PDF or Excel. A scheduled report arrives as an in-app
   notice and an email link (echoed on staging), not as an attachment.
-- A change by H.M.S is put back by support; the owner asks for it (a ticket). Ownership transfers are made by support
+- A change by Hospio360 is put back by support; the owner asks for it (a ticket). Ownership transfers are made by support
   from the ticket; there is no accept-by-email flow yet.
 - Staff who are not managers read and reply in Inbox only (opened from the notification or `/dashboard/inbox`; no
   menu item yet); WhatsApp replies do not come back into the thread.

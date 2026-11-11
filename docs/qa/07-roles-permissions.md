@@ -132,14 +132,14 @@ manager and as the person whose roles you change at the same time.
 | Who | Action | Expect |
 |---|---|---|
 | Femi (Finance) | Give or change anyone's role (API `POST /identity/users/{id}/roles`) | 403 "You don't have access to do that" |
-| Tunde | Give OWNER (API) | 403 "The owner role is given by H.M.S or by transferring ownership" |
+| Tunde | Give OWNER (API) | 403 "The owner role is given by Hospio360 or by transferring ownership" |
 | Tunde | Give himself a role or change his own (API) | 403 "You can't change your own access. Ask the owner or another manager" |
 | Tunde | Remove someone's only active role | "<Role> is <name>'s only active role. Give them another role first, or pause this one instead" |
 | Tunde | Give a role the person already holds (API) | 409 "<name> already has <Role> here (<level>). Change the level instead" |
 | Tunde | Role "BOSS" or level "SUPER" (API) | "\"BOSS\" is not a valid role. Use one of: …" / "\"SUPER\" is not a valid level. Use one of: VIEW, EDIT, FULL" |
 | Tunde | A last day before today (API) | "The last day must be today or later" |
 | Tunde | Set the level it already has, or pause a paused role (API) | "Kitchen is already Can edit for …" / "…'s Kitchen is already paused" |
-| Tunde | Change the owner's role (API) | 403 "Only H.M.S can change the owner's access" |
+| Tunde | Change the owner's role (API) | 403 "Only Hospio360 can change the owner's access" |
 | Any person | A call with a token from before their roles changed (API) | 401 "Your access has changed. Sign in again to continue" (the app swaps the token by itself) |
 
 ## 8 · Put everything back
@@ -151,7 +151,7 @@ manager and as the person whose roles you change at the same time.
 
 ## Known limits
 
-- The **Roles** tab describes the services' guards. Levels are fixed by H.M.S, and a hotel can't edit what a role
+- The **Roles** tab describes the services' guards. Levels are fixed by Hospio360, and a hotel can't edit what a role
   allows.
 - A temporary role stops working at midnight after its last day. It stays on the list (with "until") for up to an
   hour, until the hourly clean-up removes it and tells the person.

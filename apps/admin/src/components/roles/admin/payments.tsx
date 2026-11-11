@@ -157,7 +157,7 @@ export function PaymentsScreen({
 		},
 		{
 			accessorKey: "hmsShare",
-			header: "H.M.S share",
+			header: "Hospio360 share",
 			cell: ({ row }) => (
 				<span className="font-semibold text-brand">
 					{naira(row.original.hmsShare)}
@@ -284,7 +284,7 @@ export function PaymentsScreen({
 		<>
 			<PageHeader
 				title="Payments"
-				subtitle="Card and transfer money taken on POS terminals, settled per business and provider each day with the H.M.S share taken out"
+				subtitle="Card and transfer money taken on POS terminals, settled per business and provider each day with the Hospio360 share taken out"
 			>
 				{money && (
 					<button
@@ -352,7 +352,7 @@ export function PaymentsScreen({
 							hint={plural(rows.length, "settlement")}
 						/>
 						<KpiCard
-							label="H.M.S share"
+							label="Hospio360 share"
 							value={nairaShort(hms)}
 							icon={WalletIcon}
 							hint="Of the settlements shown"
@@ -600,7 +600,7 @@ export function PaymentsScreen({
 										value: `-${naira(selected.providerFees)}`,
 									},
 									{
-										label: "H.M.S share",
+										label: "Hospio360 share",
 										value: `-${naira(selected.hmsShare)}`,
 									},
 									{

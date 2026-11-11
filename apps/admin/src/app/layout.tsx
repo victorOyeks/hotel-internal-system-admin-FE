@@ -16,7 +16,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-	title: "Hospio360 · H.M.S",
+	title: "Hospio360 Admin",
 	description: "Run your hotels from one place",
 };
 

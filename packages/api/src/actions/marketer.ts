@@ -106,7 +106,7 @@ export async function loadCommissionStatement(
 				gross: 124200,
 				wht: 6210,
 				net: 117990,
-				text: `H.M.S · Commission statement · ${month}\n\nMarketer: Kunle Oshodi\nGross commission: ₦124,200\nWithholding tax (5%): -₦6,210\nNet paid: ₦117,990\n\nThis is a demo statement.`,
+				text: `Hospio360 · Commission statement · ${month}\n\nMarketer: Kunle Oshodi\nGross commission: ₦124,200\nWithholding tax (5%): -₦6,210\nNet paid: ₦117,990\n\nThis is a demo statement.`,
 			},
 		};
 	}

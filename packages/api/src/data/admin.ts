@@ -133,7 +133,7 @@ export const toChangeRow = (
 	area: c.area ?? "",
 	description: c.description ?? "",
 	reason: c.reason ?? "",
-	madeBy: madeByName ?? c.madeByName ?? c.madeBy ?? "H.M.S",
+	madeBy: madeByName ?? c.madeByName ?? c.madeBy ?? "Hospio360",
 	at: c.createdAt ?? new Date().toISOString(),
 	undoUntil: c.undoUntil ?? c.createdAt ?? new Date().toISOString(),
 	undone: undone ?? c.undone ?? !!c.undoneAt,
@@ -272,7 +272,7 @@ export const toTicketItem = (t: SupportTicket): TicketItem => ({
 export const toCommentItem = (c: SupportTicketComment) => ({
 	id: c.id,
 	authorId: s(c.authorId),
-	authorName: c.authorName ?? "H.M.S",
+	authorName: c.authorName ?? "Hospio360",
 	body: c.body,
 	internal: c.internal,
 	createdAt: c.createdAt ?? new Date().toISOString(),
@@ -647,7 +647,7 @@ export const adminData = {
 	},
 
 	team: {
-		/** identity users with scope=platform: the H.M.S staff (SUPER_ADMIN, SUPPORT, FINANCE_ADMIN). */
+		/** identity users with scope=platform: the Hospio360 staff (SUPER_ADMIN, SUPPORT, FINANCE_ADMIN). */
 		list: async (q?: string): Promise<TeamMemberRow[]> => {
 			if (!live("identity"))
 				return give(
@@ -1019,7 +1019,7 @@ export const adminData = {
 										? [
 												{
 													id: `${t.id}-c1`,
-													authorName: t.assignedToName ?? "H.M.S",
+													authorName: t.assignedToName ?? "Hospio360",
 													body: t.resolution ?? "Resolved",
 													internal: false,
 													createdAt: at(-1, 15),
@@ -1652,7 +1652,7 @@ export const adminData = {
 		return res.data.map((g) => ({
 			id: g.id,
 			adminId: s(g.adminId),
-			adminName: g.adminName ?? "H.M.S",
+			adminName: g.adminName ?? "Hospio360",
 			businessId: g.businessId ?? businessId,
 			reason: g.reason ?? "",
 			createdAt: s(g.createdAt),
