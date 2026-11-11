@@ -256,7 +256,7 @@ export function SelectField({
 				<SelectContent className="rounded-xl">
 					{opts.map((o) => (
 						<SelectItem key={o.value} value={o.value}>
-							<span className="flex flex-col">
+							<span className="flex flex-col items-start text-left">
 								<span>{o.label}</span>
 								{o.hint && <span className="text-xs text-ink-3">{o.hint}</span>}
 							</span>
