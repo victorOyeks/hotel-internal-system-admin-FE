@@ -1,7 +1,12 @@
 "use client";
 
 import { GuestMessageModal } from "../../shared-staff/guest-message";
-import { dueOnBooking } from "@hospio/api/data/types";
+import {
+	dueOnBooking,
+	occupancyLabel,
+	occupantHint,
+	stillInHouseMessage,
+} from "@hospio/api/data/types";
 
 import {
 	ArrowLeftToLineIcon,
@@ -204,8 +209,12 @@ function CheckInPanel({
 				? "Held for this guest"
 				: r.state === "ready"
 					? `Ready${r.attendant ? ` · cleaned by ${r.attendant}` : ""}`
-					: `Not ready · ${r.state.replace("_", " ")}`,
+					: r.state === "occupied"
+						? occupantHint(r)
+						: `Not ready · ${r.state.replace("_", " ")}`,
 	}));
+	// Somebody is still checked in to the room (a same-day turnover not yet checked out): no override, check them out first.
+	const occupied = room?.state === "occupied";
 	const target: PaymentTarget = {
 		guestName: b.guestName,
 		roomNumber: room?.number ?? b.roomNumber,
@@ -259,6 +268,7 @@ function CheckInPanel({
 								!room ||
 								!idChecked ||
 								(due > 0 && !skip) ||
+								occupied ||
 								(!roomReady && !override)
 							}
 							onClick={() =>
@@ -312,7 +322,14 @@ function CheckInPanel({
 								: `${ready.length} ${b.roomTypeName} ready`
 						}
 					/>
-					{room && !roomReady && (
+					{room && occupied && (
+						<Note tone="warning">
+							{stillInHouseMessage(room)}
+							{occupancyLabel(room) === "Due out" &&
+								" Once they are checked out the room goes to housekeeping to be cleaned."}
+						</Note>
+					)}
+					{room && !roomReady && !occupied && (
 						<div className="flex flex-col gap-3">
 							<Note tone="warning">
 								{room.number} is {room.state.replace("_", " ")} · housekeeping

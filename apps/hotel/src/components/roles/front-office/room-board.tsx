@@ -14,10 +14,11 @@ import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { rushTask, setRoomStatus } from "@hospio/api/actions/housekeeping";
 import { useAction } from "@hospio/api/actions/use-action";
-import type {
-	CleaningTaskRow,
-	RoomRow,
-	RoomState,
+import {
+	type CleaningTaskRow,
+	occupancyLabel,
+	type RoomRow,
+	type RoomState,
 } from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 
@@ -184,7 +185,7 @@ export function RoomBoard({
 												`text-${stateMeta[r.state].tone}`,
 											)}
 										>
-											{stateMeta[r.state].label}
+											{occupancyLabel(r) ?? stateMeta[r.state].label}
 										</span>
 									</button>
 								))}

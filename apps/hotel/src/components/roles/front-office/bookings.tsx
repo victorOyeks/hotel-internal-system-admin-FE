@@ -2,7 +2,13 @@
 
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { GuestMessageModal } from "../shared-staff/guest-message";
-import { dueOnBooking } from "@hospio/api/data/types";
+import {
+	dueOnBooking,
+	occupancyLabel,
+	occupantHint,
+	pastDeparture,
+	stillInHouseMessage,
+} from "@hospio/api/data/types";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { addDays, differenceInCalendarDays, format } from "date-fns";
@@ -87,7 +93,11 @@ export { FO_TABS };
 export function statusPill(b: BookingRow) {
 	switch (b.status) {
 		case "CHECKED_IN":
-			return <StatusPill tone="success">Checked in</StatusPill>;
+			return pastDeparture(b) ? (
+				<StatusPill tone="warning">In house · past departure</StatusPill>
+			) : (
+				<StatusPill tone="success">Checked in</StatusPill>
+			);
 		case "CHECKED_OUT":
 			return <StatusPill tone="grey">Checked out</StatusPill>;
 		case "CANCELLED":
@@ -1014,7 +1024,9 @@ function CheckInPanel({
 								? "Ready"
 								: r.state === "held"
 									? "Held for this guest"
-									: `Not ready · ${r.state.replace("_", " ")}`,
+									: r.state === "occupied"
+										? occupantHint(r)
+										: `Not ready · ${r.state.replace("_", " ")}`,
 					}))}
 					hint={
 						candidates.length === 0
@@ -1022,7 +1034,14 @@ function CheckInPanel({
 							: undefined
 					}
 				/>
-				{chosen && !roomOk && (
+				{chosen && !roomOk && chosen.state === "occupied" && (
+					<Note tone="warning">
+						{stillInHouseMessage(chosen)}
+						{occupancyLabel(chosen) === "Due out" &&
+							" Once they are checked out the room goes to housekeeping to be cleaned."}
+					</Note>
+				)}
+				{chosen && !roomOk && chosen.state !== "occupied" && (
 					<Note tone="warning">
 						{chosen.number} is {chosen.state.replace("_", " ")}. Ask
 						housekeeping to rush it or pick another room.

@@ -236,6 +236,10 @@ export function NewBookingPanel({
 							organizationId: org?.id,
 							source: "Front desk",
 							notes: notes || undefined,
+							walkInRoomId:
+								!later && checkingInNow && chosenRoom
+									? chosenRoom.id
+									: undefined,
 						},
 						fallback,
 					),

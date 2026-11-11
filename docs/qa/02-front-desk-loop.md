@@ -79,7 +79,8 @@ ends on the booking summary.
 1. Open a booked arrival (summary) → Check in. The check-in panel shows the room picker, the amount due
    before the key and "ID seen and captured" (off until you tick it; Check in stays disabled without it).
    The picker offers ready rooms of the type; rooms with a guest in them show as occupied on the Rooms board
-   and are never offered, and a room held for another arrival can't be picked. A room that isn't clean shows
+   and are never offered (the booked room, when still occupied, shows "Due out today" or "Past departure"
+   and is refused, see 3f), and a room held for another arrival can't be picked. A room that isn't clean shows
    a warning: the front office picks another room; the manager can switch on "Check in to this room anyway".
 2. "Take ₦X" (front office) runs the payment steps inside that same panel; finishing ("Back to check-in")
    returns to the check-in view with the amount marked paid ("Fully paid") and Check in enabled. Pick the
@@ -119,6 +120,40 @@ ends on the booking summary.
    with nothing to take. Manager only: "Check out with balance" (logged, folio stays open) and a late
    check-out charge, posted to the folio as its own line before the balance is taken.
 4. Payments → the cash payments appear with Approved status and the amounts above.
+
+### 3f · One guest per room: turnover, overstays and refusals
+
+A room is the guest's from check-in until they are checked out, not until their check-out date passes.
+Use two `QA ` guests with `@hospio-qa.test` emails. Rule and API details: hospio-backend `docs/occupancy.md`.
+
+1. Guest in, due out today: check guest A in with a stay ending today (or use one made yesterday). Rooms
+   board: A's room is "Occupied" with "Due out" on the tile. `GET /reservation/bookings/availability` for
+   today leaves the room out of `freeRoomIds` and lists it under `turnoverRoomIds`.
+2. Same-day turnover: make guest B's booking for today and give it A's room (API: `roomId` on
+   `POST /reservation/bookings`). It saves; Today → "Arriving today" shows B with "Turnover · A not out yet".
+3. Check B in to that room (front office or manager): the room shows "Due out today · A still checked in" in
+   the picker, the panel says "Room <n> still has a guest checked in (A). Check them out first, or choose
+   another room." and Check in stays disabled (the manager gets no "anyway" switch for it). Through the API
+   the same check-in answers 409 with that message.
+4. Check A out → the room goes to housekeeping as Needs cleaning. Checking B in now follows the dirty-room
+   rule: with Hotel setup → Housekeeping → "Inspect departures" on (the default) the front office is
+   refused ("Room <n> hasn't been cleaned yet. A manager can check the guest in anyway") and only the manager
+   can check in with "Check in to this room anyway"; with it off the check-in goes through with the warning
+   "Room not cleaned yet". Once housekeeping marks the room clean, B checks in normally.
+5. Walk-in into an occupied room (API: `POST /reservation/bookings` with `roomId` of an occupied room and
+   `walkIn: true`): 409 "Room <n> still has a guest checked in (…)…", and no booking is saved. On the web the
+   walk-in room picker only offers ready rooms.
+6. Moving an in-house guest (`PUT /reservation/bookings/{id}` with `roomId`) into a room somebody else is
+   checked in to: 409 with the same message. Owner portal → Bookings → check in at a hotel follows the same
+   rules.
+7. Overstay: a guest still checked in after their check-out date keeps the room. Today → "Leaving today"
+   lists them with "Past departure"; the Bookings row says "In house · past departure"; the room is not in
+   `freeRoomIds` and can't be given to today's arrival ("…still has a guest checked in…"). Nothing frees the
+   room until they are checked out.
+8. Two desks at once: two check-ins into the same free room at the same moment → exactly one succeeds, the
+   other gets 409 (a per-room lock, backed by a unique index in the database).
+9. Out of order still wins: a room out of order is never in `freeRoomIds` and check-in into it answers
+   "Room <n> is out of order · choose another room".
 
 ## 4 · Other booking actions
 

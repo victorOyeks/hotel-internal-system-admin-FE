@@ -13,7 +13,7 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import type { Me } from "@hospio/api/api/schema";
 import type { bookingBuckets } from "@hospio/api/data";
-import type { FolioRow, RoomRow, TerminalRow, TillRow } from "@hospio/api/data/types";
+import { type FolioRow, occupancyLabel, pastDeparture, type RoomRow, type TerminalRow, type TillRow } from "@hospio/api/data/types";
 import { TakePaymentPanel } from "./take-payment";
 
 function greeting() {
@@ -32,10 +32,14 @@ export function FrontDeskToday({ user, hotelName, buckets, rooms, folios, termin
 	const noRoom = arrivalsLeft.filter((b) => !b.roomId);
 	const toCheckIn = arrivalsLeft.filter((b) => !!b.roomId);
 	const owing = buckets.inHouse.filter((b) => balanceOf(b.id) > 0 && !b.organizationName);
+	// Guests still in after their departure date keep the room until checked out: listed with today's departures.
+	const overstays = buckets.inHouse.filter((b) => pastDeparture(b));
+	const leaving = [...overstays, ...buckets.departures];
 	const todos = [
 		...noRoom.map((b) => ({ key: `room-${b.id}`, text: `Assign a room to ${b.guestName} · ${b.roomTypeName}`, href: `/dashboard/bookings?open=${b.id}` })),
 		...(toCheckIn.length ? [{ key: "checkin", text: `${plural(toCheckIn.length, "arrival")} to check in`, href: "/dashboard/bookings?tab=arrivals" }] : []),
 		...(buckets.departures.length ? [{ key: "checkout", text: `${plural(buckets.departures.length, "departure")} to check out`, href: "/dashboard/bookings?tab=departures" }] : []),
+		...(overstays.length ? [{ key: "overstay", text: `${plural(overstays.length, "guest")} still in past their departure date`, href: "/dashboard/bookings?tab=in-house" }] : []),
 		...(owing.length ? [{ key: "owing", text: `${plural(owing.length, "guest")} in house with a balance to pay`, href: "/dashboard/folios" }] : []),
 	];
 
@@ -91,7 +95,7 @@ export function FrontDeskToday({ user, hotelName, buckets, rooms, folios, termin
 										: b.status === "NO_SHOW" ? <StatusPill tone="danger">No-show</StatusPill>
 										: !room ? <StatusPill tone="warning">No room yet</StatusPill>
 										: room.state === "ready" || room.state === "held" ? (due > 0 ? <StatusPill tone="warning">Ready · {naira(due)} to pay</StatusPill> : <StatusPill tone="grey">Room ready · paid</StatusPill>)
-										: room.state === "occupied" ? <StatusPill tone="danger">Room still occupied</StatusPill>
+										: room.state === "occupied" ? <StatusPill tone="danger">{occupancyLabel(room) === "Due out" ? `Turnover · ${room.guestName ?? "guest"} not out yet` : "Room still occupied"}</StatusPill>
 										: <StatusPill tone="warning">Room being cleaned</StatusPill>;
 									return (
 										<li key={b.id} className="flex items-center gap-4 px-5 py-3">
@@ -114,19 +118,21 @@ export function FrontDeskToday({ user, hotelName, buckets, rooms, folios, termin
 						)}
 					</SectionCard>
 
-					<SectionCard title="Leaving today" subtitle={`${buckets.departures.length} still here`} flush>
-						{buckets.departures.length === 0 ? (
+					<SectionCard title="Leaving today" subtitle={`${leaving.length} still here${overstays.length ? ` · ${overstays.length} past departure` : ""}`} flush>
+						{leaving.length === 0 ? (
 							<EmptyState title="No departures today" className="mx-5 mb-5" />
 						) : (
 							<ul className="divide-y divide-line">
-								{buckets.departures.map((b) => {
+								{leaving.map((b) => {
 									const bal = balanceOf(b.id);
+									const over = pastDeparture(b);
 									return (
 										<li key={b.id} className="flex items-center gap-4 px-5 py-3">
 											<div className="min-w-0 flex-1">
 												<p className="text-[13px] font-semibold text-ink">{b.guestName}</p>
-												<p className="text-xs text-ink-3">{b.roomNumber} · {b.roomTypeName} · due 11:00{b.organizationName ? ` · ${b.organizationName} pays` : ""}</p>
+												<p className="text-xs text-ink-3">{b.roomNumber} · {b.roomTypeName} · {over ? `was due out ${format(new Date(`${b.checkOutDate}T12:00:00`), "EEE d MMM")}` : "due 11:00"}{b.organizationName ? ` · ${b.organizationName} pays` : ""}</p>
 											</div>
+											{over && <StatusPill tone="danger">Past departure</StatusPill>}
 											{bal > 0 ? <StatusPill tone={b.organizationName ? "info" : "warning"}>{b.organizationName ? "To company account" : `${naira(bal)} to pay`}</StatusPill> : <StatusPill tone="success">Paid up</StatusPill>}
 											<Link href={`/dashboard/bookings?open=${b.id}&action=check-out`} className={btn.primary}>
 												<ArrowLeftToLineIcon className="mr-1 inline size-4" /> Check out
