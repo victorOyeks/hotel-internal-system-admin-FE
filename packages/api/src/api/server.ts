@@ -3,7 +3,7 @@ import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { COOKIES } from "@hospio/api/session";
+import { COOKIES, decodeSession } from "@hospio/api/session";
 
 export type SessionHeaders = {
 	auth: { type: "Bearer"; token: string } | undefined;
@@ -13,7 +13,17 @@ export type SessionHeaders = {
 const fromCookies = cache(async (): Promise<SessionHeaders> => {
 	const jar = await cookies();
 	const token = jar.get(COOKIES.token)?.value;
-	const hotelId = jar.get(COOKIES.hotel)?.value;
+	let hotelId = jar.get(COOKIES.hotel)?.value;
+	// Never send a hotel the token doesn't grant (a cookie left from another account): the services refuse every
+	// call with it. Without the header the call acts for the person's whole business, as before any hotel exists.
+	const session = token ? decodeSession(token) : null;
+	if (
+		hotelId &&
+		session &&
+		session.scope !== "platform" &&
+		!session.hotels.includes(hotelId)
+	)
+		hotelId = undefined;
 	return {
 		auth: token ? ({ type: "Bearer", token } as const) : undefined,
 		headers: hotelId ? { "X-Hotel-Id": hotelId } : undefined,
