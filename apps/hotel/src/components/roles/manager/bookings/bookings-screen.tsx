@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { exportBookings } from "@hospio/api/actions/reservation-lists";
 import type { PageResult } from "@hospio/api/data/paging";
@@ -134,7 +134,18 @@ export function BookingsScreen({
 			organizations,
 		);
 	const [bookings, setBookings] = useState(withOpened);
-	useEffect(() => setBookings(withOpened()), [result, opened]);
+	const madeHere = useRef(new Set<string>());
+	useEffect(
+		() =>
+			setBookings((prev) => {
+				const base = withOpened();
+			// Bookings made on this screen stay (with their local changes) when fresh server rows arrive: a stay booked for
+			// later isn't on the Arrivals page, and "Open booking" after the payment must still find it.
+				const kept = prev.filter((b) => madeHere.current.has(b.id) && !base.some((x) => x.id === b.id));
+				return [...base, ...kept];
+			}),
+		[result, opened],
+	);
 	// Card payments the POS has not confirmed yet, per booking.
 	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
 	// Fresh server numbers replace local ones (a terminal approved, another desk took the payment); keyed by value because
@@ -523,6 +534,7 @@ export function BookingsScreen({
 				folios={folios}
 				terminals={terminals}
 				onSaved={(b) => {
+					madeHere.current.add(b.id);
 					setBookings((bs) => [b, ...bs]);
 					reload();
 					list.set({ tab: b.checkInDate === today() ? null : "upcoming" });
