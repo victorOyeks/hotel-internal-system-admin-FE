@@ -391,9 +391,11 @@ function InvoicePanel({
 			footerInfo={
 				i?.status === "PAID"
 					? `Paid ${i.paidAt ? fmtWhen(i.paidAt) : ""}${i.paidByName ? ` by ${i.paidByName}` : ""}`
-					: i
-						? `Due ${fmtLongDate(i.dueOn)} · guest messages pause if it is not paid by then`
-						: undefined
+					: i?.status === "OVERDUE"
+						? `Overdue since ${fmtLongDate(i.dueOn)} · guest messages are paused until it is paid`
+						: i
+							? `Due ${fmtLongDate(i.dueOn)} · guest messages pause if it is not paid by then`
+							: undefined
 			}
 			footer={
 				<>
