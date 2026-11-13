@@ -1,6 +1,11 @@
 import type { z } from "zod";
 import type { Booking, Folio, Guest } from "@hospio/api/api/schema";
-import type { BookingRow, FolioLine, FolioRow, GuestRow } from "@hospio/api/data/types";
+import type {
+	BookingRow,
+	FolioLine,
+	FolioRow,
+	GuestRow,
+} from "@hospio/api/data/types";
 
 /** reservation-service and folio-service responses → the rows the booking and folio screens render. */
 
@@ -25,7 +30,11 @@ export function toGuestRow(g: z.infer<typeof Guest>): GuestRow {
  * kept current from payment events), so a deposit taken before check-in counts. The folio total is the
  * fallback for bookings created before that field existed.
  */
-export function toBookingRow(b: z.infer<typeof Booking>, guests: Map<string, GuestRow>, folios: Map<string, FolioRow>): BookingRow {
+export function toBookingRow(
+	b: z.infer<typeof Booking>,
+	guests: Map<string, GuestRow>,
+	folios: Map<string, FolioRow>,
+): BookingRow {
 	const guest = guests.get(b.guestId);
 	const folio = folios.get(b.id);
 	return {
@@ -44,12 +53,18 @@ export function toBookingRow(b: z.infer<typeof Booking>, guests: Map<string, Gue
 		checkOutDate: b.checkOutDate,
 		nights: b.nights,
 		adults: b.adults,
+		eta: b.expectedArrival ?? undefined,
 		children: b.children,
 		status: b.status,
 		priceKind: b.priceKind,
 		nightlyRate: Number(b.nightlyRate),
 		totalAmount: Number(b.totalAmount),
-		paid: b.amountPaid != null ? Number(b.amountPaid) : folio ? Number(folio.payments) : 0,
+		paid:
+			b.amountPaid != null
+				? Number(b.amountPaid)
+				: folio
+					? Number(folio.payments)
+					: 0,
 		paymentPlan: b.paymentPlan,
 		organizationId: b.organizationId ?? undefined,
 		source: b.source ?? "Front desk",

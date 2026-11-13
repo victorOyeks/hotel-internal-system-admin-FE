@@ -276,7 +276,9 @@ export function usePaymentSteps(
 				guestName,
 				guestPhone: tgt?.guestPhone,
 				guestEmail:
-					choice === "EMAIL" && contact.trim() ? contact.trim() : tgt?.guestEmail,
+					choice === "EMAIL" && contact.trim()
+						? contact.trim()
+						: tgt?.guestEmail,
 				description,
 				// Emailed below, once, with the on-screen echo.
 				receipt: "NONE",
@@ -305,8 +307,7 @@ export function usePaymentSteps(
 			};
 			setRecorded(payment);
 		}
-		let receiptNote =
-			choice === "NONE" ? "Print it from the next screen" : "";
+		let receiptNote = choice === "NONE" ? "Print it from the next screen" : "";
 		if (choice === "EMAIL" && payment.status === "APPROVED") {
 			const sent = await withDeliveries(
 				emailReceipt({ paymentId: payment.id, to: contact, text: "" }),
@@ -636,7 +637,15 @@ export function usePaymentSteps(
 										: "Offline · last seen yesterday",
 							}))}
 							setupLink="terminals"
+							empty="No POS terminal at this hotel yet"
 						/>
+					)}
+					{method === "CARD" && terminals.length === 0 && (
+						<Note tone="warning">
+							A card payment goes to a POS terminal, and this hotel has none set
+							up yet. Take a bank transfer or cash for now; the manager adds
+							terminals in Hotel setup → Terminals.
+						</Note>
 					)}
 					{method === "CARD" &&
 						terminals.find((t) => t.id === terminal)?.status === "OFFLINE" && (
@@ -794,7 +803,12 @@ export function usePaymentSteps(
 								[
 									["EMAIL", "Email", MailIcon, false],
 									["NONE", "Print", PrinterIcon, false],
-									["WHATSAPP", "WhatsApp · coming soon", MessageCircleIcon, true],
+									[
+										"WHATSAPP",
+										"WhatsApp · coming soon",
+										MessageCircleIcon,
+										true,
+									],
 									["SMS", "SMS · coming soon", BanknoteIcon, true],
 								] as const
 							).map(([key, label, Icon, soon]) => (
@@ -802,7 +816,11 @@ export function usePaymentSteps(
 									key={key}
 									type="button"
 									disabled={soon}
-									title={soon ? `${label.split(" ·")[0]} receipts are coming soon` : undefined}
+									title={
+										soon
+											? `${label.split(" ·")[0]} receipts are coming soon`
+											: undefined
+									}
 									onClick={() => !soon && setReceipt(key as "EMAIL" | "NONE")}
 									className={cn(
 										"flex flex-col items-center gap-2 rounded-control border px-3 py-3 text-center text-[13px] font-semibold",
@@ -849,16 +867,17 @@ export function usePaymentSteps(
 								? "Finance will match the transfer."
 								: ""}
 					</p>
-					{recorded?.id && (recorded.status === "APPROVED" || card === "approved") && (
-						<a
-							href={`/receipt?payment=${encodeURIComponent(recorded.id)}`}
-							target="_blank"
-							rel="noopener"
-							className={`${btn.secondary} flex items-center gap-2`}
-						>
-							<PrinterIcon className="size-4" /> Print receipt
-						</a>
-					)}
+					{recorded?.id &&
+						(recorded.status === "APPROVED" || card === "approved") && (
+							<a
+								href={`/receipt?payment=${encodeURIComponent(recorded.id)}`}
+								target="_blank"
+								rel="noopener"
+								className={`${btn.secondary} flex items-center gap-2`}
+							>
+								<PrinterIcon className="size-4" /> Print receipt
+							</a>
+						)}
 					{doneExtra}
 				</div>
 			)}

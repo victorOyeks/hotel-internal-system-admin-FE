@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import {
 	Select,
 	SelectContent,
@@ -22,6 +22,26 @@ import {
  * screen can be built quickly; wrap them in react-hook-form's <FormField> when validation lands.
  */
 
+/**
+ * Whether "Manage … in Hotel setup" links lead anywhere for the person signed in: only the manager and the owner
+ * have Hotel setup. The dashboard shell sets it from the active role; everyone else sees "Set up by the manager".
+ */
+const SetupLinksContext = createContext(true);
+
+export function SetupLinks({
+	allowed,
+	children,
+}: {
+	allowed: boolean;
+	children: ReactNode;
+}) {
+	return (
+		<SetupLinksContext.Provider value={allowed}>
+			{children}
+		</SetupLinksContext.Provider>
+	);
+}
+
 export function Field({
 	label,
 	hint,
@@ -39,24 +59,29 @@ export function Field({
 	children: ReactNode;
 	className?: string;
 }) {
-	// Setup links appear only on manager and owner forms; prefetch is off so other roles never preload a page they cannot open.
-	const canSetup = true;
+	// Setup links are live only for the manager and the owner (front office has no Hotel setup: the link was a 404).
+	const canSetup = useContext(SetupLinksContext);
 	return (
 		<div className={cn("flex flex-col gap-[6px]", className)}>
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-3">
 				<span className="text-[13px] font-medium text-ink-2">
 					{label}
 					{required && <span className="text-danger"> *</span>}
 				</span>
-				{setupLink && canSetup && (
-					<Link
-						href="/dashboard/hotel-setup"
-						prefetch={false}
-						className="text-[11px] font-medium text-brand hover:underline"
-					>
-						Manage {setupLink} in Hotel setup
-					</Link>
-				)}
+				{setupLink &&
+					(canSetup ? (
+						<Link
+							href="/dashboard/hotel-setup"
+							prefetch={false}
+							className="text-[11px] font-medium text-brand hover:underline"
+						>
+							Manage {setupLink} in Hotel setup
+						</Link>
+					) : (
+						<span className="text-[11px] text-ink-3">
+							{capitalise(setupLink)} are set up by the manager
+						</span>
+					))}
 			</div>
 			{children}
 			{error ? (
@@ -217,6 +242,7 @@ export function SelectField({
 	setupLink,
 	className,
 	disabled,
+	empty,
 }: {
 	label: string;
 	value: string;
@@ -229,10 +255,13 @@ export function SelectField({
 	setupLink?: string;
 	className?: string;
 	disabled?: boolean;
+	/** What the closed box says when there is nothing to pick (an empty list opened to nothing and looked broken). */
+	empty?: string;
 }) {
 	const opts = options.map((o) =>
 		typeof o === "string" ? { value: o, label: o } : o,
 	);
+	const none = opts.length === 0;
 	return (
 		<Field
 			label={label}
@@ -245,7 +274,7 @@ export function SelectField({
 			<Select
 				value={value || undefined}
 				onValueChange={onChange}
-				disabled={disabled}
+				disabled={disabled || none}
 			>
 				<SelectTrigger
 					className={cn(
@@ -254,7 +283,16 @@ export function SelectField({
 						error && "border-danger",
 					)}
 				>
-					<SelectValue placeholder={placeholder} />
+					<SelectValue
+						placeholder={
+							none
+								? (empty ??
+									(setupLink
+										? `No ${setupLink} set up yet`
+										: "Nothing to choose yet"))
+								: placeholder
+						}
+					/>
 				</SelectTrigger>
 				<SelectContent className="rounded-xl">
 					{opts.map((o) => (
@@ -386,4 +424,8 @@ export function FieldRow({
 	return (
 		<div className={cn("grid grid-cols-2 gap-3", className)}>{children}</div>
 	);
+}
+
+function capitalise(s: string) {
+	return s ? `${s[0].toUpperCase()}${s.slice(1)}` : s;
 }

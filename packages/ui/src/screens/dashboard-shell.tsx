@@ -1,3 +1,4 @@
+import { SetupLinks } from "@hospio/ui/shared/field";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { PropsWithChildren } from "react";
@@ -20,12 +21,23 @@ import {
 import { live } from "@hospio/api/data/live";
 import { isHousekeepingSupervisor } from "@hospio/api/supervisor";
 import { DEMO_AUTH } from "@hospio/api/demo/mode";
-import { REFRESHED_COOKIE, refreshUrl, tokenIsStale } from "@hospio/api/session-refresh";
+import {
+	REFRESHED_COOKIE,
+	refreshUrl,
+	tokenIsStale,
+} from "@hospio/api/session-refresh";
 import { cn } from "@hospio/ui/utils";
 import { getSharedDevice, pinPromptAsked } from "@hospio/api/device";
 import type { Hotel, Me } from "@hospio/api/api/schema";
-import { type DeviceSetupHotel, IdleLock, PinPrompt } from "@hospio/ui/shared/shared-device";
-import { DEVICE_ROLES, SHARED_DESK_ROLES } from "@hospio/ui/shared/shared-device-roles";
+import {
+	type DeviceSetupHotel,
+	IdleLock,
+	PinPrompt,
+} from "@hospio/ui/shared/shared-device";
+import {
+	DEVICE_ROLES,
+	SHARED_DESK_ROLES,
+} from "@hospio/ui/shared/shared-device-roles";
 
 /** The hotels where this person may set up a shared device, with the roles they may pick there (docs/shared-devices.md). */
 function deviceSetupHotels(user: Me, hotels: Hotel[]): DeviceSetupHotel[] {
@@ -33,7 +45,13 @@ function deviceSetupHotels(user: Me, hotels: Hotel[]): DeviceSetupHotel[] {
 	return hotels
 		.map((h) => {
 			const here = user.roleLevels.filter((g) => g.hotelId === h.id);
-			const roles = owner || here.some((g) => g.role === "MANAGER") ? DEVICE_ROLES : here.filter((g) => g.level === "FULL").map((g) => g.role).filter((r) => (DEVICE_ROLES as string[]).includes(r));
+			const roles =
+				owner || here.some((g) => g.role === "MANAGER")
+					? DEVICE_ROLES
+					: here
+							.filter((g) => g.level === "FULL")
+							.map((g) => g.role)
+							.filter((r) => (DEVICE_ROLES as string[]).includes(r));
 			return { id: h.id, name: h.name, roles: [...new Set(roles)] };
 		})
 		.filter((h) => h.roles.length > 0);
@@ -54,7 +72,8 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		// (401 "Your access has changed"), so swap it for one with the current roles and come back to this page.
 		const from = (await headers()).get("x-hospio-path");
 		const justRefreshed = !!(await cookies()).get(REFRESHED_COOKIE)?.value;
-		if ((!user || tokenIsStale(session, user)) && !(justRefreshed && user)) redirect(refreshUrl(from));
+		if ((!user || tokenIsStale(session, user)) && !(justRefreshed && user))
+			redirect(refreshUrl(from));
 	}
 	if (!user) redirect("/auth");
 	if (!user.changedPassword) redirect("/reset-password");
@@ -73,7 +92,10 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 	const shared = APP === "hotel" && !DEMO_AUTH ? await getSharedDevice() : null;
 	if (shared?.state === "removed") redirect("/api/device/forget");
 	const device = shared?.state === "ok" ? shared.device : null;
-	const setupHotels = APP === "hotel" && !support && !shared?.device && shared?.state !== "error" ? deviceSetupHotels(user, hotels) : [];
+	const setupHotels =
+		APP === "hotel" && !support && !shared?.device && shared?.state !== "error"
+			? deviceSetupHotels(user, hotels)
+			: [];
 	const pinPrompt =
 		APP === "hotel" &&
 		!support &&
@@ -123,7 +145,9 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						hotels={hotels}
 						activeHotel={activeHotel}
 						badges={badges}
-						supervisor={role !== "HOUSEKEEPING" || isHousekeepingSupervisor(session)}
+						supervisor={
+							role !== "HOUSEKEEPING" || isHousekeepingSupervisor(session)
+						}
 					/>
 					{/* min-w-0: wide tables scroll inside their card instead of pushing the page sideways. */}
 					<SidebarInset className="min-w-0 bg-page">
@@ -139,7 +163,10 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 						{device && <IdleLock minutes={device.autoLockMinutes} />}
 						{pinPrompt && <PinPrompt onDevice={!!device} />}
 						<div className="flex flex-1 flex-col gap-5 px-8 py-6">
-							{children}
+							{/* "Manage … in Hotel setup" links only where Hotel setup exists (manager, owner). */}
+							<SetupLinks allowed={role === "MANAGER" || role === "OWNER"}>
+								{children}
+							</SetupLinks>
 						</div>
 					</SidebarInset>
 				</SidebarProvider>
