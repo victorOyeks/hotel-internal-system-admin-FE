@@ -9,7 +9,6 @@ import {
 	SendIcon,
 	SquareIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { parseAsString, useQueryStates } from "nuqs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -159,7 +158,6 @@ export function OwnerReports({
 	const [schedule, setSchedule] = useState<ReportKind | null>(null);
 	const [stop, setStop] = useState<ReportScheduleRow | null>(null);
 	const { run, pending } = useAction();
-	const router = useRouter();
 	const active = schedules.filter(
 		(s) =>
 			s.status === "SCHEDULED" &&
@@ -317,7 +315,6 @@ export function OwnerReports({
 																		`${s.name} · sent now`,
 																	),
 																`${s.name} sent`,
-																() => router.refresh(),
 															)
 														}
 													>
@@ -416,7 +413,6 @@ export function OwnerReports({
 						`${stop.name} will not be sent any more`,
 						() => {
 							setStop(null);
-							router.refresh();
 						},
 					)
 				}
@@ -668,7 +664,6 @@ function ScheduleModal({
 	owner: boolean;
 	onClose: () => void;
 }) {
-	const router = useRouter();
 	const { run, pending } = useAction();
 	const [every, setEvery] = useState<"DAILY" | "WEEKLY" | "MONTHLY">("WEEKLY");
 	const [time, setTime] = useState("07:00");
@@ -708,7 +703,6 @@ function ScheduleModal({
 								() => {
 									setHotel(null);
 									onClose();
-									router.refresh();
 								},
 							)
 						}

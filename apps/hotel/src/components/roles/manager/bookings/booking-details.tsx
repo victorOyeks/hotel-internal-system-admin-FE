@@ -13,15 +13,22 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useHotelScope } from "@hospio/api/actions/hotel-scope";
-import { useState } from "react";
+import {
+	useHotelActions,
+	useHotelScope,
+} from "@hospio/api/actions/hotel-scope";
+import { useEffect, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import { Note, Timeline, TotalsList } from "@hospio/ui/shared/detail-list";
 import { fmtDay, fmtWhen, naira, plural } from "@hospio/ui/shared/format";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
-import type { BookingRow, FolioRow } from "@hospio/api/data/types";
+import type {
+	BookingRow,
+	FolioRow,
+	FolioSummary,
+} from "@hospio/api/data/types";
 import { cn } from "@hospio/ui/utils";
 import {
 	balance,
@@ -40,7 +47,8 @@ export function BookingDetailsPanel({
 	onPos = 0,
 }: {
 	booking: BookingRow | null;
-	folio: FolioRow | null;
+	/** The stay's folio as the list has it (no lines): its lines are read when the Payments tab opens. */
+	folio: FolioSummary | null;
 	onClose: () => void;
 	onAction: (a: BookingAction) => void;
 	onPos?: number;
@@ -48,7 +56,23 @@ export function BookingDetailsPanel({
 	const [tab, setTab] = useState<"stay" | "payments" | "notes">("stay");
 	// The owner opens a booking at its own hotel; folios are the hotel's screen, not the owner's.
 	const scopedHotel = useHotelScope().hotelId;
+	const { folioById } = useHotelActions();
+	const [full, setFull] = useState<FolioRow | null>(null);
+	const folioId = b ? folio?.id : undefined;
+	useEffect(() => {
+		if (!folioId || tab !== "payments") return;
+		let live = true;
+		void folioById(folioId)
+			.then((f) => live && setFull(f))
+			.catch(() => undefined);
+		return () => {
+			live = false;
+		};
+	}, [folioId, tab, folioById]);
 	if (!b) return null;
+	// The lines once read; the figures from the freshest copy.
+	const lines = full && full.id === folio?.id ? full.lines : null;
+	const shown = full && full.id === folio?.id ? full : folio;
 	const status = bookingStatus(b);
 	const pay = paymentStatus(b);
 	const due = balance(b);
@@ -284,11 +308,15 @@ export function BookingDetailsPanel({
 				)}
 
 				{tab === "payments" && (
-					<PanelSection title={folio ? `Folio ${folio.reference}` : "Payments"}>
-						{folio ? (
+					<PanelSection title={shown ? `Folio ${shown.reference}` : "Payments"}>
+						{shown ? (
 							<>
+								{!lines && (
+									<p className="text-[13px] text-ink-3">Loading the folio…</p>
+								)}
+								{lines && (
 								<ul className="divide-y divide-line rounded-xl border border-line">
-									{folio.lines.map((l) => (
+									{lines.map((l) => (
 										<li
 											key={l.id}
 											className="flex items-center gap-3 px-3 py-2 text-[13px]"
@@ -313,28 +341,29 @@ export function BookingDetailsPanel({
 										</li>
 									))}
 								</ul>
+								)}
 								<TotalsList
 									rows={[
 										{
 											label: "Charges",
-											value: naira(folio.charges + folio.tax),
+											value: naira(shown.charges + shown.tax),
 										},
 										{
 											label: "Payments",
-											value: `– ${naira(folio.payments)}`,
+											value: `– ${naira(shown.payments)}`,
 											tone: "success",
 										},
 										{
 											label: "Balance",
-											value: naira(folio.balance),
+											value: naira(shown.balance),
 											strong: true,
-											tone: folio.balance > 0 ? "danger" : "success",
+											tone: shown.balance > 0 ? "danger" : "success",
 										},
 									]}
 								/>
 								{!scopedHotel && (
 									<Link
-										href={`/dashboard/folios?open=${folio.id}`}
+										href={`/dashboard/folios?open=${shown.id}`}
 										className="text-[13px] font-semibold text-brand hover:underline"
 									>
 										Open full folio →

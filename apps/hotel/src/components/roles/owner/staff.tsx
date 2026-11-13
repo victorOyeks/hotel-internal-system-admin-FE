@@ -576,7 +576,6 @@ export function OwnerStaffScreen({
 						"PIN reset",
 						() => {
 							setModal(null);
-							router.refresh();
 						},
 					)
 				}
@@ -640,7 +639,6 @@ function RemoveModal({
 	staff: OwnerStaffRow | null;
 	onClose: () => void;
 }) {
-	const router = useRouter();
 	const { run, pending } = useAction();
 	return (
 		<ConfirmModal
@@ -665,7 +663,6 @@ function RemoveModal({
 					`${staff.fullName} removed from ${staff.hotelName}`,
 					() => {
 						onClose();
-						router.refresh();
 					},
 				)
 			}
@@ -698,7 +695,6 @@ function AddStaffPanel({
 	ownerName: string;
 	onClose: () => void;
 }) {
-	const router = useRouter();
 	const { run, pending } = useAction();
 	const [created, setCreated] = useState<UserCreated | null>(null);
 	const blank = {
@@ -717,11 +713,9 @@ function AddStaffPanel({
 	const hotelId = form.hotelId || defaultHotel;
 	const hotelName = hotels.find((h) => h.hotelId === hotelId)?.name;
 	const close = () => {
-		const refresh = !!created;
 		setCreated(null);
 		setForm({ ...blank, hotelId: defaultHotel });
 		onClose();
-		if (refresh) router.refresh();
 	};
 	const add = () =>
 		run(

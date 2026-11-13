@@ -175,7 +175,6 @@ export function LostFoundScreen({
 				setRows((rs) => [r, ...rs]);
 				void setAdding(null);
 				setDraft(blank);
-				router.refresh();
 			},
 		);
 
@@ -542,7 +541,6 @@ export function LostFoundScreen({
 										patch(r);
 										setModal(null);
 										setTo({ name: "", idNote: "", how: HOW[0] });
-										router.refresh();
 									},
 								)
 							}
@@ -606,7 +604,6 @@ export function LostFoundScreen({
 										patch(r);
 										setModal(null);
 										setReason("");
-										router.refresh();
 									},
 								)
 							}

@@ -18,7 +18,7 @@ import type {
 	UserSummary,
 } from "@hospio/api/api/schema";
 import { allPages } from "./paging";
-import { withSession } from "@hospio/api/api/server";
+import { atHotel, withSession } from "@hospio/api/api/server";
 import {
 	getActiveHotel,
 	getActiveRole,
@@ -91,6 +91,7 @@ import type {
 	GuestQuery,
 	GuestView,
 	FolioRow,
+	FolioSummary,
 	GuestRow,
 	HotelSetupSection,
 	InvoiceRow,
@@ -112,7 +113,7 @@ import type {
 	TerminalRow,
 	WorthRow,
 } from "./types";
-import { pendingByBooking } from "./types";
+import { pendingByBooking, toFolioSummary } from "./types";
 
 const give = async <T>(value: T): Promise<T> => {
 	await demoDelay(40);
@@ -473,8 +474,59 @@ const everyOrganization = cache(
 const allOrganizations = async (): Promise<OrganizationRow[]> =>
 	everyOrganization((await withSession()).headers?.["X-Hotel-Id"] ?? "");
 
+/** The hotel a server-side call goes to (the X-Hotel-Id it sends; "" for none): the key for per-request caches. */
+const hotelKey = async () =>
+	(await withSession()).headers?.["X-Hotel-Id"] ?? "";
+
+/**
+ * A no-argument read, done once per request and hotel (React `cache`): several parts of one page (or a loader inside
+ * another) asking for it share the first call. Keyed by the hotel because the owner's pages read hotels in turn
+ * (`atHotel`) within one request.
+ */
+const perHotel = <T>(load: () => Promise<T>): (() => Promise<T>) => {
+	const once = cache((_hotel: string) => load());
+	return async () => once(await hotelKey());
+};
+
+/**
+ * The hotel's settings as the setup sections, from GET /hotel-config/setup alone (no lists, no hotel status): what the
+ * approval limits and till float read. The Hotel setup screen itself uses `data.hotels.setup`.
+ */
+const setupSettings = async (): Promise<HotelSetupSection[]> => {
+	const { data: res, error } = await api(
+		"@get/hotel-config/setup",
+		await withSession(),
+	);
+	if (error || !res) {
+		console.error("hotel-config setup:", error);
+		return [];
+	}
+	return toSetupSections(res.data as SetupSection, {}, null);
+};
+
 /** A route or row id that isn't there ("undefined" from a missing value): such calls are never sent. */
 const noId = (id?: string | null) => !id || id === "undefined" || id === "null";
+
+/** One account with its figures (GET /folio/organizations/:id/summary), once per request, hotel and id. */
+const organizationAt = cache(
+	async (_hotel: string, id: string): Promise<OrganizationRow | null> => {
+		if (!live("folio"))
+			return give(demoOrganizationRows().find((o) => o.id === id) ?? null);
+		if (noId(id)) return null; // never call the API without an id
+		const { data: res, error } = await api(
+			"@get/folio/organizations/:id/summary",
+			{ ...(await withSession()), params: { id } },
+		);
+		if (error || !res) {
+			if (error?.status !== 404)
+				console.error("folio-service organization:", error);
+			return null;
+		}
+		return toOrganizationSummaryRow(res.data);
+	},
+);
+const organizationById = async (id: string) =>
+	organizationAt(await hotelKey(), id);
 
 /** One page of invoices: the hotel's, or one account's (`organizationId`), latest due first, with counts and money. */
 async function invoicesPage(
@@ -622,7 +674,7 @@ export const data = {
 		 * What the hotel's settings say about spending: APPROVAL_LIMITS and the default till float. Above
 		 * `managerExpenseLimit` an expense needs the owner; `ownerExpenseLimit` 0 means no ceiling.
 		 */
-		limits: async (): Promise<{
+		limits: perHotel(async (): Promise<{
 			limits: ApprovalLimits;
 			tillFloat: number;
 		}> => {
@@ -636,7 +688,7 @@ export const data = {
 				tillFloat: 50_000,
 			};
 			if (!live("hotel-config")) return give(fallback);
-			const sections = await data.hotels.setup();
+			const sections = await setupSettings();
 			const value = (section: string, key: string) =>
 				sections
 					.find((x) => x.key === section)
@@ -660,7 +712,7 @@ export const data = {
 				},
 				tillFloat: n(value("money", "tillFloat"), 0),
 			};
-		},
+		}),
 		summaries: async (): Promise<HotelSummary[]> => {
 			if (!live("tenant")) return give(hotel.demoHotelSummaries);
 			const [hotels, managers] = await Promise.all([
@@ -794,7 +846,7 @@ export const data = {
 		},
 	},
 	rooms: {
-		list: async (): Promise<RoomRow[]> => {
+		list: perHotel(async (): Promise<RoomRow[]> => {
 			if (!live("property")) return give(hotel.demoRooms);
 			const s = await withSession();
 			const [areas, rooms, cleanliness, today] = await Promise.all([
@@ -847,8 +899,8 @@ export const data = {
 					};
 				return row;
 			});
-		},
-		types: async (): Promise<RoomTypeRow[]> => {
+		}),
+		types: perHotel(async (): Promise<RoomTypeRow[]> => {
 			if (!live("property")) return give(hotel.demoRoomTypes);
 			const { data: res, error } = await api(
 				"@get/property/room-types",
@@ -859,8 +911,8 @@ export const data = {
 				return [];
 			}
 			return res.data.map(toRoomTypeRow);
-		},
-		areas: async (): Promise<AreaRow[]> => {
+		}),
+		areas: perHotel(async (): Promise<AreaRow[]> => {
 			if (!live("property")) {
 				const names = Array.from(new Set(hotel.demoRooms.map((r) => r.floor)));
 				return give(
@@ -885,7 +937,46 @@ export const data = {
 				.sort(
 					(a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
 				);
-		},
+		}),
+		/**
+		 * Tonight's occupancy for a KPI card: rooms and how many are occupied (in house per reservation-service and not out of
+		 * order), as `rooms.list` works it out, without the areas and housekeeping reads the room board needs.
+		 */
+		occupancy: perHotel(
+			async (): Promise<{ rooms: number; occupied: number }> => {
+				if (!live("property")) {
+					const rooms = await data.rooms.list();
+					return {
+						rooms: rooms.length,
+						occupied: rooms.filter((r) => r.state === "occupied").length,
+					};
+				}
+				const s = await withSession();
+				const [rooms, today] = await Promise.all([
+					api("@get/property/rooms", { ...s, query: {} }),
+					live("reservation")
+						? api("@get/reservation/bookings/today", s).catch(() => ({
+								data: null,
+							}))
+						: Promise.resolve({ data: null }),
+				]);
+				if (rooms.error || !rooms.data) {
+					console.error("property-service rooms:", rooms.error);
+					return { rooms: 0, occupied: 0 };
+				}
+				const inHouse = new Set(
+					(today.data?.data.inHouse ?? [])
+						.map((b) => b.roomId)
+						.filter((id): id is string => !!id),
+				);
+				return {
+					rooms: rooms.data.data.length,
+					occupied: rooms.data.data.filter(
+						(r) => r.status !== "OUT_OF_ORDER" && inHouse.has(r.id),
+					).length,
+				};
+			},
+		),
 		get: async (id: string): Promise<RoomRow | null> => {
 			const rooms = await data.rooms.list();
 			return rooms.find((r) => r.id === id || r.number === id) ?? null;
@@ -913,6 +1004,39 @@ export const data = {
 				ok: true,
 				data: toPaged(res.data, (b) => toBookingRow(b, new Map(), new Map())),
 			};
+		},
+		/**
+		 * Company stays carry only the account id from reservation-service: name them, reading just the accounts these rows
+		 * mention (not every account of the hotel).
+		 */
+		named: async <T extends BookingRow>(rows: T[]): Promise<T[]> => {
+			const missing = rows.filter((b) => b.organizationId && !b.organizationName);
+			if (missing.length === 0) return rows;
+			// Accounts belong to a hotel: each row's account is read at the row's hotel (the owner's rows span hotels).
+			const byHotel = new Map<string, string[]>();
+			for (const b of missing) {
+				const h = b.hotelId ?? "";
+				byHotel.set(h, [...(byHotel.get(h) ?? []), b.organizationId as string]);
+			}
+			const found = await Promise.all(
+				[...byHotel].map(async ([h, ids]) => {
+					const names = await (h
+						? atHotel(h, () => data.organizations.names(ids))
+						: data.organizations.names(ids));
+					return [h, names] as const;
+				}),
+			);
+			const names = new Map(found);
+			return rows.map((b) =>
+				b.organizationId && !b.organizationName
+					? {
+							...b,
+							organizationName: names
+								.get(b.hotelId ?? "")
+								?.get(b.organizationId),
+						}
+					: b,
+			);
 		},
 		/** Every booking matching the query, read 100 at a time (exports, reports, the bounded buckets). */
 		list: async (
@@ -1028,6 +1152,24 @@ export const data = {
 				return [];
 			}
 			return res.data.map(toFolioRow);
+		},
+		/**
+		 * The open folios without their lines (balances, pickers, "who owes"): folio-service's list still sends every line,
+		 * so they are dropped here, before anything reaches the page. Read once per request and hotel.
+		 */
+		summaries: perHotel(async (): Promise<FolioSummary[]> =>
+			(await data.folios.list()).map(toFolioSummary),
+		),
+		/** The stay's folio with its lines (null before check-in): the booking panels' folio tab and check-out. */
+		forBooking: async (bookingId: string): Promise<FolioRow | null> => {
+			if (!live("folio"))
+				return give(stay.demoFolios.find((f) => f.bookingId === bookingId) ?? null);
+			if (noId(bookingId)) return null;
+			const { data: res } = await api(
+				"@get/folio/folios/by-booking/:bookingId",
+				{ ...(await withSession()), params: { bookingId } },
+			).catch(() => ({ data: null }));
+			return res ? toFolioRow(res.data) : null;
 		},
 		get: async (id: string): Promise<FolioRow | null> => {
 			if (!live("folio"))
@@ -1261,22 +1403,22 @@ export const data = {
 			if (!live("folio")) return give(stay.demoOrganizations);
 			return allOrganizations();
 		},
-		/** One account with its figures (GET /folio/organizations/:id/summary). */
-		get: async (id: string): Promise<OrganizationRow | null> => {
-			if (!live("folio"))
-				return give(demoOrganizationRows().find((o) => o.id === id) ?? null);
-			if (noId(id)) return null; // never call the API without an id
-			const { data: res, error } = await api(
-				"@get/folio/organizations/:id/summary",
-				{ ...(await withSession()), params: { id } },
+		/**
+		 * Names for the company accounts a page of bookings mentions (reservation-service sends only the id): one summary
+		 * read per account on the page, instead of every account of the hotel.
+		 */
+		names: async (ids: (string | null | undefined)[]): Promise<Map<string, string>> => {
+			const wanted = [...new Set(ids.filter((id): id is string => !noId(id)))];
+			const found = await Promise.all(
+				wanted.map((id) => organizationById(id).catch(() => null)),
 			);
-			if (error || !res) {
-				if (error?.status !== 404)
-					console.error("folio-service organization:", error);
-				return null;
-			}
-			return toOrganizationSummaryRow(res.data);
+			return new Map(
+				found.filter((o): o is OrganizationRow => !!o).map((o) => [o.id, o.name]),
+			);
 		},
+		/** One account with its figures (GET /folio/organizations/:id/summary). */
+		get: async (id: string): Promise<OrganizationRow | null> =>
+			organizationById(id),
 		/** The people who can book on the account (a company's staff list: short, not paged). */
 		members: async (id: string): Promise<OrgMemberRow[]> => {
 			if (!live("folio")) return give(stay.demoOrgMembers[id] ?? []);

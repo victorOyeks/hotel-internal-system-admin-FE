@@ -11,7 +11,7 @@ export default async function FrontDeskTodayPage() {
 	const [buckets, rooms, folios, terminals, till] = await Promise.all([
 		data.bookings.buckets(),
 		data.rooms.list(),
-		data.folios.list(),
+		data.folios.summaries(),
 		data.payments.terminals(),
 		data.finance.myTill(),
 	]);

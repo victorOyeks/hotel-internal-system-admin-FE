@@ -35,6 +35,9 @@ function startsWithAny(pathname: string, paths: string[]) {
 
 type Tokens = { access: string; refresh: string };
 
+/** How long before the access token expires the middleware swaps it for a new one. */
+const RENEW_BEFORE_MS = 60_000;
+
 /**
  * One refresh per refresh token in this process: identity rotates refresh tokens (the old one is revoked on use),
  * so two requests racing with the same expired session would see the second refused. They share the first's answer.
@@ -75,7 +78,7 @@ function renew(refreshToken: string): Promise<Tokens | null> {
 /**
  * The one middleware both apps run. The access token lives an hour and its cookie with it: past that, a page left
  * open sent its next save (a server action) to the sign-in redirect, and Next showed "An unexpected response was
- * received from the server". So an expired or missing access token with a refresh cookie is renewed here first, the
+ * received from the server". So an expired, expiring (under a minute left) or missing access token with a refresh cookie is renewed here first, the
  * new pair forwarded to the page and set on the response, and the request goes on as if nothing happened.
  */
 export async function appMiddleware(request: NextRequest) {
@@ -83,11 +86,11 @@ export async function appMiddleware(request: NextRequest) {
 	const token = request.cookies.get(COOKIES.token)?.value;
 	const refreshToken = request.cookies.get(COOKIES.refresh)?.value;
 	let fresh: Tokens | null = null;
-	if (
-		refreshToken &&
-		!(token && decodeSession(token)) &&
-		!startsWithAny(pathname, PUBLIC)
-	) {
+	const current = token ? decodeSession(token) : null;
+	// Renewed a minute before it runs out, not after: a page that reads several services after this check would
+	// otherwise send a token that expires mid-render and see 401s.
+	const expiring = !current || current.exp * 1000 - Date.now() < RENEW_BEFORE_MS;
+	if (refreshToken && expiring && !startsWithAny(pathname, PUBLIC)) {
 		fresh = await renew(refreshToken);
 		if (fresh) {
 			request.cookies.set(COOKIES.token, fresh.access);

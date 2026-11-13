@@ -27,7 +27,7 @@ export default async function FrontDeskPaymentsPage({
 	const active = (tab && tab in PAYMENT_TABS ? tab : "today") as PaymentTab;
 	const open = urlParam(sp, "open");
 	const { q, page, sort } = listQueryFrom(sp);
-	const [payments, folios, terminals, opened] = await Promise.all([
+	const [payments, terminals, opened] = await Promise.all([
 		data.payments.page({
 			...PAYMENT_TABS[active],
 			role: "FRONT_OFFICE",
@@ -35,7 +35,6 @@ export default async function FrontDeskPaymentsPage({
 			page,
 			sort,
 		}),
-		data.folios.list(),
 		data.payments.terminals(),
 		open ? data.payments.get(open) : Promise.resolve(null),
 	]);
@@ -43,7 +42,6 @@ export default async function FrontDeskPaymentsPage({
 		<MyPaymentsScreen
 			payments={payments}
 			opened={opened}
-			folios={folios}
 			terminals={terminals}
 			me={user.fullName}
 			roleFilter="FRONT_OFFICE"

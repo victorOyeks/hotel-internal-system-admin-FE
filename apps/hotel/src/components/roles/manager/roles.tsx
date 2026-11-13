@@ -112,10 +112,8 @@ export function RolesScreen({
 		return () => clearTimeout(t);
 	}, [find, giveOpen]);
 
-	const done = (close: () => void) => () => {
-		close();
-		router.refresh();
-	};
+	// Every change here revalidates the page: the action's answer already carries the fresh list.
+	const done = (close: () => void) => () => close();
 	function openGive(r?: RolesAccessRow) {
 		setGiveTo(r?.id ?? "");
 		setGivePerson(r ?? null);

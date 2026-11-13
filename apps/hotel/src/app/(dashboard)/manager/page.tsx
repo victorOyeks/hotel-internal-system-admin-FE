@@ -27,7 +27,7 @@ export default async function ManagerHomePage() {
 		data.approvals.open(),
 		data.maintenance.workOrders("open"),
 		data.inventory.items(),
-		data.folios.list(),
+		data.folios.summaries(),
 		data.staff.shifts(lagosDate(), lagosDate()),
 		data.outlets.managementSales(),
 	]);

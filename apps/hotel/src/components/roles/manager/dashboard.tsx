@@ -28,7 +28,7 @@ import type { Hotel, Me } from "@hospio/api/api/schema";
 import type { bookingBuckets } from "@hospio/api/data";
 import type {
 	ApprovalRow,
-	FolioRow,
+	FolioSummary,
 	OutletSalesDayRow,
 	RoomRow,
 	ShiftRow,
@@ -52,7 +52,7 @@ export type DashboardData = {
 	approvals: ApprovalRow[];
 	repairs: WorkOrderRow[];
 	items: StockItemRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	shifts: ShiftRow[];
 	/** What the restaurant and bar sold today (null when it cannot be read). */
 	outletSales?: OutletSalesDayRow | null;

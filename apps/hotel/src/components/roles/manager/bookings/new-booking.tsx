@@ -29,7 +29,7 @@ import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
 	BookingRow,
-	FolioRow,
+	FolioSummary,
 	GuestRow,
 	OrganizationRow,
 	PaymentPlan,
@@ -65,7 +65,7 @@ type NewBookingProps = {
 	types: RoomTypeRow[];
 	rooms: RoomRow[];
 	organizations: OrganizationRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onClose: () => void;
 	/** The booking was saved: add it to the list. */

@@ -1,5 +1,7 @@
 "use client";
 
+import type { BookingContext } from "@hospio/api/actions/booking-context";
+import { useBookingContext } from "../manager/bookings/use-booking-context";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { GuestMessageModal } from "../shared-staff/guest-message";
 import {
@@ -59,6 +61,7 @@ import { btn } from "@hospio/ui/shared/ui";
 import type {
 	BookingRow,
 	FolioRow,
+	FolioSummary,
 	GuestRow,
 	OrganizationRow,
 	PaymentPlan,
@@ -129,37 +132,49 @@ const planLabel: Record<PaymentPlan, string> = {
 	ORGANIZATION: "Company account",
 };
 
+/** What the panels get before their data has been read. */
+const NO_CONTEXT: BookingContext = {
+	rooms: [],
+	types: [],
+	folios: [],
+	organizations: [],
+	terminals: [],
+	pendingOnPos: {},
+};
+
 export function BookingsScreen({
 	bookings: result,
 	opened,
-	rooms,
-	roomTypes,
-	folios,
-	organizations,
-	terminals,
 	hotelName,
+	hotelId,
 	canCancel = true,
-	pendingOnPos = {},
 }: {
-	/** The tab's page from reservation-service (`?tab=` is the view), with every tab's count. */
+	/** The tab's page from reservation-service (`?tab=` is the view), with every tab's count; company stays named. */
 	bookings: PageResult<BookingRow>;
 	/** The booking in `?open=` when it is not on this page. */
 	opened?: BookingRow | null;
-	rooms: RoomRow[];
-	roomTypes: RoomTypeRow[];
-	folios: FolioRow[];
-	organizations: OrganizationRow[];
-	terminals: TerminalRow[];
 	hotelName: string;
+	/** The sidebar's hotel: what the panels' data is kept under. */
+	hotelId: string;
 	canCancel?: boolean;
-	/** Card payments still with the POS, per booking, as loaded. */
-	pendingOnPos?: Record<string, number>;
 }) {
 	const router = useRouter();
 	const list = useListParams({ extra: ["tab"] });
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [action, setAction] = useQueryState("action");
+	// Rooms, types, open folios (balances), accounts, terminals and POS payments: read once for the screen and again
+	// when a panel opens or after a save, not with every search keystroke or page.
+	const { ctx, reload } = useBookingContext({
+		key: hotelId,
+		panelOpen: !!openId || !!isNew,
+	});
+	const rooms = ctx?.rooms ?? NO_CONTEXT.rooms;
+	const roomTypes = ctx?.types ?? NO_CONTEXT.types;
+	const folios = ctx?.folios ?? NO_CONTEXT.folios;
+	const organizations = ctx?.organizations ?? NO_CONTEXT.organizations;
+	const terminals = ctx?.terminals ?? NO_CONTEXT.terminals;
+	const pendingOnPos = ctx?.pendingOnPos ?? NO_CONTEXT.pendingOnPos;
 	// Company stays carry only the organization id from reservation-service; name it from the accounts list.
 	const named = (rows: BookingRow[]) =>
 		rows.map((b) =>
@@ -216,10 +231,14 @@ export function BookingsScreen({
 		(action !== "cancel" || canCancel)
 			? action
 			: null;
-	const update = (id: string, patch: Partial<BookingRow>) =>
+	const update = (id: string, patch: Partial<BookingRow>) => {
 		setBookings((xs) => xs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+		// Rooms, folios and POS payments moved with it.
+		reload();
+	};
 	/** A payment was recorded for a booking: approved ones count as paid, the rest wait on the POS. */
 	const paymentTaken = (bookingId: string, p: TakenPayment) => {
+		reload();
 		if (p.status === "APPROVED") {
 			setBookings((xs) =>
 				xs.map((x) =>
@@ -641,6 +660,7 @@ export function BookingsScreen({
 				terminals={terminals}
 				onCreated={(b) => {
 					setBookings((xs) => [b, ...xs]);
+					reload();
 					router.refresh();
 				}}
 				onPaid={paymentTaken}
@@ -681,7 +701,7 @@ export function BookingPanel({
 	booking: BookingRow | null;
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
-	folio: FolioRow | null;
+	folio: FolioSummary | null;
 	room: RoomRow | null;
 	onAction: (a: string) => void;
 	onPay: () => void;
@@ -896,7 +916,7 @@ function CheckInPanel({
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
 	rooms: RoomRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onPos: number;
 	onPaid: (bookingId: string, p: TakenPayment) => void;
@@ -1133,17 +1153,22 @@ function CheckOutPanel({
 	onDone,
 }: {
 	booking: BookingRow | null;
-	folio: FolioRow | null;
+	/** The list's copy (no lines) until the stay's folio is read on open. */
+	folio: FolioSummary | null;
 	open: boolean;
 	onOpenChange: (o: boolean) => void;
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onPos: number;
 	onPaid: (bookingId: string, p: TakenPayment) => void;
 	onDone: (changes: Partial<BookingRow>) => void;
 }) {
 	const { run, pending } = useAction();
-	const [folio, setFolio] = useState<FolioRow | null>(loadedFolio);
+	const [folio, setFolio] = useState<FolioSummary | FolioRow | null>(
+		loadedFolio,
+	);
+	// The lines arrive with the stay's folio (read on open); until then the booking's figures stand in.
+	const lines = folio && "lines" in folio ? folio.lines : null;
 	// Approved here since the folio above was read; card payments still with the POS.
 	const [taken, setTaken] = useState(0);
 	const [held, setHeld] = useState(0);
@@ -1289,8 +1314,8 @@ function CheckOutPanel({
 						{
 							label: "Room charges",
 							value: naira(
-								folio
-									? folio.lines
+								lines
+									? lines
 											.filter(
 												(l) =>
 													l.kind === "CHARGE" &&
@@ -1303,8 +1328,8 @@ function CheckOutPanel({
 						{
 							label: "Extras (restaurant, bar, laundry, minibar)",
 							value: naira(
-								folio
-									? folio.lines
+								lines
+									? lines
 											.filter(
 												(l) =>
 													l.kind === "CHARGE" &&
@@ -1507,7 +1532,7 @@ export function NewBookingPanel({
 	/** Unused: returning guests are searched on the server as you type. */
 	guests?: GuestRow[];
 	organizations: OrganizationRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	/** The booking was saved: add it to the list. */
 	onCreated: (b: BookingRow) => void;

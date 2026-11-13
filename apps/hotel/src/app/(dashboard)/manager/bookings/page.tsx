@@ -26,38 +26,25 @@ export default async function BookingsPage({
 		tab && (BOOKING_TABS as readonly string[]).includes(tab) ? tab : "arrivals";
 	const open = urlParam(sp, "open");
 	const { page, q, sort } = listQueryFrom(sp);
-	const [
-		hotel,
-		bookings,
-		rooms,
-		types,
-		folios,
-		organizations,
-		terminals,
-		pendingOnPos,
-		opened,
-	] = await Promise.all([
+	// The list page and two small lookups only: the panels' rooms, folios, accounts, terminals and POS payments are read
+	// when a panel needs them (useBookingContext), not again on every search keystroke or page.
+	const [hotel, bookings, opened, occupancy] = await Promise.all([
 		getActiveHotel(),
 		data.bookings.page({ view, page, q, sort }),
-		data.rooms.list(),
-		data.rooms.types(),
-		data.folios.list(),
-		data.organizations.forBooking(),
-		data.payments.terminals(),
-		data.payments.pendingOnPos(),
 		open ? data.bookings.get(open) : Promise.resolve(null),
+		data.rooms.occupancy(),
+	]);
+	const [rows, openedRow] = await Promise.all([
+		data.bookings.named(bookings.data.content),
+		opened ? data.bookings.named([opened]).then((r) => r[0]) : null,
 	]);
 	return (
 		<BookingsScreen
 			hotelName={hotel?.name ?? "This hotel"}
-			bookings={bookings}
-			opened={opened}
-			rooms={rooms}
-			types={types}
-			folios={folios}
-			organizations={organizations}
-			terminals={terminals}
-			pendingOnPos={pendingOnPos}
+			hotelId={hotel?.id ?? ""}
+			bookings={{ ...bookings, data: { ...bookings.data, content: rows } }}
+			opened={openedRow}
+			occupancy={occupancy}
 		/>
 	);
 }

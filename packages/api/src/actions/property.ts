@@ -461,6 +461,7 @@ export async function setRoomNote(
 			ok: false,
 			error: errorMessage(error, "The note could not be saved"),
 		};
-	revalidatePath("/", "layout");
+	// Nothing revalidated: the room board patches the room from the answer, and any revalidation in an action makes
+	// Next re-render the whole current page (and drop the client's router cache) for one note.
 	return { ok: true, data: { note: data.data.notes ?? undefined } };
 }

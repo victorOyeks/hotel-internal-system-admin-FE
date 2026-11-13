@@ -17,6 +17,7 @@ import { exportBookings } from "@hospio/api/actions/reservation-lists";
 import type { PageResult } from "@hospio/api/data/paging";
 import { csvName, downloadCsv } from "@hospio/ui/shared/csv";
 import { useListParams } from "@hospio/ui/shared/list-params";
+import type { BookingContext } from "@hospio/api/actions/booking-context";
 import { HotelScope } from "@hospio/api/actions/hotel-scope";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -32,11 +33,7 @@ import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import type {
 	BookingRow,
-	FolioRow,
 	OrganizationRow,
-	RoomRow,
-	RoomTypeRow,
-	TerminalRow,
 } from "@hospio/api/data/types";
 import type { TakenPayment } from "../../front-office/take-payment";
 import { BookingDetailsPanel } from "./booking-details";
@@ -50,8 +47,19 @@ import {
 } from "./booking-helpers";
 import { type BookingAction, BookingModals } from "./booking-modals";
 import { NewBookingPanel } from "./new-booking";
+import { useBookingContext } from "./use-booking-context";
 
 export { BOOKING_TABS };
+
+/** What the panels get before their data has been read. */
+const NONE: BookingContext = {
+	rooms: [],
+	types: [],
+	folios: [],
+	organizations: [],
+	terminals: [],
+	pendingOnPos: {},
+};
 type Tab = (typeof BOOKING_TABS)[number];
 export const TAB_LABEL: Record<Tab, string> = {
 	arrivals: "Arrivals",
@@ -84,32 +92,37 @@ export function nameOrganizations<T extends BookingRow>(
  */
 export function BookingsScreen({
 	hotelName,
+	hotelId,
 	bookings: result,
 	opened,
-	rooms,
-	types,
-	folios,
-	organizations,
-	terminals,
-	pendingOnPos = {},
+	occupancy: tonight,
 }: {
 	hotelName: string;
+	/** The sidebar's hotel: what the panels' data is kept under. */
+	hotelId: string;
+	/** The tab's page, company stays already named. */
 	bookings: PageResult<BookingRow>;
 	/** The booking in `?open=` when it is not on this page. */
 	opened?: BookingRow | null;
-	rooms: RoomRow[];
-	types: RoomTypeRow[];
-	folios: FolioRow[];
-	organizations: OrganizationRow[];
-	terminals: TerminalRow[];
-	/** Card payments still with the POS, per booking, as loaded. */
-	pendingOnPos?: Record<string, number>;
+	/** Rooms and rooms occupied tonight (the occupancy card). */
+	occupancy: { rooms: number; occupied: number };
 }) {
 	const router = useRouter();
 	const list = useListParams({ extra: ["tab"] });
 	const [openId, setOpenId] = useQueryState("open");
 	const [action, setAction] = useQueryState("action");
 	const [isNew, setIsNew] = useQueryState("new");
+	// Rooms, types, open folios, accounts, terminals and POS payments: read for the panels, not with every page.
+	const { ctx, reload } = useBookingContext({
+		key: hotelId,
+		panelOpen: !!openId || !!isNew,
+	});
+	const rooms = ctx?.rooms ?? NONE.rooms;
+	const types = ctx?.types ?? NONE.types;
+	const folios = ctx?.folios ?? NONE.folios;
+	const organizations = ctx?.organizations ?? NONE.organizations;
+	const terminals = ctx?.terminals ?? NONE.terminals;
+	const pendingOnPos = ctx?.pendingOnPos ?? NONE.pendingOnPos;
 	const withOpened = () =>
 		nameOrganizations(
 			[
@@ -144,13 +157,17 @@ export function BookingsScreen({
 		selected && actionAllowed(selected, action)
 			? (action as BookingAction)
 			: null;
-	const patch = (id: string, changes: Partial<BookingRow>) =>
+	const patch = (id: string, changes: Partial<BookingRow>) => {
 		setBookings((bs) =>
 			bs.map((b) => (b.id === id ? { ...b, ...changes } : b)),
 		);
+		// Rooms, folios and POS payments moved with it.
+		reload();
+	};
 
 	/** A payment was recorded: approved ones count as paid, the rest wait on the POS. */
 	const paymentTaken = (bookingId: string, p: TakenPayment) => {
+		reload();
 		if (p.status === "APPROVED") {
 			setBookings((bs) =>
 				bs.map((b) =>
@@ -162,11 +179,8 @@ export function BookingsScreen({
 		setOnPos((m) => ({ ...m, [bookingId]: (m[bookingId] ?? 0) + p.amount }));
 	};
 
-	const occupancy = rooms.length
-		? Math.round(
-				(rooms.filter((r) => r.state === "occupied").length / rooms.length) *
-					100,
-			)
+	const occupancy = tonight.rooms
+		? Math.round((tonight.occupied / tonight.rooms) * 100)
 		: 0;
 	const doExport = async () => {
 		setExporting(true);
@@ -510,6 +524,7 @@ export function BookingsScreen({
 				terminals={terminals}
 				onSaved={(b) => {
 					setBookings((bs) => [b, ...bs]);
+					reload();
 					list.set({ tab: b.checkInDate === today() ? null : "upcoming" });
 				}}
 				onPaid={paymentTaken}

@@ -25,38 +25,23 @@ export default async function FrontDeskBookingsPage({
 	const view = tab && (FO_TABS as string[]).includes(tab) ? tab : "arrivals";
 	const open = urlParam(sp, "open");
 	const { page, q, sort } = listQueryFrom(sp);
-	const [
-		hotel,
-		bookings,
-		rooms,
-		roomTypes,
-		folios,
-		organizations,
-		terminals,
-		pendingOnPos,
-		opened,
-	] = await Promise.all([
+	// The list page and the account names only: the panels' rooms, folios, accounts, terminals and POS payments are read
+	// when a panel needs them (useBookingContext), not again on every search keystroke or page.
+	const [hotel, bookings, opened] = await Promise.all([
 		getActiveHotel(),
 		data.bookings.page({ view, page, q, sort }),
-		data.rooms.list(),
-		data.rooms.types(),
-		data.folios.list(),
-		data.organizations.forBooking(),
-		data.payments.terminals(),
-		data.payments.pendingOnPos(),
 		open ? data.bookings.get(open) : Promise.resolve(null),
+	]);
+	const [rows, openedRow] = await Promise.all([
+		data.bookings.named(bookings.data.content),
+		opened ? data.bookings.named([opened]).then((r) => r[0]) : null,
 	]);
 	return (
 		<BookingsScreen
-			bookings={bookings}
-			opened={opened}
-			rooms={rooms}
-			roomTypes={roomTypes}
-			folios={folios}
-			organizations={organizations}
-			terminals={terminals}
-			pendingOnPos={pendingOnPos}
+			bookings={{ ...bookings, data: { ...bookings.data, content: rows } }}
+			opened={openedRow}
 			hotelName={hotel?.name ?? "Hotel"}
+			hotelId={hotel?.id ?? ""}
 			canCancel={false}
 		/>
 	);

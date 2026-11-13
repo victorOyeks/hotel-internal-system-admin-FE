@@ -228,7 +228,6 @@ export function OrganizationsScreen({
 												o.id === row.original.id ? { ...o, status: next } : o,
 											),
 										);
-										router.refresh();
 									},
 								);
 							},
@@ -340,7 +339,6 @@ export function OrganizationsScreen({
 				onClose={() => setIsNew(null)}
 				onSaved={(o) => {
 					setOrgs((os) => [o, ...os]);
-					router.refresh();
 				}}
 			/>
 		</>

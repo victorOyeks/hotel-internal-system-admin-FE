@@ -605,10 +605,7 @@ export function ApprovalsScreen({
 									() =>
 										answerExpense(current.sourceRef as string, answer.trim()),
 									`Answer sent · back to ${current.approverLevel === "OWNER" ? ownerName : "the approver"}`,
-									() => {
-										close();
-										router.refresh();
-									},
+									close,
 								)
 							}
 						>

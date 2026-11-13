@@ -1,5 +1,6 @@
 "use client";
 
+import { useOpenFolios } from "../../front-office/use-open-folios";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	AlertTriangleIcon,
@@ -44,7 +45,6 @@ import { toast } from "sonner";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
 	DisputeRow,
-	FolioRow,
 	PaymentRow,
 	PaymentStatus,
 	RefundRow,
@@ -98,7 +98,6 @@ export function PaymentsScreen({
 	terminals: initialTerminals,
 	refunds: refundsResult,
 	disputes: disputesResult,
-	folios,
 	opened,
 }: {
 	hotelName: string;
@@ -107,7 +106,6 @@ export function PaymentsScreen({
 	terminals: TerminalRow[];
 	refunds: PageResult<RefundRow>;
 	disputes: PageResult<DisputeRow>;
-	folios: FolioRow[];
 	/** The payment in `?open=` when it is not on this page. */
 	opened?: PaymentRow | null;
 }) {
@@ -120,6 +118,10 @@ export function PaymentsScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
 	const [folioId, setFolioId] = useQueryState("folio");
+	// Open folios with a balance, read when Record payment opens (not with every page of the list).
+	const openFolios = useOpenFolios(!!isNew || !!folioId).filter(
+		(f) => f.balance > 0,
+	);
 	const [payments, setPayments] = useState(result.data.content);
 	useEffect(() => setPayments(result.data.content), [result]);
 	const [terminals, setTerminals] = useState(initialTerminals);
@@ -764,7 +766,7 @@ export function PaymentsScreen({
 			/>
 			<NewPaymentPanel
 				open={!!isNew || !!folioId}
-				folios={folios}
+				folios={openFolios}
 				preselect={folioId}
 				onClose={() => {
 					setIsNew(null);
