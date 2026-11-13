@@ -2034,6 +2034,9 @@ export function notificationLink(
 	if (first === "bookings" && second)
 		return `/dashboard/bookings?tab=all&open=${second}`;
 	if (first === "staff" && second) return `/dashboard/staff?tab=${second}`;
+	// Hotel setup keeps its section (/hotel-setup/guest-messages?invoice=… opens that invoice).
+	if (first === "hotel-setup" && second)
+		return `/dashboard/hotel-setup/${second}${query ? `?${query}` : ""}`;
 	return `/dashboard/${first}${query ? `?${query}` : ""}`;
 }
 
