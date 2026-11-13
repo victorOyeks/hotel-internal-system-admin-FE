@@ -104,6 +104,9 @@ export function deliveryOutcome(d: DeliveryLike): {
 	};
 }
 
+/** "@hotel" in a WhatsApp's SMS text is filled with the hotel's name by messaging-service; on screen it reads "Your hotel". */
+const shown = (text: string) => text.replace(/@hotel/g, "Your hotel");
+
 function DeliveryRow({ delivery: d }: { delivery: DeliveryLike }) {
 	const [done, setDone] = useState(false);
 	const meta = channelMeta[d.channel] ?? { label: d.channel, icon: MailIcon };
@@ -128,7 +131,7 @@ function DeliveryRow({ delivery: d }: { delivery: DeliveryLike }) {
 					onClick={async () => {
 						if (
 							await copyText(
-								[d.subject, d.text].filter(Boolean).join("\n\n"),
+								[d.subject, shown(d.text)].filter(Boolean).join("\n\n"),
 								"Message copied",
 							)
 						) {
@@ -152,7 +155,7 @@ function DeliveryRow({ delivery: d }: { delivery: DeliveryLike }) {
 				<p className="text-[13px] font-semibold text-ink">{d.subject}</p>
 			)}
 			<pre className="whitespace-pre-wrap rounded-[10px] bg-subtle px-3 py-2 font-sans text-xs leading-relaxed text-ink">
-				{d.text}
+				{shown(d.text)}
 			</pre>
 		</li>
 	);
