@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import type { ActionResult } from "@hospio/api/actions";
 
@@ -27,13 +26,14 @@ function readable(error: string) {
  *   const { run, pending } = useAction();
  *   run(() => saveRoom(input), "Room added", (room) => { patch(room); close(); });
  *
+ * Changes show at once: the action revalidates the page, so its answer already carries the page's fresh server data;
+ * screens that keep a copy of server data take it in (`useEffect(() => setRows(initial), [initial])`).
+ *
  * `message` can be a function of the result when the answer decides what to say (a price change that is
  * applied at once or is waiting for approval).
  */
 export function useAction() {
 	const [pending, setPending] = useState(false);
-	const router = useRouter();
-	const [, startTransition] = useTransition();
 	const run = useCallback(async <T,>(action: () => Promise<ActionResult<T>>, message: string | ((data: T) => string), after?: (data: T) => void) => {
 		setPending(true);
 		try {
@@ -48,14 +48,11 @@ export function useAction() {
 			}
 			toast.success(typeof message === "function" ? message(result.data) : message);
 			after?.(result.data);
-			// Every change shows at once: the screen's own update (above) right away, then the page's server data is read
-			// again in the background, so lists, counts, badges and other panels on the page follow without a reload.
-			startTransition(() => router.refresh());
 		} catch (e) {
 			toast.error(readable(e instanceof Error ? e.message : "Something went wrong"), { duration: 8000 });
 		} finally {
 			setPending(false);
 		}
-	}, [router]);
+	}, []);
 	return { run, pending };
 }
