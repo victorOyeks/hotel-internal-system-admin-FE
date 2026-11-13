@@ -77,7 +77,16 @@ import {
 import { folioForBooking } from "@hospio/api/actions/folio";
 import { useAction } from "@hospio/api/actions/use-action";
 import { actionAllowed } from "../manager/bookings/booking-helpers";
-import { useGuestSearch } from "../shared-staff/guest-search";
+import {
+	useGuestSearch,
+	useGuestWithPhone,
+} from "../shared-staff/guest-search";
+import {
+	checkArrival,
+	checkCount,
+	checkName,
+	checkPhone,
+} from "@hospio/ui/shared/validate";
 import { dueAtCheckIn, useSaveFlow } from "./save-flow";
 import {
 	type PaymentTarget,
@@ -1514,7 +1523,9 @@ export function NewBookingPanel({
 	const [typeId, setTypeId] = useState(roomTypes[0]?.id ?? "");
 	const [ci, setCi] = useState(today);
 	const [co, setCo] = useState(format(addDays(new Date(), 1), "yyyy-MM-dd"));
-	const [adults, setAdults] = useState("2");
+	// Blank with a grey hint: a number already in the box had to be deleted before typing.
+	const [adults, setAdults] = useState("");
+	const [children, setChildren] = useState("");
 	const [eta, setEta] = useState("");
 	const [priceKind, setPriceKind] = useState<PriceKind>("NORMAL");
 	const [plan, setPlan] = useState<PaymentPlan>("PAY_IN_FULL");
@@ -1540,8 +1551,25 @@ export function NewBookingPanel({
 			setWalkIn(false);
 			setRoomId("");
 			setIdSeen(false);
+			// The next booking starts from an empty form, not the last guest's details.
+			setGuestId("");
+			setPicked(null);
+			setGuestQuery("");
+			setName("");
+			setPhone("");
+			setEmail("");
+			setTypeId(roomTypes[0]?.id ?? "");
+			setCi(format(new Date(), "yyyy-MM-dd"));
+			setCo(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+			setAdults("");
+			setChildren("");
+			setEta("");
+			setPriceKind("NORMAL");
+			setPlan("PAY_IN_FULL");
+			setOrgId("");
+			setNotes("");
 		}
-	}, [open, resetFlow]);
+	}, [open, resetFlow, roomTypes]);
 
 	const type = roomTypes.find((t) => t.id === typeId);
 	const nights = Math.max(
@@ -1574,6 +1602,33 @@ export function NewBookingPanel({
 	const needsManager = priceKind !== "NORMAL";
 	const pastStart = ci < today;
 
+	// Editing the name or phone of a picked guest makes it a new guest's details (the booking would have gone to the
+	// picked guest regardless of what was typed).
+	const editName = (v: string) => {
+		setName(v);
+		if (picked && v !== picked.fullName) {
+			setGuestId("");
+			setPicked(null);
+		}
+	};
+	const editPhone = (v: string) => {
+		setPhone(v);
+		if (picked && v !== picked.phone) {
+			setGuestId("");
+			setPicked(null);
+		}
+	};
+	// The same checks as reservation-service.
+	const nameError = guestId ? undefined : checkName(name, "the guest's name");
+	const phoneError = guestId ? undefined : checkPhone(phone);
+	const adultsError = checkCount(adults, "adults", 1);
+	const childrenError = checkCount(children, "children", 0);
+	const etaError = checkingInNow ? undefined : checkArrival(eta);
+	const problem =
+		nameError ?? phoneError ?? adultsError ?? childrenError ?? etaError;
+	// New details with a number that is already a guest's: the booking goes to that guest.
+	const samePhone = useGuestWithPhone(guestId ? "" : phone);
+
 	function pickGuest(g: GuestRow) {
 		setGuestId(g.id);
 		setPicked(g);
@@ -1597,9 +1652,9 @@ export function NewBookingPanel({
 			checkInDate: ci,
 			checkOutDate: co,
 			nights,
-			adults: Number(adults) || 1,
-			children: 0,
-			eta: eta || undefined,
+			adults: Number(adults),
+			children: Number(children) || 0,
+			eta: checkingInNow ? undefined : eta,
 			status: "BOOKED",
 			priceKind,
 			nightlyRate: rate,
@@ -1624,8 +1679,9 @@ export function NewBookingPanel({
 							roomTypeId: typeId,
 							checkInDate: ci,
 							checkOutDate: co,
-							adults: Number(adults) || 1,
-							children: 0,
+							adults: Number(adults),
+							children: Number(children) || 0,
+							expectedArrival: checkingInNow ? undefined : eta,
 							priceKind,
 							specialRate: priceKind === "SPECIAL" ? rate : undefined,
 							paymentPlan: plan,
@@ -1658,8 +1714,7 @@ export function NewBookingPanel({
 	}
 
 	const canSave =
-		!!name.trim() &&
-		!!phone.trim() &&
+		!problem &&
 		nights >= 1 &&
 		!pastStart &&
 		!needsManager &&
@@ -1727,9 +1782,11 @@ export function NewBookingPanel({
 						? "Check-in can't be in the past"
 						: nights < 1 && ci && co
 							? "Check-out must be after check-in"
-							: nights >= 1
-								? `${plural(nights, "night")} · ${naira(total)}`
-								: undefined
+							: problem
+								? problem
+								: nights >= 1
+									? `${plural(nights, "night")} · ${naira(total)}`
+									: undefined
 			}
 		>
 			{paying ? (
@@ -1782,17 +1839,34 @@ export function NewBookingPanel({
 							<TextField
 								label="Full name"
 								value={name}
-								onChange={setName}
+								onChange={editName}
 								required
+								placeholder="Adaeze Okoro"
+								error={name.trim() ? nameError : undefined}
 							/>
 							<TextField
 								label="Phone"
 								value={phone}
-								onChange={setPhone}
+								onChange={editPhone}
 								required
-								placeholder="+234 …"
+								placeholder="+234 803 555 0192"
+								error={phone.trim() ? phoneError : undefined}
 							/>
 						</FieldRow>
+						{samePhone && (
+							<Note tone="warning">
+								{samePhone.phone} is {samePhone.fullName}'s number (
+								{plural(samePhone.stays, "stay")}). The booking will be under{" "}
+								{samePhone.fullName}.{" "}
+								<button
+									type="button"
+									className="font-semibold underline"
+									onClick={() => pickGuest(samePhone)}
+								>
+									Use {samePhone.fullName}
+								</button>
+							</Note>
+						)}
 						<TextField
 							label="Email"
 							value={email}
@@ -1829,17 +1903,38 @@ export function NewBookingPanel({
 						<FieldRow>
 							<TextField
 								label="Adults"
-								type="number"
 								value={adults}
-								onChange={setAdults}
+								onChange={(v) => setAdults(v.replace(/\D/g, "").slice(0, 2))}
+								placeholder={
+									type ? `e.g. ${Math.min(2, type.capacityAdults)}` : "e.g. 2"
+								}
+								required
+								error={adults ? adultsError : undefined}
+								hint={
+									type
+										? `${type.name} sleeps ${type.capacityAdults}`
+										: undefined
+								}
 							/>
 							<TextField
-								label="Arrives around"
-								value={eta}
-								onChange={setEta}
-								placeholder="e.g. 3:30pm"
+								label="Children"
+								value={children}
+								onChange={(v) => setChildren(v.replace(/\D/g, "").slice(0, 2))}
+								placeholder="0"
+								error={children ? childrenError : undefined}
+								hint="Leave empty for none"
 							/>
 						</FieldRow>
+						{!checkingInNow && (
+							<TextField
+								label="Expected arrival time"
+								type="time"
+								value={eta}
+								onChange={setEta}
+								required
+								error={eta ? etaError : undefined}
+							/>
+						)}
 					</PanelSection>
 					{ci === today && (
 						<PanelSection title="Arrival">

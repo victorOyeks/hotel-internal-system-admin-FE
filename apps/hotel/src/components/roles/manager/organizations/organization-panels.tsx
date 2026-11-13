@@ -40,6 +40,7 @@ import {
 	updateOrganization,
 } from "@hospio/api/actions/organizations";
 import { useAction } from "@hospio/api/actions/use-action";
+import { checkEmail, checkName, checkPhone } from "@hospio/ui/shared/validate";
 import {
 	BILLING_CYCLES,
 	billingCycleCode,
@@ -63,6 +64,37 @@ const termsOptions = (days: number) =>
 		? TERMS
 		: [...TERMS, { value: String(days), label: `${days} days` }];
 
+/** The organization's details, checked as folio-service checks them: real names, a real phone and email, a limit above ₦0. */
+function orgErrors(v: {
+	name: string;
+	contact: string;
+	phone: string;
+	email: string;
+	limit: number | "";
+	cap: number | "";
+}) {
+	return {
+		name: checkName(v.name, "the company name", 160),
+		contact: checkName(v.contact, "the contact person"),
+		phone: checkPhone(v.phone),
+		email: checkEmail(v.email, false),
+		limit:
+			v.limit === ""
+				? "Enter the credit limit"
+				: v.limit <= 0
+					? "The credit limit must be above ₦0"
+					: v.limit > 1_000_000_000
+						? "That credit limit looks too high"
+						: undefined,
+		cap:
+			v.cap !== "" && v.cap <= 0
+				? "Leave the daily cap empty, or enter an amount above ₦0"
+				: undefined,
+	};
+}
+const firstError = (e: Record<string, string | undefined>) =>
+	Object.values(e).find(Boolean);
+
 const OWNER_LIMIT_NOTE =
 	"A credit limit above what managers may set goes to the owner to approve · the rest saves now";
 /** What the save says: the limit applied, or waiting for the owner. */
@@ -85,7 +117,8 @@ export function NewOrganizationPanel({
 	const [contact, setContact] = useState("");
 	const [phone, setPhone] = useState("");
 	const [email, setEmail] = useState("");
-	const [limit, setLimit] = useState<number | "">(1000000);
+	// Blank with a grey hint: a number already in the box had to be deleted before typing.
+	const [limit, setLimit] = useState<number | "">("");
 	const [cap, setCap] = useState<number | "">("");
 	const [terms, setTerms] = useState("30");
 	const [cycle, setCycle] = useState("MONTHLY");
@@ -96,17 +129,19 @@ export function NewOrganizationPanel({
 			setContact("");
 			setPhone("");
 			setEmail("");
-			setLimit(1000000);
+			setLimit("");
 			setCap("");
 			setTerms("30");
 			setCycle("MONTHLY");
 			setNotes("");
 		}
 	}, [open]);
+	const errors = orgErrors({ name, contact, phone, email, limit, cap });
+	const problem = firstError(errors);
 	const save = () => {
-		if (limit === "") return;
+		if (limit === "" || problem) return;
 		const input: OrganizationInput = {
-			name,
+			name: name.trim(),
 			contactName: contact,
 			contactPhone: phone,
 			contactEmail: email,
@@ -152,7 +187,7 @@ export function NewOrganizationPanel({
 			icon={HandshakeIcon}
 			footerInfo={
 				<span className="flex items-center gap-2">
-					<ManagerMark /> {OWNER_LIMIT_NOTE}
+					<ManagerMark /> {problem ?? OWNER_LIMIT_NOTE}
 				</span>
 			}
 			footer={
@@ -162,13 +197,7 @@ export function NewOrganizationPanel({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={
-							pending ||
-							!name.trim() ||
-							!contact.trim() ||
-							!phone.trim() ||
-							limit === ""
-						}
+						disabled={pending || !!problem}
 						onClick={save}
 					>
 						Save organization
@@ -184,21 +213,24 @@ export function NewOrganizationPanel({
 						onChange={setName}
 						placeholder="Zenith Bank Plc"
 						required
+						error={name.trim() ? errors.name : undefined}
 					/>
 					<FieldRow>
 						<TextField
 							label="Contact person"
 							value={contact}
 							onChange={setContact}
-							placeholder="Travel desk"
+							placeholder="Adaeze Okoro, travel desk"
 							required
+							error={contact.trim() ? errors.contact : undefined}
 						/>
 						<TextField
 							label="Phone"
 							value={phone}
 							onChange={setPhone}
-							placeholder="+234 80…"
+							placeholder="+234 803 555 0192"
 							required
+							error={phone.trim() ? errors.phone : undefined}
 						/>
 					</FieldRow>
 					<TextField
@@ -206,6 +238,7 @@ export function NewOrganizationPanel({
 						value={email}
 						onChange={setEmail}
 						placeholder="accounts@company.com"
+						error={errors.email}
 					/>
 				</PanelSection>
 				<PanelSection title="Credit & billing">
@@ -215,13 +248,17 @@ export function NewOrganizationPanel({
 							value={limit}
 							onChange={setLimit}
 							required
+							placeholder="e.g. 1,000,000"
 							hint="Bookings stop when this is reached"
+							error={limit !== "" ? errors.limit : undefined}
 						/>
 						<MoneyField
 							label="Daily cap per room-night"
 							value={cap}
 							onChange={setCap}
+							placeholder="e.g. 45,000"
 							hint="Optional · guest pays anything above"
+							error={errors.cap}
 						/>
 					</FieldRow>
 					<FieldRow>
@@ -756,8 +793,17 @@ export function AgreementPanel({
 		}
 	}, [open, org]);
 	const raised = limit !== "" && limit > org.creditLimit;
+	const errors = orgErrors({
+		name: org.name,
+		contact,
+		phone,
+		email,
+		limit,
+		cap,
+	});
+	const problem = firstError(errors);
 	const save = () => {
-		if (limit === "") return;
+		if (limit === "" || problem) return;
 		const input: OrganizationInput = {
 			name: org.name,
 			contactName: contact,
@@ -792,7 +838,8 @@ export function AgreementPanel({
 			footerInfo={
 				<span className="flex items-center gap-2">
 					<ManagerMark />{" "}
-					{raised ? OWNER_LIMIT_NOTE : "Saved on the account straight away"}
+					{problem ??
+						(raised ? OWNER_LIMIT_NOTE : "Saved on the account straight away")}
 				</span>
 			}
 			footer={
@@ -802,7 +849,7 @@ export function AgreementPanel({
 					</Button>
 					<Button
 						className={btn.primary}
-						disabled={pending || limit === ""}
+						disabled={pending || !!problem}
 						onClick={save}
 					>
 						Save changes
@@ -817,10 +864,21 @@ export function AgreementPanel({
 							label="Contact person"
 							value={contact}
 							onChange={setContact}
+							error={errors.contact}
 						/>
-						<TextField label="Phone" value={phone} onChange={setPhone} />
+						<TextField
+							label="Phone"
+							value={phone}
+							onChange={setPhone}
+							error={errors.phone}
+						/>
 					</FieldRow>
-					<TextField label="Billing email" value={email} onChange={setEmail} />
+					<TextField
+						label="Billing email"
+						value={email}
+						onChange={setEmail}
+						error={errors.email}
+					/>
 				</PanelSection>
 				<PanelSection title="Credit & billing">
 					<FieldRow>
@@ -828,6 +886,7 @@ export function AgreementPanel({
 							label="Credit limit"
 							value={limit}
 							onChange={setLimit}
+							error={errors.limit}
 							hint={
 								raised
 									? "Higher than now · above what managers may set, it goes to the owner"
@@ -839,6 +898,7 @@ export function AgreementPanel({
 							value={cap}
 							onChange={setCap}
 							hint="Leave empty for none"
+							error={errors.cap}
 						/>
 					</FieldRow>
 					<FieldRow>

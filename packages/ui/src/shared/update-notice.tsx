@@ -11,8 +11,10 @@ import { toast } from "sonner";
  * the raw "not found" error into the notice wherever an action error is toasted, and callers can flag it.
  */
 const BUILD = process.env.NEXT_PUBLIC_BUILD_ID ?? "dev";
+// "An unexpected response was received from the server" is Next's answer when an action's request comes back as
+// something other than the action's result: a page from before a deploy, or a sign-in redirect. Reloading fixes both.
 const STALE =
-	/Server Action .* was not found|Failed to find Server Action|failed-to-find-server-action/i;
+	/Server Action .* was not found|Failed to find Server Action|failed-to-find-server-action|unexpected response was received from the server/i;
 
 let flag: (() => void) | null = null;
 
@@ -82,12 +84,11 @@ export function UpdateNotice() {
 		<div className="fixed inset-x-0 top-3 z-[60] mx-auto flex w-[min(640px,calc(100%-24px))] items-center gap-3 rounded-xl border border-brand/20 bg-card px-4 py-3 shadow-lg">
 			<RefreshCwIcon className="size-5 shrink-0 text-brand" />
 			<div className="min-w-0 flex-1 text-[13px]">
-				<p className="font-semibold text-ink">
-					A new version of Hospio360 is out
-				</p>
+				<p className="font-semibold text-ink">Reload Hospio360 to carry on</p>
 				<p className="text-ink-2">
-					Reload to keep working. Steps you already saved are kept; anything
-					typed on this screen since the last save is not.
+					A new version is out, or this page has been open a long time. Steps
+					you already saved are kept; anything typed on this screen since the
+					last save is not.
 				</p>
 			</div>
 			<button

@@ -13,7 +13,7 @@ export const COOKIES = {
 	hotel: "hms.hotel",
 } as const;
 
-function cookieOptions(expires: Date) {
+export function cookieOptions(expires: Date) {
 	return {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",

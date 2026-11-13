@@ -542,6 +542,7 @@ export const Booking = z.object({
 	checkInDate: z.string(),
 	checkOutDate: z.string(),
 	nights: z.number(),
+	expectedArrival: z.string().nullable().optional(),
 	adults: z.number(),
 	children: z.number(),
 	status: z.enum([
@@ -1066,7 +1067,9 @@ export const schema = createSchema({
 	"@get/identity/users/me": { output: envelope(Me) },
 	/** The caller's own details (docs/profile.md): only what is sent changes; email is not editable here. */
 	"@put/identity/users/me": {
-		input: z.object({ fullName: z.string(), phone: z.string(), language: z.string() }).partial(),
+		input: z
+			.object({ fullName: z.string(), phone: z.string(), language: z.string() })
+			.partial(),
 		output: envelope(Me),
 	},
 	"@delete/identity/users/me/photo": { output: envelope(Me) },
@@ -1302,6 +1305,7 @@ export const schema = createSchema({
 			checkOutDate: z.string(),
 			adults: z.number().optional(),
 			children: z.number().optional(),
+			expectedArrival: z.string().nullable().optional(),
 			priceKind: z.string().optional(),
 			specialRate: z.number().nullable().optional(),
 			paymentPlan: z.string().optional(),

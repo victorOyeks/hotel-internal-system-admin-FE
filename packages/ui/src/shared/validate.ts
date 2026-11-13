@@ -65,6 +65,28 @@ export function checkEmail(v: string, required = true) {
 export const phoneKey = (v: string) => digits(v).slice(-10);
 
 /**
+ * How many guests (adults, children) or how many a room sleeps: a whole number from `min` to `max`. Blank is
+ * "required" when `min` is above zero, else zero. Matches reservation-service's and property-service's checks.
+ */
+export function checkCount(v: string, what: string, min: number, max = 20) {
+	const t = v.trim();
+	if (!t) return min > 0 ? `Enter the number of ${what}` : undefined;
+	if (!/^\d+$/.test(t)) return `Enter the number of ${what} as a whole number`;
+	const n = Number(t);
+	if (n < min || n > max)
+		return `${capital(what)} must be between ${min} and ${max}`;
+	return undefined;
+}
+
+/** "15:30" from a time picker: the expected arrival. Required unless `required` is false. */
+export function checkArrival(v: string, required = true) {
+	const t = v.trim();
+	if (!t) return required ? "Enter the expected arrival time" : undefined;
+	if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) return "Enter a time like 15:30";
+	return undefined;
+}
+
+/**
  * A CAC registration number: RC (companies), BN (business names) or IT (incorporated trustees) and 1–8 digits, written
  * "RC 1873402", "RC1873402" or just "1873402". Optional.
  */
