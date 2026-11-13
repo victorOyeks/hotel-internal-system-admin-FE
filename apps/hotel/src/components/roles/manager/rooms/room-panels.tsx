@@ -437,6 +437,7 @@ export function AddRoomPanel({
 	room,
 	types,
 	areas,
+	floors = [],
 	onClose,
 	onSaved,
 }: {
@@ -444,13 +445,22 @@ export function AddRoomPanel({
 	room: RoomRow | null;
 	types: RoomTypeRow[];
 	areas: AreaRow[];
+	/** Floors the hotel's rooms are already on without a floor/wing record (set at onboarding as text, like "Floor 1"). */
+	floors?: string[];
 	onClose: () => void;
 	onSaved: (room: RoomRow) => void;
 }) {
 	const { run, pending } = useAction();
 	const adding = useAction();
+	// Those floors are offered too, as "floor:<name>": choosing one saves the room on that floor with no area record.
+	const floorsKey = floors.join("|");
+	const firstChoice = (name?: string) =>
+		(name ? areas.find((a) => a.name === name)?.id : undefined) ??
+		(name && floors.includes(name) ? `floor:${name}` : undefined) ??
+		areas[0]?.id ??
+		(floors[0] ? `floor:${floors[0]}` : "");
 	const [number, setNumber] = useState("");
-	const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
+	const [areaId, setAreaId] = useState(() => firstChoice());
 	// Floors or wings added here before the page reloads its list; a hotel set up without any could not add one.
 	const [added, setAdded] = useState<AreaRow[]>([]);
 	const [newArea, setNewArea] = useState<string | null>(null);
@@ -462,17 +472,19 @@ export function AddRoomPanel({
 	const [note, setNote] = useState("");
 	useEffect(() => {
 		setNumber(room?.number ?? "");
-		setAreaId(
-			room?.areaId ??
-				areas.find((a) => a.name === room?.floor)?.id ??
-				areas[0]?.id ??
-				"",
-		);
+		setAreaId(room?.areaId ?? firstChoice(room?.floor));
 		setTypeId(room?.typeId ?? types[0]?.id ?? "");
 		setNote(room?.note ?? "");
-	}, [room, types, areas]);
+	}, [room, types, areas, floorsKey]);
 	const type = types.find((t) => t.id === typeId);
 	const area = allAreas.find((a) => a.id === areaId);
+	const textFloor = areaId.startsWith("floor:") ? areaId.slice(6) : undefined;
+	const floorChoices = [
+		...allAreas.map((a) => ({ value: a.id, label: a.name })),
+		...floors
+			.filter((f) => !allAreas.some((a) => a.name === f))
+			.map((f) => ({ value: `floor:${f}`, label: f })),
+	];
 	const saveArea = () => {
 		const name = (newArea ?? "").trim();
 		if (!name) return;
@@ -516,8 +528,8 @@ export function AddRoomPanel({
 										{
 											number,
 											roomTypeId: typeId,
-											areaId: areaId || undefined,
-											floor: area?.name,
+											areaId: textFloor ? undefined : areaId || undefined,
+											floor: textFloor ?? area?.name,
 											notes: note || undefined,
 										},
 										room?.id,
@@ -525,8 +537,8 @@ export function AddRoomPanel({
 										{
 											id: room?.id ?? `room-${number}`,
 											number,
-											floor: area?.name ?? room?.floor ?? "",
-											areaId: areaId || undefined,
+											floor: textFloor ?? area?.name ?? room?.floor ?? "",
+											areaId: textFloor ? undefined : areaId || undefined,
 											typeId,
 											typeName: type.name,
 											price: type.basePrice,
@@ -572,7 +584,7 @@ export function AddRoomPanel({
 							value={areaId}
 							onChange={setAreaId}
 							empty="No floors or wings yet"
-							options={allAreas.map((a) => ({ value: a.id, label: a.name }))}
+							options={floorChoices}
 						/>
 						{newArea === null && (
 							<button
