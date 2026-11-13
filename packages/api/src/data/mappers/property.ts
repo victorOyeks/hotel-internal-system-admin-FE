@@ -77,5 +77,6 @@ export function toRoomRow(
 		outOfOrderReason: r.outOfOrderReason ?? undefined,
 		outOfOrderUntil: r.outOfOrderUntil ?? undefined,
 		note: r.notes ?? undefined,
+		boardNote: r.notes ?? undefined,
 	};
 }

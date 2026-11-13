@@ -13,6 +13,7 @@ import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
 import { rushTask, setRoomStatus } from "@hospio/api/actions/housekeeping";
+import { setRoomNote } from "@hospio/api/actions/property";
 import { useAction } from "@hospio/api/actions/use-action";
 import {
 	type CleaningTaskRow,
@@ -109,6 +110,10 @@ export function RoomBoard({
 		);
 		return open.find((t) => t.kind === "DEPARTURE") ?? open[0];
 	};
+	// The note box starts with the room's own note, so it can be changed or emptied (DEF-053).
+	const roomId = room?.id;
+	const savedNote = room?.boardNote ?? "";
+	useEffect(() => setNote(savedNote), [roomId, savedNote]);
 	const setState = (id: string, state: RoomState) =>
 		setRooms((xs) => xs.map((r) => (r.id === id ? { ...r, state } : r)));
 
@@ -312,7 +317,9 @@ export function RoomBoard({
 									: ""}
 							</Note>
 						)}
-						{room.note && <Note tone="info">{room.note}</Note>}
+						{room.note && room.note !== room.boardNote && (
+							<Note tone="info">{room.note}</Note>
+						)}
 						{canEdit && (
 							<PanelSection title="Note for housekeeping">
 								<TextareaField
@@ -321,29 +328,35 @@ export function RoomBoard({
 									onChange={setNote}
 									placeholder="Extra pillows, VIP, allergy…"
 									rows={2}
+									hint="Shows on the room board. Empty the box and save to remove it."
 								/>
 								<button
 									type="button"
 									className={`${btn.secondary} self-start`}
-									disabled={
-										!note ||
-										pending ||
-										(room.state !== "dirty" && room.state !== "ready")
-									}
+									disabled={pending || note.trim() === savedNote.trim()}
 									onClick={() =>
 										void run(
-											() =>
-												setRoomStatus(
-													room.id,
-													room.state === "dirty" ? "DIRTY" : "CLEAN",
-													note,
+											() => setRoomNote(room.id, note),
+											note.trim()
+												? `Note saved on ${room.number}`
+												: `Note removed from ${room.number}`,
+											(saved) =>
+												setRooms((xs) =>
+													xs.map((r) =>
+														r.id === room.id
+															? {
+																	...r,
+																	boardNote: saved?.note,
+																	note:
+																		r.state === "held" ? r.note : saved?.note,
+																}
+															: r,
+													),
 												),
-											`Note added to ${room.number}`,
-											() => setNote(""),
 										)
 									}
 								>
-									Add note
+									{note.trim() || !savedNote ? "Save note" : "Remove note"}
 								</button>
 							</PanelSection>
 						)}
