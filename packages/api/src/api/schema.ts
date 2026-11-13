@@ -1513,6 +1513,10 @@ export const schema = createSchema({
 		output: envelope(Room),
 	},
 	"@post/property/rooms/:id/back-in-service": { output: envelope(Room) },
+	"@put/property/rooms/:id/note": {
+		input: z.object({ note: z.string().nullable() }),
+		output: envelope(Room),
+	},
 	"@get/property/areas": { output: envelope(z.array(Area)) },
 	"@post/property/areas": {
 		input: z.object({

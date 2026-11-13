@@ -440,3 +440,27 @@ export async function deleteRoom(
 	revalidateRooms();
 	return { ok: true, data: null };
 }
+
+/** Rooms → "Note for housekeeping": the note on the room board (the same one as Edit room). Blank removes it (DEF-053). */
+export async function setRoomNote(
+	id: string,
+	note: string,
+): Promise<ActionResult<{ note?: string }>> {
+	const text = note.trim();
+	if (!live("property")) {
+		await demoDelay(300);
+		return { ok: true, data: { note: text || undefined } };
+	}
+	const { data, error } = await api("@put/property/rooms/:id/note", {
+		...(await withSession()),
+		params: { id },
+		body: { note: text || null },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The note could not be saved"),
+		};
+	revalidatePath("/", "layout");
+	return { ok: true, data: { note: data.data.notes ?? undefined } };
+}

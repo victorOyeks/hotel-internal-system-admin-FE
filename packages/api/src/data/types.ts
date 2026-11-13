@@ -148,6 +148,8 @@ export type RoomRow = {
 	guestName?: string;
 	checkOut?: string;
 	note?: string;
+	/** The room's own note (Edit room, or the front desk's "Note for housekeeping"); `note` may show "Arriving today" instead. */
+	boardNote?: string;
 	/** A held room: the booking arriving today it is kept for. */
 	heldFor?: Id;
 	outOfOrderReason?: string;
