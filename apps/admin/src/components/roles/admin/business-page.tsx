@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	pauseAll,
 	resendInvite,
@@ -123,8 +123,11 @@ export function BusinessPage({
 }) {
 	const { run, pending } = useAction();
 	const [business, setBusiness] = useState(initial);
+	useEffect(() => setBusiness(initial), [initial]);
 	const [users, setUsers] = useState(initialUsers);
+	useEffect(() => setUsers(initialUsers), [initialUsers]);
 	const [changes, setChanges] = useState(initialChanges);
+	useEffect(() => setChanges(initialChanges), [initialChanges]);
 	const [action, setAction] = useQueryState("action");
 	const [secret, setSecret] = useState<{
 		user: PortalUserRow;

@@ -99,6 +99,7 @@ export function MarketersScreen({
 	inviterName: string;
 }) {
 	const [marketers, setMarketers] = useState(initial);
+	useEffect(() => setMarketers(initial), [initial]);
 	const [tab, setTab] = useFilterParam("tab");
 	const [status, setStatus] = useFilterParam("status");
 	const [month, setMonth] = useFilterParam("month");

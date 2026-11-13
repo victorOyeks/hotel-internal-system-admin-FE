@@ -3,7 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { KeyRoundIcon, ShieldCheckIcon, UserPlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	changeAccess,
 	createUser,
@@ -64,6 +64,7 @@ export function TeamScreen({
 	inviterName: string;
 }) {
 	const [users, setUsers] = useState(initial);
+	useEffect(() => setUsers(initial), [initial]);
 	const [isNew, setNew] = useQueryState("new");
 	const [edit, setEdit] = useState<TeamMemberRow | null>(null);
 	const [editRole, setEditRole] = useState<AdminRole>("SUPPORT");

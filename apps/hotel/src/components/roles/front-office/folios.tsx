@@ -36,6 +36,7 @@ export function folioPill(f: FolioRow) {
 /** Front office 4.1–4.6 · Guest folios. `isManager` unlocks void/discount; others send them to the manager. */
 export function FoliosScreen({ folios: initial, terminals, isManager = false, title = "Folios" }: { folios: FolioRow[]; terminals: TerminalRow[]; isManager?: boolean; title?: string }) {
 	const [folios, setFolios] = useState(initial);
+	useEffect(() => setFolios(initial), [initial]);
 	const [openId, setOpenId] = useQueryState("open");
 	const [tab, setTab] = useQueryState("tab");
 	const [search, setSearch] = useState("");

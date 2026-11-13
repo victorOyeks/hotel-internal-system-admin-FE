@@ -2,7 +2,7 @@
 
 import { ActivityIcon, EyeIcon, Undo2Icon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { undoChange } from "@hospio/api/actions/platform-admin";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
@@ -42,6 +42,7 @@ export function ActivityTab({
 	canEdit: boolean;
 }) {
 	const [changes, setChanges] = useState(initialChanges);
+	useEffect(() => setChanges(initialChanges), [initialChanges]);
 	const [undo, setUndo] = useState<AdminChangeRow | null>(null);
 	const { run, pending } = useAction();
 	const now = Date.now();

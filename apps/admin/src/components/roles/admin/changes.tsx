@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { BookOpenIcon, Undo2Icon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { undoChange } from "@hospio/api/actions/platform-admin";
 import { useAction } from "@hospio/api/actions/use-action";
 import type {
@@ -42,6 +42,7 @@ export function ChangesScreen({
 	activity: Paged<AdminActivityRow>;
 }) {
 	const [changes, setChanges] = useState(initial.content);
+	useEffect(() => setChanges(initial.content), [initial.content]);
 	const [tab, setTab] = useFilterParam("tab");
 	const [biz, setBiz] = useFilterParam("businessId");
 	const [, setPage] = usePageParam();
