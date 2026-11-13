@@ -17,6 +17,7 @@ import { naira, nairaShort, plural } from "@hospio/ui/shared/format";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { SectionCard } from "@hospio/ui/shared/section-card";
 import { cn } from "@hospio/ui/utils";
+import { GuestMessagePlans } from "../guest-messages";
 import { BusinessTabHeader } from "./nav";
 
 /** Business · one hotel's day: GET /platform/admin/businesses/{id}/hotels/{hotelId}/overview. */
@@ -123,6 +124,7 @@ export function HotelOverviewTab({
 					</SectionCard>
 				</>
 			)}
+			{hotel && <GuestMessagePlans businessId={businessId} hotels={[{ id: hotel.id, name }]} />}
 		</>
 	);
 }

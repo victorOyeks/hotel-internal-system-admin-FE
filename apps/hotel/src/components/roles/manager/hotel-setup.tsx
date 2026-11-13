@@ -48,6 +48,7 @@ import type {
 	StoreRow,
 } from "@hospio/api/data/types";
 import { SharedDevicesSection } from "./hotel-setup-devices";
+import { GuestMessagesSection } from "./hotel-setup-guest-messages";
 import { MinibarPricesSection } from "./hotel-setup-minibar";
 import { RestaurantsSection } from "./hotel-setup-restaurants";
 import { cn } from "@hospio/ui/utils";
@@ -151,6 +152,8 @@ export function HotelSetupScreen({
 				</nav>
 				{section.key === "devices" ? (
 					<SharedDevicesSection key={section.key} hotelId={hotelId} />
+				) : section.key === "guest-messages" ? (
+					<GuestMessagesSection key={section.key} isOwner={isOwner} />
 				) : section.key === "restaurants" ? (
 					<RestaurantsSection
 						key={section.key}

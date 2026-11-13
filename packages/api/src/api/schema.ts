@@ -1018,6 +1018,92 @@ export const Notification = z.object({
 	createdAt: z.string(),
 });
 
+/** Guest messages as a paid service (hospio-backend docs/guest-message-billing.md). */
+const num = z.union([z.number(), z.string()]).transform((v) => Number(v));
+export const CommPrices = z.object({ email: num, sms: num, whatsapp: num });
+export const CommUsage = z.object({
+	emailCount: z.number(),
+	smsCount: z.number(),
+	whatsappCount: z.number(),
+	emailAmount: num,
+	smsAmount: num,
+	whatsappAmount: num,
+	total: num,
+});
+export const CommPlan = z.object({
+	hotelId: z.string(),
+	hotelName: z.string().nullable(),
+	enabled: z.boolean(),
+	prices: CommPrices,
+	customPrices: z.boolean(),
+	defaults: CommPrices,
+	suspended: z.boolean(),
+	suspendedReason: z.string().nullable(),
+	suspendedAt: z.string().nullable(),
+	changedBy: z.string().nullable(),
+	changedAt: z.string().nullable(),
+	month: z.string(),
+	thisMonth: CommUsage,
+	outstanding: num,
+	openInvoices: z.number(),
+	onlinePayment: z.boolean(),
+});
+export const CommInvoice = z.object({
+	id: z.string(),
+	businessId: z.string().nullable().optional(),
+	hotelId: z.string(),
+	number: z.string(),
+	month: z.string(),
+	hotelName: z.string().nullable(),
+	emailCount: z.number(),
+	smsCount: z.number(),
+	whatsappCount: z.number(),
+	emailAmount: num,
+	smsAmount: num,
+	whatsappAmount: num,
+	totalAmount: num,
+	status: z.string(),
+	issuedAt: z.string(),
+	dueOn: z.string(),
+	paidAt: z.string().nullable(),
+	paidVia: z.string().nullable(),
+	paymentReference: z.string().nullable(),
+	paidByName: z.string().nullable(),
+	note: z.string().nullable(),
+});
+export const CommLine = z.object({
+	kind: z.string(),
+	label: z.string(),
+	channel: z.string().nullable(),
+	count: z.number(),
+	unitPrice: num,
+	amount: num,
+});
+export const CommMessage = z.object({
+	id: z.string(),
+	at: z.string(),
+	kind: z.string().nullable(),
+	label: z.string().nullable(),
+	channel: z.string(),
+	sentVia: z.string().nullable(),
+	to: z.string(),
+	subject: z.string().nullable(),
+	status: z.string(),
+	price: num.nullable(),
+});
+const pageOf = <T extends z.ZodTypeAny>(row: T) =>
+	z.object({
+		content: z.array(row),
+		number: z.number(),
+		size: z.number(),
+		totalElements: z.number(),
+		totalPages: z.number(),
+	});
+const paging = z
+	.object({ page: z.number(), size: z.number() })
+	.partial()
+	.optional();
+
 export const schema = createSchema({
 	...ownerRoutes,
 	...mlRoutes,
@@ -1621,6 +1707,95 @@ export const schema = createSchema({
 	"@get/messaging/notifications": {
 		query: pageParams.optional(),
 		output: envelope(pagedOf(Notification)),
+	},
+	"@get/messaging/billing/messages": { output: envelope(CommPlan) },
+	"@put/messaging/billing/messages": {
+		input: z.object({ enabled: z.boolean() }),
+		output: envelope(CommPlan),
+	},
+	"@get/messaging/billing/messages/this-month": {
+		query: paging,
+		output: envelope(pageOf(CommMessage)),
+	},
+	"@get/messaging/billing/messages/invoices": {
+		query: paging,
+		output: envelope(pageOf(CommInvoice)),
+	},
+	"@get/messaging/billing/messages/invoices/:id": {
+		output: envelope(
+			z.object({ invoice: CommInvoice, lines: z.array(CommLine) }),
+		),
+	},
+	"@get/messaging/billing/messages/invoices/:id/messages": {
+		query: paging,
+		output: envelope(pageOf(CommMessage)),
+	},
+	"@post/messaging/billing/messages/invoices/:id/pay": {
+		input: z.object({ returnUrl: z.string().optional() }),
+		output: envelope(
+			z.object({ authorizationUrl: z.string(), reference: z.string() }),
+		),
+	},
+	"@post/messaging/billing/messages/payments/:reference/confirm": {
+		output: envelope(CommInvoice),
+	},
+	"@get/messaging/billing/messages/admin/prices": {
+		output: envelope(CommPrices),
+	},
+	"@put/messaging/billing/messages/admin/prices": {
+		input: z.object({
+			email: z.number(),
+			sms: z.number(),
+			whatsapp: z.number(),
+		}),
+		output: envelope(CommPrices),
+	},
+	"@get/messaging/billing/messages/admin/plans": {
+		query: z.object({ hotelIds: z.string() }),
+		output: envelope(z.array(CommPlan)),
+	},
+	"@put/messaging/billing/messages/admin/plans/:hotelId": {
+		input: z.object({
+			businessId: z.string(),
+			enabled: z.boolean().optional(),
+			email: z.number().nullable().optional(),
+			sms: z.number().nullable().optional(),
+			whatsapp: z.number().nullable().optional(),
+			useDefaults: z.boolean().optional(),
+		}),
+		output: envelope(CommPlan),
+	},
+	"@post/messaging/billing/messages/admin/plans/:hotelId/suspension": {
+		input: z.object({ suspended: z.boolean(), reason: z.string().optional() }),
+		output: envelope(CommPlan),
+	},
+	"@get/messaging/billing/messages/admin/invoices": {
+		query: z
+			.object({
+				status: z.string(),
+				month: z.string(),
+				hotelId: z.string(),
+				page: z.number(),
+				size: z.number(),
+			})
+			.partial()
+			.optional(),
+		output: envelope(pageOf(CommInvoice)),
+	},
+	"@post/messaging/billing/messages/admin/invoices/issue": {
+		input: z.object({
+			month: z.string().optional(),
+			hotelId: z.string().optional(),
+			businessId: z.string().optional(),
+		}),
+		output: envelope(z.array(CommInvoice)),
+	},
+	"@post/messaging/billing/messages/admin/invoices/:id/mark-paid": {
+		input: z.object({
+			reference: z.string().optional(),
+			note: z.string().optional(),
+		}),
+		output: envelope(CommInvoice),
 	},
 	"@get/messaging/channels": {
 		output: envelope(

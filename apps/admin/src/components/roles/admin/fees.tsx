@@ -51,6 +51,7 @@ import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { Modal } from "@hospio/ui/shared/modal";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
+import { GuestMessageBilling } from "./guest-messages";
 import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { FilterSelect, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
@@ -340,6 +341,7 @@ export function FeesScreen({
 				defaultMonth={month || thisMonth()}
 				onDone={refresh}
 			/>
+			{money && <GuestMessageBilling />}
 		</>
 	);
 }

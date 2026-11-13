@@ -6,6 +6,7 @@ import type { AdminOnboardingStep } from "@hospio/api/types";
 import { TextareaField } from "@hospio/ui/shared/field";
 import { ProgressBar } from "@hospio/ui/shared/progress-bar";
 import { cn } from "@hospio/ui/utils";
+import { GuestMessagePlans } from "../guest-messages";
 import type { WizardCtx } from "./wizard";
 import {
 	nextStep,
@@ -219,6 +220,12 @@ export function GoLiveStep({ ctx }: { ctx: WizardCtx }) {
 					placeholder="Training Thu 2 Oct, 10am at the Wuse hotel · taxes checked with the accountant"
 				/>
 			</StepCard>
+			<GuestMessagePlans
+				businessId={ctx.business.id}
+				hotels={ctx.hotels.map((h) => ({ id: h.id, name: h.name }))}
+				title="Guest messages · opt in?"
+				subtitle="Ask the owner: booking emails, SMS and WhatsApp to guests are a paid service, billed monthly per hotel. Switch on the hotels that want it."
+			/>
 		</StepFrame>
 	);
 }

@@ -8,21 +8,64 @@ export async function loadSetup() {
 	// "Restaurants & tables" follows "Restaurant & bar" (the demo's setup does not carry it).
 	let base = setup.some((s) => s.key === "restaurants")
 		? setup
-		: setup.flatMap((s) => (s.key === "outlets" ? [s, { key: "restaurants", title: "Restaurants & tables", description: "Your kitchens and bars, the store each draws from, and their tables", icon: "chef", fields: [] }] : [s]));
+		: setup.flatMap((s) =>
+				s.key === "outlets"
+					? [
+							s,
+							{
+								key: "restaurants",
+								title: "Restaurants & tables",
+								description:
+									"Your kitchens and bars, the store each draws from, and their tables",
+								icon: "chef",
+								fields: [],
+							},
+						]
+					: [s],
+			);
 	// Shared devices (docs/shared-devices.md in hospio-backend): the tablets staff switch on with their PIN.
-	const devices = { key: "devices", title: "Shared devices", description: "Tablets your staff switch on with their PIN: names, auto-lock and removal", icon: "tablet", fields: [] };
+	const devices = {
+		key: "devices",
+		title: "Shared devices",
+		description:
+			"Tablets your staff switch on with their PIN: names, auto-lock and removal",
+		icon: "tablet",
+		fields: [],
+	};
 	if (!base.some((s) => s.key === "devices")) base = [...base, devices];
+	// Guest messages as a paid service (hospio-backend docs/guest-message-billing.md): switch it on, prices, usage, invoices.
+	const guestMessages = {
+		key: "guest-messages",
+		title: "Guest messages",
+		description:
+			"Emails, SMS and WhatsApp to your guests: switch on, prices, usage and invoices",
+		icon: "message",
+		fields: [],
+	};
+	if (!base.some((s) => s.key === "guest-messages"))
+		base = [...base, guestMessages];
 	// Live, every section (brand, POS, reasons, taxes included) comes from hotel-config; the sample sections only fill the
 	// demo's setup, never a live one (a failed load must not show sample values as if they were the hotel's).
-	const extras = live("hotel-config") ? [] : demoSetupExtras.filter((e) => !base.some((b) => b.key === e.key));
+	const extras = live("hotel-config")
+		? []
+		: demoSetupExtras.filter((e) => !base.some((b) => b.key === e.key));
 	// Brand first, hotel sections, then the owner-only ones at the end.
 	const brand = extras.filter((e) => e.key === "brand");
 	const rest = extras.filter((e) => e.key !== "brand");
-	return [...brand, ...base.filter((s) => !s.ownerOnly), ...rest.filter((s) => !s.ownerOnly), ...base.filter((s) => s.ownerOnly), ...rest.filter((s) => s.ownerOnly)];
+	return [
+		...brand,
+		...base.filter((s) => !s.ownerOnly),
+		...rest.filter((s) => !s.ownerOnly),
+		...base.filter((s) => s.ownerOnly),
+		...rest.filter((s) => s.ownerOnly),
+	];
 }
 
 /** The outlets with their tables, and the stores an outlet can draw from, for Restaurants & tables. */
 export async function loadOutlets() {
-	const [outlets, stores] = await Promise.all([data.outlets.list(), data.inventory.stores()]);
+	const [outlets, stores] = await Promise.all([
+		data.outlets.list(),
+		data.inventory.stores(),
+	]);
 	return { outlets, stores };
 }
