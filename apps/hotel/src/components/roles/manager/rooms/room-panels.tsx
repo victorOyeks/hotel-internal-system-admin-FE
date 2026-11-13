@@ -554,6 +554,11 @@ export function AddRoomPanel({
 								(saved) => {
 									onSaved({
 										...saved,
+										// A server action's result drops undefined fields: name the ones that can be cleared, or the
+										// old value would stay on screen until a reload (DEF-053).
+										note: saved.note ?? undefined,
+										boardNote: saved.boardNote ?? undefined,
+										areaId: saved.areaId ?? undefined,
 										guestName: room?.guestName,
 										checkOut: room?.checkOut,
 										attendant: room?.attendant,
