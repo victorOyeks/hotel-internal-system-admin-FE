@@ -24,12 +24,12 @@ export default async function Page({
 	const view =
 		tab && (BOOKING_TABS as readonly string[]).includes(tab) ? tab : "arrivals";
 	const { page, q, sort } = listQueryFrom(sp);
-	const { bookings, contexts } = await data.owner.bookings({
+	const { bookings, hotels } = await data.owner.bookings({
 		view,
 		page,
 		q,
 		sort,
 		hotelId: urlParam(sp, "hotel"),
 	});
-	return <OwnerBookings bookings={bookings} contexts={contexts} />;
+	return <OwnerBookings bookings={bookings} hotels={hotels} />;
 }

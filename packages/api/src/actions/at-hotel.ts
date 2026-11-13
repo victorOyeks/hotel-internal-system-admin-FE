@@ -2,7 +2,7 @@
 
 import { atHotel } from "@hospio/api/api/server";
 import { getHotels } from "@hospio/api/dal";
-import { folioForBooking, postCharge } from "./folio";
+import { folioById, folioForBooking, postCharge } from "./folio";
 import { fillTemplate, messageTemplates } from "./guest-messages";
 import { messageGuest } from "./owner";
 import { recordPayment } from "./payment";
@@ -26,6 +26,7 @@ const SCOPED = {
 	changeBookingDates,
 	cancelBooking,
 	folioForBooking,
+	folioById,
 	postCharge,
 	recordPayment,
 	messageGuest,

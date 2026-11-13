@@ -18,7 +18,7 @@ import { btn } from "@hospio/ui/shared/ui";
 import { approveRefund, declineRefund, linkTerminal, openDispute, reassignTerminal, recordPayment, removeTerminal, renameTerminal, requestProviderAccount, requestRefund, resendReceipt, resolveDispute, retryPayment, setTerminalStatus, type TerminalRole, verifyPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
-import type { DisputeRow, FolioRow, PaymentMethod, PaymentRow, RefundRow, TerminalRow } from "@hospio/api/data/types";
+import type { DisputeRow, FolioSummary, PaymentMethod, PaymentRow, RefundRow, TerminalRow } from "@hospio/api/data/types";
 import { methodLabel, paymentTone } from "./payments-screen";
 
 export function PaymentPanel({ payment: p, onClose, onRefund, onDispute, onStatus }: { payment: PaymentRow | null; onClose: () => void; onRefund: (p: PaymentRow) => void; onDispute: (p: PaymentRow) => void; onStatus: (id: string, status: PaymentRow["status"]) => void }) {
@@ -203,7 +203,7 @@ export function DisputePanel({ dispute, payment, isNew, onClose, onSaved }: { di
 	);
 }
 
-export function NewPaymentPanel({ open, folios, preselect, onClose, onSaved }: { open: boolean; folios: FolioRow[]; preselect: string | null; onClose: () => void; onSaved: (p: PaymentRow) => void }) {
+export function NewPaymentPanel({ open, folios, preselect, onClose, onSaved }: { open: boolean; folios: FolioSummary[]; preselect: string | null; onClose: () => void; onSaved: (p: PaymentRow) => void }) {
 	const { run, pending } = useAction();
 	const [folioId, setFolioId] = useState("");
 	const [payer, setPayer] = useState("");

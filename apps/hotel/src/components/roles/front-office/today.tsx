@@ -22,7 +22,7 @@ import { btn } from "@hospio/ui/shared/ui";
 import type { Me } from "@hospio/api/api/schema";
 import type { bookingBuckets } from "@hospio/api/data";
 import {
-	type FolioRow,
+	type FolioSummary,
 	occupancyLabel,
 	pastDeparture,
 	type RoomRow,
@@ -77,7 +77,7 @@ export function FrontDeskToday({
 	hotelName: string;
 	buckets: ReturnType<typeof bookingBuckets>;
 	rooms: RoomRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	till: TillRow | null;
 }) {

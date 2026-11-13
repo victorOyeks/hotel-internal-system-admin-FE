@@ -6,7 +6,7 @@ import { Note } from "@hospio/ui/shared/detail-list";
 import { useHotelActions } from "@hospio/api/actions/hotel-scope";
 import type {
 	BookingRow,
-	FolioRow,
+	FolioSummary,
 	RoomRow,
 	TerminalRow,
 } from "@hospio/api/data/types";
@@ -43,7 +43,7 @@ export function useSaveFlow({
 	onClose,
 }: {
 	terminals: TerminalRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	onCreated: (b: BookingRow) => void;
 	onPaid: (bookingId: string, payment: TakenPayment) => void;
 	onCheckedIn: (bookingId: string, changes: Partial<BookingRow>) => void;

@@ -29,7 +29,7 @@ import { verifyPayment } from "@hospio/api/actions/payment";
 import { emailReceipt } from "@hospio/api/actions/ml";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
-	FolioRow,
+	FolioSummary,
 	PaymentMethod,
 	PaymentStatus,
 	TerminalRow,
@@ -89,7 +89,7 @@ export type PaymentStepsView = {
 export type PaymentStepsOptions = {
 	/** Who is paying and how much. Without it the steps start on "who" (Take a payment from anywhere). */
 	target?: PaymentTarget | null;
-	folios?: FolioRow[];
+	folios?: FolioSummary[];
 	terminals?: TerminalRow[];
 	/** A payment was recorded (any status). Fires once, before the "done" step. */
 	onDone?: (payment: TakenPayment) => void;
@@ -953,7 +953,7 @@ export function TakePaymentPanel({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	target?: PaymentTarget | null;
-	folios?: FolioRow[];
+	folios?: FolioSummary[];
 	terminals?: TerminalRow[];
 	onDone?: (payment: TakenPayment) => void;
 }) {

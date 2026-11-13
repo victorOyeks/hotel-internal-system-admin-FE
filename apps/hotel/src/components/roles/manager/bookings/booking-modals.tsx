@@ -37,6 +37,7 @@ import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
 	BookingRow,
 	FolioRow,
+	FolioSummary,
 	RoomRow,
 	TerminalRow,
 } from "@hospio/api/data/types";
@@ -77,8 +78,8 @@ export function BookingModals({
 	booking: BookingRow | null;
 	action: BookingAction | null;
 	rooms: RoomRow[];
-	folio: FolioRow | null;
-	folios: FolioRow[];
+	folio: FolioSummary | null;
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onClose: () => void;
 	onPatch: (id: string, changes: Partial<BookingRow>) => void;
@@ -156,7 +157,7 @@ function CheckInPanel({
 }: {
 	b: BookingRow;
 	rooms: RoomRow[];
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onClose: () => void;
 	onPatch: (id: string, c: Partial<BookingRow>) => void;
@@ -424,8 +425,9 @@ function CheckOutPanel({
 	onPaid,
 }: {
 	b: BookingRow;
-	folio: FolioRow | null;
-	folios: FolioRow[];
+	/** The list's copy (no lines) until the stay's folio is read on open. */
+	folio: FolioSummary | null;
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onPos: number;
 	onClose: () => void;
@@ -434,7 +436,9 @@ function CheckOutPanel({
 }) {
 	const { run, pending } = useAction();
 	const { checkOut, folioForBooking, postCharge } = useHotelActions();
-	const [folio, setFolio] = useState<FolioRow | null>(loadedFolio);
+	const [folio, setFolio] = useState<FolioSummary | FolioRow | null>(
+		loadedFolio,
+	);
 	// Approved here since the folio above was read; card payments still with the POS.
 	const [taken, setTaken] = useState(0);
 	const [held, setHeld] = useState(0);
@@ -487,7 +491,8 @@ function CheckOutPanel({
 				amount: fee,
 				category: "Late check-out",
 			},
-			folio,
+			// What the demo echoes back; the live service answers with the folio as it is.
+			{ lines: [], notes: [], ...folio },
 		);
 		setPosting(false);
 		if (!r.ok) {
@@ -724,7 +729,7 @@ export function RecordPaymentPanel({
 	onPaid,
 }: {
 	b: BookingRow;
-	folios: FolioRow[];
+	folios: FolioSummary[];
 	terminals: TerminalRow[];
 	onClose: () => void;
 	onPaid: (bookingId: string, p: TakenPayment) => void;

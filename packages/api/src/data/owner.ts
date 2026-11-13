@@ -33,7 +33,6 @@ import type {
 	DepartmentLive,
 	OrganizationRow,
 	OwnerChangeRow,
-	OwnerHotelContext,
 	OwnerHotelRow,
 	OwnerStaffRow,
 	OwnerThreadMessage,
@@ -214,73 +213,36 @@ export const ownerData = {
 	/**
 	 * One page of every hotel's bookings (one business-wide call; `hotelId` narrows to a hotel), newest stay first, with
 	 * the view counts and the money over the whole range (so "All hotels" is the sum of the hotels), each row tagged
-	 * with its hotel; and each hotel's rooms, open folios, terminals, accounts and card payments still with the POS for
-	 * the panels (each bounded).
+	 * with its hotel and company stays named. The panels' rooms, folios, terminals, accounts and POS payments are read
+	 * for the hotel a panel opens at (actions/booking-context), not for every hotel on every page.
 	 */
 	bookings: async (
 		q: BookingQuery = {},
 	): Promise<{
 		bookings: PageResult<BookingRow & AtHotel>;
-		contexts: OwnerHotelContext[];
+		hotels: AtHotel[];
 	}> => {
 		const data = await seam();
 		const hotels = await hotelsOf();
 		const names = new Map(hotels.map((h) => [h.id, h.name]));
-		const [page, contexts] = await Promise.all([
-			businessWide(() => data.bookings.page(q)),
-			Promise.all(
-				hotels.map((h) =>
-					atHotel(h.id, async () => {
-						const [
-							rooms,
-							types,
-							folios,
-							organizations,
-							terminals,
-							pendingOnPos,
-						] = await Promise.all([
-							data.rooms.list(),
-							data.rooms.types(),
-							data.folios.list(),
-							data.organizations.forBooking(),
-							data.payments.terminals(h.id),
-							data.payments.pendingOnPos(),
-						]);
-						return {
-							hotelId: h.id,
-							hotelName: h.name,
-							rooms,
-							types,
-							folios,
-							guests: [],
-							organizations,
-							terminals,
-							pendingOnPos,
-						} satisfies OwnerHotelContext;
-					}),
-				),
-			),
-		]);
-		const orgs = contexts.flatMap((c) => c.organizations);
+		const page = await businessWide(() => data.bookings.page(q));
+		const rows = await data.bookings.named(page.data.content);
 		return {
 			bookings: {
 				...page,
 				data: {
 					...page.data,
-					content: page.data.content.map((b) => {
+					content: rows.map((b) => {
 						const hotelId = b.hotelId ?? "";
 						return {
 							...b,
-							organizationName:
-								b.organizationName ??
-								orgs.find((o) => o.id === b.organizationId)?.name,
 							hotelId,
 							hotelName: names.get(hotelId) ?? "Hotel",
 						};
 					}),
 				},
 			} as PageResult<BookingRow & AtHotel>,
-			contexts,
+			hotels: hotels.map((h) => ({ hotelId: h.id, hotelName: h.name })),
 		};
 	},
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@hospio/api/actions";
 import { api, errorMessage } from "@hospio/api/api/client";
 import { withSession } from "@hospio/api/api/server";
+import { data as seam } from "@hospio/api/data";
 import { live } from "@hospio/api/data/live";
 import { toFolioRow } from "@hospio/api/data/mappers/reservation";
 import type { Delivery } from "@hospio/api/api/routes-admin";
@@ -20,11 +21,14 @@ function revalidateFolios() {
 	for (const p of FOLIO_PATHS) revalidatePath(p);
 }
 
-/** The stay's folio as it is now (balance after every charge and payment), or null before check-in. */
+/** The stay's folio as it is now (balance after every charge and payment, with its lines), or null before check-in. */
 export async function folioForBooking(bookingId: string): Promise<FolioRow | null> {
-	if (!live("folio")) return null;
-	const { data } = await api("@get/folio/folios/by-booking/:bookingId", { ...(await withSession()), params: { bookingId } }).catch(() => ({ data: null }));
-	return data ? toFolioRow(data.data) : null;
+	return seam.folios.forBooking(bookingId);
+}
+
+/** One folio with its lines: lists carry folios without lines (`FolioSummary`), the panel that opens one reads it here. */
+export async function folioById(id: string): Promise<FolioRow | null> {
+	return seam.folios.get(id);
 }
 
 export async function postCharge(folioId: string, input: { description: string; amount: number; tax?: number; category?: string }, fallback: FolioRow): Promise<ActionResult<FolioRow>> {

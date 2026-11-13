@@ -259,6 +259,18 @@ export type FolioRow = {
 	notes: { by: string; at: string; text: string }[];
 };
 
+/**
+ * An open folio without its lines and notes: what lists, pickers and balances need (`data.folios.summaries`). The lines
+ * of the one folio being opened are read on their own (`folioById`, `folioForBooking`).
+ */
+export type FolioSummary = Omit<FolioRow, "lines" | "notes">;
+
+/** A folio as a summary (drops lines and notes, which can be hundreds per stay). */
+export function toFolioSummary(f: FolioRow): FolioSummary {
+	const { lines: _lines, notes: _notes, ...rest } = f;
+	return rest;
+}
+
 export type PaymentMethod = "CARD" | "TRANSFER" | "CASH";
 export type PaymentStatus =
 	| "PENDING"
@@ -1777,17 +1789,6 @@ export type RolesAccessRow = {
 
 /** A row of an owner list: which hotel of the business it belongs to. */
 export type AtHotel = { hotelId: Id; hotelName: string };
-
-/** What a booking panel needs about the booking's hotel: the manager's components act there. */
-export type OwnerHotelContext = AtHotel & {
-	rooms: RoomRow[];
-	types: RoomTypeRow[];
-	folios: FolioRow[];
-	guests: GuestRow[];
-	organizations: OrganizationRow[];
-	terminals: TerminalRow[];
-	pendingOnPos: Record<string, number>;
-};
 
 /** One person at one hotel (a person working at two hotels is two rows). */
 export type OwnerStaffRow = StaffRow &

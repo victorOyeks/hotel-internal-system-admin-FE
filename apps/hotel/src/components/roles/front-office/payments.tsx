@@ -1,5 +1,6 @@
 "use client";
 
+import { useOpenFolios } from "./use-open-folios";
 import type { ColumnDef } from "@tanstack/react-table";
 import { CreditCardIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { ExportButton, SearchBox, Toolbar } from "@hospio/ui/shared/toolbar";
 import { btn } from "@hospio/ui/shared/ui";
-import type { FolioRow, PaymentRow, PaymentStatus, TerminalRow } from "@hospio/api/data/types";
+import type { PaymentRow, PaymentStatus, TerminalRow } from "@hospio/api/data/types";
 import { requestRefund, verifyPayment } from "@hospio/api/actions/payment";
 import { useAction } from "@hospio/api/actions/use-action";
 import { exportPayments } from "@hospio/api/actions/reservation-lists";
@@ -46,13 +47,15 @@ export { PAYMENT_TABS, type PaymentTab };
  * Front office 8.x · My payments: everything taken by the signed-in person, with the take-payment panel on top. The list is
  * one page from payment-service (`?tab=`, `?q=`, `?page=` in the URL); the cards and tab counts are the service's.
  */
-export function MyPaymentsScreen({ payments: result, opened, folios, terminals, me, roleFilter }: { payments: PageResult<PaymentRow>; opened?: PaymentRow | null; folios: FolioRow[]; terminals: TerminalRow[]; me: string; roleFilter?: string }) {
+export function MyPaymentsScreen({ payments: result, opened, terminals, me, roleFilter }: { payments: PageResult<PaymentRow>; opened?: PaymentRow | null; terminals: TerminalRow[]; me: string; roleFilter?: string }) {
 	const router = useRouter();
 	const list = useListParams({ extra: ["tab"] });
 	const [payments, setPayments] = useState(result.data.content);
 	useEffect(() => setPayments(result.data.content), [result]);
 	const [openId, setOpenId] = useQueryState("open");
 	const [isNew, setIsNew] = useQueryState("new");
+	// Open folios for Take payment, read when it opens (not with every page of the list).
+	const openFolios = useOpenFolios(isNew === "1");
 	const [refundFor, setRefundFor] = useState<PaymentRow | null>(null);
 	const [exporting, setExporting] = useState(false);
 	const { run: check, pending: checking } = useAction();
@@ -129,7 +132,7 @@ export function MyPaymentsScreen({ payments: result, opened, folios, terminals, 
 			</SidePanel>
 
 			<RefundRequestModal payment={refundFor} onOpenChange={(o) => !o && setRefundFor(null)} />
-			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={folios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: p.id, reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`, folioId: p.folioId, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.status, terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.status === "APPROVED" ? new Date().toISOString() : undefined, receiptSent: undefined, description: "Room charges" }, ...xs])} />
+			<TakePaymentPanel open={isNew === "1"} onOpenChange={(o) => !o && void setIsNew(null)} folios={openFolios} terminals={terminals} onDone={(p) => setPayments((xs) => [{ id: p.id, reference: `PAY-${p.id.slice(0, 6).toUpperCase()}`, folioId: p.folioId, guestName: p.guestName, role: roleFilter ?? "FRONT_OFFICE", takenBy: me, method: p.method, amount: p.amount, status: p.status, terminal: p.method === "CARD" ? "Front desk POS" : undefined, createdAt: new Date().toISOString(), resolvedAt: p.status === "APPROVED" ? new Date().toISOString() : undefined, receiptSent: undefined, description: "Room charges" }, ...xs])} />
 		</>
 	);
 }

@@ -15,11 +15,7 @@ import { exportBookings } from "@hospio/api/actions/reservation-lists";
 import type { PageResult } from "@hospio/api/data/paging";
 import { useListParams } from "@hospio/ui/shared/list-params";
 import { HotelScope } from "@hospio/api/actions/hotel-scope";
-import type {
-	AtHotel,
-	BookingRow,
-	OwnerHotelContext,
-} from "@hospio/api/data/types";
+import type { AtHotel, BookingRow } from "@hospio/api/data/types";
 import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
@@ -46,12 +42,9 @@ import {
 	type BookingAction,
 	BookingModals,
 } from "../manager/bookings/booking-modals";
-import {
-	BOOKING_TABS,
-	nameOrganizations,
-	TAB_LABEL,
-} from "../manager/bookings/bookings-screen";
+import { BOOKING_TABS, TAB_LABEL } from "../manager/bookings/bookings-screen";
 import { NewBookingPanel } from "../manager/bookings/new-booking";
+import { useBookingContext } from "../manager/bookings/use-booking-context";
 import { DownloadModal, HotelFilter } from "./common";
 
 export type OwnerBooking = BookingRow & AtHotel;
@@ -68,14 +61,15 @@ type Tab = (typeof TABS)[number];
  */
 export function OwnerBookings({
 	bookings: result,
-	contexts,
+	hotels: business,
 }: {
 	bookings: PageResult<OwnerBooking>;
-	contexts: OwnerHotelContext[];
+	/** The business's hotels. */
+	hotels: AtHotel[];
 }) {
 	const router = useRouter();
 	const list = useListParams({ extra: ["tab", "hotel"] });
-	const hotels = contexts.map((c) => ({
+	const hotels = business.map((c) => ({
 		hotelId: c.hotelId,
 		name: c.hotelName,
 	}));
@@ -89,11 +83,6 @@ export function OwnerBookings({
 	const [exportOpen, setExportOpen] = useState(false);
 	const [bookings, setBookings] = useState(result.data.content);
 	useEffect(() => setBookings(result.data.content), [result]);
-	const [onPos, setOnPos] = useState<Record<string, number>>(() =>
-		Object.assign({}, ...contexts.map((c) => c.pendingOnPos)),
-	);
-	const onPosKey = JSON.stringify(contexts.map((c) => c.pendingOnPos));
-	useEffect(() => setOnPos(Object.assign({}, ...JSON.parse(onPosKey))), [onPosKey]);
 	const tab = (TABS.includes(tabParam as Tab) ? tabParam : "arrivals") as Tab;
 
 	const rows = bookings.filter((b) =>
@@ -102,20 +91,47 @@ export function OwnerBookings({
 	const counts = result.data.counts ?? {};
 	const totals = result.data.totals ?? {};
 	const selected = bookings.find((b) => b.id === openId) ?? null;
-	const ctx = (hotelId?: string | null) =>
-		contexts.find((c) => c.hotelId === hotelId) ?? null;
-	const selCtx = ctx(selected?.hotelId);
+	const hotelOf = (hotelId?: string | null) =>
+		business.find((c) => c.hotelId === hotelId) ?? null;
+	const selHotel = hotelOf(selected?.hotelId);
+	const newHotel = hotelOf(newAt);
+	// The panels' data (rooms, folios, accounts, terminals, POS payments) for the hotel a panel opens at, read then
+	// rather than for every hotel with every page.
+	const sel = useBookingContext({
+		key: selHotel?.hotelId ?? "",
+		hotelId: selHotel?.hotelId,
+		enabled: !!selHotel,
+		panelOpen: !!selHotel,
+	});
+	const fresh = useBookingContext({
+		key: newHotel?.hotelId ?? "",
+		hotelId: newHotel?.hotelId,
+		enabled: !!newHotel,
+		panelOpen: !!newHotel,
+	});
+	const selCtx = selHotel && sel.ctx ? { ...selHotel, ...sel.ctx } : null;
+	const newCtx = newHotel && fresh.ctx ? { ...newHotel, ...fresh.ctx } : null;
+	const [onPos, setOnPos] = useState<Record<string, number>>({});
+	const onPosKey = JSON.stringify(sel.ctx?.pendingOnPos ?? {});
+	useEffect(
+		() => setOnPos((m) => ({ ...m, ...JSON.parse(onPosKey) })),
+		[onPosKey],
+	);
 	const act =
 		selected && actionAllowed(selected, action)
 			? (action as BookingAction)
 			: null;
-	const newCtx = ctx(newAt);
 
-	const patch = (id: string, changes: Partial<BookingRow>) =>
+	const patch = (id: string, changes: Partial<BookingRow>) => {
 		setBookings((bs) =>
 			bs.map((b) => (b.id === id ? { ...b, ...changes } : b)),
 		);
+		sel.reload();
+		fresh.reload();
+	};
 	const paymentTaken = (bookingId: string, p: TakenPayment) => {
+		sel.reload();
+		fresh.reload();
 		if (p.status === "APPROVED") {
 			setBookings((bs) =>
 				bs.map((b) =>
@@ -499,7 +515,6 @@ export function OwnerBookings({
 					);
 					if (!r.ok) return r;
 					const names = new Map(hotels.map((h) => [h.hotelId, h.name]));
-					const orgs = contexts.flatMap((c) => c.organizations);
 					return {
 						ok: true as const,
 						rows: [
@@ -520,7 +535,7 @@ export function OwnerBookings({
 								"Balance (NGN)",
 								"Booked at",
 							],
-							...nameOrganizations(r.data.rows, orgs).map((b) => [
+							...r.data.rows.map((b) => [
 								b.reference,
 								b.guestName,
 								b.guestPhone,

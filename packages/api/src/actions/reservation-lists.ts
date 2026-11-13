@@ -51,9 +51,11 @@ export async function exportBookings(
 	const all = await (business ? atHotel(null, run) : run());
 	if (!all.ok)
 		return { ok: false, error: "Bookings couldn't be exported. Try again" };
+	// Company stays named here, so the screens need no list of every account to export.
+	const rows = await data.bookings.named(all.rows);
 	return {
 		ok: true,
-		data: { rows: all.rows, total: all.total, truncated: all.truncated },
+		data: { rows, total: all.total, truncated: all.truncated },
 	};
 }
 

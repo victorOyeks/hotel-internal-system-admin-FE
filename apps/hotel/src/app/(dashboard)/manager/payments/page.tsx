@@ -20,14 +20,13 @@ export default async function PaymentsPage({
 }) {
 	const sp = await searchParams;
 	const open = urlParam(sp, "open");
-	const [hotel, payments, terminals, refunds, disputes, folios, opened] =
+	const [hotel, payments, terminals, refunds, disputes, opened] =
 		await Promise.all([
 			getActiveHotel(),
 			data.payments.page(listQueryFrom(sp, ["method"])),
 			data.payments.terminals(),
 			data.payments.refunds(listQueryFrom(sp, [], "refunds")),
 			data.payments.disputes(listQueryFrom(sp, [], "disputes")),
-			data.folios.list(),
 			open ? data.payments.get(open) : Promise.resolve(null),
 		]);
 	return (
@@ -37,7 +36,6 @@ export default async function PaymentsPage({
 			terminals={terminals}
 			refunds={refunds}
 			disputes={disputes}
-			folios={folios.filter((f) => f.balance > 0)}
 			opened={opened}
 		/>
 	);

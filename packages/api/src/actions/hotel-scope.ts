@@ -8,7 +8,7 @@ import {
 	useMemo,
 } from "react";
 import { runAtHotel, type ScopedActions, type ScopedName } from "./at-hotel";
-import { folioForBooking, postCharge } from "./folio";
+import { folioById, folioForBooking, postCharge } from "./folio";
 import { fillTemplate, messageTemplates } from "./guest-messages";
 import { messageGuest } from "./owner";
 import { recordPayment } from "./payment";
@@ -49,6 +49,7 @@ const DIRECT: ScopedActions = {
 	changeBookingDates,
 	cancelBooking,
 	folioForBooking,
+	folioById,
 	postCharge,
 	recordPayment,
 	messageGuest,
