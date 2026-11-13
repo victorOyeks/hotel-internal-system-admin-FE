@@ -122,6 +122,8 @@ export function slicePage<T>(
  * Every row of a filtered list, read 100 at a time (exports and the few summaries that need the whole range).
  * Stops at `limit` rows; `truncated` says whether it did.
  */
+const PAGE_CONCURRENCY = 4;
+
 export async function allPages<T>(
 	fetchPage: (page: number, size: number) => Promise<Paged<T> | null>,
 	limit = 5000,
@@ -129,10 +131,17 @@ export async function allPages<T>(
 	const first = await fetchPage(0, MAX_PAGE_SIZE);
 	if (!first) return { rows: [], total: 0, truncated: false, ok: false };
 	const pages = Math.min(first.totalPages, Math.ceil(limit / MAX_PAGE_SIZE));
-	const rest = await Promise.all(
-		Array.from({ length: Math.max(0, pages - 1) }, (_, i) =>
-			fetchPage(i + 1, MAX_PAGE_SIZE),
-		),
+	// At most PAGE_CONCURRENCY pages in flight: a year of payments is hundreds of pages, and firing them all at once
+	// floods the service (and every other hotel using it).
+	const rest: (Paged<T> | null)[] = new Array(Math.max(0, pages - 1));
+	let next = 0;
+	await Promise.all(
+		Array.from({ length: Math.min(PAGE_CONCURRENCY, rest.length) }, async () => {
+			while (next < rest.length) {
+				const i = next++;
+				rest[i] = await fetchPage(i + 1, MAX_PAGE_SIZE);
+			}
+		}),
 	);
 	if (rest.some((p) => !p))
 		return { rows: [], total: first.total, truncated: false, ok: false };

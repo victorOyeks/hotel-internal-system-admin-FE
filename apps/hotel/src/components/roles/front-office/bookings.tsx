@@ -199,6 +199,10 @@ export function BookingsScreen({
 	const [payOpen, setPayOpen] = useState(false);
 	// Card payments the POS has not confirmed yet, per booking: the summary shows them instead of a paid amount.
 	const [onPos, setOnPos] = useState<Record<string, number>>(pendingOnPos);
+	// Fresh server numbers replace local ones (a terminal approved, another desk took the payment); keyed by value because
+	// the prop is a new object on every render.
+	const onPosKey = JSON.stringify(pendingOnPos);
+	useEffect(() => setOnPos(JSON.parse(onPosKey)), [onPosKey]);
 	const { run, pending } = useAction();
 
 	const activeTab = (

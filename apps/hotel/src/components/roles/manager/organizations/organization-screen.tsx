@@ -108,6 +108,7 @@ export function OrganizationScreen({
 	const stayList = useListParams({ prefix: "stays" });
 	const [org, setOrg] = useState(initialOrg);
 	const [members, setMembers] = useState(initialMembers);
+	useEffect(() => setMembers(initialMembers), [initialMembers]);
 	const [invoices, setInvoices] = useState(invoicePage.data.content);
 	// A new page or new figures from the server replace what is on screen.
 	useEffect(() => setInvoices(invoicePage.data.content), [invoicePage]);
