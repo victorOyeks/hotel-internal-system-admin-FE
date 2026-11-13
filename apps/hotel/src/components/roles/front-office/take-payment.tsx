@@ -642,9 +642,9 @@ export function usePaymentSteps(
 					)}
 					{method === "CARD" && terminals.length === 0 && (
 						<Note tone="warning">
-							A card payment goes to a POS terminal, and this hotel has none set
-							up yet. Take a bank transfer or cash for now; the manager adds
-							terminals in Hotel setup → Terminals.
+							A card payment goes to a POS terminal, and this hotel has none
+							linked yet. Take a bank transfer or cash for now; the manager links
+							terminals in Payments → Terminals → Link terminal.
 						</Note>
 					)}
 					{method === "CARD" &&

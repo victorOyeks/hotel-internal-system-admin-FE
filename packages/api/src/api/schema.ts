@@ -1426,6 +1426,14 @@ export const schema = createSchema({
 	},
 	"@post/property/rooms/:id/back-in-service": { output: envelope(Room) },
 	"@get/property/areas": { output: envelope(z.array(Area)) },
+	"@post/property/areas": {
+		input: z.object({
+			name: z.string(),
+			kind: z.string().nullable().optional(),
+			sortOrder: z.number().nullable().optional(),
+		}),
+		output: envelope(Area),
+	},
 	"@get/housekeeping/room-status": { output: envelope(z.array(RoomStatus)) },
 
 	// finance
