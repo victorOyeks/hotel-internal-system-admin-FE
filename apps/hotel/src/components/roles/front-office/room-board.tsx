@@ -192,6 +192,14 @@ export function RoomBoard({
 										>
 											{occupancyLabel(r) ?? stateMeta[r.state].label}
 										</span>
+										{r.boardNote && (
+											<span
+												className="w-full truncate text-[11px] italic text-ink-3"
+												title={r.boardNote}
+											>
+												{r.boardNote}
+											</span>
+										)}
 									</button>
 								))}
 						</div>
