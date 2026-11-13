@@ -78,10 +78,37 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 	if (!user) redirect("/auth");
 	if (!user.changedPassword) redirect("/reset-password");
 	if (!role) redirect("/select-role");
-	if (APP === "hotel" && role === "OWNER") {
+
+	// Everything below depends only on who is signed in and the role: one round of calls, not five in a row.
+	const ownerHotel = APP === "hotel" && role === "OWNER";
+	const [business, shared, asked, unread, unpaidSales, inbox, approvals] =
+		await Promise.all([
+			// getBusiness answers from the fixture (LIVE) in demo mode, so nothing changes there.
+			ownerHotel ? getBusiness() : Promise.resolve(null),
+			APP === "hotel" && !DEMO_AUTH ? getSharedDevice() : Promise.resolve(null),
+			pinPromptAsked(),
+			data.notifications.unreadCount().catch(() => 0),
+			// The bar and kitchen see how many sales still owe money next to Sales.
+			role === "BAR" || role === "KITCHEN"
+				? data.outlets.unpaidSales(role).catch(() => null)
+				: Promise.resolve(null),
+			// Every hotel role: unread staff messages next to Inbox (the owner's Messaging).
+			APP === "hotel" && !support
+				? data.owner.inboxUnread().catch(() => null)
+				: Promise.resolve(null),
+			// The manager: approvals waiting for a decision next to Approvals.
+			role === "MANAGER"
+				? data.approvals
+						.page({ tab: "waiting", size: 1 })
+						.then((r) =>
+							r.ok ? (r.data.counts?.waiting ?? r.data.total) : null,
+						)
+						.catch(() => null)
+				: Promise.resolve(null),
+		]);
+	if (ownerHotel) {
 		// A self-serve owner still in the wizard goes back to it; one handed over by Hospio360 reviews the
-		// handover first. getBusiness answers from the fixture (LIVE) in demo mode, so nothing changes there.
-		const business = await getBusiness();
+		// handover first.
 		if (business?.stage === "ONBOARDING" && business.source === "SELF_SERVE")
 			redirect("/onboarding");
 		if (business?.stage === "HANDED_OVER") redirect("/handover");
@@ -89,7 +116,6 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 
 	// Shared devices (docs/shared-devices.md in hospio-backend): a removed device forgets its token and goes to sign-in; on a
 	// shared device the header has Lock and the idle lock runs; anyone with Full access, a manager or the owner can set one up.
-	const shared = APP === "hotel" && !DEMO_AUTH ? await getSharedDevice() : null;
 	if (shared?.state === "removed") redirect("/api/device/forget");
 	const device = shared?.state === "ok" ? shared.device : null;
 	const setupHotels =
@@ -102,27 +128,9 @@ export async function DashboardShell({ children }: PropsWithChildren) {
 		!user.hasPin &&
 		!user.roles.includes("OWNER") &&
 		!!user.businessId &&
-		(await pinPromptAsked()) &&
+		asked &&
 		(!!device || user.roles.some((r) => SHARED_DESK_ROLES.includes(r)));
 
-	const [unread, unpaidSales, inbox, approvals] = await Promise.all([
-		data.notifications.unreadCount().catch(() => 0),
-		// The bar and kitchen see how many sales still owe money next to Sales.
-		role === "BAR" || role === "KITCHEN"
-			? data.outlets.unpaidSales(role).catch(() => null)
-			: Promise.resolve(null),
-		// Every hotel role: unread staff messages next to Inbox (the owner's Messaging).
-		APP === "hotel" && !support
-			? data.owner.inboxUnread().catch(() => null)
-			: Promise.resolve(null),
-		// The manager: approvals waiting for a decision next to Approvals.
-		role === "MANAGER"
-			? data.approvals
-					.page({ tab: "waiting", size: 1 })
-					.then((r) => (r.ok ? (r.data.counts?.waiting ?? r.data.total) : null))
-					.catch(() => null)
-			: Promise.resolve(null),
-	]);
 	const badges = {
 		...(unpaidSales ? { unpaidSales } : {}),
 		...(inbox ? { inbox } : {}),
