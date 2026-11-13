@@ -110,8 +110,13 @@ export async function signUp(
 	};
 }
 
-/** POST /identity/auth/phone/send-code: a 6-digit code (logged on the service; staging accepts 123456). */
-export async function sendPhoneCode(): Promise<
+/**
+ * POST /identity/auth/phone/send-code: a 6-digit code by SMS, or on WhatsApp with "WHATSAPP" (an SMS while the WhatsApp
+ * code template isn't approved). Staging also accepts 123456.
+ */
+export async function sendPhoneCode(
+	channel: "SMS" | "WHATSAPP" = "SMS",
+): Promise<
 	ActionResult<{ expiresAt: string; deliveries?: Delivery[] | null }>
 > {
 	const { auth } = await withSession();
@@ -125,7 +130,7 @@ export async function sendPhoneCode(): Promise<
 	}
 	const { data, error } = await api("@post/identity/auth/phone/send-code", {
 		auth,
-		body: {},
+		body: { channel },
 	});
 	if (error || !data)
 		return {
@@ -133,6 +138,23 @@ export async function sendPhoneCode(): Promise<
 			error: errorMessage(error, "The code could not be sent"),
 		};
 	return { ok: true, data: data.data };
+}
+
+/** GET /messaging/channels: whether a code can go on WhatsApp right now ("Send on WhatsApp instead"). */
+export async function codeChannels(): Promise<{
+	sms: boolean;
+	whatsappCodes: boolean;
+}> {
+	const { auth } = await withSession();
+	if (!auth || DEMO_AUTH || !live("messaging"))
+		return { sms: false, whatsappCodes: false };
+	const { data } = await api("@get/messaging/channels", { auth }).catch(() => ({
+		data: null,
+	}));
+	return {
+		sms: !!data?.data.sms,
+		whatsappCodes: !!data?.data.whatsappCodes,
+	};
 }
 
 /** POST /identity/auth/phone/verify. */

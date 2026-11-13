@@ -1047,7 +1047,9 @@ export const schema = createSchema({
 		output: envelope(AuthResponse),
 	},
 	"@post/identity/auth/phone/send-code": {
-		input: z.object({}).optional(),
+		input: z
+			.object({ channel: z.enum(["SMS", "WHATSAPP"]).optional() })
+			.optional(),
 		output: envelope(
 			z.object({ expiresAt: z.string(), deliveries: Deliveries }),
 		),
@@ -1619,6 +1621,15 @@ export const schema = createSchema({
 	"@get/messaging/notifications": {
 		query: pageParams.optional(),
 		output: envelope(pagedOf(Notification)),
+	},
+	"@get/messaging/channels": {
+		output: envelope(
+			z.object({
+				sms: z.boolean(),
+				whatsapp: z.boolean(),
+				whatsappCodes: z.boolean(),
+			}),
+		),
 	},
 	"@get/messaging/notifications/unread-count": {
 		output: envelope(z.object({ count: z.number() })),

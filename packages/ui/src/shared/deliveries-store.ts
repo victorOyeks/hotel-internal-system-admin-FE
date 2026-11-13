@@ -18,7 +18,7 @@ export type DeliveryLike = {
 	text: string;
 	kind?: string | null;
 	ref?: string | null;
-	/** EMAIL_SENT (on its way to the address) or NOT_CONNECTED (SMS, WhatsApp, or email switched off). */
+	/** EMAIL_SENT, SMS_SENT or WHATSAPP_SENT (on its way), or NOT_CONNECTED (that channel is switched off here). */
 	status?: string | null;
 };
 
