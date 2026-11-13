@@ -1,7 +1,15 @@
 "use client";
 
 import { KeyRoundIcon, LockIcon, TabletSmartphoneIcon } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { OTPInput, OTPInputContext, REGEXP_ONLY_DIGITS } from "input-otp";
+import {
+	type Ref,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+	useTransition,
+} from "react";
 import { toast } from "sonner";
 import {
 	checkDevice,
@@ -14,7 +22,7 @@ import { isHotelRole, roleLabels } from "@hospio/api/roles";
 import { Button } from "@hospio/ui/primitives/button";
 import { Field, SelectField, TextField } from "@hospio/ui/shared/field";
 import { Modal } from "@hospio/ui/shared/modal";
-import { btn, input as inputCls } from "@hospio/ui/shared/ui";
+import { btn } from "@hospio/ui/shared/ui";
 import { cn } from "@hospio/ui/utils";
 
 /**
@@ -30,40 +38,75 @@ export type DeviceSetupHotel = { id: string; name: string; roles: string[] };
 
 const label = (r: string) => (isHotelRole(r) ? roleLabels[r] : r);
 
-/** A 6-digit PIN field: only digits are kept. */
+/** One box of the PIN: a dot once filled (the PIN is never shown), the brand ring on the box being typed into. */
+function PinSlot({ index, error }: { index: number; error?: boolean }) {
+	const slot = useContext(OTPInputContext)?.slots[index];
+	const filled = Boolean(slot?.char);
+	return (
+		<div
+			data-active={slot?.isActive}
+			className={cn(
+				"relative flex size-14 items-center justify-center rounded-[12px] border border-line bg-card transition-all",
+				filled && "border-line-strong bg-subtle",
+				slot?.isActive && "border-brand ring-[3px] ring-brand/15",
+				error && "border-danger",
+				error && slot?.isActive && "ring-danger/15",
+			)}
+		>
+			{filled ? (
+				<span className="size-3 rounded-full bg-ink" aria-hidden />
+			) : slot?.hasFakeCaret ? (
+				<span className="h-6 w-px animate-pulse bg-ink" aria-hidden />
+			) : null}
+		</div>
+	);
+}
+
+/** A 6-digit PIN as six boxes, like a phone's PIN pad: digits only, masked, pasting a whole PIN fills every box. */
 function PinInput({
 	label: text,
 	value,
 	onChange,
+	onComplete,
 	error,
 	autoFocus,
+	inputRef,
+	matched,
 }: {
 	label: string;
 	value: string;
 	onChange: (v: string) => void;
+	onComplete?: (v: string) => void;
 	error?: string;
 	autoFocus?: boolean;
+	inputRef?: Ref<HTMLInputElement>;
+	matched?: boolean;
 }) {
 	return (
-		<Field label={text} error={error}>
-			<input
-				type="password"
-				inputMode="numeric"
-				autoComplete="off"
-				// biome-ignore lint/a11y/noAutofocus: the only field of a short prompt
-				autoFocus={autoFocus}
+		<Field
+			label={text}
+			error={error}
+			hint={
+				matched ? <span className="text-success">PINs match</span> : undefined
+			}
+		>
+			<OTPInput
+				ref={inputRef}
 				maxLength={6}
 				value={value}
-				onChange={(e) =>
-					onChange(e.target.value.replace(/\D/g, "").slice(0, 6))
-				}
-				className={cn(
-					inputCls,
-					"text-center text-lg tracking-[0.5em]",
-					error && "border-danger",
-				)}
+				onChange={(v) => onChange(v.replace(/\D/g, "").slice(0, 6))}
+				onComplete={onComplete}
+				pattern={REGEXP_ONLY_DIGITS}
+				inputMode="numeric"
+				autoComplete="off"
+				autoFocus={autoFocus}
 				aria-label={text}
-			/>
+				containerClassName="flex items-center gap-2.5 has-disabled:opacity-50"
+			>
+				{[0, 1, 2, 3, 4, 5].map((i) => (
+					<PinSlot key={i} index={i} error={Boolean(error)} />
+				))}
+			</OTPInput>
 		</Field>
 	);
 }
@@ -73,9 +116,10 @@ function usePinPair() {
 	const [next, setNext] = useState("");
 	const [again, setAgain] = useState("");
 	const [error, setError] = useState<string | undefined>();
-	const check = () => {
+	const againRef = useRef<HTMLInputElement>(null);
+	const check = (second = again) => {
 		if (!/^\d{6}$/.test(next)) return "A PIN is 6 digits";
-		if (next !== again) return "The two PINs don't match";
+		if (next !== second) return "The two PINs don't match";
 		return undefined;
 	};
 	return {
@@ -86,6 +130,25 @@ function usePinPair() {
 		error,
 		setError,
 		check,
+		againRef,
+		/** Typing the first PIN clears a mismatch; finishing it moves to the second. */
+		nextProps: {
+			value: next,
+			onChange: (v: string) => {
+				setNext(v);
+				setError(undefined);
+			},
+			onComplete: () => againRef.current?.focus(),
+		},
+		againProps: {
+			value: again,
+			onChange: (v: string) => {
+				setAgain(v);
+				setError(undefined);
+			},
+			inputRef: againRef,
+		},
+		matched: next.length === 6 && next === again,
 		reset: () => {
 			setNext("");
 			setAgain("");
@@ -334,8 +397,8 @@ export function PinPrompt({ onDevice }: { onDevice: boolean }) {
 			await dismissPinPrompt();
 			setOpen(false);
 		});
-	const save = () => {
-		const problem = pin.check();
+	const save = (second = pin.again) => {
+		const problem = pin.check(second);
 		if (problem) return pin.setError(problem);
 		start(async () => {
 			const result = await setMyPin(pin.next);
@@ -372,24 +435,24 @@ export function PinPrompt({ onDevice }: { onDevice: boolean }) {
 					>
 						Not now
 					</Button>
-					<Button className={btn.primary} disabled={pending} onClick={save}>
+					<Button
+						className={btn.primary}
+						disabled={pending}
+						onClick={() => save()}
+					>
 						Set PIN
 					</Button>
 				</>
 			}
 		>
 			<div className="flex flex-col gap-4">
-				<PinInput
-					label="New PIN"
-					value={pin.next}
-					onChange={pin.setNext}
-					autoFocus
-				/>
+				<PinInput label="New PIN" {...pin.nextProps} autoFocus />
 				<PinInput
 					label="New PIN again"
-					value={pin.again}
-					onChange={pin.setAgain}
+					{...pin.againProps}
+					onComplete={(v) => save(v)}
 					error={pin.error}
+					matched={pin.matched}
 				/>
 				<p className="text-xs text-ink-3">
 					Your PIN only works on shared devices at your hotel. Managers can
@@ -458,11 +521,11 @@ export function PinSection({ hasPin }: { hasPin: boolean }) {
 				}
 			>
 				<div className="flex flex-col gap-4">
-					<PinInput label="New PIN" value={pin.next} onChange={pin.setNext} />
+					<PinInput label="New PIN" {...pin.nextProps} autoFocus />
 					<PinInput
 						label="New PIN again"
-						value={pin.again}
-						onChange={pin.setAgain}
+						{...pin.againProps}
+						matched={pin.matched}
 					/>
 					<TextField
 						label="Your password"
