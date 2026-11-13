@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import type { PageResult } from "@hospio/api/data/paging";
 import { useListParams } from "@hospio/ui/shared/list-params";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { DetailList, Note, TotalsList } from "@hospio/ui/shared/detail-list";
 import {
@@ -195,15 +195,20 @@ export function BookingsScreen({
 				: []),
 		]),
 	);
+	const madeHere = useRef(new Set<string>());
 	useEffect(() => {
-		setBookings(
-			named([
+		setBookings((prev) => {
+			const base = named([
 				...result.data.content,
 				...(opened && !result.data.content.some((b) => b.id === opened.id)
 					? [opened]
 					: []),
-			]),
-		);
+			]);
+			// Bookings made on this screen stay (with their local changes) when fresh server rows arrive: a stay booked for
+			// later isn't on the Arrivals page, and "Open booking" after the payment must still find it.
+			const kept = prev.filter((b) => madeHere.current.has(b.id) && !base.some((x) => x.id === b.id));
+			return [...base, ...kept];
+		});
 	}, [result, opened]);
 	const rows = bookings.filter((b) =>
 		result.data.content.some((x) => x.id === b.id),
@@ -659,6 +664,7 @@ export function BookingsScreen({
 				folios={folios}
 				terminals={terminals}
 				onCreated={(b) => {
+					madeHere.current.add(b.id);
 					setBookings((xs) => [b, ...xs]);
 					reload();
 					router.refresh();

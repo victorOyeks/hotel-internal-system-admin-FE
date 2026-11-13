@@ -28,6 +28,7 @@ refreshing or going back in the middle of a flow.
 | 17 | `17-admin-onboarding.md` | Admin back-office onboarding: Set up a business, steps 1–7 field rules and duplicates, rooms (overlaps, one price per type, paste, edit and delete), data kept on Back, the manager's Choose your password | Ready |
 | 18 | `18-guest-message-billing.md` | Guest messages as a paid service: what is charged, on/off, prices (default and per hotel), opt-in at onboarding, monthly invoice, Paystack payment, overdue and suspension | Ready |
 | 19 | `19-room-note-def-053.md` | DEF-053 retest: the room's board note is added, changed and removed from the front desk and stays removed | Ready |
+| 20 | `20-concurrency-and-scale.md` | Two people at once (check-in, folio money, card retry, bar orders, stock, tills, refunds) done once with correct totals; busy screens with a lot of data | Ready |
 
 ## Before you start
 
