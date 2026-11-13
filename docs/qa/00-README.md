@@ -26,11 +26,13 @@ refreshing or going back in the middle of a flow.
 | 15 | `15-admin-portal.md` | Hospio360 admin and marketer portals | Ready |
 | 16 | `16-small-fixes-1.md` | Bar/kitchen income by outlet, organizations, delivery-log search, owner PIN actions, Inbox for every role, paged Staff and Roles lists | Ready |
 | 17 | `17-admin-onboarding.md` | Admin back-office onboarding: Set up a business, steps 1–7 field rules and duplicates, rooms (overlaps, one price per type, paste, edit and delete), data kept on Back, the manager's Choose your password | Ready |
+| 18 | `18-guest-message-billing.md` | Guest messages as a paid service: what is charged, on/off, prices (default and per hotel), opt-in at onboarding, monthly invoice, Paystack payment, overdue and suspension | Ready |
+| 19 | `19-room-note-def-053.md` | DEF-053 retest: the room's board note is added, changed and removed from the front desk and stays removed | Ready |
 
 ## Before you start
 
 - **Emails are real.** Invites, receipts and guest messages go to the address typed. Use your own inbox, or `@hospio-qa.test` for throwaway accounts.
 - **Accept invites in a private window**, not the owner's browser; accepting signs the invited person in on that browser.
-- **SMS and WhatsApp show "coming soon"**: expected, not a bug. Phone codes on staging are `123456`.
+- **SMS and WhatsApp are live, but staging texts only allow-listed numbers**; other numbers show "Held back: not on this environment's allow-list" (expected). Phone codes on staging are `123456`.
 - **Card payments can't complete on staging** (the test terminal never confirms). Test cash, transfer and charge to room.
 - **Don't change the shared accounts** (tunde, godwin, victor, grace, segun, mariam, femi, jide): no role, password or 2-step changes. Invite your own staff for anything that changes an account.
