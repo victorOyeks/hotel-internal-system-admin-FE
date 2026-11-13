@@ -4,7 +4,11 @@ import { Loader2Icon, SmartphoneIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { sendPhoneCode, verifyPhone } from "@hospio/api/actions/onboarding";
+import {
+	codeChannels,
+	sendPhoneCode,
+	verifyPhone,
+} from "@hospio/api/actions/onboarding";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import { Button } from "@hospio/ui/primitives/button";
 import {
@@ -45,9 +49,22 @@ export function VerifyPhoneForm({
 	const sent = useRef(false);
 	const otpRef = useRef<HTMLInputElement>(null);
 
-	const send = useCallback(async () => {
+	// "Send on WhatsApp instead" shows once the WhatsApp code template is approved (docs/sms-whatsapp.md).
+	const [whatsapp, setWhatsapp] = useState(false);
+	const [via, setVia] = useState<"SMS" | "WHATSAPP">("SMS");
+	useEffect(() => {
+		void codeChannels().then((c) => setWhatsapp(c.whatsappCodes));
+	}, []);
+
+	const send = useCallback(async (channel: "SMS" | "WHATSAPP" = "SMS") => {
 		setSending(true);
-		const result = await withDeliveries(sendPhoneCode(), "Your phone code");
+		setVia(channel);
+		const result = await withDeliveries(
+			sendPhoneCode(channel),
+			channel === "WHATSAPP"
+				? "Your phone code on WhatsApp"
+				: "Your phone code",
+		);
 		setSending(false);
 		if (!result.ok) {
 			toast.error(result.error);
@@ -135,9 +152,9 @@ export function VerifyPhoneForm({
 			{error && <p className="text-xs text-danger">{error}</p>}
 			{staging && (
 				<p className="rounded-[10px] bg-info-soft px-4 py-3 text-xs text-info">
-					<span className="font-semibold">Staging accepts 123456.</span> No SMS
-					is sent yet; the code also shows in the notice at the top of the
-					screen.
+					<span className="font-semibold">Staging accepts 123456.</span> Only
+					test numbers get a real SMS here; the code also shows in the notice at
+					the top of the screen.
 				</p>
 			)}
 
@@ -156,16 +173,34 @@ export function VerifyPhoneForm({
 			<p className="text-center text-xs text-ink-3">
 				Didn't get it?{" "}
 				{left > 0 ? (
-					<span>Resend in 0:{String(left).padStart(2, "0")}</span>
+					<span>
+						Resend in 0:{String(left).padStart(2, "0")}
+						{via === "WHATSAPP" ? " · sent on WhatsApp" : ""}
+					</span>
 				) : (
-					<button
-						type="button"
-						onClick={send}
-						disabled={sending}
-						className="font-semibold text-brand hover:underline disabled:opacity-60"
-					>
-						{sending ? "Sending…" : "Send the code again"}
-					</button>
+					<>
+						<button
+							type="button"
+							onClick={() => void send("SMS")}
+							disabled={sending}
+							className="font-semibold text-brand hover:underline disabled:opacity-60"
+						>
+							{sending ? "Sending…" : "Send the code again"}
+						</button>
+						{whatsapp && (
+							<>
+								{" · "}
+								<button
+									type="button"
+									onClick={() => void send("WHATSAPP")}
+									disabled={sending}
+									className="font-semibold text-brand hover:underline disabled:opacity-60"
+								>
+									Send on WhatsApp instead
+								</button>
+							</>
+						)}
+					</>
 				)}
 			</p>
 		</form>

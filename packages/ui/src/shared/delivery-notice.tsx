@@ -24,8 +24,8 @@ import { StatusPill } from "./status-pill";
 import { btn } from "./ui";
 
 /**
- * Top-centre notice: one card per batch of messages the platform sent (email, for real) or saved (SMS and
- * WhatsApp, coming soon), each with what it said and a Copy button, so the text can also be passed on by hand.
+ * Top-centre notice: one card per batch of messages the platform sent (email, SMS, WhatsApp) or only saved (a channel
+ * that is switched off here), each with what it said and a Copy button, so the text can also be passed on by hand.
  * Stays until closed. Mount once per layout: `<DeliveryNotice />`.
  */
 export function DeliveryNotice() {
@@ -56,8 +56,9 @@ function DeliveryCard({ batch }: { batch: DeliveryBatch }) {
 				<div className="min-w-0 flex-1">
 					<p className="text-[13px] font-bold text-ink">{batch.title}</p>
 					<p className="text-xs text-ink-2">
-						Email goes out for real · SMS and WhatsApp are coming soon, so copy
-						those to the person
+						{batch.deliveries.some((d) => d.status === "NOT_CONNECTED")
+							? "Some of these aren't sent from here · copy them to the person"
+							: "On their way · the text is here to copy too"}
 					</p>
 				</div>
 				<button
@@ -77,7 +78,10 @@ function DeliveryCard({ batch }: { batch: DeliveryBatch }) {
 	);
 }
 
-/** What happened to one message, in words (never claims an SMS or WhatsApp went out). */
+/**
+ * What happened to one message, in words. SMS_SENT / WHATSAPP_SENT mean handed to the sender: on staging only allow-listed
+ * numbers really receive them, and a WhatsApp without an approved template goes as an SMS (docs/sms-whatsapp.md).
+ */
 export function deliveryOutcome(d: DeliveryLike): {
 	label: string;
 	tone: "success" | "grey" | "warning";
@@ -87,8 +91,15 @@ export function deliveryOutcome(d: DeliveryLike): {
 			? { label: "Not sent · email is off here", tone: "grey" }
 			: { label: `Email sent to ${d.to ?? "—"}`, tone: "success" };
 	}
+	if (d.status === "SMS_SENT")
+		return { label: `SMS sending to ${d.to ?? "—"}`, tone: "success" };
+	if (d.status === "WHATSAPP_SENT")
+		return {
+			label: `WhatsApp sending to ${d.to ?? "—"} (SMS if WhatsApp can't)`,
+			tone: "success",
+		};
 	return {
-		label: `Not sent · ${d.channel === "SMS" ? "SMS" : "WhatsApp"} coming soon`,
+		label: `Not sent · ${d.channel === "SMS" ? "SMS" : "WhatsApp"} is off here`,
 		tone: "warning",
 	};
 }
