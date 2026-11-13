@@ -42,7 +42,9 @@ Password for every account: `Hospio123!`
 
 1. Front office saves a note on a room.
 2. Manager → Rooms → that room → **Edit room**. "Note (shows on the board)" holds the same text.
-3. The manager empties it → **Save changes**. On the front desk, the note is gone after a refresh.
+3. The manager empties it → **Save changes**. Toast: "Room … updated". The room panel's blue note box disappears
+   **at once, without reloading**. On the front desk, the note is gone after a refresh.
+4. Manager: type a new note in Edit room → Save. The blue note box shows the new text at once.
 
 ## 3. Negative
 
