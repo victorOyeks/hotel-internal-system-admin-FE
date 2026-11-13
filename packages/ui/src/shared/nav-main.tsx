@@ -60,7 +60,7 @@ export function NavMain({
 									!isActive && "opacity-70 hover:opacity-100",
 								)}
 							>
-								<Link href={item.url} className="flex w-full items-center gap-2">
+								<Link href={item.url} prefetch={false} className="flex w-full items-center gap-2">
 									<LinkIcon icon={item.icon} />
 									<span className="truncate">{item.title}</span>
 									{count > 0 && (

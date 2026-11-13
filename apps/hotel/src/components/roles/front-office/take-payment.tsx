@@ -10,7 +10,7 @@ import {
 	MessageCircleIcon,
 	XCircleIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	ChoiceCards,
@@ -25,6 +25,7 @@ import { PanelSection, SidePanel } from "@hospio/ui/shared/side-panel";
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import { useHotelActions } from "@hospio/api/actions/hotel-scope";
+import { verifyPayment } from "@hospio/api/actions/payment";
 import { emailReceipt } from "@hospio/api/actions/ml";
 import { withDeliveries } from "@hospio/ui/shared/deliveries-store";
 import type {
@@ -154,10 +155,14 @@ export function usePaymentSteps(
 	const [contact, setContact] = useState(target?.guestEmail ?? "");
 	const [sending, setSending] = useState(false);
 	const [recorded, setRecorded] = useState<TakenPayment | null>(null);
+	const session = useRef(0);
+	const sent = useRef<string | null>(null);
+	const live = useRef<string | null>(null);
 	const [cardError, setCardError] = useState<string | null>(null);
 
 	/** Restart the steps for a new target (or the "who" step when there is none). */
 	function begin(t?: PaymentTarget | null) {
+		session.current += 1;
 		setTgt(t ?? null);
 		setStep(t ? "method" : "who");
 		setFolioId(t?.folioId ?? "");
@@ -175,15 +180,21 @@ export function usePaymentSteps(
 		setCardError(null);
 	}
 
-	// Card: send the request to payment-service and show what the terminal answered.
+	// Card: send the request to payment-service and show what the terminal answered. Each attempt is sent exactly once
+	// (a re-run of this effect, e.g. React re-mounting it, never sends it again), and only the latest attempt's answer is
+	// shown.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt re-sends; the other values are read once per attempt
 	useEffect(() => {
 		if (step !== "card") return;
-		let cancelled = false;
+		const key = `${session.current}:${attempt}`;
+		live.current = key;
+		if (sent.current === key) return;
+		sent.current = key;
+		const cancelled = () => live.current !== key;
 		setCard("waiting");
 		setCardError(null);
 		const n = typeof amount === "number" ? amount : 0;
-		const t = setTimeout(() => !cancelled && setCard("paying"), 700);
+		const t = setTimeout(() => !cancelled() && setCard("paying"), 700);
 		recordPayment({
 			method: "CARD",
 			amount: n,
@@ -199,7 +210,8 @@ export function usePaymentSteps(
 			role: tgt?.role,
 		})
 			.then((r) => {
-				if (cancelled) return;
+				clearTimeout(t);
+				if (cancelled()) return;
 				if (!r.ok) {
 					setCardError(r.error);
 					setCard("no_response");
@@ -219,7 +231,8 @@ export function usePaymentSteps(
 			})
 			.catch((e: unknown) => {
 				// The call itself failed (network, a new deployment): say so instead of spinning forever.
-				if (cancelled) return;
+				clearTimeout(t);
+				if (cancelled()) return;
 				setCardError(
 					e instanceof Error
 						? `The payment could not be sent: ${e.message}. Nothing was charged.`
@@ -227,11 +240,34 @@ export function usePaymentSteps(
 				);
 				setCard("no_response");
 			});
-		return () => {
-			cancelled = true;
-			clearTimeout(t);
-		};
 	}, [step, attempt]);
+
+	/**
+	 * "Try again on POS": a payment the terminal didn't answer may still be charged. Ask payment-service first: approved →
+	 * done; still waiting at the terminal → don't send a second one; declined/failed (or never sent) → send a new attempt.
+	 */
+	async function retryCard() {
+		const prev = recorded;
+		if (prev?.id && !["DECLINED", "FAILED"].includes(prev.status)) {
+			setCardError(null);
+			setCard("waiting");
+			const v = await verifyPayment(prev.id);
+			if (v.ok && v.data.status === "APPROVED") {
+				setRecorded({ ...prev, status: "APPROVED" });
+				setCard("approved");
+				return;
+			}
+			if (v.ok && !["DECLINED", "FAILED"].includes(v.data.status)) {
+				setCardError(
+					"This payment is still waiting at the terminal. Finish or cancel it on the terminal, then try again, so the guest isn't charged twice.",
+				);
+				setCard("no_response");
+				return;
+			}
+		}
+		setRecorded(null);
+		setAttempt((a) => a + 1);
+	}
 
 	const amt = typeof amount === "number" ? amount : 0;
 	const folio = folios.find((f) => f.id === folioId);
@@ -418,10 +454,7 @@ export function usePaymentSteps(
 							<button
 								type="button"
 								className={btn.primary}
-								onClick={() => {
-									setRecorded(null);
-									setAttempt((a) => a + 1);
-								}}
+								onClick={() => void retryCard()}
 							>
 								Try again on POS
 							</button>

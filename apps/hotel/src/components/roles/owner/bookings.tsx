@@ -92,6 +92,8 @@ export function OwnerBookings({
 	const [onPos, setOnPos] = useState<Record<string, number>>(() =>
 		Object.assign({}, ...contexts.map((c) => c.pendingOnPos)),
 	);
+	const onPosKey = JSON.stringify(contexts.map((c) => c.pendingOnPos));
+	useEffect(() => setOnPos(Object.assign({}, ...JSON.parse(onPosKey))), [onPosKey]);
 	const tab = (TABS.includes(tabParam as Tab) ? tabParam : "arrivals") as Tab;
 
 	const rows = bookings.filter((b) =>
