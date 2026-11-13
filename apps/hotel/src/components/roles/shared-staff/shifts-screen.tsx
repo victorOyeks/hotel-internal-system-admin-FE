@@ -73,6 +73,31 @@ const leaveTone = {
 	CHANGE_REQUESTED: "info",
 } as const;
 
+/**
+ * Time on shift since clock-in ("02:15", or "2h 15m" with `format="hm"`), ticking on its own so the screen around it
+ * does not re-render every second.
+ */
+function OnShiftFor({
+	since,
+	format = "clock",
+}: {
+	since?: string | null;
+	format?: "clock" | "hm";
+}) {
+	const [elapsed, setElapsed] = useState(0);
+	useEffect(() => {
+		const start = since ? new Date(since).getTime() : Date.now();
+		const tick = () =>
+			setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+		tick();
+		const t = setInterval(tick, 1000);
+		return () => clearInterval(t);
+	}, [since]);
+	const hh = String(Math.floor(elapsed / 3600)).padStart(2, "0");
+	const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0");
+	return <>{format === "hm" ? `${hh}h ${mm}m` : `${hh}:${mm}`}</>;
+}
+
 export function ShiftsScreen({
 	me,
 	shifts,
@@ -97,7 +122,6 @@ export function ShiftsScreen({
 		setClockedIn(clock.clockedIn);
 		setSince(clock.since);
 	}, [clock]);
-	const [elapsed, setElapsed] = useState(0);
 	const [withWho, setWithWho] = useState("");
 	const [reason, setReason] = useState("");
 	const [leave, setLeave] = useState({
@@ -112,15 +136,6 @@ export function ShiftsScreen({
 	useEffect(() => {
 		if (open && !panel) setPanel({ kind: "shift", id: open });
 	}, [open, panel]);
-	useEffect(() => {
-		if (!clockedIn) return;
-		const start = since ? new Date(since).getTime() : Date.now();
-		const tick = () =>
-			setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
-		tick();
-		const t = setInterval(tick, 1000);
-		return () => clearInterval(t);
-	}, [clockedIn, since]);
 
 	const close = () => {
 		setPanel(null);
@@ -132,8 +147,6 @@ export function ShiftsScreen({
 		panel && "id" in panel
 			? (rows.find((s) => s.id === panel.id) ?? null)
 			: null;
-	const hh = String(Math.floor(elapsed / 3600)).padStart(2, "0");
-	const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0");
 	const upcoming = rows.filter((s) => s.date >= today);
 	const past = rows.filter((s) => s.date < today);
 	const scheduledHours = rows
@@ -178,7 +191,7 @@ export function ShiftsScreen({
 								: "Not clocked in"}
 						</p>
 						<p className="text-[34px] font-bold leading-none text-ink">
-							{clockedIn ? `${hh}:${mm}` : "—"}
+							{clockedIn ? <OnShiftFor since={since} /> : "—"}
 						</p>
 						<p className="mt-1 text-[13px] text-ink-3">
 							{todayShift
@@ -618,7 +631,12 @@ export function ShiftsScreen({
 				open={panel?.kind === "clockout"}
 				onOpenChange={(o) => !o && close()}
 				title="Clock out?"
-				subtitle={`On shift ${hh}h ${mm}m${todayShift ? ` · scheduled until ${todayShift.ends}` : ""}`}
+				subtitle={
+					<>
+						On shift <OnShiftFor since={since} format="hm" />
+						{todayShift ? ` · scheduled until ${todayShift.ends}` : ""}
+					</>
+				}
 				icon={LogOutIcon}
 				size="confirm"
 				footer={
