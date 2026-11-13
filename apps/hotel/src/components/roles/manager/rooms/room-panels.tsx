@@ -22,6 +22,7 @@ import {
 import { StatusPill } from "@hospio/ui/shared/status-pill";
 import { btn } from "@hospio/ui/shared/ui";
 import {
+	addArea,
 	backInService,
 	markOutOfOrder,
 	saveRoom,
@@ -447,8 +448,16 @@ export function AddRoomPanel({
 	onSaved: (room: RoomRow) => void;
 }) {
 	const { run, pending } = useAction();
+	const adding = useAction();
 	const [number, setNumber] = useState("");
 	const [areaId, setAreaId] = useState(areas[0]?.id ?? "");
+	// Floors or wings added here before the page reloads its list; a hotel set up without any could not add one.
+	const [added, setAdded] = useState<AreaRow[]>([]);
+	const [newArea, setNewArea] = useState<string | null>(null);
+	const allAreas = [
+		...areas,
+		...added.filter((a) => !areas.some((x) => x.id === a.id)),
+	];
 	const [typeId, setTypeId] = useState(types[0]?.id ?? "");
 	const [note, setNote] = useState("");
 	useEffect(() => {
@@ -463,7 +472,20 @@ export function AddRoomPanel({
 		setNote(room?.note ?? "");
 	}, [room, types, areas]);
 	const type = types.find((t) => t.id === typeId);
-	const area = areas.find((a) => a.id === areaId);
+	const area = allAreas.find((a) => a.id === areaId);
+	const saveArea = () => {
+		const name = (newArea ?? "").trim();
+		if (!name) return;
+		adding.run(
+			() => addArea(name),
+			(a) => `${a.name} added`,
+			(a) => {
+				setAdded((xs) => [...xs, a]);
+				setAreaId(a.id);
+				setNewArea(null);
+			},
+		);
+	};
 	return (
 		<SidePanel
 			open={open}
@@ -499,7 +521,7 @@ export function AddRoomPanel({
 											notes: note || undefined,
 										},
 										room?.id,
-										areas,
+										allAreas,
 										{
 											id: room?.id ?? `room-${number}`,
 											number,
@@ -544,14 +566,50 @@ export function AddRoomPanel({
 						placeholder="A231"
 						required
 					/>
-					<SelectField
-						label="Floor / wing"
-						value={areaId}
-						onChange={setAreaId}
-						setupLink="areas"
-						options={areas.map((a) => ({ value: a.id, label: a.name }))}
-					/>
+					<div className="flex flex-col gap-1">
+						<SelectField
+							label="Floor / wing"
+							value={areaId}
+							onChange={setAreaId}
+							empty="No floors or wings yet"
+							options={allAreas.map((a) => ({ value: a.id, label: a.name }))}
+						/>
+						{newArea === null && (
+							<button
+								type="button"
+								className="self-start text-xs font-semibold text-brand hover:underline"
+								onClick={() => setNewArea("")}
+							>
+								+ New floor or wing
+							</button>
+						)}
+					</div>
 				</FieldRow>
+				{newArea !== null && (
+					<div className="flex items-end gap-2 rounded-xl border border-line bg-subtle/50 p-3">
+						<TextField
+							label="New floor or wing"
+							value={newArea}
+							onChange={setNewArea}
+							placeholder="e.g. Floor 2, Block A"
+							className="flex-1"
+						/>
+						<Button
+							variant="outline"
+							className={btn.secondary}
+							onClick={() => setNewArea(null)}
+						>
+							Cancel
+						</Button>
+						<Button
+							className={btn.primary}
+							disabled={adding.pending || !newArea.trim()}
+							onClick={saveArea}
+						>
+							Add
+						</Button>
+					</div>
+				)}
 				<SelectField
 					label="Room type"
 					value={typeId}
