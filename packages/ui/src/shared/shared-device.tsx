@@ -1,6 +1,11 @@
 "use client";
 
-import { KeyRoundIcon, LockIcon, TabletSmartphoneIcon } from "lucide-react";
+import {
+	CheckIcon,
+	KeyRoundIcon,
+	LockIcon,
+	TabletSmartphoneIcon,
+} from "lucide-react";
 import { OTPInput, OTPInputContext, REGEXP_ONLY_DIGITS } from "input-otp";
 import {
 	type Ref,
@@ -46,7 +51,7 @@ function PinSlot({ index, error }: { index: number; error?: boolean }) {
 		<div
 			data-active={slot?.isActive}
 			className={cn(
-				"relative flex size-14 items-center justify-center rounded-[12px] border border-line bg-card transition-all",
+				"relative flex size-12 items-center justify-center rounded-[12px] border border-line bg-card transition-all",
 				filled && "border-line-strong bg-subtle",
 				slot?.isActive && "border-brand ring-[3px] ring-brand/15",
 				error && "border-danger",
@@ -54,7 +59,7 @@ function PinSlot({ index, error }: { index: number; error?: boolean }) {
 			)}
 		>
 			{filled ? (
-				<span className="size-3 rounded-full bg-ink" aria-hidden />
+				<span className="size-2.5 rounded-full bg-ink" aria-hidden />
 			) : slot?.hasFakeCaret ? (
 				<span className="h-6 w-px animate-pulse bg-ink" aria-hidden />
 			) : null}
@@ -71,25 +76,18 @@ function PinInput({
 	error,
 	autoFocus,
 	inputRef,
-	matched,
 }: {
 	label: string;
 	value: string;
 	onChange: (v: string) => void;
 	onComplete?: (v: string) => void;
-	error?: string;
+	error?: boolean;
 	autoFocus?: boolean;
 	inputRef?: Ref<HTMLInputElement>;
-	matched?: boolean;
 }) {
 	return (
-		<Field
-			label={text}
-			error={error}
-			hint={
-				matched ? <span className="text-success">PINs match</span> : undefined
-			}
-		>
+		<div className="flex flex-col items-center gap-2">
+			<span className="text-[13px] font-medium text-ink-2">{text}</span>
 			<OTPInput
 				ref={inputRef}
 				maxLength={6}
@@ -101,13 +99,53 @@ function PinInput({
 				autoComplete="off"
 				autoFocus={autoFocus}
 				aria-label={text}
-				containerClassName="flex items-center gap-2.5 has-disabled:opacity-50"
+				containerClassName="flex items-center justify-center gap-2 has-disabled:opacity-50"
 			>
 				{[0, 1, 2, 3, 4, 5].map((i) => (
-					<PinSlot key={i} index={i} error={Boolean(error)} />
+					<PinSlot key={i} index={i} error={error} />
 				))}
 			</OTPInput>
-		</Field>
+		</div>
+	);
+}
+
+/**
+ * Both PIN rows centred in one soft panel, with a single line under them that says what to do next, that the PINs match,
+ * or what's wrong.
+ */
+function PinPairFields({
+	pin,
+	onSecondComplete,
+	autoFocus = true,
+}: {
+	pin: ReturnType<typeof usePinPair>;
+	onSecondComplete?: (v: string) => void;
+	autoFocus?: boolean;
+}) {
+	const status = pin.error ? (
+		<span className="text-danger">{pin.error}</span>
+	) : pin.matched ? (
+		<span className="flex items-center gap-1 font-semibold text-success">
+			<CheckIcon className="size-3.5" /> PINs match
+		</span>
+	) : pin.next.length < 6 ? (
+		<span className="text-ink-3">Step 1 of 2 · choose 6 digits</span>
+	) : (
+		<span className="text-ink-3">Step 2 of 2 · type the same PIN again</span>
+	);
+	return (
+		<div className="flex flex-col items-center gap-5 rounded-2xl border border-line bg-subtle/50 px-4 py-6">
+			<PinInput label="New PIN" {...pin.nextProps} autoFocus={autoFocus} />
+			<PinInput
+				label="New PIN again"
+				{...pin.againProps}
+				onComplete={onSecondComplete}
+				error={Boolean(pin.error) && pin.again.length === 6}
+			/>
+			<p className="flex min-h-5 items-center text-xs" aria-live="polite">
+				{status}
+			</p>
+		</div>
 	);
 }
 
@@ -424,7 +462,7 @@ export function PinPrompt({ onDevice }: { onDevice: boolean }) {
 			}
 			subtitle="6 digits. Not 111111, 123456 or the end of your phone number"
 			icon={KeyRoundIcon}
-			size="form"
+			size="confirm"
 			footer={
 				<>
 					<Button
@@ -446,15 +484,8 @@ export function PinPrompt({ onDevice }: { onDevice: boolean }) {
 			}
 		>
 			<div className="flex flex-col gap-4">
-				<PinInput label="New PIN" {...pin.nextProps} autoFocus />
-				<PinInput
-					label="New PIN again"
-					{...pin.againProps}
-					onComplete={(v) => save(v)}
-					error={pin.error}
-					matched={pin.matched}
-				/>
-				<p className="text-xs text-ink-3">
+				<PinPairFields pin={pin} onSecondComplete={(v) => save(v)} />
+				<p className="text-center text-xs text-ink-3">
 					Your PIN only works on shared devices at your hotel. Managers can
 					reset it, never see it.
 				</p>
@@ -504,7 +535,7 @@ export function PinSection({ hasPin }: { hasPin: boolean }) {
 				title={set ? "Change your PIN" : "Set your PIN"}
 				subtitle="6 digits. Not 111111, 123456, your old PIN or the end of your phone number"
 				icon={KeyRoundIcon}
-				size="form"
+				size="confirm"
 				footer={
 					<>
 						<Button
@@ -521,18 +552,13 @@ export function PinSection({ hasPin }: { hasPin: boolean }) {
 				}
 			>
 				<div className="flex flex-col gap-4">
-					<PinInput label="New PIN" {...pin.nextProps} autoFocus />
-					<PinInput
-						label="New PIN again"
-						{...pin.againProps}
-						matched={pin.matched}
-					/>
+					<PinPairFields pin={pin} />
 					<TextField
 						label="Your password"
 						type="password"
 						value={password}
 						onChange={setPassword}
-						error={pin.error}
+						error={pin.error === "Enter your password" ? pin.error : undefined}
 					/>
 				</div>
 			</Modal>
