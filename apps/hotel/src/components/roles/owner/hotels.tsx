@@ -517,7 +517,6 @@ export function OwnerHotels({
 							`${target?.name ?? "Hotel"} ${statusChange.status === "ACTIVE" ? "reopened" : statusChange.status === "PAUSED" ? "paused" : "closed"}`,
 							() => {
 								setStatusChange(null);
-								router.refresh();
 							},
 						)
 					}
@@ -597,7 +596,6 @@ export function AddHotelWizard({
 	businessName?: string;
 	ownerName?: string;
 }) {
-	const router = useRouter();
 	const [step, setStep] = useState(0);
 	const [name, setName] = useState("");
 	const [city, setCity] = useState("Lagos");
@@ -618,7 +616,6 @@ export function AddHotelWizard({
 	const { run, pending } = useAction();
 
 	const close = () => {
-		const refresh = !!outcome;
 		setStep(0);
 		setOutcome(null);
 		setName("");
@@ -631,7 +628,6 @@ export function AddHotelWizard({
 		setManagerEmail("");
 		setManagerPhone("");
 		onClose();
-		if (refresh) router.refresh();
 	};
 
 	const roomCount = Number.parseInt(rooms, 10) || 0;
@@ -1015,7 +1011,6 @@ export function EditHotelPanel({
 	hotel: OwnerHotelRow | null;
 	onClose: () => void;
 }) {
-	const router = useRouter();
 	const blank = (h: OwnerHotelRow | null) => ({
 		name: h?.name ?? "",
 		city: h?.city ?? "",
@@ -1067,10 +1062,7 @@ export function EditHotelPanel({
 				return r;
 			},
 			"Hotel updated",
-			() => {
-				onClose();
-				router.refresh();
-			},
+			onClose,
 		);
 	}
 

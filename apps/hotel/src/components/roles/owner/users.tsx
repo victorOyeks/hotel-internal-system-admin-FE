@@ -579,7 +579,6 @@ function InvitePanel({
 	businessName: string;
 	ownerName: string;
 }) {
-	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [name, setName] = useState("");
 	const [phone, setPhone] = useState("");
@@ -591,13 +590,11 @@ function InvitePanel({
 		name.trim().length > 1 && /^\S+@\S+\.\S+$/.test(email) && !!hotel;
 	const hotelName = hotels.find((h) => h.hotelId === hotel)?.name;
 	const close = () => {
-		const refresh = !!created;
 		setCreated(null);
 		setName("");
 		setEmail("");
 		setPhone("");
 		onClose();
-		if (refresh) router.refresh();
 	};
 	return (
 		<SidePanel
@@ -722,7 +719,6 @@ function ChangeRolePanel({
 	hotels: OwnerHotelRow[];
 	onClose: () => void;
 }) {
-	const router = useRouter();
 	const [role, setRole] = useState<string>(user?.role ?? "MANAGER");
 	const [sel, setSel] = useState<string[]>(user?.hotelIds ?? []);
 	const [last, setLast] = useState(user?.id);
@@ -769,10 +765,7 @@ function ChangeRolePanel({
 				return { ok: true as const, data: null };
 			},
 			"Access updated",
-			() => {
-				onClose();
-				router.refresh();
-			},
+			onClose,
 		);
 	}
 
