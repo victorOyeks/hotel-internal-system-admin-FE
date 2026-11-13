@@ -455,6 +455,13 @@ export function RoomsScreen({
 				room={panel === "edit" ? selected : null}
 				types={types}
 				areas={areas}
+				floors={[
+					...new Set(
+						rooms
+							.filter((r) => !r.areaId && r.floor && r.floor !== "Unassigned")
+							.map((r) => r.floor),
+					),
+				]}
 				onClose={closePanel}
 				onSaved={(r) =>
 					panel === "edit" ? patch(r.id, r) : setRooms((rs) => [...rs, r])
