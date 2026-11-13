@@ -31,6 +31,10 @@ refreshing or going back in the middle of a flow.
 
 ## Before you start
 
+- **Every change must show without reloading.** After you save, add, delete or change anything, the screen updates on
+  its own: the panel, the list, counts and badges elsewhere on the page. If a change only appears after you reload the
+  page, log it as a defect (say which screen and which action).
+
 - **Emails are real.** Invites, receipts and guest messages go to the address typed. Use your own inbox, or `@hospio-qa.test` for throwaway accounts.
 - **Accept invites in a private window**, not the owner's browser; accepting signs the invited person in on that browser.
 - **SMS and WhatsApp are live, but staging texts only allow-listed numbers**; other numbers show "Held back: not on this environment's allow-list" (expected). Phone codes on staging are `123456`.
