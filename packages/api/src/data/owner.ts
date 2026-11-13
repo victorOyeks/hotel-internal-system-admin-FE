@@ -602,6 +602,21 @@ export const ownerData = {
 		return businessWide(() => data.approvals.list());
 	},
 
+	/**
+	 * The approvals still open across the business (waiting or questioned, any level): the owner's dashboard, which lists
+	 * the waiting ones, without the decided ones of the last 90 days that `approvals` reads for Financials.
+	 */
+	openApprovals: async (): Promise<ApprovalRow[]> => {
+		const data = await seam();
+		return businessWide(() => data.approvals.open());
+	},
+
+	/** One approval anywhere in the business (a link to one that is no longer open). */
+	approval: async (id: string): Promise<ApprovalRow | null> => {
+		const data = await seam();
+		return businessWide(() => data.approvals.get(id));
+	},
+
 	/** Every hotel's company accounts. */
 	organizations: async (): Promise<(OrganizationRow & AtHotel)[]> => {
 		const data = await seam();
