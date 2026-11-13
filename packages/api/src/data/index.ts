@@ -473,6 +473,36 @@ const everyOrganization = cache(
 const allOrganizations = async (): Promise<OrganizationRow[]> =>
 	everyOrganization((await withSession()).headers?.["X-Hotel-Id"] ?? "");
 
+/** The hotel a server-side call goes to (the X-Hotel-Id it sends; "" for none): the key for per-request caches. */
+const hotelKey = async () =>
+	(await withSession()).headers?.["X-Hotel-Id"] ?? "";
+
+/**
+ * A no-argument read, done once per request and hotel (React `cache`): several parts of one page (or a loader inside
+ * another) asking for it share the first call. Keyed by the hotel because the owner's pages read hotels in turn
+ * (`atHotel`) within one request.
+ */
+const perHotel = <T>(load: () => Promise<T>): (() => Promise<T>) => {
+	const once = cache((_hotel: string) => load());
+	return async () => once(await hotelKey());
+};
+
+/**
+ * The hotel's settings as the setup sections, from GET /hotel-config/setup alone (no lists, no hotel status): what the
+ * approval limits and till float read. The Hotel setup screen itself uses `data.hotels.setup`.
+ */
+const setupSettings = async (): Promise<HotelSetupSection[]> => {
+	const { data: res, error } = await api(
+		"@get/hotel-config/setup",
+		await withSession(),
+	);
+	if (error || !res) {
+		console.error("hotel-config setup:", error);
+		return [];
+	}
+	return toSetupSections(res.data as SetupSection, {}, null);
+};
+
 /** A route or row id that isn't there ("undefined" from a missing value): such calls are never sent. */
 const noId = (id?: string | null) => !id || id === "undefined" || id === "null";
 
@@ -622,7 +652,7 @@ export const data = {
 		 * What the hotel's settings say about spending: APPROVAL_LIMITS and the default till float. Above
 		 * `managerExpenseLimit` an expense needs the owner; `ownerExpenseLimit` 0 means no ceiling.
 		 */
-		limits: async (): Promise<{
+		limits: perHotel(async (): Promise<{
 			limits: ApprovalLimits;
 			tillFloat: number;
 		}> => {
@@ -636,7 +666,7 @@ export const data = {
 				tillFloat: 50_000,
 			};
 			if (!live("hotel-config")) return give(fallback);
-			const sections = await data.hotels.setup();
+			const sections = await setupSettings();
 			const value = (section: string, key: string) =>
 				sections
 					.find((x) => x.key === section)
@@ -660,7 +690,7 @@ export const data = {
 				},
 				tillFloat: n(value("money", "tillFloat"), 0),
 			};
-		},
+		}),
 		summaries: async (): Promise<HotelSummary[]> => {
 			if (!live("tenant")) return give(hotel.demoHotelSummaries);
 			const [hotels, managers] = await Promise.all([
@@ -794,7 +824,7 @@ export const data = {
 		},
 	},
 	rooms: {
-		list: async (): Promise<RoomRow[]> => {
+		list: perHotel(async (): Promise<RoomRow[]> => {
 			if (!live("property")) return give(hotel.demoRooms);
 			const s = await withSession();
 			const [areas, rooms, cleanliness, today] = await Promise.all([
@@ -847,8 +877,8 @@ export const data = {
 					};
 				return row;
 			});
-		},
-		types: async (): Promise<RoomTypeRow[]> => {
+		}),
+		types: perHotel(async (): Promise<RoomTypeRow[]> => {
 			if (!live("property")) return give(hotel.demoRoomTypes);
 			const { data: res, error } = await api(
 				"@get/property/room-types",
@@ -859,8 +889,8 @@ export const data = {
 				return [];
 			}
 			return res.data.map(toRoomTypeRow);
-		},
-		areas: async (): Promise<AreaRow[]> => {
+		}),
+		areas: perHotel(async (): Promise<AreaRow[]> => {
 			if (!live("property")) {
 				const names = Array.from(new Set(hotel.demoRooms.map((r) => r.floor)));
 				return give(
@@ -885,7 +915,7 @@ export const data = {
 				.sort(
 					(a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
 				);
-		},
+		}),
 		get: async (id: string): Promise<RoomRow | null> => {
 			const rooms = await data.rooms.list();
 			return rooms.find((r) => r.id === id || r.number === id) ?? null;
