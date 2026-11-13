@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ReceiptIcon, WalletIcon } from "lucide-react";
 import Link from "next/link";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
 import { fmtWhen, naira, nairaShort, plural } from "@hospio/ui/shared/format";
@@ -56,6 +56,7 @@ export function FoliosScreen({
 	const [openId, setOpenId] = useQueryState("open");
 	const [action, setAction] = useQueryState("action");
 	const [folios, setFolios] = useState(initial);
+	useEffect(() => setFolios(initial), [initial]);
 	const [search, setSearch] = useState("");
 	const active = (TABS.includes(tab as Tab) ? tab : "open") as Tab;
 	const selected = folios.find((f) => f.id === openId) ?? null;

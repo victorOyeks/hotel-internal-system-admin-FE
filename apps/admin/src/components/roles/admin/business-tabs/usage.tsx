@@ -9,7 +9,7 @@ import {
 	RefreshCwIcon,
 	UsersIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { recomputeHealth } from "@hospio/api/actions/platform-admin";
 import { useAction } from "@hospio/api/actions/use-action";
 import type { HealthRow, UsageData } from "@hospio/api/data/admin-types";
@@ -47,6 +47,7 @@ export function UsageTab({
 	health: HealthRow | null;
 }) {
 	const [health, setHealth] = useState(initialHealth);
+	useEffect(() => setHealth(initialHealth), [initialHealth]);
 	const { run, pending } = useAction();
 	const weeks = usage?.weeks ?? [];
 	const max = Math.max(

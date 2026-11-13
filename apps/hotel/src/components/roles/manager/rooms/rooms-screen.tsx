@@ -8,7 +8,7 @@ import {
 	TagIcon,
 } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@hospio/ui/primitives/button";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
@@ -59,6 +59,7 @@ export function RoomsScreen({
 	);
 	const [openId, setOpenId] = useQueryState("open");
 	const [rooms, setRooms] = useState(initial);
+	useEffect(() => setRooms(initial), [initial]);
 	const [stateFilter, setStateFilter] = useState<RoomState | "all">("all");
 	const [search, setSearch] = useState("");
 	const [view, setView] = useState<"grid" | "list">("grid");

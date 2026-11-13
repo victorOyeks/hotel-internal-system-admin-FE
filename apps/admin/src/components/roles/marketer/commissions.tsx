@@ -2,7 +2,7 @@
 
 import { BanknoteIcon, DownloadIcon, LandmarkIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	loadCommissionStatement,
 	saveMarketerBank,
@@ -63,6 +63,7 @@ export function MarketerCommissions({
 	const router = useRouter();
 	const list = useListParams();
 	const [me, setMe] = useState(initialMe);
+	useEffect(() => setMe(initialMe), [initialMe]);
 	const [statement, setStatement] = useState(false);
 	const [bank, setBank] = useState(false);
 	const months = monthOptions(12).map((o) => o.value);

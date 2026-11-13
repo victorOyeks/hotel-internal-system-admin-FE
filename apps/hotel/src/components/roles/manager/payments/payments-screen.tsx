@@ -123,6 +123,7 @@ export function PaymentsScreen({
 	const [payments, setPayments] = useState(result.data.content);
 	useEffect(() => setPayments(result.data.content), [result]);
 	const [terminals, setTerminals] = useState(initialTerminals);
+	useEffect(() => setTerminals(initialTerminals), [initialTerminals]);
 	const [linking, setLinking] = useState(false);
 	const [refunds, setRefunds] = useState(refundsResult.data.content);
 	useEffect(() => setRefunds(refundsResult.data.content), [refundsResult]);

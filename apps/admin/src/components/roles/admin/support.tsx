@@ -96,6 +96,7 @@ export function SupportScreen({
 	const [open, setOpen] = useQueryState("open");
 	const [isNew, setNew] = useQueryState("new");
 	const [alerts, setAlerts] = useState(initialAlerts);
+	useEffect(() => setAlerts(initialAlerts), [initialAlerts]);
 	const [search, setSearch] = useState(q);
 	const { run, pending } = useAction();
 	const { refresh } = useRefresh();
