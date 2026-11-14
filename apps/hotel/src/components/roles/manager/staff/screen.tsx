@@ -122,6 +122,12 @@ export function StaffScreen({
 	const today = new Intl.DateTimeFormat("en-CA", {
 		timeZone: "Africa/Lagos",
 	}).format(new Date());
+	const nowHm = new Intl.DateTimeFormat("en-GB", {
+		timeZone: "Africa/Lagos",
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+	}).format(new Date());
 	// Who is clocked in right now (from the clock, so someone in without a rota shift still counts).
 	const clocked = new Set(clockedIn);
 	const onShift = clocked.size;
@@ -217,6 +223,8 @@ export function StaffScreen({
 					(x) => x.staffId === row.original.id && x.date === today,
 				);
 				const line = s ? `${row.original.shift} · ${s.starts}–${s.ends}` : "—";
+				// From the clock first: whoever is clocked in is on shift, rota or not; a rota shift that has started with
+				// nobody clocked in is "Not in yet".
 				const sub =
 					row.original.status === "SUSPENDED"
 						? "Suspended"
@@ -224,17 +232,23 @@ export function StaffScreen({
 							? "On leave"
 							: s?.status === "ABSENT"
 								? "Called in sick"
-								: s?.status === "PRESENT" || (s && s.starts <= "14:00")
+								: clocked.has(row.original.id)
 									? "On shift now"
-									: s
-										? "Starts later"
-										: "Not scheduled";
+									: s?.status === "PRESENT" || s?.status === "LATE"
+										? "Worked today"
+										: s && s.starts <= nowHm
+											? "Not in yet"
+											: s
+												? "Starts later"
+												: "Not scheduled";
 				const tone =
 					sub === "On shift now"
 						? "text-success"
 						: sub === "Called in sick"
 							? "text-danger"
-							: "text-ink-3";
+							: sub === "Not in yet"
+								? "text-warning"
+								: "text-ink-3";
 				return (
 					<TwoLine
 						primary={line}
