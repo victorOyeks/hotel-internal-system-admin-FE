@@ -75,6 +75,7 @@ export const managerLinks: NavLink[] = [
 	},
 	{ title: "Night audit", url: "/dashboard/night-audit", icon: MoonIcon },
 	{ title: "Messaging", url: "/dashboard/messaging", icon: MessageSquareIcon },
+	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Inventory", url: "/dashboard/inventory", icon: PackageIcon },
 	{ title: "Menus", url: "/dashboard/menus", icon: BookOpenIcon },
@@ -133,6 +134,7 @@ export const frontOfficeLinks: NavLink[] = [
 	{ title: "Messages", url: "/dashboard/messages", icon: MessageSquareIcon },
 	{ title: "Payments", url: "/dashboard/payments", icon: CreditCardIcon },
 	{ title: "Till", url: "/dashboard/till", icon: WalletIcon },
+	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
@@ -216,6 +218,7 @@ export const inventoryLinks: NavLink[] = [
 	{ title: "Deliveries", url: "/dashboard/deliveries", icon: TruckIcon },
 	{ title: "Stock counts", url: "/dashboard/counts", icon: ClipboardCheckIcon },
 	{ title: "Suppliers", url: "/dashboard/suppliers", icon: HandshakeIcon },
+	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
@@ -232,6 +235,7 @@ export const financeLinks: NavLink[] = [
 		url: "/dashboard/organizations",
 		icon: HandshakeIcon,
 	},
+	{ title: "My shifts", url: "/dashboard/shifts", icon: CalendarDaysIcon },
 	{ title: "Inbox", url: "/dashboard/inbox", icon: InboxIcon, badge: "inbox" },
 	{ title: "Notifications", url: "/dashboard/notifications", icon: BellIcon },
 ];
