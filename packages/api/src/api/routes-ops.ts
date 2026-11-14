@@ -397,6 +397,10 @@ export const opsRoutes = {
 		}),
 		output: envelope(LeaveItem),
 	},
+	"@post/finance/workforce/leave/:id/withdraw": {
+		params: id,
+		output: envelope(LeaveItem),
+	},
 	"@get/finance/workforce/clock/me": { output: envelope(ClockMe) },
 	"@get/finance/workforce/clock": {
 		query: dateQuery,

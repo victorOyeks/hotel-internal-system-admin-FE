@@ -21,6 +21,7 @@ const leaveTone = {
 	APPROVED: "success",
 	DECLINED: "danger",
 	CHANGE_REQUESTED: "info",
+	WITHDRAWN: "grey",
 } as const;
 
 export function LeaveTable({

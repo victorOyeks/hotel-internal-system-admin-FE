@@ -25,6 +25,7 @@ import { Button } from "@hospio/ui/primitives/button";
 import { DataTable, TwoLine } from "@hospio/ui/shared/data-table";
 import { AvatarName } from "@hospio/ui/shared/detail-list";
 import { fmtWhen, humanize, plural } from "@hospio/ui/shared/format";
+import { Modal } from "@hospio/ui/shared/modal";
 import { KpiCard } from "@hospio/ui/shared/kpi-card";
 import { PageHeader } from "@hospio/ui/shared/page-header";
 import { PillTabs } from "@hospio/ui/shared/pill-tabs";
@@ -81,8 +82,11 @@ export function StaffScreen({
 	businessName,
 	inviterName,
 	clockedIn = [],
+	clockedSince = {},
 }: {
 	clockedIn?: string[];
+	/** When each clocked-in person clocked in (user id → ISO time), for the "On shift now" list. */
+	clockedSince?: Record<string, string>;
 	/** The list on screen, a page at a time from identity (`?q=&role=&status=&sort=&page=`). */
 	result: PageResult<StaffRow>;
 	/** The hotel's people without search or filters, for the header and the cards (counts only). */
@@ -117,6 +121,7 @@ export function StaffScreen({
 	const [cover, setCover] = useState<ShiftRow | null>(null);
 	const [swap, setSwap] = useState<ShiftRow | null>(null);
 	const [autoFill, setAutoFill] = useState(false);
+	const [onShiftOpen, setOnShiftOpen] = useState(false);
 
 	const active = (tab as Tab) || "all";
 	const today = new Intl.DateTimeFormat("en-CA", {
@@ -390,12 +395,19 @@ export function StaffScreen({
 					icon={UsersIcon}
 					hint={`${cards.ACTIVE ?? 0} active · ${onLeave} on leave · ${(cards.PAUSED ?? 0) + (cards.SUSPENDED ?? 0)} paused`}
 				/>
-				<KpiCard
-					label="On shift now"
-					value={onShift}
-					icon={UserCheckIcon}
-					hint={`clocked in · ${scheduled} on today's rota · ${notIn} not in`}
-				/>
+				<button
+					type="button"
+					className="rounded-card text-left transition-shadow hover:shadow-md"
+					onClick={() => setOnShiftOpen(true)}
+					aria-label="Who is on shift now"
+				>
+					<KpiCard
+						label="On shift now"
+						value={onShift}
+						icon={UserCheckIcon}
+						hint={`clocked in · ${scheduled} on today's rota · ${notIn} not in · see who`}
+					/>
+				</button>
 				<KpiCard
 					label="Attendance this week"
 					value={
@@ -593,6 +605,36 @@ export function StaffScreen({
 				staff={staff}
 				onClose={() => setSwap(null)}
 			/>
+			<Modal
+				open={onShiftOpen}
+				onOpenChange={setOnShiftOpen}
+				title="On shift now"
+				subtitle={`${plural(onShift, "person", "people")} clocked in at ${hotelName}`}
+			>
+				{onShift === 0 ? (
+					<p className="text-sm text-ink-3">Nobody is clocked in right now.</p>
+				) : (
+					<ul className="divide-y divide-line">
+						{[...clocked].map((id) => {
+							const p = staff.find((x) => x.id === id);
+							const since = clockedSince[id];
+							const long = since && Date.now() - new Date(since).getTime() > 14 * 3600_000;
+							return (
+								<li key={id} className="flex items-center justify-between gap-3 py-3 text-[13px]">
+									<span>
+										<span className="block font-semibold text-ink">{p?.fullName ?? "Someone not on this page"}</span>
+										<span className="text-ink-3">{p ? `${p.jobTitle} · ${p.department}` : ""}</span>
+									</span>
+									<span className={long ? "text-warning" : "text-ink-2"}>
+										since {since ? fmtWhen(since) : "—"}
+										{long ? " · forgot to clock out?" : ""}
+									</span>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</Modal>
 			<AutoFillModal
 				open={autoFill}
 				shifts={shifts}

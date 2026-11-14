@@ -1,5 +1,6 @@
 "use client";
 
+import { ClockButton } from "../shared-staff/clock-button";
 import {
 	ArrowLeftToLineIcon,
 	ArrowRightToLineIcon,
@@ -22,6 +23,7 @@ import { btn } from "@hospio/ui/shared/ui";
 import type { Me } from "@hospio/api/api/schema";
 import type { bookingBuckets } from "@hospio/api/data";
 import {
+	type ClockStatus,
 	type FolioSummary,
 	occupancyLabel,
 	pastDeparture,
@@ -72,7 +74,9 @@ export function FrontDeskToday({
 	folios,
 	terminals,
 	till,
+	clock,
 }: {
+	clock: ClockStatus;
 	user: Me;
 	hotelName: string;
 	buckets: ReturnType<typeof bookingBuckets>;
@@ -192,6 +196,7 @@ export function FrontDeskToday({
 				title={`${greeting()}, ${user.fullName.split(" ")[0]}`}
 				subtitle={`Front desk · ${hotelName} · ${format(new Date(), "EEE d MMM")}`}
 			>
+				<ClockButton initial={clock} />
 				<Link href="/dashboard/payments" className={btn.secondary}>
 					My payments
 				</Link>

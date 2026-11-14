@@ -354,6 +354,13 @@ export const SETUP_CATALOGUE: SectionDef[] = [
 				type: "number",
 				default: 15,
 			},
+			{
+				key: "notifyEveryClockIn",
+				label: "Tell managers about every clock-in",
+				help: "Late clock-ins and staff not in for a started shift are always notified; this adds a notice for every clock-in.",
+				type: "toggle",
+				default: false,
+			},
 		],
 	},
 	{

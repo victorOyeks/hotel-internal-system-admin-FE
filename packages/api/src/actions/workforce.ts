@@ -293,6 +293,25 @@ export async function requestLeave(input: {
 	return { ok: true, data: toLeaveRow(data.data) };
 }
 
+/** The person takes back a leave request nobody has decided yet; the managers and owners are told. */
+export async function withdrawLeave(id: string): Promise<ActionResult<LeaveRow>> {
+	if (!live("finance")) {
+		await demoDelay(300);
+		return { ok: false, error: "Leave requests are not connected in this preview" };
+	}
+	const { data, error } = await api("@post/finance/workforce/leave/:id/withdraw", {
+		...(await withSession()),
+		params: { id },
+	});
+	if (error || !data)
+		return {
+			ok: false,
+			error: errorMessage(error, "The leave request could not be withdrawn"),
+		};
+	revalidateOps();
+	return { ok: true, data: toLeaveRow(data.data) };
+}
+
 export async function clockIn(
 	note?: string,
 ): Promise<ActionResult<ClockStatus>> {

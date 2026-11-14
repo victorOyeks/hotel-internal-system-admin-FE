@@ -30,6 +30,7 @@ import {
 	clockIn,
 	clockOut,
 	requestLeave,
+	withdrawLeave,
 	requestShiftChange,
 } from "@hospio/api/actions/workforce";
 import { setMyPin } from "@hospio/api/actions/identity";
@@ -71,6 +72,7 @@ const leaveTone = {
 	APPROVED: "success",
 	DECLINED: "danger",
 	CHANGE_REQUESTED: "info",
+	WITHDRAWN: "grey",
 } as const;
 
 /**
@@ -365,6 +367,21 @@ export function ShiftsScreen({
 							<StatusPill tone={leaveTone[l.status]}>
 								{humanize(l.status)}
 							</StatusPill>
+							{(l.status === "PENDING" || l.status === "CHANGE_REQUESTED") && (
+								<button
+									type="button"
+									className="text-[13px] font-semibold text-brand hover:underline disabled:opacity-50"
+									disabled={pending}
+									onClick={() =>
+										void run(
+											() => withdrawLeave(l.id),
+											"Leave request withdrawn · your manager is told",
+										)
+									}
+								>
+									Withdraw
+								</button>
+							)}
 						</li>
 					))}
 				</ul>

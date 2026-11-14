@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function FrontDeskTodayPage() {
 	const [user, hotel] = await Promise.all([getUser(), getActiveHotel()]);
 	if (!user) redirect("/auth");
-	const [buckets, rooms, folios, terminals, till] = await Promise.all([
+	const [buckets, rooms, folios, terminals, till, clock] = await Promise.all([
 		data.bookings.buckets(),
 		data.rooms.list(),
 		data.folios.summaries(),
 		data.payments.terminals(),
 		data.finance.myTill(),
+		data.staff.clock(),
 	]);
 	return (
 		<FrontDeskToday
@@ -24,6 +25,7 @@ export default async function FrontDeskTodayPage() {
 			folios={folios}
 			terminals={terminals}
 			till={till}
+			clock={clock}
 		/>
 	);
 }
