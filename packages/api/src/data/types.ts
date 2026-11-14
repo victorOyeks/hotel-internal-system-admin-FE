@@ -416,7 +416,7 @@ export type LeaveRow = {
 	to: string;
 	days: number;
 	reason: string;
-	status: "PENDING" | "APPROVED" | "DECLINED" | "CHANGE_REQUESTED";
+	status: "PENDING" | "APPROVED" | "DECLINED" | "CHANGE_REQUESTED" | "WITHDRAWN";
 	note?: string;
 };
 export type ShiftRequestRow = {

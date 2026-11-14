@@ -65,6 +65,7 @@ export default async function StaffPage({
 			businessName={business?.name}
 			inviterName={user?.fullName}
 			clockedIn={[...clockedIn.keys()]}
+			clockedSince={Object.fromEntries(clockedIn)}
 		/>
 	);
 }

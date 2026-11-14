@@ -59,7 +59,8 @@ export function toLeaveRow(l: LeaveItem): LeaveRow {
 	const status =
 		l.status === "APPROVED" ||
 		l.status === "DECLINED" ||
-		l.status === "CHANGE_REQUESTED"
+		l.status === "CHANGE_REQUESTED" ||
+		l.status === "WITHDRAWN"
 			? l.status
 			: "PENDING";
 	return {
